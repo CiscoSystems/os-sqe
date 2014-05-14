@@ -1,6 +1,27 @@
 #!/bin/bash
 source variables.sh
 
+rand_mac(){
+  echo $(openssl rand -hex 6 | sed 's/\(..\)/\1:/g; s/.$//')
+}
+j=2
+build_server_mac=$(rand_mac)
+control_servers_macs=()
+compute_servers_macs=()
+dhcp_records="<host mac=\"${build_server_mac}\" name=\"build-server.domain.name\" ip=\"${NET_BOOT}.${j}\" />"
+for ((i = 0; i < $CONTROL_SERVERS; i++)); do
+  j=$(($j+1))
+  name="$(printf "control-server%02d" $i).domain.name"
+  control_servers_macs+=($(rand_mac))
+  dhcp_records="${dhcp_records}<host mac=\"${control_servers_macs[$i]}\" name=\"${name}\" ip=\"${NET_BOOT}.${j}\" />"
+done
+for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
+  j=$(($j+1))
+  name="$(printf "compute-server%02d" $i).domain.name"
+  compute_servers_macs+=($(rand_mac))
+  dhcp_records="${dhcp_records}<host mac=\"${compute_servers_macs[$i]}\" name=\"${name}\" ip=\"${NET_BOOT}.${j}\" />"
+done
+
 cat > ${NET_BOOT_XML} <<EOF
 <network>
   <name>${NET_BOOT_NAME}</name>
@@ -13,6 +34,7 @@ cat > ${NET_BOOT_XML} <<EOF
   <ip address='${NET_BOOT}.1' netmask='255.255.255.0'>
     <dhcp>
       <range start='${NET_BOOT}.2' end='${NET_BOOT}.254' />
+      ${dhcp_records}
     </dhcp>
   </ip>
 </network>
@@ -131,6 +153,7 @@ cat > ${VM_BUILD_XML} <<EOF
     </disk>
     <interface type='network'>
       <source network='${NET_BOOT_NAME}'/>
+      <mac address='${build_server_mac}'/>
     </interface>
     <interface type='network'>
       <source network='${NET_ADMIN_NAME}'/>
@@ -144,7 +167,9 @@ main_disk_create ${IMAGES_PATH}/${VM_BUILD_DISK_NAME} ${BUILD_SERVER_DISK_SIZE}
 cloud-localds ${IMAGES_PATH}/${VM_BUILD_SEED_IMG} user-data.yaml
 vm_create ${VM_BUILD_XML}
 
-for name in ${VM_CONTROL_NAMES[@]}; do
+for ((i = 0; i < ${CONTROL_SERVERS}; i++)); do
+	name=${VM_CONTROL_NAMES[$i]
+	mac=${control_servers_macs[$i]}
 	xml=${TEMP_FOLDER}/${name}.xml
 	disk=${name}.qcow2
 	seed_disk=${name}-seed.qcow2
@@ -186,6 +211,7 @@ for name in ${VM_CONTROL_NAMES[@]}; do
     </disk>
     <interface type='network'>
       <source network='${NET_BOOT_NAME}'/>
+      <mac address='${mac}'/>
     </interface>
     <interface type='network'>
       <source network='${NET_ADMIN_NAME}'/>
@@ -209,7 +235,9 @@ EOF
 	vm_create ${xml}
 done
 
-for name in ${VM_COMPUTE_NAMES[@]}; do
+for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
+    name=${VM_COMPUTE_NAMES[$i]}
+    mac=${compute_servers_macs[$i]}
     xml=${TEMP_FOLDER}/${name}.xml
     disk=${name}.qcow2
     seed_disk=${name}-seed.qcow2
@@ -251,6 +279,7 @@ for name in ${VM_COMPUTE_NAMES[@]}; do
     </disk>
     <interface type='network'>
       <source network='${NET_BOOT_NAME}'/>
+      <mac address='${mac}'/>
     </interface>
     <interface type='network'>
       <source network='${NET_ADMIN_NAME}'/>
