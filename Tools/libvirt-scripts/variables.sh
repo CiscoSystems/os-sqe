@@ -1,0 +1,36 @@
+#!/bin/bash
+source config.sh
+
+TEMP_FOLDER=/tmp
+IMAGES_PATH=/var/lib/libvirt/images
+
+IMG_UNCOMPRESSED_PATH=${IMAGES_PATH}/${NAME}-backing.img
+
+NET_BOOT_NAME=${NAME}-net-boot
+NET_ADMIN_NAME=${NAME}-net-admin
+NET_PUBLIC_NAME=${NAME}-net-public
+NET_INTERNAL_NAME=${NAME}-net-internal
+NET_EXTERNAL_NAME=${NAME}-net-external
+
+NET_BOOT_XML=${TEMP_FOLDER}/${NET_BOOT_NAME}.xml
+NET_ADMIN_XML=${TEMP_FOLDER}/${NET_ADMIN_NAME}.xml
+NET_PUBLIC_XML=${TEMP_FOLDER}/${NET_PUBLIC_NAME}.xml
+NET_INTERNAL_XML=${TEMP_FOLDER}/${NET_INTERNAL_NAME}.xml
+NET_EXTERNAL_XML=${TEMP_FOLDER}/${NET_EXTERNAL_NAME}.xml
+
+VM_BUILD_NAME=${NAME}-build-server
+VM_BUILD_XML=${TEMP_FOLDER}/${VM_BUILD_NAME}.xml
+VM_BUILD_DISK_NAME=${VM_BUILD_NAME}.qcow2
+VM_BUILD_SEED_IMG=${VM_BUILD_NAME}-seed.img
+
+VM_CONTROL_NAME_PATTERN=${NAME}-control-server
+for ((i = 0; i < $CONTROL_SERVERS; i++)); do
+        VM_CONTROL_NAMES+=($(printf "${VM_CONTROL_NAME_PATTERN}%02d" $i))
+done
+VM_COMPUTE_NAME_PATTERN=${NAME}-compute-server
+for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
+        VM_COMPUTE_NAMES+=($(printf "${VM_COMPUTE_NAME_PATTERN}%02d" $i))
+done
+
+GB=$((1024*1024))
+GB_bytes=$((1024*1024*1024))

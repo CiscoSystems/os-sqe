@@ -1,0 +1,12 @@
+#cloud-config
+users:
+   - default
+   - name: localadmin
+     lock-passwd: false
+     sudo: ALL=(ALL) NOPASSWD:ALL
+     # ubuntu
+     passwd: $6$rounds=4096$A0eKrix5oH$4F70Syi4jfhMCRygdOUC.d.qItQ57KsmW8CHhs42r/bPm7ySXdYLoHCdpg3SLlWZlv9FnRAUhgp8C23DiVZr9.
+
+packages:
+   - git
+   - python-pip
