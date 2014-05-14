@@ -2,24 +2,29 @@
 source variables.sh
 
 rand_mac(){
-  echo $(openssl rand -hex 6 | sed 's/\(..\)/\1:/g; s/.$//')
+  echo $(od -An -N6 -tx1 /dev/urandom | sed -e 's/^  *//' -e 's/  */:/g' -e 's/:$//' -e 's/^\(.\)[13579bdf]/\10/')
 }
 j=2
 build_server_mac=$(rand_mac)
+build_server_ip=${NET_BOOT}.${j}
 control_servers_macs=()
+control_servers_ips=()
 compute_servers_macs=()
-dhcp_records="<host mac=\"${build_server_mac}\" name=\"build-server.domain.name\" ip=\"${NET_BOOT}.${j}\" />"
+compute_servers_ips=()
+dhcp_records="<host mac=\"${build_server_mac}\" name=\"build-server.domain.name\" ip=\"${build_server_ip}\" />"
 for ((i = 0; i < $CONTROL_SERVERS; i++)); do
   j=$(($j+1))
   name="$(printf "control-server%02d" $i).domain.name"
   control_servers_macs+=($(rand_mac))
-  dhcp_records="${dhcp_records}<host mac=\"${control_servers_macs[$i]}\" name=\"${name}\" ip=\"${NET_BOOT}.${j}\" />"
+  control_servers_ips+=(${NET_BOOT}.${j})
+  dhcp_records="${dhcp_records}<host mac=\"${control_servers_macs[$i]}\" name=\"${name}\" ip=\"${control_servers_ips[$i]}\" />"
 done
 for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
   j=$(($j+1))
   name="$(printf "compute-server%02d" $i).domain.name"
   compute_servers_macs+=($(rand_mac))
-  dhcp_records="${dhcp_records}<host mac=\"${compute_servers_macs[$i]}\" name=\"${name}\" ip=\"${NET_BOOT}.${j}\" />"
+  compute_servers_ips+=(${NET_BOOT}.${j})
+  dhcp_records="${dhcp_records}<host mac=\"${compute_servers_macs[$i]}\" name=\"${name}\" ip=\"${compute_servers_ips[$i]}\" />"
 done
 
 cat > ${NET_BOOT_XML} <<EOF
@@ -166,9 +171,10 @@ EOF
 main_disk_create ${IMAGES_PATH}/${VM_BUILD_DISK_NAME} ${BUILD_SERVER_DISK_SIZE}
 cloud-localds ${IMAGES_PATH}/${VM_BUILD_SEED_IMG} user-data.yaml
 vm_create ${VM_BUILD_XML}
+echo "Build server ip: ${build_server_ip}"
 
 for ((i = 0; i < ${CONTROL_SERVERS}; i++)); do
-	name=${VM_CONTROL_NAMES[$i]
+	name=${VM_CONTROL_NAMES[$i]}
 	mac=${control_servers_macs[$i]}
 	xml=${TEMP_FOLDER}/${name}.xml
 	disk=${name}.qcow2
@@ -232,7 +238,8 @@ for ((i = 0; i < ${CONTROL_SERVERS}; i++)); do
 EOF
     main_disk_create ${IMAGES_PATH}/${disk} ${CONTROL_SERVER_DISK_SIZE}
     cloud-localds ${IMAGES_PATH}/${seed_disk} user-data.yaml
-	vm_create ${xml}
+    vm_create ${xml}
+    echo "Control server IP: ${control_servers_ips[$i]}"
 done
 
 for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
@@ -301,4 +308,5 @@ EOF
     main_disk_create ${IMAGES_PATH}/${disk} ${COMPUTE_SERVER_DISK_SIZE}
     cloud-localds ${IMAGES_PATH}/${seed_disk} user-data.yaml
     vm_create ${xml}
+    echo "Compute server IP: ${compute_servers_ips[$i]}"    
 done
