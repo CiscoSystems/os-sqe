@@ -47,7 +47,7 @@ The script uses cloud image (tested against ubuntu) to boot virtual machines. Fu
 ## Machines initialization
 Ubuntu cloud images has cloud-init tool preinstalled. It helps user to configure a VM once it boots first time. Parameters for cloud-init are stored in *user-data.yaml* file. It is already filled with *localadmin* user and *git* *pip* packages. You may add whatever you want (see http://cloudinit.readthedocs.org/en/latest/topics/examples.html). The *user-data.yaml* file is used for all virtual machines.
 
-Also by default a ssh is added to the localadmin's ssh authorized keys file. Private id_rsa is in repository. So you may ssh to vm using this id_rsa (ssh -i id_rsa localadmin@<ip>). You would have to change permissions of the id_rsa to 600 (chmod 600 id_rsa) otherwise you face "Permissions 0XXX for 'id_rsa' are too open." error.
+Also by default a ssh public key is added to the localadmin's ssh authorized keys file. Private id_rsa is in repository. So you may ssh to vm using this id_rsa (ssh -i id_rsa localadmin@<ip>). You would have to change permissions of the id_rsa to 600 (chmod 600 id_rsa) otherwise you face "Permissions 0XXX for 'id_rsa' are too open." error.
 
 ## Using
 There re two bash scripts
