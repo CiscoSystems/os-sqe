@@ -39,14 +39,18 @@ Networks addresses could be specified in config.sh file. It is assumed all netwo
 #### Note
 Admin network has a DNS record about build server ip address: *${NET_ADMIN}.2*, and a hostname is *build-server* *build-server.domain.name*. Nevertheless interfaces configuration should be configured manually for each virtual machines. Keep in mind ip of build server.
 
+IP address of a VM in a boot network is assigned by DHCP server. The value could be found in output of a create.sh.
+
 ## Boot image
 The script uses cloud image (tested against ubuntu) to boot virtual machines. Fullpath of an image chould be specified in *IMG_FULLPATH* parameter in *config.sh* file. The image is used for creating VMs, thus you remove it once create.sh stops working.
 
 ## Machines initialization
 Ubuntu cloud images has cloud-init tool preinstalled. It helps user to configure a VM once it boots first time. Parameters for cloud-init are stored in *user-data.yaml* file. It is already filled with *localadmin* user and *git* *pip* packages. You may add whatever you want (see http://cloudinit.readthedocs.org/en/latest/topics/examples.html). The *user-data.yaml* file is used for all virtual machines.
 
+Also by default a ssh is added to the localadmin's ssh authorized keys file. Private id_rsa is in repository. So you may ssh to vm using this id_rsa (ssh -i id_rsa localadmin@<ip>). You would have to change permissions of the id_rsa to 600 (chmod 600 id_rsa) otherwise you face "Permissions 0XXX for 'id_rsa' are too open." error.
+
 ## Using
 There re two bash scripts
-- *create.sh* it creates virtual machines but it does not start them (use *virsh start <machines name>*). It also creates networks and start them.
+- *create.sh* it creates virtual machines but it does not start them (use *virsh start <machines name>*). It also creates networks and starts them.
 - *undefine.sh* it destroys/undefined virtual machines and networks.
 Both scripts use parameters in config.sh. So in order to undefine machines you need to provide same config.sh that was used by create.sh
