@@ -6,6 +6,8 @@ users:
      sudo: ALL=(ALL) NOPASSWD:ALL
      # ubuntu
      passwd: $6$rounds=4096$A0eKrix5oH$4F70Syi4jfhMCRygdOUC.d.qItQ57KsmW8CHhs42r/bPm7ySXdYLoHCdpg3SLlWZlv9FnRAUhgp8C23DiVZr9.
+     ssh-authorized-keys:
+       - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCzQmxvQkKkR46obWeHFVO0iyhbWKgTaqNzjt86iaD0q9RVesxLl3zjqDbgbaFTSl1bgTaVxjgh4oZbzgoMpsHeOUHqPWtqZvSviS0u1SMM30o1ivlKyvZjg2lOgno/Z1NO/flgoj5O1MySHbhn0gwgUinFynUeo9HyUTlOz+UU8UQzQb93v4aYUWcd1/r5VDDfWCt3W5kE8qsb/dUwtN2KSUfy4nmRiRobuNyla2lB9t4Jen3SzXFP52YQMD161fjyieSubSwAgIIWwo1bCgm/oUVLZvGcOQMEtgtccjXd2JXiciAKb7U0XLblRxBpn/nnzXHV3U9xgPlBVBLz9zdh test.node@example.com
 
 packages:
    - git
