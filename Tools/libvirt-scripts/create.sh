@@ -171,7 +171,7 @@ EOF
 main_disk_create ${IMAGES_PATH}/${VM_BUILD_DISK_NAME} ${BUILD_SERVER_DISK_SIZE}
 cloud-localds ${IMAGES_PATH}/${VM_BUILD_SEED_IMG} user-data.yaml
 vm_create ${VM_BUILD_XML}
-echo "Build server ip: ${build_server_ip}"
+echo "Build server ip: ${build_server_ip}"; echo
 
 for ((i = 0; i < ${CONTROL_SERVERS}; i++)); do
 	name=${VM_CONTROL_NAMES[$i]}
@@ -239,7 +239,7 @@ EOF
     main_disk_create ${IMAGES_PATH}/${disk} ${CONTROL_SERVER_DISK_SIZE}
     cloud-localds ${IMAGES_PATH}/${seed_disk} user-data.yaml
     vm_create ${xml}
-    echo "Control server IP: ${control_servers_ips[$i]}"
+    echo "Control server IP: ${control_servers_ips[$i]}"; echo
 done
 
 for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
@@ -308,5 +308,5 @@ EOF
     main_disk_create ${IMAGES_PATH}/${disk} ${COMPUTE_SERVER_DISK_SIZE}
     cloud-localds ${IMAGES_PATH}/${seed_disk} user-data.yaml
     vm_create ${xml}
-    echo "Compute server IP: ${compute_servers_ips[$i]}"    
+    echo "Compute server IP: ${compute_servers_ips[$i]}"; echo
 done
