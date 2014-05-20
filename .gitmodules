@@ -1,0 +1,4 @@
+[submodule "Tests/tempest/openstack"]
+	path = Tests/tempest/openstack
+	url = git@github.com:openstack/tempest.git
+	branch = stable/havana
