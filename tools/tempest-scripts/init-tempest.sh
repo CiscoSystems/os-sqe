@@ -61,7 +61,7 @@ python ${tempest_path}/tools/install_venv.py
 source ${tempest_path}/.venv/bin/activate
 
 # Install nosetests
-pip install nose
+pip install nose junitxml
 
 # *******************************************************************************
 # Prepare OpenStack
