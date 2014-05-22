@@ -107,7 +107,7 @@ iniset $tempest_conf compute image_ref $image_id
 iniset $tempest_conf compute image_ref_alt $alt_image_id
 iniset $tempest_conf network public_network_id $public_net_id
 iniset $tempest_conf network public_router_id $public_router_id
-iniset $tempest_conf dashboard dashboard_url "http://${controller_ip}/"
+iniset $tempest_conf dashboard dashboard_url "http://${controller_ip}/horizon/"
 iniset $tempest_conf dashboard login_url "http://${controller_ip}/horizon/auth/login/"
 iniset $tempest_conf identity uri "http://${controller_ip}:5000/v2.0/"
 iniset $tempest_conf identity uri_v3 "http://${controller_ip}:5000/v3/"
