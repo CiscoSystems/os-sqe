@@ -1,0 +1,4 @@
+[submodule "test/tempest"]
+	path = test/tempest
+	url = git@github.com:CiscoSystems/tempest.git
+	branch = havana-wbackports
