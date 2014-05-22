@@ -3,6 +3,7 @@
 #	$1	openrc path
 #	$2	config.sh of a virtual machines
 #	$3	path of a cirros disk image
+#   $4  tempest path
 
 
 # Functions below were borrowed from devstack source
@@ -42,8 +43,10 @@ function iniset {
 # Clone tempest, create/configyre virtualenv
 # *******************************************************************************
 
-dir=$(pwd)
-tempest_conf=${dir}/tempest/etc/tempest.conf
+dir=$(dirname $0)
+
+tempest_path=$4
+tempest_conf=${tempest_path}/etc/tempest.conf
 
 git clone https://github.com/openstack/tempest.git
 
@@ -54,8 +57,8 @@ apt-get install -y libxml2-dev libxslt1-dev
 apt-get install -y build-essential libssl-dev libffi-dev
 
 # Set up python virtual environment
-python ${dir}/tempest/tools/install_venv.py
-source ${dir}/tempest/.venv/bin/activate
+python ${tempest_path}/tools/install_venv.py
+source ${tempest_path}/.venv/bin/activate
 
 # Install nosetests
 pip install nose
@@ -97,7 +100,7 @@ neutron router-gateway-set router1 $public_net_id
 # Configure tempest
 # *******************************************************************************
 
-scenario_img_dir=${dir}/tempest/images
+scenario_img_dir=${tempest_path}/images
 
 cp ${dir}/tempest.conf ${tempest_conf}
 iniset $tempest_conf compute image_ref $image_id
@@ -115,6 +118,5 @@ mkdir $scenario_img_dir
 cd $scenario_img_dir
 wget http://download.cirros-cloud.net/0.3.2/cirros-0.3.2-x86_64-uec.tar.gz
 tar -xvf cirros-0.3.2-x86_64-uec.tar.gz
-cd $dir
 
 deactivate
