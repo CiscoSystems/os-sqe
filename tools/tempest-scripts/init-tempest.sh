@@ -3,7 +3,7 @@
 #	$1	openrc path
 #	$2	config.sh of a virtual machines
 #	$3	path of a cirros disk image
-#   $4  tempest path
+#   $4  tempest full path
 
 
 # Functions below were borrowed from devstack source
@@ -47,8 +47,6 @@ dir=$(dirname $0)
 
 tempest_path=$4
 tempest_conf=${tempest_path}/etc/tempest.conf
-
-git clone https://github.com/openstack/tempest.git
 
 apt-get install -y python-dev
 # lxml dependencies
@@ -112,6 +110,7 @@ iniset $tempest_conf dashboard login_url "http://${controller_ip}/horizon/auth/l
 iniset $tempest_conf identity uri "http://${controller_ip}:5000/v2.0/"
 iniset $tempest_conf identity uri_v3 "http://${controller_ip}:5000/v3/"
 iniset $tempest_conf scenario img_dir $scenario_img_dir
+iniset $tempest_conf cli cli_dir "${tempest_path}/.venv/bin"
 
 # Download images for [scenario] tempest tests
 mkdir $scenario_img_dir
