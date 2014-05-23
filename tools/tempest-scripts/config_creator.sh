@@ -422,7 +422,7 @@ large_ops_number = 0
 # Enable cli tests
 enabled = True
 # directory where python client binaries are located
-cli_dir = /usr/bin
+cli_dir = $(pwd)"/tempest/.venv/bin"
 # Number of seconds to wait on a CLI timeout
 timeout = 15
 
