@@ -28,6 +28,10 @@ lock_path=/tmp
 
 default_log_levels=tempest.stress=INFO,amqplib=WARN,sqlalchemy=WARN,boto=WARN,suds=INFO,keystone=INFO,eventlet.wsgi.server=WARN
 
+# Print debugging output (set logging level to DEBUG instead
+# of default WARNING level). (boolean value)
+debug=true
+
 [identity]
 # This section contains configuration options that a variety of Tempest
 # test clients use when authenticating with different user/tenant
@@ -125,10 +129,10 @@ run_ssh = false
 ssh_user = cirros
 
 # Visible fixed network name
-fixed_network_name = private
+fixed_network_name = net10
 
 # Network id used for SSH (public, private, etc)
-network_for_ssh = public
+network_for_ssh = net10
 
 # IP version of the address used for SSH
 ip_version_for_ssh = 4
@@ -390,9 +394,11 @@ instance_type = m1.micro
 # any key, which will generate a keypair for each test class
 #keypair_name = heat_key
 
+max_template_size = 524288
+
 [dashboard]
 # URL where to find the dashboard home page
-dashboard_url = 'http://$ip/'
+dashboard_url = 'http://$ip/horizon'
 
 # URL where to submit the login form
 login_url = 'http://$ip/horizon/auth/login/'
@@ -453,4 +459,54 @@ default_thread_number_per_action=4
 [debug]
 # Enable diagnostic commands
 enable = True
+
+[compute-feature-enabled]
+
+#
+# Options defined in tempest.config
+#
+
+# If false, skip all nova v3 tests. (boolean value)
+api_v3=false
+
+# If false, skip disk config tests (boolean value)
+#disk_config=true
+
+# A list of enabled compute extensions with a special entry
+# all which indicates every extension is enabled (list value)
+#api_extensions=all
+
+# A list of enabled v3 extensions with a special entry all
+# which indicates every extension is enabled (list value)
+#api_v3_extensions=all
+
+# Does the test environment support changing the admin
+# password? (boolean value)
+#change_password=false
+
+# Does the test environment support resizing? (boolean value)
+#resize=false
+
+# Does the test environment support pausing? (boolean value)
+#pause=true
+
+# Does the test environment support suspend/resume? (boolean
+# value)
+#suspend=true
+
+# Does the test environment support live migration available?
+# (boolean value)
+#live_migration=false
+
+# Does the test environment use block devices for live
+# migration (boolean value)
+#block_migration_for_live_migration=false
+
+# Does the test environment block migration support cinder
+# iSCSI volumes (boolean value)
+#block_migrate_cinder_iscsi=false
+
+# Enable VNC console. This configuration value should be same
+# as [nova.vnc]->vnc_enabled in nova.conf (boolean value)
+#vnc_console=false
 EOF
