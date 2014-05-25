@@ -398,7 +398,7 @@ max_template_size = 524288
 
 [dashboard]
 # URL where to find the dashboard home page
-dashboard_url = 'http://$ip/horizon'
+dashboard_url = 'http://$ip/horizon/'
 
 # URL where to submit the login form
 login_url = 'http://$ip/horizon/auth/login/'
