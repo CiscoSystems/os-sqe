@@ -432,6 +432,11 @@ cli_dir = $(pwd)"/tempest/.venv/bin"
 # Number of seconds to wait on a CLI timeout
 timeout = 15
 
+# Whether the tempest run location has access to the *-manage
+# commands. In a pure blackbox environment it will not.
+# (boolean value)
+has_manage=false
+
 [service_available]
 # Whether or not cinder is expected to be available
 cinder = False
