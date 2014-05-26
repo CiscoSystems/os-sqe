@@ -1,6 +1,11 @@
 #!/bin/bash
 NAME=lab
 
+# Boot type:
+#   cloudimg    - machines will boot from IMG_FULLPATH cloud image
+#   net         - all machines exceot build-server will boot over PXE
+BOOT_TYPE=cloudimg
+
 # all nets have CIDR=/24, 
 # specify first three octets of IPs
 NET_BOOT=192.168.0

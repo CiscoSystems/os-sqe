@@ -106,14 +106,69 @@ net_create ${NET_PUBLIC_NAME} ${NET_PUBLIC_XML}
 net_create ${NET_INTERNAL_NAME} ${NET_INTERNAL_XML}
 net_create ${NET_EXTERNAL_NAME} ${NET_EXTERNAL_XML}
 
+if [ "${BOOT_TYPE}" == "net" ]; then
+    # create storage pool if it does not exist
+    virsh pool-uuid ${STORAGE_POOL} &>/dev/null
+    if (( $? )); then
+        cat > ${STORAGE_POOL_XML}<<EOF
+<pool type="dir">
+    <name>${STORAGE_POOL}</name>
+    <target>
+        <path>${IMAGES_PATH}</path>
+    </target>
+</pool>
+EOF
+        virsh pool-create --file ${STORAGE_POOL_XML}
+    fi
+fi
+
 # Convert cloud image
 echo "Uncompressing cloud image ..."
 qemu-img convert -O qcow2 ${IMG_FULLPATH} ${IMG_UNCOMPRESSED_PATH}
 
 main_disk_create(){
-    output_file=$1
+    name=$1
     size=$2
-    qemu-img create -f qcow2 -b ${IMG_UNCOMPRESSED_PATH} ${output_file} ${size}G
+    type=$3
+    output_file=${IMAGES_PATH}/${name}.qcow2
+
+    if [ "${type}" == "net" ]; then
+        vol_xml=${TEMP_FOLDER}/${name}-vol.xml
+        cat >${vol_xml}<<EOF
+<volume>
+<name>${name}.qcow2</name>
+<allocation>$((size*GB_bytes))</allocation>
+<capacity>$((size*GB_bytes))</capacity>
+<target>
+  <path>${output_file}</path>
+</target>
+</volume>
+EOF
+        virsh vol-create --pool ${STORAGE_POOL} --file ${vol_xml}
+        cat <<EOF
+<disk type='file' device='disk'>
+  <driver name='qemu' type='qcow2'/>
+  <source file='${output_file}'/>
+  <target dev='vda' bus='virtio'/>
+</disk>
+EOF
+    elif [ "${type}" == "cloudimg" ]; then
+        seed_disk=${IMAGES_PATH}/${name}-seed.img
+        qemu-img create -f qcow2 -b ${IMG_UNCOMPRESSED_PATH} ${output_file} ${size}G
+        cloud-localds ${seed_disk} user-data.yaml
+        cat <<EOF
+<disk type='file' device='disk'>
+  <driver name='qemu' type='qcow2'/>
+  <source file='${output_file}'/>
+  <target dev='vda' bus='virtio'/>
+</disk>
+<disk type='file' device='disk'>
+  <driver name='qemu' type='raw'/>
+  <source file='${seed_disk}'/>
+  <target dev='hda' bus='ide'/>
+</disk>
+EOF
+    fi
 }
 
 vm_create(){
@@ -121,6 +176,7 @@ vm_create(){
 	virsh define ${vm_xml}
 }
 
+disk=$(main_disk_create ${VM_BUILD_DISK_NAME} ${BUILD_SERVER_DISK_SIZE} "cloudimg")
 cat > ${VM_BUILD_XML} <<EOF
 <domain type='kvm'>
   <name>${VM_BUILD_NAME}</name>
@@ -130,7 +186,7 @@ cat > ${VM_BUILD_XML} <<EOF
   <os>
     <type arch='x86_64'>hvm</type>
     <boot dev='hd'/>
-    <boot dev='cdrom'/>
+    <boot dev='network'/>
   </os>
   <features>
     <acpi/>
@@ -146,16 +202,7 @@ cat > ${VM_BUILD_XML} <<EOF
   </pm>
   <devices>
   <emulator>/usr/bin/kvm</emulator>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='qcow2'/>
-      <source file='${IMAGES_PATH}/${VM_BUILD_DISK_NAME}'/>
-      <target dev='vda' bus='virtio'/>
-    </disk>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='raw'/>
-      <source file='${IMAGES_PATH}/${VM_BUILD_SEED_IMG}'/>
-      <target dev='hda' bus='ide'/>
-    </disk>
+    ${disk}
     <interface type='network'>
       <source network='${NET_BOOT_NAME}'/>
       <mac address='${build_server_mac}'/>
@@ -168,8 +215,6 @@ cat > ${VM_BUILD_XML} <<EOF
   </devices>
 </domain>
 EOF
-main_disk_create ${IMAGES_PATH}/${VM_BUILD_DISK_NAME} ${BUILD_SERVER_DISK_SIZE}
-cloud-localds ${IMAGES_PATH}/${VM_BUILD_SEED_IMG} user-data.yaml
 vm_create ${VM_BUILD_XML}
 echo "Build server ip: ${build_server_ip}"; echo
 
@@ -177,8 +222,7 @@ for ((i = 0; i < ${CONTROL_SERVERS}; i++)); do
 	name=${VM_CONTROL_NAMES[$i]}
 	mac=${control_servers_macs[$i]}
 	xml=${TEMP_FOLDER}/${name}.xml
-	disk=${name}.qcow2
-	seed_disk=${name}-seed.qcow2
+	disk=$(main_disk_create ${name} ${CONTROL_SERVER_DISK_SIZE} ${BOOT_TYPE})
 	
 	cat > ${xml} <<EOF
 <domain type='kvm'>
@@ -189,7 +233,7 @@ for ((i = 0; i < ${CONTROL_SERVERS}; i++)); do
   <os>
     <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
     <boot dev='hd'/>
-    <boot dev='cdrom'/>
+    <boot dev='network'/>
   </os>
   <features>
     <acpi/>
@@ -205,16 +249,7 @@ for ((i = 0; i < ${CONTROL_SERVERS}; i++)); do
   </pm>
   <devices>
     <emulator>/usr/bin/kvm</emulator>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='qcow2'/>
-      <source file='${IMAGES_PATH}/${disk}'/>
-      <target dev='vda' bus='virtio'/>
-    </disk>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='raw'/>
-      <source file='${IMAGES_PATH}/${seed_disk}'/>
-      <target dev='hda' bus='ide'/>
-    </disk>
+    ${disk}
     <interface type='network'>
       <source network='${NET_BOOT_NAME}'/>
       <mac address='${mac}'/>
@@ -236,8 +271,6 @@ for ((i = 0; i < ${CONTROL_SERVERS}; i++)); do
   </devices>
 </domain>
 EOF
-    main_disk_create ${IMAGES_PATH}/${disk} ${CONTROL_SERVER_DISK_SIZE}
-    cloud-localds ${IMAGES_PATH}/${seed_disk} user-data.yaml
     vm_create ${xml}
     echo "Control server IP: ${control_servers_ips[$i]}"; echo
 done
@@ -246,7 +279,7 @@ for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
     name=${VM_COMPUTE_NAMES[$i]}
     mac=${compute_servers_macs[$i]}
     xml=${TEMP_FOLDER}/${name}.xml
-    disk=${name}.qcow2
+    disk=$(main_disk_create ${name} ${COMPUTE_SERVER_DISK_SIZE} ${BOOT_TYPE})
     seed_disk=${name}-seed.qcow2
 
     cat > ${xml} <<EOF
@@ -258,7 +291,7 @@ for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
   <os>
     <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
     <boot dev='hd'/>
-    <boot dev='cdrom'/>
+    <boot dev='network'/>
   </os>
   <features>
     <acpi/>
@@ -274,16 +307,7 @@ for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
   </pm>
   <devices>
     <emulator>/usr/bin/kvm</emulator>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='qcow2'/>
-      <source file='${IMAGES_PATH}/${disk}'/>
-      <target dev='vda' bus='virtio'/>
-    </disk>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='raw'/>
-      <source file='${IMAGES_PATH}/${seed_disk}'/>
-      <target dev='hda' bus='ide'/>
-    </disk>
+    ${disk}
     <interface type='network'>
       <source network='${NET_BOOT_NAME}'/>
       <mac address='${mac}'/>
@@ -305,8 +329,6 @@ for ((i = 0; i < $COMPUTE_SERVERS; i++)); do
   </devices>
 </domain>
 EOF
-    main_disk_create ${IMAGES_PATH}/${disk} ${COMPUTE_SERVER_DISK_SIZE}
-    cloud-localds ${IMAGES_PATH}/${seed_disk} user-data.yaml
     vm_create ${xml}
     echo "Compute server IP: ${compute_servers_ips[$i]}"; echo
 done
