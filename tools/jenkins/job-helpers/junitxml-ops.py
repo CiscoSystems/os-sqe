@@ -99,7 +99,7 @@ diff_parser.set_defaults(func=junit_difference)
 diff_parser.set_defaults(print_help=diff_parser.print_help)
 
 filter_parser = subparsers.add_parser('filter', help='Filter')
-filter_parser.add_argument('file', nargs=1, help='JUnit xml file')
+filter_parser.add_argument('file', help='JUnit xml file')
 filter_parser.add_argument('--status', default='failure', help='Test case result',
                            choices=['pass', 'skipped', 'error', 'failure'])
 filter_parser.add_argument('--outfile', nargs='?', default='junit.xml')
