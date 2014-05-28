@@ -255,7 +255,7 @@ public_network_id = $publicnet_id
 # A shared public router would commonly be used where IP namespaces
 # were disabled.  If namespaces are enabled, it would be preferable
 # for each tenant to have their own router.
-public_router_id = $public_router_id
+#public_router_id = $public_router_id
 
 
 [volume]
