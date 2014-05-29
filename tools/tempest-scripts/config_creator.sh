@@ -100,17 +100,20 @@ image_ref_alt = $image2_id
 flavor_ref = 1
 flavor_ref_alt = 1
 
-# User name used to authenticate to an instance
-image_ssh_user = root
+# User name used to authenticate to an instance. (string
+# value)
+image_ssh_user=cirros
 
-# Password used to authenticate to an instance
-image_ssh_password = password
+# Password used to authenticate to an instance. (string value)
+image_ssh_password=cubswin:)
 
-# User name used to authenticate to an instance using the alternate image
-image_alt_ssh_user = root
+# User name used to authenticate to an instance using the
+# alternate image. (string value)
+image_alt_ssh_user=cirros
 
-# Password used to authenticate to an instance using the alternate image
-image_alt_ssh_password = password
+# Password used to authenticate to an instance using the
+# alternate image. (string value)
+image_alt_ssh_password=cubswin:)
 
 # Number of seconds to wait while looping to check the status of an
 # instance that is building.
