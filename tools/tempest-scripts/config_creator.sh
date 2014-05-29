@@ -239,7 +239,7 @@ catalog_type = network
 
 # A large private cidr block from which to allocate smaller blocks for
 # tenant networks.
-tenant_network_cidr = 10.100.0.0/16
+tenant_network_cidr = 172.16.0.0/12
 
 # The mask bits used to partition the tenant block.
 tenant_network_mask_bits = 24
