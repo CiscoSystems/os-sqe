@@ -141,6 +141,7 @@ main_disk_create(){
 <capacity>$((size*GB_bytes))</capacity>
 <target>
   <path>${output_file}</path>
+  <format type='qcow2'/>
 </target>
 </volume>
 EOF
