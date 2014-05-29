@@ -31,13 +31,12 @@ rid1=$(keystone role-list | grep " admin " |  awk {'print $2'})
 keystone user-role-add --tenant-id=$kid3 --user-id=$uid1 --role-id=$rid1
 keystone user-role-add --tenant-id=$kid1 --user-id=$uid1 --role-id=$rid1
 neutron net-create public --router:external=True
-neutron subnet-create --allocation-pool start=192.168.1.230,end=192.168.1.250 public 192.168.1.224/27
+neutron subnet-create --allocation-pool start=10.10.10.2,end=10.10.10.254 public 10.10.10.0/24
 neutron net-create net10 --shared
-neutron subnet-create net10 10.10.10.0/24 --dns_nameservers list=true 8.8.8.8 8.8.4.4
+neutron subnet-create net10 192.168.1.0/24 --dns_nameservers list=true 8.8.8.8 8.8.4.4
 neutron router-create router1
-sid=$(neutron subnet-list | grep "10.10.10.0/24" |  awk {'print $2'})
+sid=$(neutron subnet-list | grep "192.168.1.0/24" |  awk {'print $2'})
 neutron router-interface-add router1 $sid
-neutron router-gateway-set router1
 nid=$(neutron net-list | grep " public " |  awk {'print $2'}) 
 neutron router-gateway-set router1 $nid
 
