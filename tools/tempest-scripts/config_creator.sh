@@ -98,7 +98,7 @@ allow_tenant_reuse = true
 image_ref = $image1_id 
 image_ref_alt = $image2_id
 flavor_ref = 1
-flavor_ref_alt = 2
+flavor_ref_alt = 1
 
 # User name used to authenticate to an instance
 image_ssh_user = root
