@@ -3,13 +3,33 @@ from StringIO import StringIO
 import urllib2
 import argparse
 import sys
-from fabric.api import sudo, settings, run, hide, put, shell_env, cd
-from fabric.contrib.files import sed
+
+from fabric.api import sudo, settings, run, hide, put, shell_env, local, cd
+from fabric.contrib.files import sed, append
+from fabric.colors import green, red, yellow
+
 
 __author__ = 'sshnaidm'
 
 
-def install_openstack(settings_dict, envs=None, verbose=None, url_script=None):
+def quit_if_fail(command):
+    if command.failed:
+        print(red('FAB ERROR: Command failed'))
+        if 'command' in command.__dict__:
+            print(red('FAB ERROR: Command {cmd} returned {code}'.format(
+                cmd=command.command, code=command.return_code)))
+        sys.exit(command.return_code)
+
+
+def warn_if_fail(command):
+    if command.failed:
+        print(yellow('FAB ERROR: Command failed'))
+        if 'command' in command.__dict__:
+            print(yellow('FAB ERROR: Command {cmd} returned {code}'.format(
+                cmd=command.command, code=command.return_code)))
+
+
+def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, prepare=False, force=False):
     """
     Install OS with COI with script provided by Chris on any host(s)
 
@@ -17,6 +37,7 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None):
     :param envs: environment variables to inject when executing job
     :param verbose: if to hide all output or print everything
     :param url_script: URl of Cisco installer script from Chris
+    :param force: Use if you don't connect via interface you gonna bridge later
     :return: always true
     """
     envs = envs or {}
@@ -32,19 +53,47 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None):
 
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         # TODO: check statuses of commands
-        apt_update = run_func("apt-get update")
-        apt_install = run_func("apt-get install -y git")
-        run1 = run_func("git config --global user.email 'test.node@example.com';"
-                        "git config --global user.name 'Test Node'")
-        sed1 = sed("/etc/hosts", "127.0.1.1.*",
-                   "127.0.1.1 all-in-one all-in-one.domain.name", use_sudo=use_sudo_flag)
-        put(StringIO("all-in-one"), "/etc/hostname", use_sudo=use_sudo_flag)
-        res2 = run_func("hostname all-in-one")
-        put(StringIO(install_script), "/root/install_icehouse_cisco.sh", use_sudo=use_sudo_flag)
         with cd("/root/"):
-            res_install = run_func("/bin/bash /root/install_icehouse_cisco.sh")
-        print "Finished!"
-        return True
+            warn_if_fail(run_func("apt-get update"))
+            warn_if_fail(run_func("apt-get install -y git"))
+            warn_if_fail(run_func("git config --global user.email 'test.node@example.com';"
+                            "git config --global user.name 'Test Node'"))
+            warn_if_fail(sed("/etc/hosts", "127.0.1.1.*",
+                             "127.0.1.1 all-in-one all-in-one.domain.name", use_sudo=use_sudo_flag))
+            warn_if_fail(put(StringIO("all-in-one"), "/etc/hostname", use_sudo=use_sudo_flag))
+            warn_if_fail(run_func("hostname all-in-one"))
+            warn_if_fail(put(StringIO(install_script), "/root/install_icehouse_cisco.sh", use_sudo=use_sudo_flag))
+            warn_if_fail(run_func(
+                'echo -e "\npuppet apply /etc/puppet/manifests/site.pp\npuppet apply /etc/puppet/manifests/site.pp\n" '
+                '/root/install_icehouse_cisco.sh'))
+            if use_sudo_flag:
+                append("/etc/sudoers",
+                       "{user} ALL=(ALL) NOPASSWD: ALL".format(user=settings_dict['user']),
+                       use_sudo=True)
+            # FIXME: SSH hangs when changing interface used by it.
+            # Create another interface with different network and connect with it
+            if force and not prepare:
+                run_func('/bin/bash /root/install_icehouse_cisco.sh')
+                print (green("Finished!"))
+                return True
+    if not prepare:
+        shell_envs = ";".join(["export " + k + "=" + v for k, v in envs.iteritems()]) or ""
+        sudo_mode = "sudo " if use_sudo_flag else ''
+        if not settings_dict['gateway']:
+            local("{shell_envs}; ssh -t -t -i {id_rsa} {user}@{host} \
+             '/bin/bash /root/install_icehouse_cisco.sh'".format(
+                shell_envs=shell_envs, id_rsa=settings_dict['key_filename'],
+                user=settings_dict['user'], host=settings_dict['host_string']))
+        else:
+            local('ssh -t -t -i {id_rsa} {user}@{gateway} \
+             "{shell_envs}; ssh -t -t -i {id_rsa} {user}@{host} \
+             \'{sudo_mode}/bin/bash /root/install_icehouse_cisco.sh\'"'.format(
+                shell_envs=shell_envs, id_rsa=settings_dict['key_filename'],
+                user=settings_dict['user'], host=settings_dict['host_string'], gateway=settings_dict['gateway'],
+                sudo_mode=sudo_mode))
+
+    print (green("Finished!"))
+    return True
 
 
 def run_probe(settings_dict, envs=None, verbose=None):
@@ -92,6 +141,10 @@ def main():
                         help='SSH key file, default=~/.ssh/id_rsa')
     parser.add_argument('-t', action='store_true', dest='test_mode', default=False,
                         help='Just run it to test host connectivity, if fine - return 0')
+    parser.add_argument('-z', action='store_true', dest='prepare_mode', default=False,
+                        help='Only prepare, don`t run the main script')
+    parser.add_argument('-f', action='store_true', dest='force', default=False,
+                        help='Force fabric run, don"t use if not clear')
     parser.add_argument('-c', action='store', dest='config_file', default=None,
                         help='Configuration file, default is None')
     parser.add_argument('--version', action='version', version='%(prog)s 1.0')
@@ -107,7 +160,9 @@ def main():
         hosts = opts.hosts
     else:
         # TODO: parse config here
-        pass
+        hosts = ''
+        envs_aio = ''
+        verb_mode = ''
     job_settings = {"host_string": "",
                     "user": opts.user,
                     "password": opts.password,
@@ -122,9 +177,15 @@ def main():
     for host in hosts:
         job_settings['host_string'] = host
         print job_settings
-        res = install_openstack(job_settings, verbose=verb_mode, envs=envs_aio, url_script=opts.url)
-        if not res:
+        res = install_openstack(job_settings,
+                                verbose=verb_mode,
+                                envs=envs_aio,
+                                url_script=opts.url,
+                                prepare=opts.prepare_mode,
+                                force=opts.force)
+        if res:
             print "Job with host {host} finished successfully!".format(host=host)
+
 
 if __name__ == "__main__":
     main()
