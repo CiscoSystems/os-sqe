@@ -1,1 +1,1 @@
-qemu-utils virtinst
+qemu-utils virtinst cloud-utils pkg-config libvirt-dev
