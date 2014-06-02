@@ -1,0 +1,382 @@
+params:
+  build-server.xml: |
+      <domain type='kvm'>
+        <name>{name}</name>
+         <memory unit='KiB'>{ram}</memory>
+         <currentMemory unit='KiB'>{ram}</currentMemory>
+         <vcpu placement='static'>1</vcpu>
+        <os>
+          <type arch='x86_64'>hvm</type>
+          <boot dev='hd'/>
+          <boot dev='network'/>
+        </os>
+        <features>
+          <acpi/>
+          <apic/>
+          <pae/>
+        </features>
+        <on_poweroff>destroy</on_poweroff>
+        <on_reboot>restart</on_reboot>
+        <on_crash>restart</on_crash>
+        <pm>
+          <suspend-to-mem enabled='no'/>
+          <suspend-to-disk enabled='no'/>
+        </pm>
+        <devices>
+        <emulator>/usr/bin/kvm</emulator>
+          {disk}
+          <interface type='network'>
+            <source network='{net_boot_name}'/>
+            <mac address='{build_server_mac}'/>
+          </interface>
+          <interface type='network'>
+            <source network='{net_admin_name}'/>
+          </interface>
+          <input type='mouse' bus='ps2'/>
+          <graphics type='vnc' port='-1' autoport='yes'/>
+        </devices>
+      </domain>
+  control-server.xml: |
+      <domain type='kvm'>
+      <name>{name}</name>
+      <memory unit='KiB'>{ram}</memory>
+      <currentMemory unit='KiB'>{ram}</currentMemory>
+      <vcpu placement='static'>1</vcpu>
+      <os>
+        <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+        <boot dev='hd'/>
+        <boot dev='network'/>
+      </os>
+      <features>
+        <acpi/>
+        <apic/>
+        <pae/>
+      </features>
+      <on_poweroff>destroy</on_poweroff>
+      <on_reboot>restart</on_reboot>
+      <on_crash>restart</on_crash>
+      <pm>
+        <suspend-to-mem enabled='no'/>
+        <suspend-to-disk enabled='no'/>
+      </pm>
+      <devices>
+        <emulator>/usr/bin/kvm</emulator>
+        {disk}
+        <interface type='network'>
+          <source network='{net_boot_name}'/>
+          <mac address='{mac}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_admin_name}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_public_name}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_internal_name}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_external_name}'/>
+        </interface>
+        <input type='mouse' bus='ps2'/>
+        <graphics type='vnc' port='-1' autoport='yes'/>
+      </devices>
+      </domain>
+  compute-server.xml: |
+      <domain type='kvm'>
+      <name>{name}</name>
+      <memory unit='KiB'>{ram}</memory>
+      <currentMemory unit='KiB'>{ram}</currentMemory>
+      <vcpu placement='static'>{compute_server_cpu}</vcpu>
+      <os>
+        <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+        <boot dev='hd'/>
+        <boot dev='network'/>
+      </os>
+      <features>
+        <acpi/>
+        <apic/>
+        <pae/>
+      </features>
+      <on_poweroff>destroy</on_poweroff>
+      <on_reboot>restart</on_reboot>
+      <on_crash>restart</on_crash>
+      <pm>
+        <suspend-to-mem enabled='no'/>
+        <suspend-to-disk enabled='no'/>
+      </pm>
+      <devices>
+        <emulator>/usr/bin/kvm</emulator>
+        {disk}
+        <interface type='network'>
+          <source network='{net_boot_name}'/>
+          <mac address='{mac}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_admin_name}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_public_name}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_internal_name}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_external_name}'/>
+        </interface>
+        <input type='mouse' bus='ps2'/>
+        <graphics type='vnc' port='-1' autoport='yes'/>
+      </devices>
+      </domain>
+  networks:
+    - role: boot
+      name: net-boot
+      net-ip:
+      xml: |
+          <network>
+            <name>{name}</name>
+            <forward mode='nat'>
+              <nat>
+                <port start='1024' end='65535'/>
+              </nat>
+            </forward>
+            <domain name='domain.name'/>
+            <ip address='{net_ip}.1' netmask='255.255.255.0'>
+              <dhcp>
+                <range start='{net_ip}.2' end='{net_ip}.254' />
+                {dhcp_records}
+              </dhcp>
+            </ip>
+          </network>
+    - role: admin
+      name: net-admin
+      net-ip:
+      xml: |
+          <network>
+            <name>{name}</name>
+            <domain name='domain.name'/>
+            <dns>
+              <host ip='{net_ip}.2'>
+                <hostname>build-server</hostname>
+                <hostname>build-server.domain.name</hostname>
+              </host>
+            </dns>
+            <ip address='{net_ip}.1' netmask='255.255.255.0'>
+            </ip>
+          </network>
+    - role: public
+      name: net-public
+      net-ip:
+      xml: |
+          <network>
+            <name>{name}</name>
+            <domain name='domain.name'/>
+            <ip address='{net_ip}.1' netmask='255.255.255.0'>
+            </ip>
+          </network>
+    - role: internal
+      name: net-internal
+      net-ip:
+      xml: |
+          <network>
+            <name>{name}</name>
+            <domain name='domain.name'/>
+            <ip address='{net_ip}.1' netmask='255.255.255.0'>
+            </ip>
+          </network>
+    - role: external
+      name: net-external
+      net-ip:
+      xml: |
+          <network>
+            <name>{name}</name>
+            <forward mode='nat'>
+              <nat>
+                <port start='1024' end='65535'/>
+              </nat>
+            </forward>
+            <domain name='domain.name'/>
+            <ip address='{net_ip}.1' netmask='255.255.255.0'>
+            </ip>
+          </network>
+  pool:
+    xml: |
+      <pool type="dir">
+          <name>{name}</name>
+          <target>
+              <path>{path}</path>
+          </target>
+      </pool>
+  vol:
+    xml: |
+      <volume>
+        <name>{name}.qcow2</name>
+        <allocation>{size}</allocation>
+        <capacity>{size}</capacity>
+        <target>
+          <path>{path}</path>
+          <format type='qcow2'/>
+        </target>
+       </volume>
+    virt_disk: |
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{output_file}'/>
+        <target dev='vda' bus='virtio'/>
+      </disk>
+    cloudimg_disk: |
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{output_file}'/>
+        <target dev='vda' bus='virtio'/>
+      </disk>
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='raw'/>
+        <source file='{seed_disk}'/>
+        <target dev='hda' bus='ide'/>
+      </disk>
+  build-server:
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+
+      #packages:
+      #   - git
+      #   - python-pip
+
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+        - content: |
+            127.0.0.1 localhost
+            127.0.1.1 build-server build-server.domain.name
+            # The following lines are desirable for IPv6 capable hosts
+            ::1 ip6-localhost ip6-loopback
+            fe00::0 ip6-localnet
+            ff00::0 ip6-mcastprefix
+            ff02::1 ip6-allnodes
+            ff02::2 ip6-allrouters
+            ff02::3 ip6-allhosts
+          path: /etc/hosts
+        - content: |
+            build-server
+          path: /etc/hostname
+        - content: |
+            auto eth1
+            iface eth1 inet static
+                address 192.168.1.2
+                netmask 255.255.255.0
+                network 192.168.1.0
+                broadcast 192.168.1.255
+                gateway 192.168.1.1
+                dns-nameservers 192.168.1.1
+                dns-search cisco.com
+          path: /etc/network/interfaces.d/eth1.cfg
+        - content: |
+            iface eth4 inet manual
+              up ifconfig $IFACE 0.0.0.0 up
+              up ip link set $IFACE promisc on
+              down ifconfig $IFACE 0.0.0.0 down
+          path: /etc/network/interfaces.d/eth4.cfg
+      runcmd:
+         - ifdown eth1 && ifup eth1
+         - ifdown eth4 && ifup eth4
+         - hostname build-server
+         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
+         #- "export default_interface=eth1"
+         #- "export external_interface=eth4"
+         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
+  compute-server:
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+      #packages:
+      #   - git
+      #   - python-pip
+
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+      runcmd:
+         - ifdown
+         - hostname
+         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
+         #- "export default_interface=eth1"
+         #- "export external_interface=eth4"
+         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
+  control-server:
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+      #packages:
+      #   - git
+      #   - python-pip
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+      runcmd:
+         - ifdown
+         - hostname
+         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
+         #- "export default_interface=eth1"
+         #- "export external_interface=eth4"
+         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
+  hosts_template: |
+    127.0.0.1 localhost
+    127.0.1.1 {server_name} {server_name}.{domain_name}
+    # The following lines are desirable for IPv6 capable hosts
+    ::1 ip6-localhost ip6-loopback
+    fe00::0 ip6-localnet
+    ff00::0 ip6-mcastprefix
+    ff02::1 ip6-allnodes
+    ff02::2 ip6-allrouters
+    ff02::3 ip6-allhosts
+  hostname_template: |
+    {server_name}
+  static_interface_template: |
+    auto {int_name}
+    iface {int_name} inet static
+        address {int_ip}
+        netmask 255.255.255.0
+        network {net_ip}.0
+        broadcast {net_ip}.255
+        gateway {net_ip}.1
+        dns-nameservers {net_ip}.1 {dns}
+        dns-search cisco.com
+  manual_interface_template: |
+     iface {int_name} inet manual
+        up ifconfig $IFACE 0.0.0.0 up
+        up ip link set $IFACE promisc on
+        down ifconfig $IFACE 0.0.0.0 down
+  id_rsa_pub:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC1Dykyl50Emjbn7OakKg/yAecWlIQwZl25ukCB1XvOr9bKh+Uz+KTkVztBfwipo4NhFt9ijAo5b4NMzHYcCTtX+g/3qFbCQan7JN6SabehV1Wg+5rTbBkaL6sjQFvoKg061md9w2cOXjH04l2tNL0KrlIIlTfB5/m1r2dvw3IxePs6mz5+sUzG5wUi2/y/hpDa0cmRUIrx8W3IzXIaxQC5SIhZ0KHKlTWi3Vde289XRNOFk41bvzqP9iEoA7ESE5IK1D8hMSlJ5ApoOU6K5W5H49qVkl/Q05ptAuqy5cWC9Zur7c2Z3tMjX2lLMC8d6XHPMgg7F+V6sX+MyawQ+jhX test.node@example.com
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC0qFJEDKFjKx/SSpUClF01AA6EKHv3X/OG8d1sEF6aIrwwOHZgbMMX9t+ZzxqdrJ1OHLWnxrcpn03naZ2p9CPyahsT+yBONq0rw4Zsp8LFTpC8JLCZkss6Ki5En+BpiNDgOyIU2cCYVN5ahXC+xFT9gWSY/nikJ5bbqgTI5swNFhBILFnBFjkifkhD3yuWQzkX2gOI6uCgRJLyu5XxVepVAS8X2yXYUcORO2BHYASmtWNo0oFXyqXHp4xQGwGs0WCBxaxl8OA5GBTF1YGxDW9HJqMPySAg6oVcHykaUxyXOwI0U8HdU9PTMUz0zzzBg739EW6rsBm5wF+RvEnrsMJZ localadmin@autoqa
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDI54UBbUJRX7+Jww+eFOwa/Huwht4ieW+YaOtXOFnN9HXHH5ZaJXasoMg0LklgM5kNaj4J9ERPjDOH8uGiTrQBwMLlU6MmrzXBGYawdwYyt9YNOsmoGfOzTb/eMgYkcDLv7qLk4svEYVz+yTicpOf5I16RqPktCzSkXm200OnzcEwZAcby4Fp6gJw15Qd9MKhvfLVSwjwD9vu3Xr09AAFVfWf8csO32ZEuWzF0nFF0e4eRb0N5zBLDtgHtzlxjm9CMv9O3T6dmTSwE8fQjAlZkVMZ0Rb4cblwHWGFjGBzjXa83hwsFOAWhtv9v2+B1JzjAF50LV8ysAe5gDR38y3bL root@jenkins
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDO6rGakoQcnOZG2TLp7OrpOsMrWz3XdEPdbnHosKIAQbqk/gmdy3FnJ4zw+hYKEu/KgMpR4UXJeoaT99rldQEz3xGs2g0+/OsJIOAE9V6bSIsVrcDbWDKfH0AEXPWo4nwJCk+vmSC56WDol+pdLQKKdP5+m7IFa+DgpiZouwTHKGFHFCbTNUhPXSrQM6/eq3js/4Oto5rG4N20eFOGwpGBLBt4iutP8JrpVEShEOs0/fzf9ML6AgdTEeDIuflD+B5Xn5vleZ0rf5Ilb6rwzGbLKxLoS0cXYpo2KTd2++nQZfEhdemb9sBbTVL8kuMdWgGlnTt8sbN+GtYtxPKTsS6l root@autoqa
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD0BlhG/zIfby63LWEk5zD2vudC7uoAR56w8yKLKWf3odY+BhNGswbaIke7458qCocIjL1q6sSfNyiWFVlYlX+lI5TAhi3qsgNdA49/2z9O2foZY/SPWYBKcgUf+fg3eR6n4mQ2bt/gnQKSaRAYO80KlbhwVo1qe6+VAhHXJBl33gKszEb48OUVN9JFjvLmWrxNPyLbSm10tC1Pp0fvovHfk4QXoekxvzRKIpJUJrfjRG6FM5J5uV0cis0W2y+MIxmeKcRrhk8fTEfEiR+Q+sEiQBkcGtPsIVhU8okHVbdQ0sD5iILVTkm/G6rCiRDyk0Y2FFziv/ZcbETGP5cp6RkH localadmin@jenkins
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC8HB304a5n0wkkOLINsSlj0dwq7bQMltrMGejncs4nBWdX2eHQnUiVU/JYsijJjFvvvocexOrebh0mUGYWxxUQVkUOEoMEOM255Vj1f07Wp39+M6YtZ694Qpql59VVyA4SFjFgZuFKDqFNyQH59BdjdK48J5dvt8xvbtpTDLQNmjppqlVSjyCN7FVnr+Aay+q1uYwFqZRyLHaV7ln70ZBAVFoTg8D2BvVrmP31jYBOEKaQxfYV0/JtxBUjnjJT4PiODThrN++WxxKDAYLZGitvPtzI8BPzvCwCuSZWDrN1nIBMMxHvhMiXtHHZP2Zi5OeL0TRMnWT+Al9d844VWvyt sshnaidm@sshnaidm-LX
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC1+MLajjmLMKDQ/anCdfH0voSb4/2RGc9BlhiDaC39uQ2AUoFQGKImgQv+d2t6BltyyYnPjAF38Vv7yDuqjGpGsbnYhjZ/KgEZGK68m8BvYU18RVPpLjw8aqTlwkbcfHHWJLWjF7+ktdjcgEvZt5LXxlLV9NfP3ZKSBBt4vfEtlR6AVrCT0EUomVHZ2nUYH+ozCX2WzFH2nMxuJ2kENUtgiSBoYcFvc+5KRk5oiLcBkgpqoG4xkQWfhC44mTE5tCEuPfn5ntDXn5oI0N1M0IqvpU7P0wkIY5g/URRJcmF/iFrPRHyjSwFVaJlrhQEJgsMrQgV2WxQmwuLh/w6tx3Tt jenkins@jenkins
