@@ -129,9 +129,9 @@ params:
       </devices>
       </domain>
   networks:
-    boot:
-      name: lab-net-boot
-      net-ip: 192.168.0
+    - role: boot
+      name: net-boot
+      net-ip:
       xml: |
           <network>
             <name>{name}</name>
@@ -148,9 +148,9 @@ params:
               </dhcp>
             </ip>
           </network>
-    admin:
-      name: lab-net-admin
-      net-ip: 192.168.1
+    - role: admin
+      name: net-admin
+      net-ip:
       xml: |
           <network>
             <name>{name}</name>
@@ -164,9 +164,9 @@ params:
             <ip address='{net_ip}.1' netmask='255.255.255.0'>
             </ip>
           </network>
-    public:
-      name: lab-net-public
-      net-ip: 192.168.2
+    - role: public
+      name: net-public
+      net-ip:
       xml: |
           <network>
             <name>{name}</name>
@@ -174,9 +174,9 @@ params:
             <ip address='{net_ip}.1' netmask='255.255.255.0'>
             </ip>
           </network>
-    internal:
-      name: lab-net-internal
-      net-ip: 192.168.3
+    - role: internal
+      name: net-internal
+      net-ip:
       xml: |
           <network>
             <name>{name}</name>
@@ -184,9 +184,9 @@ params:
             <ip address='{net_ip}.1' netmask='255.255.255.0'>
             </ip>
           </network>
-    external:
-      name: lab-net-external
-      net-ip: 192.168.4
+    - role: external
+      name: net-external
+      net-ip:
       xml: |
           <network>
             <name>{name}</name>
