@@ -1,5 +1,71 @@
 params:
-  build-server.xml: |
+  aio-server:
+    xml: |
+      <domain type='kvm'>
+      <name>{name}</name>
+      <memory unit='KiB'>{ram}</memory>
+      <currentMemory unit='KiB'>{ram}</currentMemory>
+      <vcpu placement='static'>1</vcpu>
+      <os>
+        <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+        <boot dev='hd'/>
+        <boot dev='network'/>
+      </os>
+      <features>
+        <acpi/>
+        <apic/>
+        <pae/>
+      </features>
+      <on_poweroff>destroy</on_poweroff>
+      <on_reboot>restart</on_reboot>
+      <on_crash>restart</on_crash>
+      <pm>
+        <suspend-to-mem enabled='no'/>
+        <suspend-to-disk enabled='no'/>
+      </pm>
+      <devices>
+        <emulator>/usr/bin/kvm</emulator>
+        {disk}
+        <interface type='network'>
+          <source network='{net_boot_name}'/>
+          <mac address='{mac}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_admin_name}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_external_name}'/>
+        </interface>
+        <input type='mouse' bus='ps2'/>
+        <graphics type='vnc' port='-1' autoport='yes'/>
+      </devices>
+      </domain>
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+      #packages:
+      #   - git
+      #   - python-pip
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+      runcmd:
+         - ifdown
+         - hostname
+         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
+         #- "export default_interface=eth1"
+         #- "export external_interface=eth4"
+         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
+  build-server:
+    xml: |
       <domain type='kvm'>
         <name>{name}</name>
          <memory unit='KiB'>{ram}</memory>
@@ -36,7 +102,33 @@ params:
           <graphics type='vnc' port='-1' autoport='yes'/>
         </devices>
       </domain>
-  control-server.xml: |
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+
+      #packages:
+      #   - git
+      #   - python-pip
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+      runcmd:
+         - ifdown
+         - hostname
+         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
+         #- "export default_interface=eth1"
+         #- "export external_interface=eth4"
+         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
+  control-server:
+    xml: |
       <domain type='kvm'>
       <name>{name}</name>
       <memory unit='KiB'>{ram}</memory>
@@ -82,7 +174,32 @@ params:
         <graphics type='vnc' port='-1' autoport='yes'/>
       </devices>
       </domain>
-  compute-server.xml: |
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+      #packages:
+      #   - git
+      #   - python-pip
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+      runcmd:
+         - ifdown
+         - hostname
+         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
+         #- "export default_interface=eth1"
+         #- "export external_interface=eth4"
+         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
+  compute-server:
+    xml: |
       <domain type='kvm'>
       <name>{name}</name>
       <memory unit='KiB'>{ram}</memory>
@@ -128,6 +245,31 @@ params:
         <graphics type='vnc' port='-1' autoport='yes'/>
       </devices>
       </domain>
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+      #packages:
+      #   - git
+      #   - python-pip
+
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+      runcmd:
+         - ifdown
+         - hostname
+         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
+         #- "export default_interface=eth1"
+         #- "export external_interface=eth4"
+         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
   networks:
     - role: boot
       name: net-boot
@@ -235,116 +377,6 @@ params:
         <source file='{seed_disk}'/>
         <target dev='hda' bus='ide'/>
       </disk>
-  build-server:
-    user-yaml: |
-      #cloud-config
-      users:
-       - default
-       - name: localadmin
-         lock-passwd: false
-         sudo: ALL=(ALL) NOPASSWD:ALL
-         # ubuntu
-         shell: /bin/bash
-         passwd:
-         ssh-authorized-keys:
-
-      #packages:
-      #   - git
-      #   - python-pip
-
-      write_files:
-        - content:
-          path: /root/.ssh/authorized_keys
-        - content: |
-            127.0.0.1 localhost
-            127.0.1.1 build-server build-server.domain.name
-            # The following lines are desirable for IPv6 capable hosts
-            ::1 ip6-localhost ip6-loopback
-            fe00::0 ip6-localnet
-            ff00::0 ip6-mcastprefix
-            ff02::1 ip6-allnodes
-            ff02::2 ip6-allrouters
-            ff02::3 ip6-allhosts
-          path: /etc/hosts
-        - content: |
-            build-server
-          path: /etc/hostname
-        - content: |
-            auto eth1
-            iface eth1 inet static
-                address 192.168.1.2
-                netmask 255.255.255.0
-                network 192.168.1.0
-                broadcast 192.168.1.255
-                gateway 192.168.1.1
-                dns-nameservers 192.168.1.1
-                dns-search cisco.com
-          path: /etc/network/interfaces.d/eth1.cfg
-        - content: |
-            iface eth4 inet manual
-              up ifconfig $IFACE 0.0.0.0 up
-              up ip link set $IFACE promisc on
-              down ifconfig $IFACE 0.0.0.0 down
-          path: /etc/network/interfaces.d/eth4.cfg
-      runcmd:
-         - ifdown eth1 && ifup eth1
-         - ifdown eth4 && ifup eth4
-         - hostname build-server
-         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
-         #- "export default_interface=eth1"
-         #- "export external_interface=eth4"
-         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
-  compute-server:
-    user-yaml: |
-      #cloud-config
-      users:
-       - default
-       - name: localadmin
-         lock-passwd: false
-         sudo: ALL=(ALL) NOPASSWD:ALL
-         # ubuntu
-         shell: /bin/bash
-         passwd:
-         ssh-authorized-keys:
-      #packages:
-      #   - git
-      #   - python-pip
-
-      write_files:
-        - content:
-          path: /root/.ssh/authorized_keys
-      runcmd:
-         - ifdown
-         - hostname
-         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
-         #- "export default_interface=eth1"
-         #- "export external_interface=eth4"
-         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
-  control-server:
-    user-yaml: |
-      #cloud-config
-      users:
-       - default
-       - name: localadmin
-         lock-passwd: false
-         sudo: ALL=(ALL) NOPASSWD:ALL
-         # ubuntu
-         shell: /bin/bash
-         passwd:
-         ssh-authorized-keys:
-      #packages:
-      #   - git
-      #   - python-pip
-      write_files:
-        - content:
-          path: /root/.ssh/authorized_keys
-      runcmd:
-         - ifdown
-         - hostname
-         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
-         #- "export default_interface=eth1"
-         #- "export external_interface=eth4"
-         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
   hosts_template: |
     127.0.0.1 localhost
     127.0.1.1 {server_name} {server_name}.{domain_name}
