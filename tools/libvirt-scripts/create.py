@@ -43,7 +43,7 @@ def run_cmd(cmd):
                             stdout=subprocess.PIPE,
                             close_fds=True)
     ret = proc.wait()
-    print "\n".join(proc.stdout.readlines()), "\n".join(proc.stderr.readlines())
+    print >> sys.stderr, "\n".join(proc.stdout.readlines()), "\n".join(proc.stderr.readlines())
     return ret, proc.stdout.readlines(), proc.stderr.readlines()
 
 
@@ -62,12 +62,12 @@ def net_undefine(conn, net_name):
     try:
         net = conn.networkLookupByName(net_name)
     except libvirtError:
-        print "Net wans't found, nothing to delete"
+        print >> sys.stderr, "Net wans't found, nothing to delete"
         return
     try:
         net.destroy()
     except libvirtError:
-        print "Net wans't active, nothing to delete"
+        print >> sys.stderr, "Net wans't active, nothing to delete"
         return
     net.undefine()
 
@@ -76,12 +76,12 @@ def pool_delete(conn, name):
     try:
         pool = conn.storagePoolLookupByName(name)
     except libvirtError:
-        print "Pool not found, nothing to delete"
+        print >> sys.stderr, "Pool not found, nothing to delete"
         return
     try:
         pool.destroy()
     except libvirtError:
-        print "Pool wans't active, just undefine it"
+        print >> sys.stderr, "Pool wans't active, just undefine it"
     pool.undefine()
 
 
@@ -103,7 +103,7 @@ def pool_found(conn, name):
 def convert_image(path, new_path):
     ret, ignore, stderr = run_cmd(["qemu-img", "convert", "-O",
                                    "qcow2", path, new_path])
-    print "\n".join(ignore), "\n".join(stderr)
+    print >> sys.stderr, "\n".join(ignore), "\n".join(stderr)
     if ret == 127:
         ret, ignore, stderr = run_cmd(["kvm-img", "convert", "-O",
                                        "qcow2", path, new_path])
@@ -145,14 +145,14 @@ def delete_vm(conn, name):
     try:
         vm = conn.lookupByName(name)
     except libvirtError:
-        print "Domain {name} not found, nothing to delete".format(name=name)
+        print >> sys.stderr, "Domain {name} not found, nothing to delete".format(name=name)
         return
     try:
         vm.destroy()
     except libvirtError:
         pass
     vm.undefine()
-    print "Domain {name} deleted".format(name=name)
+    print >> sys.stderr, "Domain {name} deleted".format(name=name)
 
 
 def remove_all_imgs(img_path, lab_id):
@@ -197,7 +197,7 @@ def create_host_seed_yaml(config, box, btype):
                         dns="8.8.8.8"),
                     "/etc/network/interfaces.d/eth{int_num}.cfg".format(int_num=k+1),
                     "eth{int_num}".format(int_num=k+1)
-                    ])
+                ])
             else:
                 ints.append([
                     config['params']['manual_interface_template'].format(
@@ -252,7 +252,7 @@ def delete_all(conn=None, lab_id=None, img_path=None, conf=None):
             basic_name = lab_id + "-" + i.split(".")[0]
             delete_vm(conn, basic_name)
             for num in xrange(10):
-                delete_vm(conn, basic_name + "%.2d"%num)
+                delete_vm(conn, basic_name + "%.2d" % num)
         for net in conf['params']['networks']:
             basic_net_name = lab_id + "-" + net['name']
             net_undefine(conn, basic_net_name)
@@ -307,10 +307,9 @@ def main():
             delete_all(conn=conn, lab_id=lab_id, img_path=img_path, conf=conf)
             return
         else:
-            print "Please provide lab id"
+            print >> sys.stderr, "Please provide lab id"
             sys.exit(1)
 
-    ## TODO: move everything to configs
     ip_start = env[lab_id]['ip_start']
     net_start = env[lab_id]['net_start']
     if aio_mode:
@@ -400,6 +399,7 @@ def main():
 
     new_img_path = os.path.join(img_path, lab_id + "-backing.img")
     convert_image(ubuntu_img_path, new_img_path)
+    final_result = {"servers": None}
 
     # create aio server if configured
     if aio_mode:
@@ -424,8 +424,18 @@ def main():
         )
         delete_vm(conn, aio["name"])
         create_vm(conn, vm_xml)
-        print "Created aio-server", aio["name"], "with ip", aio["ip"]
         conn.close()
+        final_result["servers"] = {
+            "aio": {
+                "ip": aio["ip"],
+                "mac": aio["mac"],
+                "user": "root",
+                "password": "ubuntu",
+                "external_interface": "eth4",
+                "default_interface": "eth1",
+            }
+        }
+        print yaml.dump(final_result)
         return
 
     # create build server
@@ -448,7 +458,17 @@ def main():
     )
     delete_vm(conn, lab_boxes["build-server"][0]["name"])
     create_vm(conn, vm_xml)
-    print "Created build-server", lab_boxes["build-server"][0]["name"], "with ip", lab_boxes["build-server"][0]["ip"]
+    final_result["servers"] = {
+        "build-server": {
+            "ip": build["ip"],
+            "mac": build["mac"],
+            "user": "root",
+            "password": "ubuntu",
+            "default_interface": "eth1",
+        }
+    }
+    print >> sys.stderr, "Created build-server", lab_boxes["build-server"][0]["name"], \
+        "with ip", lab_boxes["build-server"][0]["ip"]
 
     ### create other servers
     for compute in lab_boxes["compute-servers"]:
@@ -474,7 +494,21 @@ def main():
         )
         delete_vm(conn, compute["name"])
         create_vm(conn, vm_xml)
-        print "Created compute-server", compute["name"], "with ip", compute["ip"]
+        compute_box_config = {
+            "ip": compute["ip"],
+            "mac": compute["mac"],
+            "user": "root",
+            "password": "ubuntu",
+            "admin_interface": "eth1",
+            "public_interface": "eth2",
+            "internal_interface": "eth3",
+            "external_interface": "eth4",
+        }
+        if "compute-servers" in final_result["servers"]:
+            final_result["servers"]["compute-servers"].append(compute_box_config)
+        else:
+            final_result["servers"]["compute-servers"] = [compute_box_config]
+        print >> sys.stderr, "Created compute-server", compute["name"], "with ip", compute["ip"]
 
     for control in lab_boxes["control-servers"]:
         yaml_config = create_host_seed_yaml(conf, box=control, btype="control-server")
@@ -496,10 +530,25 @@ def main():
         )
         delete_vm(conn, control["name"])
         create_vm(conn, vm_xml)
-        print "Created control-server", control["name"], "with ip", control["ip"]
+        control_box_config = {
+            "ip": control["ip"],
+            "mac": control["mac"],
+            "user": "root",
+            "password": "ubuntu",
+            "admin_interface": "eth1",
+            "public_interface": "eth2",
+            "internal_interface": "eth3",
+            "external_interface": "eth4",
+        }
+        if "control-servers" in final_result["servers"]:
+            final_result["servers"]["control-servers"].append(control_box_config)
+        else:
+            final_result["servers"]["control-servers"] = [control_box_config]
+        print >> sys.stderr, "Created control-server", control["name"], "with ip", control["ip"]
     #boxes = conn.listAllDomains()
     #for b in boxes:
     #    print b.name()
+    print yaml.dump(final_result)
     conn.close()
 
 
