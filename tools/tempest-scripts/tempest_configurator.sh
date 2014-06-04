@@ -1,6 +1,6 @@
 #!/bin/bash
 #cd /root/
-#source /root/openrc
+source ./openrc
 #wget http://download.cirros-cloud.net/0.3.2/cirros-0.3.2-x86_64-disk.img
 #glance image-create --name=cirros-0.3-x86_64 --is-public=true --container-format=bare --disk-format=qcow2 < cirros-0.3.2-x86_64-disk.img
 echo "Reinitialize the dir"

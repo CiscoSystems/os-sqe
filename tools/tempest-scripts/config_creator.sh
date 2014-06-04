@@ -1,6 +1,6 @@
 #!/bin/bash
 #cd /root
-#source /root/openrc
+source ./openrc
 image1_id=$(glance image-list | grep " cirros-0.3-x86_64 " |  awk {'print $2'})
 image2_id=$(glance image-list | grep " precise-server " |  awk {'print $2'})
 publicnet_id=$(neutron net-list | grep " public " |  awk {'print $2'})
