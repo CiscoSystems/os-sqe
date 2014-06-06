@@ -6,7 +6,6 @@ import sys
 import yaml
 import os
 import re
-import time
 
 from fabric.api import sudo, settings, run, hide, put, shell_env, cd, get
 from fabric.contrib.files import sed, exists
@@ -41,8 +40,7 @@ def prepare2role(config, common_file):
     def change_ip_to(string, ip):
         return ip_re.sub(ip, string)
 
-    #with open(os.path.join(CONFIG_PATH, "user_common")) as f:
-    #    conf = yaml.load(f)
+
     print " >>>> FABRIC "
     print config
     print " >>>> FABRIC "
@@ -57,7 +55,7 @@ def prepare2role(config, common_file):
     conf["domain_name"] = "domain.name"
     conf["ntp_servers"] = ["ntp.esl.cisco.com"]
     conf["external_interface"] = "eth4"
-    conf["nova::compute::vncserver_proxyclient_address"] = "%{ipaddress_eth1}"
+    conf["nova::compute::vncserver_proxyclient_address"] = "%{ipaddress_eth0}"
     conf["build_node_name"] = "build-server"
     conf["controller_public_url"] = change_ip_to(
         conf["controller_public_url"],
@@ -68,21 +66,28 @@ def prepare2role(config, common_file):
     conf["controller_internal_url"] = change_ip_to(
         conf["controller_internal_url"],
         config['servers']['control-servers'][0]['ip'])
-    #conf["cobbler_node_ip"] = config['servers']['build-server']["ip"]
-    conf["cobbler_node_ip"] = config['servers']['control-servers'][0]['ip']
+    conf["cobbler_node_ip"] = config['servers']['build-server']['ip']
     conf["node_subnet"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".0"
     conf["node_gateway"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".1"
     conf["swift_internal_address"] = config['servers']['control-servers'][0]['ip']
     conf["swift_public_address"] = config['servers']['control-servers'][0]['ip']
     conf["swift_admin_address"] = config['servers']['control-servers'][0]['ip']
     conf['mysql::server::override_options']['mysqld']['bind-address'] = config['servers']['control-servers'][0]['ip']
+    conf['internal_ip'] = "%{ipaddress_eth0}"
+    conf['public_interface'] = "eth0"
+    conf['private_interface'] = "eth0"
     return yaml.dump(conf)
 
 
 def role_mappings(config):
-    with open(os.path.join(CONFIG_PATH, "role_mappings")) as f:
-        text = f.read()
-    return text
+
+    roles = {}
+    for c in config["servers"]["control-servers"]:
+        roles.update({c["hostname"]: "controller"})
+    for c in config["servers"]["compute-servers"]:
+        roles.update({c["hostname"]: "compute"})
+    roles.update({config["servers"]["build-server"]["hostname"]: "build"})
+    return yaml.dump(roles)
 
 
 def run_control(conf,
@@ -102,21 +107,19 @@ def run_control(conf,
     print >> sys.stderr, "FABRIC connecting to", settings_dict["host_string"],
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         with cd("/root/"):
+            warn_if_fail(run_func("/etc/init.d/ntp stop; ntpdate ntp.esl.cisco.com; /etc/init.d/ntp start"))
             warn_if_fail(run_func("apt-get update"))
             warn_if_fail(run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
-                                      '-o Dpkg::Options::="--force-confdef" -o '
-                                      'Dpkg::Options::="--force-confold" dist-upgrade'))
+                                  '-o Dpkg::Options::="--force-confdef" -o '
+                                  'Dpkg::Options::="--force-confold" dist-upgrade'))
             warn_if_fail(run_func("apt-get install -y git"))
             warn_if_fail(run_func("git clone -b icehouse https://github.com/CiscoSystems/puppet_openstack_builder"))
+            with cd("/root/puppet_openstack_builder"):
+                    run_func('git checkout i.0')
             with cd("/root/puppet_openstack_builder/install-scripts"):
-                fix("controls_before_setup")
-                #warn_if_fail(sed("./setup.sh", "patch -p1", "patch -p1 -N"))
-
                 warn_if_fail(run_func("./setup.sh"))
                 warn_if_fail(run_func("puppet agent -td --server=build-server.domain.name --pluginsync"))
                 fix("controls_after_setup")
-                #warn_if_fail(run_func("puppet agent --enable"))
-                #warn_if_fail(run_func("puppet agent -td --server=build-server.domain.name --pluginsync"))
 
 
 def install_openstack(settings_dict,
@@ -127,7 +130,7 @@ def install_openstack(settings_dict,
                       force=False,
                       config=None):
     """
-    Install OS with COI with script provided by Chris on any host(s)
+    Install OS with COI
 
     :param settings_dict: settings dictionary for Fabric
     :param envs: environment variables to inject when executing job
@@ -155,76 +158,39 @@ def install_openstack(settings_dict,
         with cd("/root/"):
             warn_if_fail(run_func("apt-get update"))
             warn_if_fail(run_func("apt-get install -y git"))
-            #warn_if_fail(run_func("git config --global user.email 'test.node@example.com';"
-            #                      "git config --global user.name 'Test Node'"))
+            warn_if_fail(run_func("git config --global user.email 'test.node@example.com';"
+                                  "git config --global user.name 'Test Node'"))
             warn_if_fail(put(StringIO(install_script), "/root/install_icehouse_cisco.sh", use_sudo=use_sudo_flag))
-            #fix("before_run")
-
-            #warn_if_fail(sed("/root/install_icehouse_cisco.sh", "puppet apply /etc/puppet/manifests/site.pp", ""))
-            #warn_if_fail(sed("/root/install_icehouse_cisco.sh", "patch -p1", "patch -p1 -N"))
-            #warn_if_fail(sed("/root/install_icehouse_cisco.sh", "all_in_one", "2_role"))
-            # FIXME: SSH hangs when changing interface used by it.
-            # Create another interface with different network and connect with it
             if not force and not prepare:
                 ## instead of Chris script
-                warn_if_fail(run_func("rm -f /etc/apt/sources.list.d/*"))
+                warn_if_fail(run_func("/etc/init.d/ntp stop; ntpdate ntp.esl.cisco.com; /etc/init.d/ntp start"))
                 warn_if_fail(run_func("apt-get update"))
-                warn_if_fail(run_func("apt-get remove --purge --yes puppet puppet-common"))
-                warn_if_fail(run_func("apt-get autoremove --purge --yes"))
-                warn_if_fail(run_func("wget -qO- http://openstack-repo.cisco.com/openstack/APT-GPG-KEY-Cisco-Puppet "
-                                      "| apt-key add -"))
-                new_repos = """
-                # cisco-openstack-puppet-mirror_icehouse
-                deb http://openstack-repo.cisco.com/openstack/puppet icehouse-proposed main
-                deb-src http://openstack-repo.cisco.com/openstack/puppet icehouse-proposed main
-                """
-                warn_if_fail(put(StringIO(new_repos),
-                                 "/etc/puppet/data/hiera_data/user.common.yaml",
-                                 use_sudo=use_sudo_flag))
-
-                warn_if_fail(run_func("apt-get update"))
-                ## avoid grub and other prompts
+                # # ## avoid grub and other prompts
                 warn_if_fail(run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
                                       '-o Dpkg::Options::="--force-confdef" -o '
                                       'Dpkg::Options::="--force-confold" dist-upgrade'))
-                warn_if_fail(run_func("apt-get install -y git"))
                 with cd("/root"):
                     warn_if_fail(run_func("git clone -b icehouse "
                                           "https://github.com/CiscoSystems/puppet_openstack_builder"))
+                with cd("/root/puppet_openstack_builder"):
+                    run_func('git checkout i.0')
                 with cd("/root/puppet_openstack_builder/install-scripts"),  shell_env(**envs):
-                    warn_if_fail(run_func("export vendor=cisco; export scenario=2_role;"))
-                    print "run::: print:::", envs
-                    #warn_if_fail(run_func("export default_interface=eth1; export external_interface=eth2;"))
-                    fix("before_run")
                     warn_if_fail(run_func("./install.sh"))
-                time.sleep(10)
-                ## instead of Chris script /end
-                #run_func('/bin/bash /root/install_icehouse_cisco.sh')
-                #run_func('git clone -b icehouse https://github.com/CiscoSystems/puppet_openstack_builder')
-                #with cd("/root/puppet_openstack_builder"):
-                #    run_func('git checkout i.0')
-                #with cd("/root/puppet_openstack_builder/install-scripts"):
-                #    run_func('export default_interface=eth1; ./install.sh')
                 warn_if_fail(get("/etc/puppet/data/hiera_data/user.common.yaml", "/tmp/user.common.yaml"))
                 fd = StringIO()
                 warn_if_fail(get("/etc/puppet/data/hiera_data/user.common.yaml", fd))
                 new_user_common = prepare2role(config, fd.getvalue())
                 print " >>>> FABRIC \n", new_user_common
-                #warn_if_fail(put(StringIO(user_file),
-                #                 "/etc/puppet/data/hiera_data/user.common.yaml",
-                #                 use_sudo=use_sudo_flag))
                 warn_if_fail(put(StringIO(new_user_common),
                                  "/etc/puppet/data/hiera_data/user.common.yaml",
                                  use_sudo=use_sudo_flag))
                 warn_if_fail(put(StringIO(roles_file),
                                  "/etc/puppet/data/role_mappings.yaml",
                                  use_sudo=use_sudo_flag))
-                warn_if_fail(put(StringIO(build_yaml),
-                                 "/etc/puppet/data/hiera_data/hostname/build-server.yaml",
-                                 use_sudo=use_sudo_flag))
-                #fix("build_before_puppet_apply")
+                #warn_if_fail(put(StringIO(build_yaml),
+                #                 "/etc/puppet/data/hiera_data/hostname/build_server.yaml",
+                #                 use_sudo=use_sudo_flag))
                 run_func('puppet apply -v /etc/puppet/manifests/site.pp')
-                #fix("build_after_puppet_apply")
                 if exists('/root/openrc'):
                     get('/root/openrc', "./openrc")
                 else:
@@ -273,6 +239,8 @@ def main():
                         help='External interface: eth0, eth1... default=eth1')
     parser.add_argument('-d', action='store', default="eth0", dest='default_interface',
                         help='Default interface: eth0, eth1... default=eth0')
+    parser.add_argument('-b', action='store', default="", dest='build_server_ip',
+                        help='Build-server IP for import')
     parser.add_argument('-l', action='store',
                         default=("https://gist.githubusercontent.com/rickerc/9836426/raw/"
                                  "93540685a1e611c52ac47af55d92f713b4af0a77/install_icehouse_cisco.sh"),
@@ -299,7 +267,10 @@ def main():
         verb_mode = []
     if not opts.config_file:
         envs_build = {"default_interface": opts.default_interface,
-                      "external_interface": opts.default_interface}
+                      "external_interface": opts.default_interface,
+                      "vendor": "cisco",
+                      "scenario": "2_role",
+                      "build_server_ip": opts.build_server_ip}
         hosts = opts.hosts
         user = opts.user
         password = opts.password
@@ -313,7 +284,10 @@ def main():
         user = build["user"]
         password = build["password"]
         envs_build = {"default_interface": build["default_interface"],
-                      "external_interface": build["external_interface"]}
+                      "external_interface": build["external_interface"],
+                      "vendor": "cisco",
+                      "scenario": "2_role",
+                      "build_server_ip": build["ip"]}
         ssh_key_file = opts.ssh_key_file
 
     job_settings = {"host_string": "",
@@ -330,6 +304,7 @@ def main():
     for host in hosts:
         job_settings['host_string'] = host
         print job_settings
+        print envs_build
         res = install_openstack(job_settings,
                                 verbose=verb_mode,
                                 envs=envs_build,

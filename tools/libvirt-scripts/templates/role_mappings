@@ -1,14 +1,6 @@
 control-server00: controller
-control-server01: controller
-control-server02: controller
-control-server03: controller
 
 compute-server00: compute
-compute-server01: compute
-compute-server02: compute
-compute-server03: compute
-
-all-in-one: all_in_one
 
 build-server: build
 
@@ -23,13 +15,3 @@ swift-proxy02: swift_proxy
 swift-storage01: swift_storage
 swift-storage02: swift_storage
 swift-storage03: swift_storage
-
-#Stacktira roles
-build.+: build
-compute.+: compute
-control.+: control
-
-#compressed_ha
-node01: compressed_ha
-node02: compressed_ha
-node03: compressed_ha

@@ -133,6 +133,7 @@ def main_disk_create(name, size, config, img_path, boot_type="net", user_seed_ya
             f.write("#cloud-config\n" + user_seed_yaml)
         run_cmd(["qemu-img", "create", "-f", "qcow2", "-b", img_uncomp_path, path, "%sG" % size])
         run_cmd(["cloud-localds", seed_disk, tmp_file])
+        os.remove(tmp_file)
         return config["params"]["vol"]["cloudimg_disk"].format(output_file=path, seed_disk=seed_disk)
 
 
@@ -488,6 +489,7 @@ def main():
         "build-server": {
             "ip": build["ip"],
             "mac": build["mac"],
+            "hostname": build["hostname"],
             "user": "root",
             "password": "ubuntu",
             "default_interface": "eth1",
@@ -528,6 +530,7 @@ def main():
         compute_box_config = {
             "ip": compute["ip"],
             "mac": compute["mac"],
+            "hostname": compute["hostname"],
             "user": "root",
             "password": "ubuntu",
             "admin_interface": "eth1",
@@ -564,6 +567,7 @@ def main():
         control_box_config = {
             "ip": control["ip"],
             "mac": control["mac"],
+            "hostname": control["hostname"],
             "user": "root",
             "password": "ubuntu",
             "admin_interface": "eth1",
