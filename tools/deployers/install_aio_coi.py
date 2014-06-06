@@ -9,6 +9,8 @@ from fabric.api import sudo, settings, run, hide, put, shell_env, local, cd, get
 from fabric.contrib.files import sed, append, exists
 from fabric.colors import green, red, yellow
 
+from workarounds import fix_aio as fix
+
 
 __author__ = 'sshnaidm'
 
@@ -56,6 +58,10 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, p
         # TODO: check statuses of commands
         with cd("/root/"):
             warn_if_fail(run_func("apt-get update"))
+            ## avoid grub and other prompts
+            warn_if_fail(run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
+                                  '-o Dpkg::Options::="--force-confdef" -o '
+                                  'Dpkg::Options::="--force-confold" dist-upgrade'))
             warn_if_fail(run_func("apt-get install -y git"))
             warn_if_fail(run_func("git config --global user.email 'test.node@example.com';"
                                   "git config --global user.name 'Test Node'"))
@@ -63,10 +69,15 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, p
                              "127.0.1.1 all-in-one all-in-one.domain.name", use_sudo=use_sudo_flag))
             warn_if_fail(put(StringIO("all-in-one"), "/etc/hostname", use_sudo=use_sudo_flag))
             warn_if_fail(run_func("hostname all-in-one"))
+            fix("before_script")
             warn_if_fail(put(StringIO(install_script), "/root/install_icehouse_cisco.sh", use_sudo=use_sudo_flag))
-            warn_if_fail(run_func(
-                'echo -e "\npuppet apply /etc/puppet/manifests/site.pp\npuppet apply /etc/puppet/manifests/site.pp\n" '
-                '/root/install_icehouse_cisco.sh'))
+            fix("before_run")
+            #warn_if_fail(sed("/root/install_icehouse_cisco.sh", "patch -p1", "patch -p1 -N"))
+
+
+            #for i in xrange(4):
+            #    warn_if_fail(run_func(
+            #        'echo -e "\npuppet apply /etc/puppet/manifests/site.pp\n" >> /root/install_icehouse_cisco.sh'))
             if use_sudo_flag:
                 append("/etc/sudoers",
                        "{user} ALL=(ALL) NOPASSWD: ALL".format(user=settings_dict['user']),
@@ -75,6 +86,7 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, p
             # Create another interface with different network and connect with it
             if not force and not prepare:
                 run_func('/bin/bash /root/install_icehouse_cisco.sh')
+                fix("after_run")
                 if exists('/root/openrc'):
                     get('/root/openrc', "./openrc")
                 else:

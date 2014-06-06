@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := init
 VENV=.env
+PYTHON=$(VENV)/bin/python
 CYAN=$(shell echo `tput bold``tput setaf 6`)
 RED=$(shell echo `tput bold``tput setaf 1`)
 RESET=$(shell echo `tput sgr0`)
@@ -14,16 +15,16 @@ clean:
 
 venv:
 	@echo "$(CYAN)>>>> Creating virtualenv...$(RESET)"
+	test $(VENV)/requirements_packages_installed -nt requirements_packages || sudo apt-get install -y `cat requirements_packages` || :
 	test -d $(VENV) || virtualenv --setuptools $(VENV)
 
 requirements: venv
 	@echo "$(CYAN)>>>> Installing dependencies...$(RESET)"
-	test $(VENV)/requirements_packages_installed -nt requirements_packages || sudo apt-get install -y `cat requirements_packages` || :
 	test $(VENV)/requirements_installed -nt requirements || (. $(VENV)/bin/activate; pip install -Ur requirements && echo > $(VENV)/requirements_installed) || :
 
 init: venv requirements
 
-aio: init prepare-aio install-aio
+aio: init prepare-aio give-a-time install-aio
 
 flake8: init
 	@echo "$(CYAN)>>>> Running static analysis...$(RESET)"
@@ -40,16 +41,19 @@ help:
 
 prepare-aio:
 	@echo "$(CYAN)>>>> Preparing AIO box...$(RESET)"
-	./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img -o > config_file
+	test -e trusty-server-cloudimg-amd64-disk1.img || wget http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
+	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img -o > config_file
 
 prepare-aio-local:
 	@echo "$(CYAN)>>>> Preparing AIO box...$(RESET)"
 	./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l lab1 -d /media/hdd/tmpdir/tmp/imgs -z /media/hdd/tmpdir/trusty-server-cloudimg-amd64-disk1.img -o > config_file
 
+give-a-time:
+	sleep 120
+
 install-aio:
 	@echo "$(CYAN)>>>> Installing AIO...$(RESET)"
-	sleep 60
-	./tools/deployers/install_aio_coi.py -c config_file
+	$(PYTHON) ./tools/deployers/install_aio_coi.py -c config_file
 
 prepare-tempest:
 	@echo "$(CYAN)>>>> Preparing tempest...$(RESET)"
@@ -65,9 +69,18 @@ run-tests:
 	@echo "$(CYAN)>>>> Run tempest tests ...$(RESET)"
 	/bin/bash ./tools/tempest-scripts/run_tempest_tests.sh
 
+run-tests-parallel:
+	@echo "$(CYAN)>>>> Run tempest tests in parallel ...$(RESET)"
+	sed -i 's/testr run/testr run --parallel /g' ./tools/tempest-scripts/run_tempest_tests.sh
+	/bin/bash ./tools/tempest-scripts/run_tempest_tests.sh
+
 run-tempest: prepare-tempest run-tests
 
+run-tempest-parallel: prepare-tempest run-tests-parallel
+
 full-aio: aio run-tempest
+
+full-aio-quick: aio run-tempest-parallel
 
 test-me:
 	@echo "$(CYAN)>>>> test your commands :) ...$(RESET)"

@@ -4,6 +4,7 @@ import argparse
 import random
 import yaml
 import os
+import re
 import sys
 import logging
 import subprocess
@@ -186,25 +187,27 @@ def create_host_seed_yaml(config, box, btype):
     sorted_nets = config['params']['networks']
     parsed = et.fromstring(config['params'][btype]['xml'])
     used_nets = [i.attrib['network'] for i in parsed.findall(".//interface[@type='network']/source")]
+    index_net = 1
     for k, net in enumerate(sorted_nets[1:]):
         if "{net_" + net['role'] + "_name}" in used_nets:
             if net['role'] != EXTERNAL_NET:
                 ints.append([
                     config['params']['static_interface_template'].format(
-                        int_name="eth"+str(k+1),
+                        int_name="eth"+str(index_net),
                         net_ip=net['net-ip'],
                         int_ip=net['net-ip'] + "." + last_octet,
                         dns="8.8.8.8"),
-                    "/etc/network/interfaces.d/eth{int_num}.cfg".format(int_num=k+1),
-                    "eth{int_num}".format(int_num=k+1)
+                    "/etc/network/interfaces.d/eth{int_num}.cfg".format(int_num=index_net),
+                    "eth{int_num}".format(int_num=index_net)
                 ])
             else:
                 ints.append([
                     config['params']['manual_interface_template'].format(
-                        int_name="eth"+str(k+1),),
-                    "/etc/network/interfaces.d/eth{int_num}.cfg".format(int_num=k+1),
-                    "eth{int_num}".format(int_num=k+1)
+                        int_name="eth"+str(index_net),),
+                    "/etc/network/interfaces.d/eth{int_num}.cfg".format(int_num=index_net),
+                    "eth{int_num}".format(int_num=index_net)
                     ])
+            index_net += 1
         else:
             continue
     for interface in ints:
@@ -330,6 +333,8 @@ def main():
     for num, net in enumerate(networks):
         net['net-ip'] = "192.168." + str(net_start + num)
         net['name'] = lab_id + "-" + net['name']
+        if net['role'] == EXTERNAL_NET:
+            external_net_subnet = net['net-ip']
 
     dhcp_hostline = '<host mac="{server_mac}" name="{server_name}.domain.name" ip="{server_ip}" />'
     dhcp_records = ''
@@ -405,6 +410,7 @@ def main():
     if aio_mode:
         aio = lab_boxes['aio-servers'][0]
         yaml_config = create_host_seed_yaml(conf, box=aio, btype="aio-server")
+        conf_yaml = yaml.load(yaml_config)
         disk = main_disk_create(name=aio["name"],
                                 size=10,  # in GB
                                 config=conf,
@@ -414,7 +420,7 @@ def main():
                                 img_uncomp_path=new_img_path)
         vm_xml = conf["params"]["aio-server"]["xml"].format(
             name=aio["name"],
-            ram=4*1024*1024,
+            ram=8*1024*1024,
             disk=disk,
             compute_server_cpu=compute_cpus,
             net_boot_name=conf["params"]["networks"][0]["name"],
@@ -425,22 +431,38 @@ def main():
         delete_vm(conn, aio["name"])
         create_vm(conn, vm_xml)
         conn.close()
+        eth_default = re.search("(eth\d+)",
+                                [z for z in conf_yaml["write_files"]
+                                    if 'inet static' in z['content']][0]['content']).group(1)
+        eth_external = re.search("(eth\d+)",
+                                 [z for z in conf_yaml["write_files"]
+                                  if 'inet manual' in z['content']][0]['content']).group(1)
+        default_net_subnet = re.search("network ([^\s]+)",
+                                       [z for z in conf_yaml["write_files"]
+                                        if 'inet static' in z['content']][0]['content']).group(1)
         final_result["servers"] = {
             "aio": {
                 "ip": aio["ip"],
                 "mac": aio["mac"],
                 "user": "root",
                 "password": "ubuntu",
-                "external_interface": "eth4",
-                "default_interface": "eth1",
+                "external_interface": eth_external,
+                "default_interface": eth_default,
+                "external_net": external_net_subnet + ".0",
+                "default_net": default_net_subnet,
             }
         }
         print yaml.dump(final_result)
+        # workaround for tempest nets configurator
+        with open("external_net", "w") as f:
+            f.write(external_net_subnet)
+        print >> sys.stderr, "Created AIO box", aio["name"], "with ip", aio["ip"]
         return
 
     # create build server
     build = lab_boxes["build-server"][0]
     yaml_config = create_host_seed_yaml(conf, box=build, btype="build-server")
+    conf_yaml = yaml.load(yaml_config)
     disk = main_disk_create(name=build["name"],
                             size=10,  # in GB
                             config=conf,
@@ -450,14 +472,18 @@ def main():
                             img_uncomp_path=new_img_path)
     vm_xml = conf["params"]["build-server"]["xml"].format(
         name=lab_boxes["build-server"][0]["name"],
-        ram=4*1024*1024,
+        ram=8*1024*1024,
         disk=disk,
         net_boot_name=conf["params"]["networks"][0]["name"],
         build_server_mac=lab_boxes["build-server"][0]["mac"],
         net_admin_name=conf["params"]["networks"][1]["name"],
+        net_external_name=conf["params"]["networks"][4]["name"],
     )
     delete_vm(conn, lab_boxes["build-server"][0]["name"])
     create_vm(conn, vm_xml)
+    eth_external = re.search("(eth\d+)",
+                                 [z for z in conf_yaml["write_files"]
+                                  if 'inet manual' in z['content']][0]['content']).group(1)
     final_result["servers"] = {
         "build-server": {
             "ip": build["ip"],
@@ -465,10 +491,15 @@ def main():
             "user": "root",
             "password": "ubuntu",
             "default_interface": "eth1",
+            "external_interface": eth_external,
+            "external_net": external_net_subnet + ".0",
         }
     }
     print >> sys.stderr, "Created build-server", lab_boxes["build-server"][0]["name"], \
         "with ip", lab_boxes["build-server"][0]["ip"]
+
+    with open("external_net", "w") as f:
+            f.write(external_net_subnet)
 
     ### create other servers
     for compute in lab_boxes["compute-servers"]:
