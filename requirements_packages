@@ -1,1 +1,1 @@
-python-pip qemu-utils virtinst cloud-utils pkg-config libvirt-dev libyaml-dev libssl-dev
+make python-virtualenv python-pip python-dev qemu-utils virtinst cloud-utils pkg-config libvirt-dev libyaml-dev libssl-dev
