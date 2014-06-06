@@ -3,7 +3,11 @@
 source ./openrc
 #wget http://download.cirros-cloud.net/0.3.2/cirros-0.3.2-x86_64-disk.img
 #glance image-create --name=cirros-0.3-x86_64 --is-public=true --container-format=bare --disk-format=qcow2 < cirros-0.3.2-x86_64-disk.img
+if [ -e ./external_net ]; then
 EXTERNAL_NET=$(cat ./external_net)
+else
+EXTERNAL_NET="10.10.10"
+fi
 echo "Reinitialize the dir"
 rm -rf prepare_for_tempest_dir
 mkdir -p prepare_for_tempest_dir
