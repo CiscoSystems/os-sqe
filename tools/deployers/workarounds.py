@@ -23,12 +23,15 @@ def fix_aio(step, func=run, sudo_flag=False):
 def fix_2role(step, func=run, sudo_flag=False):
     if step == "before_script":
         pass
+    if step == "before_apt_update":
+        sed("/etc/apt/sources.list", "deb http://security.", "#deb http://security.")
+        sed("/etc/apt/sources.list", "deb-src http://security.", "#deb http://security.")
     elif step == "before_run":
-        #sed("/root/install_icehouse_cisco.sh", "puppet apply /etc/puppet/manifests/site.pp", "", use_sudo=sudo_flag)
-        #sed("/root/install_icehouse_cisco.sh", "patch -p1", "patch -p1 -N", use_sudo=sudo_flag)
-        #sed("/root/install_icehouse_cisco.sh", "all_in_one", "2_role", use_sudo=sudo_flag)
-        func("ping openstack-repo.cisco.com -c 1")
-        func("env | grep interface")
+        sed("/root/install_icehouse_cisco.sh", "puppet apply /etc/puppet/manifests/site.pp", "", use_sudo=sudo_flag)
+        sed("/root/install_icehouse_cisco.sh", "patch -p1", "patch -p1 -N", use_sudo=sudo_flag)
+        sed("/root/install_icehouse_cisco.sh", "all_in_one", "2_role", use_sudo=sudo_flag)
+        #func("ping openstack-repo.cisco.com -c 1")
+        #func("env | grep interface")
     elif step == "controls_before_setup":
         sed("./setup.sh", "patch -p1", "patch -p1 -N")
     elif step == "controls_after_setup":

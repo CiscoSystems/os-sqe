@@ -41,12 +41,18 @@ help:
 
 prepare-aio:
 	@echo "$(CYAN)>>>> Preparing AIO box...$(RESET)"
-	test -e trusty-server-cloudimg-amd64-disk1.img || wget http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
+	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
 	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img -o > config_file
 
 prepare-aio-local:
 	@echo "$(CYAN)>>>> Preparing AIO box...$(RESET)"
 	./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l lab1 -d /media/hdd/tmpdir/tmp/imgs -z /media/hdd/tmpdir/trusty-server-cloudimg-amd64-disk1.img -o > config_file
+
+prepare-2role:
+	@echo "$(CYAN)>>>> Preparing 2_role boxes...$(RESET)"
+	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
+	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
+
 
 give-a-time:
 	sleep 120
@@ -54,6 +60,11 @@ give-a-time:
 install-aio:
 	@echo "$(CYAN)>>>> Installing AIO...$(RESET)"
 	$(PYTHON) ./tools/deployers/install_aio_coi.py -c config_file
+
+install-2role:
+	@echo "$(CYAN)>>>> Installing AIO...$(RESET)"
+	$(PYTHON) ./tools/deployers/install_aio_2role.py -c config_file
+
 
 prepare-tempest:
 	@echo "$(CYAN)>>>> Preparing tempest...$(RESET)"
@@ -74,6 +85,12 @@ run-tests-parallel:
 	sed -i 's/testr run/testr run --parallel /g' ./tools/tempest-scripts/run_tempest_tests.sh
 	/bin/bash ./tools/tempest-scripts/run_tempest_tests.sh
 
+init: venv requirements
+
+aio: init prepare-aio give-a-time install-aio
+
+2role: init prepare-2role give-a-time install-2role
+
 run-tempest: prepare-tempest run-tests
 
 run-tempest-parallel: prepare-tempest run-tests-parallel
@@ -81,6 +98,10 @@ run-tempest-parallel: prepare-tempest run-tests-parallel
 full-aio: aio run-tempest
 
 full-aio-quick: aio run-tempest-parallel
+
+full-2role: 2role run-tempest
+
+full-2role-quick: 2role run-tempest-parallel
 
 test-me:
 	@echo "$(CYAN)>>>> test your commands :) ...$(RESET)"

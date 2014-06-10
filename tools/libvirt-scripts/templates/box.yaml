@@ -382,7 +382,7 @@ params:
       </disk>
   hosts_template: |
     127.0.0.1 localhost
-    127.0.1.1 {server_name} {server_name}.{domain_name}
+    127.0.1.1 {server_name}.{domain_name} {server_name}
     # The following lines are desirable for IPv6 capable hosts
     ::1 ip6-localhost ip6-loopback
     fe00::0 ip6-localnet
@@ -418,3 +418,4 @@ params:
     - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC1+MLajjmLMKDQ/anCdfH0voSb4/2RGc9BlhiDaC39uQ2AUoFQGKImgQv+d2t6BltyyYnPjAF38Vv7yDuqjGpGsbnYhjZ/KgEZGK68m8BvYU18RVPpLjw8aqTlwkbcfHHWJLWjF7+ktdjcgEvZt5LXxlLV9NfP3ZKSBBt4vfEtlR6AVrCT0EUomVHZ2nUYH+ozCX2WzFH2nMxuJ2kENUtgiSBoYcFvc+5KRk5oiLcBkgpqoG4xkQWfhC44mTE5tCEuPfn5ntDXn5oI0N1M0IqvpU7P0wkIY5g/URRJcmF/iFrPRHyjSwFVaJlrhQEJgsMrQgV2WxQmwuLh/w6tx3Tt jenkins@jenkins
     - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC/sVVrFvCNcfKAliFMZGHOap3158Mz/3JpjX3hQWtC/gWE1fbac3QrWFF4G5eqe43DYrcVIk+15juB4ueLhnuuA5EyKDvJLmH54qrzspaaqoIdF+6aIyRNnWSYl1Ueq9xC6KSd4YPlQgt7p4qhrEUV9ItEDC/rf4vMosrTVJxvCEdQrK1COFQdWMw1yv+9P5JhWVJz9EnFmJpOef+XUTLKgWqrqaX/H4YfgSjTQgxNnUVedwgICkLpFpgRWDoAAQ0dCdRpV9LGNQYEJhI2rm1UwGX6dufIss3OD4UIoqKI+u4/il6liVe3Ef1J7kGaxDWZOjG9tOGRl5Ncunuja+mf localadmin@jo-i3-vc
     - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDBvFGlWg3fLU5Eb3lCzDuDtsA2EjtO+iNoG+OoHDyZ+8peIC534Lj/y6cYfSTtBPEWTqZYNJYcOwds5oGa2nPtlq9Hl8jHTOViuQ5eEuL6CA7jnvxIJJ8rllh1Cd68FpS/H4faBmUlVCZ0Kx6b8Jlr/auH0s0haElaBe3Fl1u3n0G/RHznx6GZBhvJYyg8HD3QgQ+wmzYR/xEOc9djjH7SlAy72lN47BBPDZD4w36ESAickXFGam1499Ba6EOfD8xypgG/YLJvv7jI5wAU/y+zFn7y1tkfIFdkAMxgi3hAYaVlA8DCrPcBvZGXRbDQ13zly/cdvp5UGET8Ulcfzr4l root@jo-i3-vc
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCtJxblUOGgU1t7tze8GyDh5P6Ir98nAMOs+njMcdNcmdUOS7YcVn+s6uoVrvi5hqknw7o8r0ZOJ/SSFo8P/o6MPNjyYNKQs8Bje1RTGnhJlkzPm0gJeqQ+1eebxNBJzLjgS9BK1I1ce3xBxnDs9j50vrjFmFaNdpPD1/f2GOjxMiGt0IdC6ttRzdt78ciDFfKXrRc5yv3iEqlieWmS3zo1kkAoTDsdBnCD2J19+HV7MPXAotG8W/iV2loHI7QY+X276tdnnDZJ+mDQplNpb2Bb5L3VJNJI0+Ux1GnBk+iBcxPuVjIS0XKPCKZS97N4uBp0C/nVGycMpCyn2rhQ118B lupus@laptop
