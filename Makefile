@@ -53,17 +53,25 @@ prepare-2role:
 	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
 	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
 
+prepare-2role-cobbler:
+	@echo "$(CYAN)>>>> Preparing 2_role boxes for cobbler...$(RESET)"
+	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
+	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b net -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
 
 give-a-time:
-	sleep 120
+	sleep 180
 
 install-aio:
 	@echo "$(CYAN)>>>> Installing AIO...$(RESET)"
 	$(PYTHON) ./tools/deployers/install_aio_coi.py -c config_file
 
 install-2role:
-	@echo "$(CYAN)>>>> Installing AIO...$(RESET)"
+	@echo "$(CYAN)>>>> Installing 2_role multinode...$(RESET)"
 	$(PYTHON) ./tools/deployers/install_aio_2role.py -c config_file
+
+install-2role-cobbler:
+	@echo "$(CYAN)>>>> Installing 2_role multinode with cobbler...$(RESET)"
+	$(PYTHON) ./tools/deployers/install_aio_2role.py -e -c config_file
 
 
 prepare-tempest:
@@ -90,6 +98,8 @@ init: venv requirements
 aio: init prepare-aio give-a-time install-aio
 
 2role: init prepare-2role give-a-time install-2role
+
+2role-cobbler: init prepare-2role-cobbler give-a-time install-2role-cobbler
 
 run-tempest: prepare-tempest run-tests
 
