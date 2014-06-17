@@ -1,8 +1,12 @@
 # set my puppet_master_address to be fqdn
 puppet_master_address: "%{fqdn}"
+cobbler_node_ip: '172.29.74.151'
+node_subnet: '172.29.74.128'
+node_netmask: '255.255.255.224'
+node_gateway: '172.29.74.129'
 admin_user: localadmin
 password_crypted: $6$UfgWxrIv$k4KfzAEMqMg.fppmSOTd0usI4j6gfjs0962.JXsoJRWa5wMz8yQk4SfInn4.WZ3L/MCt5u.62tHDGB36EhiKF1
-autostart_puppet: true
+autostart_puppet: false
 ucsm_port: 443
 install_drive: /dev/sda
 apache::default_vhost: true

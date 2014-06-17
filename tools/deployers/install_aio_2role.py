@@ -1,23 +1,29 @@
 #!/usr/bin/env python
 from StringIO import StringIO
-import urllib2
 import argparse
 import sys
 import yaml
 import os
 import re
+import time
 
 from fabric.api import sudo, settings, run, hide, put, shell_env, cd, get
-from fabric.contrib.files import sed, exists
+from fabric.contrib.files import exists, contains
 from fabric.colors import green, red, yellow
-from workarounds import fix_2role as fix
 
 __author__ = 'sshnaidm'
 
 CONFIG_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../libvirt-scripts", "templates")
-
+DOMAIN_NAME = "domain.name"
+ip_re = re.compile("\d+\.\d+\.\d+\.\d+")
+APPLY_LIMIT = 3
 
 def quit_if_fail(command):
+    """
+        Function quits all application if given command failed
+
+    :param command: Command to execute
+    """
     if command.failed:
         print(red('FAB ERROR: Command failed'))
         if 'command' in command.__dict__:
@@ -27,6 +33,11 @@ def quit_if_fail(command):
 
 
 def warn_if_fail(command):
+    """
+        Function prints warning to log if given command failed
+
+    :param command: Command to execute
+    """
     if command.failed:
         print(yellow('FAB ERROR: Command failed'))
         if 'command' in command.__dict__:
@@ -34,20 +45,41 @@ def warn_if_fail(command):
                 cmd=command.command, code=command.return_code)))
 
 
+def update_time(func):
+    """
+        Update time on remote machine
+
+    :param func: function to execute the ntpdate with
+    """
+    ntp = False
+    if exists("/etc/init.d/ntp"):
+        ntp = True
+        func("/etc/init.d/ntp stop")
+    if func("ntpdate ntp.esl.cisco.com").failed:
+        if func("ntpdate 10.81.254.202").failed:
+            func("ntpdate ntp.ubuntu.com")
+    if ntp:
+        func("/etc/init.d/ntp start")
+
+
 def prepare2role(config, common_file):
-    ip_re = re.compile("\d+\.\d+\.\d+\.\d+")
+    """
+        Function prepare user.common.yaml file according to lab configuration
+
+    :param config: configuration of lab boxes
+    :param common_file: the provided user.common.yaml from distro
+    :return: text dump of new user.common.yaml file
+    """
 
     def change_ip_to(string, ip):
         return ip_re.sub(ip, string)
 
-
-    print " >>>> FABRIC "
+    print >> sys.stderr, " >>>> FABRIC box configurations"
     print config
-    print " >>>> FABRIC "
+    print >> sys.stderr, " >>>> FABRIC original user.common.yaml file"
     print common_file
 
     conf = yaml.load(common_file)
-
     conf["controller_public_address"] = config['servers']['control-servers'][0]['ip']
     conf["controller_admin_address"] = config['servers']['control-servers'][0]['ip']
     conf["controller_internal_address"] = config['servers']['control-servers'][0]['ip']
@@ -76,11 +108,67 @@ def prepare2role(config, common_file):
     conf['internal_ip'] = "%{ipaddress_eth0}"
     conf['public_interface'] = "eth0"
     conf['private_interface'] = "eth0"
+    conf['install_drive'] = "/dev/vda"
     return yaml.dump(conf)
 
 
-def role_mappings(config):
+def prepare_cobbler(config, cob_file):
+    """
+        Function creates cobbler configuration
 
+    :param config:  configuration of lab boxes
+    :param cob_file: the provided cobbler.yaml from distro
+    :return: text dump of new cobbler.yaml file
+    """
+    new_conf = {}
+    name = "trusty"
+    with open(os.path.join(CONFIG_PATH, "cobbler.yaml")) as f:
+        text_cobbler = f.read()
+    text_cobbler = text_cobbler.format(
+        int_ipadd="{$eth0_ip-address}",
+        ip_gateway=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1",
+        ip_dns=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1"
+    )
+
+    for c in config['servers']['control-servers']:
+        new_conf[c['hostname']] = {
+            "hostname": c['hostname'] + "." + DOMAIN_NAME,
+            "power_address": c["ip"],
+            "profile": "%s-x86_64" % name,
+            "interfaces": {
+                "eth0": {
+                    "mac-address": c["mac"],
+                    "dns-name": c['hostname'] + "." + DOMAIN_NAME,
+                    "ip-address": c["ip"],
+                    "static": "0"
+                }
+            }
+        }
+    for c in config['servers']['compute-servers']:
+        new_conf[c['hostname']] = {
+            "hostname": c['hostname'] + "." + DOMAIN_NAME,
+            "power_address": c["ip"],
+            "profile": "%s-x86_64" % name,
+            "interfaces": {
+                "eth0": {
+                    "mac-address": c["mac"],
+                    "dns-name": c['hostname'] + "." + DOMAIN_NAME,
+                    "ip-address": c["ip"],
+                    "static": "0"
+                }
+            }
+        }
+
+    return text_cobbler + "\n" + yaml.dump(new_conf)
+
+
+def role_mappings(config):
+    """
+        Function creates role_mappings file
+
+    :param config: configuration of lab boxes
+    :return: text dump of new role_mappings.yaml file
+    """
     roles = {}
     for c in config["servers"]["control-servers"]:
         roles.update({c["hostname"]: "controller"})
@@ -90,36 +178,40 @@ def role_mappings(config):
     return yaml.dump(roles)
 
 
-def run_control(conf,
-                settings_dict,
-                envs=None,
-                verbose=None,):
+def run_services(conf,
+                 settings_dict,
+                 envs=None,
+                 verbose=None,):
+    """
+        Install OS with COI on control and compute servers
+
+    :param conf: configuration of lab boxes
+    :param settings_dict: settings dictionary for Fabric
+    :param envs: environment variables to inject when executing job
+    :param verbose: if to hide all output or print everything
+    """
     envs = envs or {}
-    envs.update({"build_server_ip": conf['servers']['build-server']["ip"]})
-    envs.update({"vendor": "cisco"})
     verbose = verbose or []
     if settings_dict['user'] != 'root':
-        use_sudo_flag = True
         run_func = sudo
     else:
-        use_sudo_flag = False
         run_func = run
     print >> sys.stderr, "FABRIC connecting to", settings_dict["host_string"],
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         with cd("/root/"):
-            warn_if_fail(run_func("/etc/init.d/ntp stop; ntpdate ntp.esl.cisco.com; /etc/init.d/ntp start"))
-            warn_if_fail(run_func("apt-get update"))
-            warn_if_fail(run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
-                                  '-o Dpkg::Options::="--force-confdef" -o '
-                                  'Dpkg::Options::="--force-confold" dist-upgrade'))
-            warn_if_fail(run_func("apt-get install -y git"))
-            warn_if_fail(run_func("git clone -b icehouse https://github.com/CiscoSystems/puppet_openstack_builder"))
+            update_time(run_func)
+            run_func("apt-get update")
+            run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
+                     '-o Dpkg::Options::="--force-confdef" -o '
+                     'Dpkg::Options::="--force-confold" dist-upgrade')
+            run_func("apt-get install -y git")
+            run_func("git clone -b icehouse https://github.com/CiscoSystems/puppet_openstack_builder")
             with cd("/root/puppet_openstack_builder"):
                     run_func('git checkout i.0')
             with cd("/root/puppet_openstack_builder/install-scripts"):
                 warn_if_fail(run_func("./setup.sh"))
+                warn_if_fail(run_func('puppet agent --enable'))
                 warn_if_fail(run_func("puppet agent -td --server=build-server.domain.name --pluginsync"))
-                fix("controls_after_setup")
 
 
 def install_openstack(settings_dict,
@@ -128,9 +220,11 @@ def install_openstack(settings_dict,
                       url_script=None,
                       prepare=False,
                       force=False,
-                      config=None):
+                      config=None,
+                      use_cobbler=False,
+                      proxy=None):
     """
-    Install OS with COI
+        Install OS with COI on build server
 
     :param settings_dict: settings dictionary for Fabric
     :param envs: environment variables to inject when executing job
@@ -141,8 +235,6 @@ def install_openstack(settings_dict,
     """
     envs = envs or {}
     verbose = verbose or []
-    response = urllib2.urlopen(url_script)
-    install_script = response.read()
     if settings_dict['user'] != 'root':
         use_sudo_flag = True
         run_func = sudo
@@ -152,20 +244,23 @@ def install_openstack(settings_dict,
     with open(os.path.join(CONFIG_PATH, "buildserver_yaml")) as f:
                     build_yaml = f.read()
     roles_file = role_mappings(config)
-    print roles_file
+    print >> sys.stderr, roles_file
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
-        # TODO: check statuses of commands
         with cd("/root/"):
-            warn_if_fail(run_func("apt-get update"))
-            warn_if_fail(run_func("apt-get install -y git"))
-            warn_if_fail(run_func("git config --global user.email 'test.node@example.com';"
-                                  "git config --global user.name 'Test Node'"))
-            warn_if_fail(put(StringIO(install_script), "/root/install_icehouse_cisco.sh", use_sudo=use_sudo_flag))
+            if proxy:
+                warn_if_fail(put(StringIO('Acquire::http::proxy "http://proxy.esl.cisco.com:8080/";'),
+                                 "/etc/apt/apt.conf.d/00proxy",
+                                 use_sudo=use_sudo_flag))
+                warn_if_fail(put(StringIO('Acquire::http::Pipeline-Depth "0";'),
+                                 "/etc/apt/apt.conf.d/00no_pipelining",
+                                 use_sudo=use_sudo_flag))
+            run_func("apt-get update")
+            run_func("apt-get install -y git")
+            run_func("git config --global user.email 'test.node@example.com';"
+                     "git config --global user.name 'Test Node'")
             if not force and not prepare:
-                ## instead of Chris script
-                warn_if_fail(run_func("/etc/init.d/ntp stop; ntpdate ntp.esl.cisco.com; /etc/init.d/ntp start"))
-                warn_if_fail(run_func("apt-get update"))
-                # # ## avoid grub and other prompts
+                update_time(run_func)
+                # avoid grub and other prompts
                 warn_if_fail(run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
                                       '-o Dpkg::Options::="--force-confdef" -o '
                                       'Dpkg::Options::="--force-confold" dist-upgrade'))
@@ -174,23 +269,39 @@ def install_openstack(settings_dict,
                                           "https://github.com/CiscoSystems/puppet_openstack_builder"))
                 with cd("/root/puppet_openstack_builder"):
                     run_func('git checkout i.0')
-                with cd("/root/puppet_openstack_builder/install-scripts"),  shell_env(**envs):
+                with cd("/root/puppet_openstack_builder/install-scripts"):
                     warn_if_fail(run_func("./install.sh"))
-                warn_if_fail(get("/etc/puppet/data/hiera_data/user.common.yaml", "/tmp/user.common.yaml"))
                 fd = StringIO()
                 warn_if_fail(get("/etc/puppet/data/hiera_data/user.common.yaml", fd))
                 new_user_common = prepare2role(config, fd.getvalue())
-                print " >>>> FABRIC \n", new_user_common
+                print " >>>> FABRIC new user.common.file\n", new_user_common
                 warn_if_fail(put(StringIO(new_user_common),
                                  "/etc/puppet/data/hiera_data/user.common.yaml",
                                  use_sudo=use_sudo_flag))
                 warn_if_fail(put(StringIO(roles_file),
                                  "/etc/puppet/data/role_mappings.yaml",
                                  use_sudo=use_sudo_flag))
-                #warn_if_fail(put(StringIO(build_yaml),
+                fd = StringIO()
+                warn_if_fail(get("/etc/puppet/data/cobbler/cobbler.yaml", fd))
+                new_cobbler = prepare_cobbler(config, fd.getvalue())
+                warn_if_fail(put(StringIO(new_cobbler),
+                                 "/etc/puppet/data/cobbler/cobbler.yaml",
+                                 use_sudo=use_sudo_flag))
+                # warn_if_fail(put(StringIO(build_yaml),
                 #                 "/etc/puppet/data/hiera_data/hostname/build_server.yaml",
                 #                 use_sudo=use_sudo_flag))
-                run_func('puppet apply -v /etc/puppet/manifests/site.pp')
+                # warn_if_fail(put(StringIO(build_yaml),
+                #                 "/etc/puppet/data/hiera_data/hostname/build-server.yaml",
+                #                 use_sudo=use_sudo_flag))
+                result = run_func('puppet apply -v /etc/puppet/manifests/site.pp')
+                if use_cobbler:
+                    cobbler_error = "[cobbler-sync]/returns: unable to connect to cobbler on localhost using cobbler"
+                    tries = 1
+                    while cobbler_error in result and tries <= APPLY_LIMIT:
+                        time.sleep(60)
+                        print >> sys.stderr, "Cobbler is not installed properly, running apply again"
+                        result = run_func('puppet apply -v /etc/puppet/manifests/site.pp', pty=False)
+                        tries += 1
                 if exists('/root/openrc'):
                     get('/root/openrc', "./openrc")
                 else:
@@ -201,6 +312,67 @@ def install_openstack(settings_dict,
                 return True
     print (green("Finished!"))
     return True
+
+
+def track_cobbler(config, setts):
+
+    """
+        Function for tracking cobbler installation on boxes
+
+    :param config: boxes configuration
+    :param setts: settings for connecting to boxes
+    :return: Nothing, but exist with 1 when failed
+    """
+
+    def ping(h, s):
+        with settings(**s), hide('output', 'running', 'warnings'):
+            res = run("ping -W 5 -c 3 %s" % h)
+            return res.succeeded
+
+    def catalog_finished(h, s):
+        s["host_string"] = h
+        s["user"] = "localadmin"
+        s["password"] = "ubuntu"
+        with settings(**s), hide('output', 'running', 'warnings'):
+            try:
+                return contains("/var/log/syslog", "Finished catalog run")
+            except Exception as e:
+                return False
+
+    wait_os_up = 20*60
+    wait_catalog = 40*60
+    hosts = config["servers"]["compute-servers"] + config["servers"]["control-servers"]
+    # reset machines
+    try:
+        import libvirt
+        conn = libvirt.open('qemu+ssh://{user}@localhost/system'.format(user=setts["user"]))
+        for servbox in hosts:
+            vm_name = servbox["vm_name"]
+            vm = conn.lookupByName(vm_name)
+            vm.destroy()
+            vm.create()
+            print >> sys.stderr, "Domain {name} is restarted...".format(name=vm_name)
+        conn.close()
+    except Exception as e:
+        print >> sys.stderr, "Exception", e
+
+    for check_func, timeout in (
+            (ping, wait_os_up),
+            (catalog_finished, wait_catalog)):
+
+        host_ips = [i["ip"] for i in hosts]
+        start = time.time()
+        while time.time() - start < timeout:
+            for host in host_ips:
+                if check_func(host, setts.copy()):
+                    host_ips.remove(host)
+            if not host_ips:
+                print >> sys.stderr, "Current step with '%s' was finished successfully!" % check_func.func_name
+                break
+            time.sleep(3*60)
+        else:
+            print >> sys.stderr, "TImeout of %d minutes of %s is over. Exiting...." % (timeout/60, check_func.func_name)
+            sys.exit(1)
 
 
 def run_probe(settings_dict, envs=None, verbose=None):
@@ -250,12 +422,16 @@ def main():
                         help='SSH key file, default=~/.ssh/id_rsa')
     parser.add_argument('-t', action='store_true', dest='test_mode', default=False,
                         help='Just run it to test host connectivity, if fine - return 0')
+    parser.add_argument('-e', action='store_true', dest='use_cobbler', default=False,
+                        help='Use cobbler for deploying control and compute nodes')
     parser.add_argument('-z', action='store_true', dest='prepare_mode', default=False,
                         help='Only prepare, don`t run the main script')
     parser.add_argument('-f', action='store_true', dest='force', default=False,
                         help='Force SSH client run. Use it if dont work')
     parser.add_argument('-w', action='store_true', dest='only_build', default=False,
                         help='Configure only build server')
+    parser.add_argument('-j', action='store_true', dest='proxy', default=False,
+                        help='Use cisco proxy if installing from Cisco local network')
     parser.add_argument('-c', action='store', dest='config_file', default=None,
                         help='Configuration file, default is None')
     parser.add_argument('--version', action='version', version='%(prog)s 1.0')
@@ -277,8 +453,12 @@ def main():
         ssh_key_file = opts.ssh_key_file
         config = None
     else:
-        with open(opts.config_file) as f:
-            config = yaml.load(f)
+        try:
+            with open(opts.config_file) as f:
+                config = yaml.load(f)
+        except IOError as e:
+            print >> sys.stderr, "Not found file {file}: {exc}".format(file=opts.config_file, exc=e)
+            sys.exit(1)
         build = config['servers']['build-server']
         hosts = [build["ip"]]
         user = build["user"]
@@ -311,25 +491,30 @@ def main():
                                 url_script=opts.url,
                                 prepare=opts.prepare_mode,
                                 force=opts.force,
-                                config=config)
+                                config=config,
+                                use_cobbler=opts.use_cobbler,
+                                proxy=opts.proxy)
         if res:
             print "Job with host {host} finished successfully!".format(host=host)
     if not opts.only_build:
-        for host in config["servers"]["control-servers"]:
-            job_settings['host_string'] = host["ip"]
-            run_control(config,
-                        job_settings,
-                        verbose=verb_mode,
-                        envs=envs_build,
-                        )
-        for host in config["servers"]["compute-servers"]:
-            job_settings['host_string'] = host["ip"]
-            run_control(config,
-                        job_settings,
-                        verbose=verb_mode,
-                        envs=envs_build,
-                        )
-
+        if opts.use_cobbler:
+            job_settings['host_string'] = hosts[0]
+            track_cobbler(config, job_settings)
+        else:
+            for host in config["servers"]["control-servers"]:
+                job_settings['host_string'] = host["ip"]
+                run_services(config,
+                             job_settings,
+                             verbose=verb_mode,
+                             envs=envs_build,
+                             )
+            for host in config["servers"]["compute-servers"]:
+                job_settings['host_string'] = host["ip"]
+                run_services(config,
+                             job_settings,
+                             verbose=verb_mode,
+                             envs=envs_build,
+                             )
 
 if __name__ == "__main__":
     main()
