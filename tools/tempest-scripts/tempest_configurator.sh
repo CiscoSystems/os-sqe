@@ -12,16 +12,16 @@ echo "Reinitialize the dir"
 rm -rf prepare_for_tempest_dir
 mkdir -p prepare_for_tempest_dir
 cd prepare_for_tempest_dir/
-echo "downloading cirros-0.3.1-x86_64-disk.img ...."
-wget -nv http://172.29.173.233/cirros-0.3.1-x86_64-disk.img
+echo "downloading cirros-0.3.2-x86_64-disk.img ...."
+wget -nv http://172.29.173.233/cirros-0.3.2-x86_64-disk.img
 #wget -nv http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-disk.img
-glance image-create --name=cirros-0.3-x86_64 --is-public=true --container-format=bare --disk-format=qcow2 < ./cirros-0.3.1-x86_64-disk.img
+glance image-create --name=cirros-0.3-x86_64 --is-public=true --container-format=bare --disk-format=qcow2 < ./cirros-0.3.2-x86_64-disk.img
 #wget http://uec-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
 #glance image-create --name=trusty-server --is-public=true --container-format=bare --disk-format=qcow2 < ./trusty-server-cloudimg-amd64-disk1.img
 echo "downloading precise-server-cloudimg-amd64-disk1.img ...."
 #wget -nv http://uec-images.ubuntu.com/server/precise/current/precise-server-cloudimg-amd64-disk1.img
 #wget -nv http://172.29.173.233/precise-server-cloudimg-amd64-disk1.img
-glance image-create --name=precise-server  --is-public=true --container-format=bare --disk-format=qcow2 < ./cirros-0.3.1-x86_64-disk.img
+glance image-create --name=precise-server  --is-public=true --container-format=bare --disk-format=qcow2 < ./cirros-0.3.2-x86_64-disk.img
 keystone tenant-create --name demo
 kid1=$(keystone tenant-list | grep " demo " | awk {'print $2'})
 keystone user-create --name=demo --pass=secret --tenant-id=$kid1 --email=demo@domain1.com
@@ -46,8 +46,4 @@ nid=$(neutron net-list | grep " public " |  awk {'print $2'})
 neutron router-gateway-set router1 $nid
 
 cd /tmp
-wget -nv http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-uec.tar.gz
-sudo apt-get install -y python-pip
-sudo pip install testtools
-sudo pip install testresources
-
+wget -nv http://download.cirros-cloud.net/0.3.1/cirros-0.3.2-x86_64-uec.tar.gz
