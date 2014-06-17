@@ -115,15 +115,19 @@ def convert_image(path, new_path):
     #    print >> sys.stderr, stderr
 
 
-def main_disk_create(name, size, config, img_path, boot_type="net", user_seed_yaml=None, img_uncomp_path=None):
+def main_disk_create(name="", size=0, config=None, conn=None, img_path="", boot_type="net", user_seed_yaml=None,
+                     img_uncomp_path=None, lab_id="lab1"):
     path = os.path.join(img_path, name + ".qcow2")
     size_bytes = size*1024*1024*1024
     if boot_type == "net":
         vol_xml = config["params"]["vol"]["xml"].format(name=name, size=size_bytes, path=path)
-        _, tmp_file = mkstemp(prefix="disk_vol_")
-        with open(tmp_file, "w") as f:
-            f.write(vol_xml)
-        run_cmd(["virsh", "vol-create",  "--pool", "default", "--file", tmp_file])
+        #_, tmp_file = mkstemp(prefix="disk_vol_")
+        #with open(tmp_file, "w") as f:
+        #    f.write(vol_xml)
+        #run_cmd(["virsh", "vol-create",  "--pool", "default-" + lab_id, "--file", tmp_file])
+        pool = conn.storagePoolLookupByName("default-" + lab_id)
+        vol = pool.createXML(vol_xml, 1)
+        #os.remove(tmp_file)
         return config["params"]["vol"]["virt_disk"].format(output_file=path)
     elif boot_type == "cloudimg":
         seed_disk = os.path.join(img_path, name + "-seed.qcow2")
@@ -260,7 +264,7 @@ def delete_all(conn=None, lab_id=None, img_path=None, conf=None):
         for net in conf['params']['networks']:
             basic_net_name = lab_id + "-" + net['name']
             net_undefine(conn, basic_net_name)
-        pool_delete(conn, lab_id + "-default")
+        pool_delete(conn, "default-" + lab_id)
 
 
 def main():
@@ -282,7 +286,8 @@ def main():
                         help='How many cpu for compute servers')
     parser.add_argument('-d', action='store', dest='img_dir', default="/opt/imgs",
                         help='Where to store all images and disks, full abs path')
-    parser.add_argument('-z', action='store', dest='ubuntu_img_dir', default="/opt/iso",
+    parser.add_argument('-z', action='store', dest='ubuntu_img_dir',
+                        default="/opt/iso/trusty-server-cloudimg-amd64-disk1.img",
                         help='Where to find downloaded cloud image, full abs path')
     parser.add_argument('-o', action='store_true', dest='aio_mode', default=False,
                         help='Create only "all in one" setup')
@@ -415,10 +420,12 @@ def main():
         disk = main_disk_create(name=aio["name"],
                                 size=10,  # in GB
                                 config=conf,
+                                conn=conn,
                                 boot_type=opts.boot,
                                 img_path=img_path,
                                 user_seed_yaml=yaml_config,
-                                img_uncomp_path=new_img_path)
+                                img_uncomp_path=new_img_path,
+                                lab_id=lab_id)
         vm_xml = conf["params"]["aio-server"]["xml"].format(
             name=aio["name"],
             ram=8*1024*1024,
@@ -445,6 +452,7 @@ def main():
             "aio": {
                 "ip": aio["ip"],
                 "mac": aio["mac"],
+                "vm_name": aio["name"],
                 "user": "root",
                 "password": "ubuntu",
                 "external_interface": eth_external,
@@ -467,10 +475,12 @@ def main():
     disk = main_disk_create(name=build["name"],
                             size=10,  # in GB
                             config=conf,
-                            boot_type=opts.boot,
+                            conn=conn,
+                            boot_type="cloudimg",
                             img_path=img_path,
                             user_seed_yaml=yaml_config,
-                            img_uncomp_path=new_img_path)
+                            img_uncomp_path=new_img_path,
+                            lab_id=lab_id)
     vm_xml = conf["params"]["build-server"]["xml"].format(
         name=lab_boxes["build-server"][0]["name"],
         ram=8*1024*1024,
@@ -490,6 +500,7 @@ def main():
             "ip": build["ip"],
             "mac": build["mac"],
             "hostname": build["hostname"],
+            "vm_name": build["name"],
             "user": "root",
             "password": "ubuntu",
             "default_interface": "eth1",
@@ -509,10 +520,12 @@ def main():
         disk = main_disk_create(name=compute["name"],
                                 size=10,  # in GB
                                 config=conf,
+                                conn=conn,
                                 boot_type=opts.boot,
                                 img_path=img_path,
                                 user_seed_yaml=yaml_config,
-                                img_uncomp_path=new_img_path)
+                                img_uncomp_path=new_img_path,
+                                lab_id=lab_id)
         vm_xml = conf["params"]["compute-server"]["xml"].format(
             name=compute["name"],
             ram=4*1024*1024,
@@ -531,6 +544,7 @@ def main():
             "ip": compute["ip"],
             "mac": compute["mac"],
             "hostname": compute["hostname"],
+            "vm_name": compute["name"],
             "user": "root",
             "password": "ubuntu",
             "admin_interface": "eth1",
@@ -546,10 +560,16 @@ def main():
 
     for control in lab_boxes["control-servers"]:
         yaml_config = create_host_seed_yaml(conf, box=control, btype="control-server")
-        disk = main_disk_create(control["name"],
-                                10, conf, boot_type=opts.boot, img_path=img_path,
+        disk = main_disk_create(
+                                name=control["name"],
+                                size=10,
+                                config=conf,
+                                conn=conn,
+                                boot_type=opts.boot,
+                                img_path=img_path,
                                 user_seed_yaml=yaml_config,
-                                img_uncomp_path=new_img_path)
+                                img_uncomp_path=new_img_path,
+                                lab_id=lab_id)
         vm_xml = conf["params"]["control-server"]["xml"].format(
             name=control["name"],
             ram=4*1024*1024,
@@ -568,6 +588,7 @@ def main():
             "ip": control["ip"],
             "mac": control["mac"],
             "hostname": control["hostname"],
+            "vm_name": control["name"],
             "user": "root",
             "password": "ubuntu",
             "admin_interface": "eth1",
