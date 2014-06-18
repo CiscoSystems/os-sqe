@@ -76,7 +76,7 @@ install-2role-cobbler:
 
 prepare-tempest:
 	@echo "$(CYAN)>>>> Preparing tempest...$(RESET)"
-	$(PYTHON) ./tools/tempest-scripts/tempest_align.py
+	$(PYTHON) ./tools/tempest-scripts/tempest_align.py -c config_file -u localadmin -p ubuntu
 	python ${WORKSPACE}/tempest/tools/install_venv.py
 	${WORKSPACE}/tempest/.venv/bin/pip install junitxml python-ceilometerclient nose testresources testtools
 	. ${WORKSPACE}/tempest/.venv/bin/activate

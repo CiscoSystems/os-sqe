@@ -69,8 +69,16 @@ def apply_aio(host, user, password, gateway, force, verb_mode, ssh_key_file):
         service nova-api restart;"""
         local('ssh {user}@{host} "{cmd}"'.format(user=user, host=host, cmd=cmd))
 
-    with settings(**job_settings), hide(*verb_mode):
-        run_func("ls")
+    else:
+        with settings(**job_settings), hide(*verb_mode):
+            append("/etc/nova/nova.conf", "default_floating_pool=public", use_sudo=use_sudo_flag)
+            run_func("service nova-api restart")
+            sed("/etc/nova/nova-compute.conf", "virt_type=kvm", "virt_type=qemu", use_sudo=use_sudo_flag)
+            run_func("service nova-compute restart")
+            sed("/etc/swift/container-server.conf", "allow_versions = false", "allow_versions = true",
+                use_sudo=use_sudo_flag)
+            run_func("swift-init container-server restart")
+
 
 
 def main():
@@ -119,15 +127,26 @@ def main():
         except IOError as e:
             print >> sys.stderr, "Not found file {file}: {exc}".format(file=opts.config_file, exc=e)
             sys.exit(1)
-        apply_multi(
-            config,
-            user=opts.user,
-            password=opts.password,
-            gateway=opts.gateway,
-            force=opts.force,
-            verb_mode=verb_mode,
-            ssh_key_file=opts.ssh_key_file
-        )
+        if "aio" in config["servers"]:
+            apply_aio(
+                host=config["servers"]["ip"],
+                user=opts.user,
+                password=opts.password,
+                gateway=opts.gateway,
+                force=opts.force,
+                verb_mode=verb_mode,
+                ssh_key_file=opts.ssh_key_file
+            )
+        else:
+            apply_multi(
+                config,
+                user=opts.user,
+                password=opts.password,
+                gateway=opts.gateway,
+                force=opts.force,
+                verb_mode=verb_mode,
+                ssh_key_file=opts.ssh_key_file
+            )
 
 if __name__ == "__main__":
     main()
