@@ -63,12 +63,12 @@ def net_undefine(conn, net_name):
     try:
         net = conn.networkLookupByName(net_name)
     except libvirtError:
-        print >> sys.stderr, "Net wans't found, nothing to delete"
+        print >> sys.stderr, "Net %s wasn't found, nothing to delete" % net_name
         return
     try:
         net.destroy()
     except libvirtError:
-        print >> sys.stderr, "Net wans't active, nothing to delete"
+        print >> sys.stderr, "Net %s wasn't active, nothing to delete" % net_name
         return
     net.undefine()
 
@@ -151,6 +151,10 @@ def findvm(conn, name):
     return [i.name() for i in conn.listAllDomains() if name in i.name()]
 
 
+def findnet(conn, name):
+    return [i.name() for i in conn.listAllNetworks() if name in i.name()]
+
+
 def delete_vm(conn, name):
     try:
         vm = conn.lookupByName(name)
@@ -165,10 +169,16 @@ def delete_vm(conn, name):
     print >> sys.stderr, "Domain {name} deleted".format(name=name)
 
 
-def remove_all_imgs(img_path, lab_id):
-    if os.path.exists(img_path):
-        for i in [j for j in os.listdir(img_path) if lab_id in j]:
-            os.remove(os.path.join(img_path, i))
+def remove_all_imgs(lab_img_path):
+    if os.path.exists(lab_img_path):
+        for i in os.listdir(lab_img_path):
+            os.remove(os.path.join(lab_img_path, i))
+    else:
+        try:
+            os.mkdir(lab_img_path)
+        except Exception as e:
+            print "Can't create directory for images '%s'\nException:" % lab_img_path, e
+            sys.exit(1)
 
 
 def create_seed_yaml(config, box=None):
@@ -256,18 +266,17 @@ def create_host_seed_yaml(config, box, btype):
     return yaml.dump(user_seed_yaml)
 
 
-def delete_all(conn=None, lab_id=None, img_path=None, conf=None):
-    if img_path:
-        remove_all_imgs(img_path, lab_id)
+def delete_all(conn=None, lab_id=None, lab_img_path=None, conf=None):
+    if lab_img_path:
+        remove_all_imgs(lab_img_path)
     if conf:
-        for i in [j for j in conf['params'] if "server" in j]:
-            basic_name = lab_id + "-"
-            vms = findvm(conn, basic_name)
-            for vm_name in vms:
-                delete_vm(conn, vm_name)
-        for net in conf['params']['networks']:
-            basic_net_name = lab_id + "-" + net['name']
-            net_undefine(conn, basic_net_name)
+        basic_name = lab_id + "-"
+        vms = findvm(conn, basic_name)
+        for vm_name in vms:
+            delete_vm(conn, vm_name)
+        nets = findnet(conn, basic_name)
+        for net in nets:
+            net_undefine(conn, net)
         pool_delete(conn, "default-" + lab_id)
 
 
@@ -306,6 +315,7 @@ def main():
     lab_id = opts.labid
     compute_cpus = opts.cpus
     img_path = opts.img_dir
+    lab_img_path = os.path.join(img_path, lab_id)
     ubuntu_img_path = opts.ubuntu_img_dir
     aio_mode = opts.aio_mode
     conn = libvirt.open('qemu+ssh://{user}@{host}/system'.format(user=user, host=host))
@@ -315,13 +325,13 @@ def main():
     with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "templates", "env.yaml")) as f:
         env = yaml.load(f)
 
-    if opts.undefine_all:
-        if opts.labid:
-            delete_all(conn=conn, lab_id=lab_id, img_path=img_path, conf=conf)
+    if opts.labid:
+        delete_all(conn=conn, lab_id=lab_id, lab_img_path=lab_img_path, conf=conf)
+        if opts.undefine_all:
             return
-        else:
-            print >> sys.stderr, "Please provide lab id"
-            sys.exit(1)
+    else:
+        print >> sys.stderr, "Please provide lab id"
+        sys.exit(1)
 
     ip_start = env[lab_id]['ip_start']
     net_start = env[lab_id]['net_start']
@@ -399,20 +409,19 @@ def main():
             "mac": mac})
 
     for net in networks:
-        net_undefine(conn, net['name'])
         net_xml = net['xml'].format(name=net['name'], net_ip=net["net-ip"], dhcp_records=dhcp_records)
         net_create(conn, net_xml)
 
     ############ BOXES ############
-    remove_all_imgs(img_path, lab_id)
+    remove_all_imgs(lab_img_path)
     pool_name = "default-" + lab_id
     if opts.boot == "net":
         if pool_found(conn, pool_name):
             pool_delete(conn, pool_name)
         pool_create(conn, conf['params']['pool']['xml'].format(
-            name=pool_name, path=img_path))
+            name=pool_name, path=lab_img_path))
 
-    new_img_path = os.path.join(img_path, lab_id + "-backing.img")
+    new_img_path = os.path.join(lab_img_path, lab_id + "-backing.img")
     convert_image(ubuntu_img_path, new_img_path)
     final_result = {"servers": None}
 
@@ -426,7 +435,7 @@ def main():
                                 config=conf,
                                 conn=conn,
                                 boot_type=opts.boot,
-                                img_path=img_path,
+                                img_path=lab_img_path,
                                 user_seed_yaml=yaml_config,
                                 img_uncomp_path=new_img_path,
                                 lab_id=lab_id)
@@ -440,7 +449,6 @@ def main():
             net_admin_name=conf["params"]["networks"][1]["name"],
             net_external_name=conf["params"]["networks"][4]["name"],
         )
-        delete_vm(conn, aio["name"])
         create_vm(conn, vm_xml)
         conn.close()
         eth_default = re.search("(eth\d+)",
@@ -481,7 +489,7 @@ def main():
                             config=conf,
                             conn=conn,
                             boot_type="cloudimg",
-                            img_path=img_path,
+                            img_path=lab_img_path,
                             user_seed_yaml=yaml_config,
                             img_uncomp_path=new_img_path,
                             lab_id=lab_id)
@@ -494,7 +502,6 @@ def main():
         net_admin_name=conf["params"]["networks"][1]["name"],
         net_external_name=conf["params"]["networks"][4]["name"],
     )
-    delete_vm(conn, lab_boxes["build-server"][0]["name"])
     create_vm(conn, vm_xml)
     eth_external = re.search("(eth\d+)",
                                  [z for z in conf_yaml["write_files"]
@@ -526,7 +533,7 @@ def main():
                                 config=conf,
                                 conn=conn,
                                 boot_type=opts.boot,
-                                img_path=img_path,
+                                img_path=lab_img_path,
                                 user_seed_yaml=yaml_config,
                                 img_uncomp_path=new_img_path,
                                 lab_id=lab_id)
@@ -542,7 +549,6 @@ def main():
             net_internal_name=conf["params"]["networks"][3]["name"],
             net_external_name=conf["params"]["networks"][4]["name"],
         )
-        delete_vm(conn, compute["name"])
         create_vm(conn, vm_xml)
         compute_box_config = {
             "ip": compute["ip"],
@@ -570,7 +576,7 @@ def main():
                                 config=conf,
                                 conn=conn,
                                 boot_type=opts.boot,
-                                img_path=img_path,
+                                img_path=lab_img_path,
                                 user_seed_yaml=yaml_config,
                                 img_uncomp_path=new_img_path,
                                 lab_id=lab_id)
@@ -586,7 +592,6 @@ def main():
             net_internal_name=conf["params"]["networks"][3]["name"],
             net_external_name=conf["params"]["networks"][4]["name"],
         )
-        delete_vm(conn, control["name"])
         create_vm(conn, vm_xml)
         control_box_config = {
             "ip": control["ip"],
@@ -605,9 +610,6 @@ def main():
         else:
             final_result["servers"]["control-servers"] = [control_box_config]
         print >> sys.stderr, "Created control-server", control["name"], "with ip", control["ip"]
-    #boxes = conn.listAllDomains()
-    #for b in boxes:
-    #    print b.name()
     print yaml.dump(final_result)
     conn.close()
 
