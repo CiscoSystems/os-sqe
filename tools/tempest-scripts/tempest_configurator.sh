@@ -46,4 +46,4 @@ nid=$(neutron net-list | grep " public " |  awk {'print $2'})
 neutron router-gateway-set router1 $nid
 
 cd /tmp
-wget -nv http://download.cirros-cloud.net/0.3.1/cirros-0.3.2-x86_64-uec.tar.gz
+wget -nv http://download.cirros-cloud.net/0.3.2/cirros-0.3.2-x86_64-uec.tar.gz
