@@ -147,6 +147,10 @@ def create_vm(conn, xml):
     return vm
 
 
+def findvm(conn, name):
+    return [i.name() for i in conn.listAllDomains() if name in i.name()]
+
+
 def delete_vm(conn, name):
     try:
         vm = conn.lookupByName(name)
@@ -257,10 +261,10 @@ def delete_all(conn=None, lab_id=None, img_path=None, conf=None):
         remove_all_imgs(img_path, lab_id)
     if conf:
         for i in [j for j in conf['params'] if "server" in j]:
-            basic_name = lab_id + "-" + i.split(".")[0]
-            delete_vm(conn, basic_name)
-            for num in xrange(10):
-                delete_vm(conn, basic_name + "%.2d" % num)
+            basic_name = lab_id + "-"
+            vms = findvm(conn, basic_name)
+            for vm_name in vms:
+                delete_vm(conn, vm_name)
         for net in conf['params']['networks']:
             basic_net_name = lab_id + "-" + net['name']
             net_undefine(conn, basic_net_name)
