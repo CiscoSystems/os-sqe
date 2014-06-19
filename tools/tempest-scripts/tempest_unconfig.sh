@@ -15,6 +15,8 @@ keystone tenant-delete alt_demo
 echo "deleting all users demo ...."
 keystone user-delete demo
 keystone user-delete alt_demo
+echo "clearing floating IPs from routers ...."
+for ip in $(neutron floatingip-list | grep -E "192.168|10.10" | awk {'print $2'}); do neutron floatingip-delete $ip; done
 echo "clearing gateway from routers ...."
 neutron router-list | grep " router1 " | awk {'print $2'} | xargs neutron router-gateway-clear
 pslist=$(neutron port-list | grep subnet | awk {'print $2'})
