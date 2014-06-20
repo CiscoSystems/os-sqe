@@ -18,6 +18,7 @@ DOMAIN_NAME = "domain.name"
 ip_re = re.compile("\d+\.\d+\.\d+\.\d+")
 APPLY_LIMIT = 3
 
+
 def change_ip_to(string, ip):
     return ip_re.sub(ip, string)
 
@@ -122,7 +123,6 @@ def fullha_common(config, common_file):
     return yaml.dump(conf)
 
 
-
 def prepare_cobbler(config, cob_file):
     """
         Function creates cobbler configuration
@@ -179,19 +179,19 @@ def role_mappings(config):
         "swift-storage01": "swift_storage",
         "swift-storage02": "swift_storage",
         "swift-storage03": "swift_storage"
-        })
+    })
 
     return yaml.dump(roles)
 
 
-def run_services(conf,
+def run_services(host,
                  settings_dict,
                  envs=None,
                  verbose=None,):
     """
         Install OS with COI on control and compute servers
 
-    :param conf: configuration of lab boxes
+    :param host: configuration of current lab box
     :param settings_dict: settings dictionary for Fabric
     :param envs: environment variables to inject when executing job
     :param verbose: if to hide all output or print everything
@@ -202,7 +202,7 @@ def run_services(conf,
         run_func = sudo
     else:
         run_func = run
-    print >> sys.stderr, "FABRIC connecting to", settings_dict["host_string"], settings_dict["hostname"],
+    print >> sys.stderr, "FABRIC connecting to", settings_dict["host_string"], host["hostname"]
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         with cd("/root/"):
             update_time(run_func)
@@ -277,7 +277,6 @@ def install_openstack(settings_dict,
                     run_func('git checkout i.0')
                 with cd("/root/puppet_openstack_builder/install-scripts"):
                     warn_if_fail(run_func("./install.sh"))
-
                 roles_file = role_mappings(config)
                 fd = StringIO()
                 warn_if_fail(get("/etc/puppet/data/hiera_data/user.common.yaml", fd))
@@ -464,9 +463,9 @@ def main():
         verb_mode = []
     if not opts.config_file:
         envs_build = {
-                      "vendor": "cisco",
-                      "scenario": "full_ha",
-                      "build_server_ip": opts.build_server_ip
+            "vendor": "cisco",
+            "scenario": "full_ha",
+            "build_server_ip": opts.build_server_ip
         }
         hosts = opts.hosts
         user = opts.user
@@ -485,9 +484,9 @@ def main():
         user = build["user"]
         password = build["password"]
         envs_build = {
-                      "vendor": "cisco",
-                      "scenario": "full_ha",
-                      "build_server_ip": build["ip"]
+            "vendor": "cisco",
+            "scenario": "full_ha",
+            "build_server_ip": build["ip"]
         }
         ssh_key_file = opts.ssh_key_file
 
