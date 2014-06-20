@@ -60,10 +60,6 @@ params:
       runcmd:
          - ifdown
          - hostname
-         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
-         #- "export default_interface=eth1"
-         #- "export external_interface=eth4"
-         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
   build-server:
     xml: |
       <domain type='kvm'>
@@ -126,10 +122,6 @@ params:
       runcmd:
          - ifdown
          - hostname
-         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
-         #- "export default_interface=eth1"
-         #- "export external_interface=eth4"
-         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
   control-server:
     xml: |
       <domain type='kvm'>
@@ -197,10 +189,6 @@ params:
       runcmd:
          - ifdown
          - hostname
-         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
-         #- "export default_interface=eth1"
-         #- "export external_interface=eth4"
-         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
   compute-server:
     xml: |
       <domain type='kvm'>
@@ -269,10 +257,189 @@ params:
       runcmd:
          - ifdown
          - hostname
-         #- "git clone https://gist.github.com/9836426.git /root/install_icehouse_cisco"
-         #- "export default_interface=eth1"
-         #- "export external_interface=eth4"
-         #- "sh /root/install_icehouse_cisco/install_icehouse_cisco.sh | tee /root/install.log"
+  swift-storage:
+    xml: |
+      <domain type='kvm'>
+      <name>{name}</name>
+      <memory unit='KiB'>{ram}</memory>
+      <currentMemory unit='KiB'>{ram}</currentMemory>
+      <vcpu placement='static'>1</vcpu>
+      <os>
+        <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+        <boot dev='hd'/>
+        <boot dev='network'/>
+      </os>
+      <features>
+        <acpi/>
+        <apic/>
+        <pae/>
+      </features>
+      <on_poweroff>destroy</on_poweroff>
+      <on_reboot>restart</on_reboot>
+      <on_crash>restart</on_crash>
+      <pm>
+        <suspend-to-mem enabled='no'/>
+        <suspend-to-disk enabled='no'/>
+      </pm>
+      <devices>
+        <emulator>/usr/bin/kvm</emulator>
+        {disk}
+        <interface type='network'>
+          <source network='{net_boot_name}'/>
+          <mac address='{mac}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_admin_name}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_internal_name}'/>
+        </interface>
+        <input type='mouse' bus='ps2'/>
+        <graphics type='vnc' port='-1' autoport='yes'/>
+      </devices>
+      </domain>
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+      #packages:
+      #   - git
+      #   - python-pip
+
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+      runcmd:
+         - ifdown
+         - hostname
+  swift-proxy:
+    xml: |
+      <domain type='kvm'>
+      <name>{name}</name>
+      <memory unit='KiB'>{ram}</memory>
+      <currentMemory unit='KiB'>{ram}</currentMemory>
+      <vcpu placement='static'>{compute_server_cpu}</vcpu>
+      <os>
+        <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+        <boot dev='hd'/>
+        <boot dev='network'/>
+      </os>
+      <features>
+        <acpi/>
+        <apic/>
+        <pae/>
+      </features>
+      <on_poweroff>destroy</on_poweroff>
+      <on_reboot>restart</on_reboot>
+      <on_crash>restart</on_crash>
+      <pm>
+        <suspend-to-mem enabled='no'/>
+        <suspend-to-disk enabled='no'/>
+      </pm>
+      <devices>
+        <emulator>/usr/bin/kvm</emulator>
+        {disk}
+        <interface type='network'>
+          <source network='{net_boot_name}'/>
+          <mac address='{mac}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_admin_name}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_internal_name}'/>
+        </interface>
+        <input type='mouse' bus='ps2'/>
+        <graphics type='vnc' port='-1' autoport='yes'/>
+      </devices>
+      </domain>
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+      #packages:
+      #   - git
+      #   - python-pip
+
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+      runcmd:
+         - ifdown
+         - hostname
+  load-balancer:
+    xml: |
+      <domain type='kvm'>
+      <name>{name}</name>
+      <memory unit='KiB'>{ram}</memory>
+      <currentMemory unit='KiB'>{ram}</currentMemory>
+      <vcpu placement='static'>{compute_server_cpu}</vcpu>
+      <os>
+        <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+        <boot dev='hd'/>
+        <boot dev='network'/>
+      </os>
+      <features>
+        <acpi/>
+        <apic/>
+        <pae/>
+      </features>
+      <on_poweroff>destroy</on_poweroff>
+      <on_reboot>restart</on_reboot>
+      <on_crash>restart</on_crash>
+      <pm>
+        <suspend-to-mem enabled='no'/>
+        <suspend-to-disk enabled='no'/>
+      </pm>
+      <devices>
+        <emulator>/usr/bin/kvm</emulator>
+        {disk}
+        <interface type='network'>
+          <source network='{net_boot_name}'/>
+          <mac address='{mac}'/>
+        </interface>
+        <interface type='network'>
+          <source network='{net_admin_name}'/>
+        </interface>
+        <input type='mouse' bus='ps2'/>
+        <graphics type='vnc' port='-1' autoport='yes'/>
+      </devices>
+      </domain>
+    user-yaml: |
+      #cloud-config
+      users:
+       - default
+       - name: localadmin
+         lock-passwd: false
+         sudo: ALL=(ALL) NOPASSWD:ALL
+         # ubuntu
+         shell: /bin/bash
+         passwd:
+         ssh-authorized-keys:
+      #packages:
+      #   - git
+      #   - python-pip
+
+      write_files:
+        - content:
+          path: /root/.ssh/authorized_keys
+      runcmd:
+         - ifdown
+         - hostname
   networks:
     - role: boot
       name: net-boot

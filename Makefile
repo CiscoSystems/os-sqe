@@ -58,6 +58,17 @@ prepare-2role-cobbler:
 	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
 	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b net -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
 
+prepare-fullha:
+	@echo "$(CYAN)>>>> Preparing full HA boxes...$(RESET)"
+	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
+	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -s -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
+
+prepare-fullha-cobbler:
+	@echo "$(CYAN)>>>> Preparing full HA boxes for cobbler...$(RESET)"
+	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
+	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -s -b net -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
+
+
 give-a-time:
 	sleep 180
 
@@ -73,6 +84,13 @@ install-2role-cobbler:
 	@echo "$(CYAN)>>>> Installing 2_role multinode with cobbler...$(RESET)"
 	$(PYTHON) ./tools/deployers/install_aio_2role.py -e -c config_file
 
+install-fullha:
+	@echo "$(CYAN)>>>> Installing full HA setup...$(RESET)"
+	$(PYTHON) ./tools/deployers/install_fullha.py -c config_file
+
+install-fullha-cobbler:
+	@echo "$(CYAN)>>>> Installing full HA setup with cobbler...$(RESET)"
+	$(PYTHON) ./tools/deployers/install_fullha.py -e -c config_file
 
 prepare-tempest:
 	@echo "$(CYAN)>>>> Preparing tempest...$(RESET)"
@@ -100,6 +118,10 @@ aio: init prepare-aio give-a-time install-aio
 2role: init prepare-2role give-a-time install-2role
 
 2role-cobbler: init prepare-2role-cobbler give-a-time install-2role-cobbler
+
+fullha: init prepare-fullha give-a-time install-fullha
+
+fullha-cobbler: init prepare-fullha-cobbler give-a-time install-fullha-cobbler
 
 run-tempest: prepare-tempest run-tests
 

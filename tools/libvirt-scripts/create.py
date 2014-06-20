@@ -304,20 +304,27 @@ def main():
                         help='Where to find downloaded cloud image, full abs path')
     parser.add_argument('-o', action='store_true', dest='aio_mode', default=False,
                         help='Create only "all in one" setup')
+    parser.add_argument('-s', action='store_true', dest='ha_mode', default=False,
+                        help='Create full HA setup')
     parser.add_argument('-x', action='store_true', dest='undefine_all', default=False,
                         help='Undefine everything with this lab_id')
 
     opts = parser.parse_args()
     user = opts.user
     host = opts.host
-    control_servers_len = opts.controls
-    compute_servers_len = opts.computes
     lab_id = opts.labid
     compute_cpus = opts.cpus
     img_path = opts.img_dir
     lab_img_path = os.path.join(img_path, lab_id)
     ubuntu_img_path = opts.ubuntu_img_dir
     aio_mode = opts.aio_mode
+    ha_mode = opts.ha_mode
+    if ha_mode:
+        control_servers_len = 3
+        compute_servers_len = 3
+    else:
+        control_servers_len = opts.controls
+        compute_servers_len = opts.computes
     conn = libvirt.open('qemu+ssh://{user}@{host}/system'.format(user=user, host=host))
 
     with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "templates", "box.yaml")) as f:
@@ -340,11 +347,23 @@ def main():
             "aio-servers": [],
         }
         control_servers_len = compute_servers_len = 0
+    elif ha_mode:
+        lab_boxes = {
+            "compute-servers": [],
+            "build-server": [],
+            "control-servers": [],
+            "swift-proxy": [],
+            "swift-storage": [],
+            "load-balancer": []
+        }
     else:
         lab_boxes = {
             "compute-servers": [],
             "build-server": [],
             "control-servers": [],
+            "swift-proxy": [],
+            "swift-storage": [],
+            "load-balancer": []
         }
 
     ######### NETWORKS
@@ -407,6 +426,52 @@ def main():
             "name": lab_id + "-compute-server%.2d" % i,
             "ip": ip,
             "mac": mac})
+    ip_start += compute_servers_len
+
+    if ha_mode:
+        swsto = 3
+        swpro = 2
+        lb = 2
+        for i in xrange(swsto):
+            mac = rand_mac()
+            ip = networks[0]["net-ip"] + "." + str(ip_start + i + 1)
+            dhcp_records += "\n" + dhcp_hostline.format(
+                server_mac=mac,
+                server_name="swift-storage%.2d" % i,
+                server_ip=ip)
+            lab_boxes["swift-storage"].append({
+                "hostname": "swift-storage%.2d" % i,
+                "name": lab_id + "-swift-storage%.2d" % i,
+                "ip": ip,
+                "mac": mac})
+        ip_start += swsto
+        for i in xrange(swpro):
+            mac = rand_mac()
+            ip = networks[0]["net-ip"] + "." + str(ip_start + i + 1)
+            dhcp_records += "\n" + dhcp_hostline.format(
+                server_mac=mac,
+                server_name="swift-proxy%.2d" % i,
+                server_ip=ip)
+            lab_boxes["swift-proxy"].append({
+                "hostname": "swift-proxy%.2d" % i,
+                "name": lab_id + "-swift-proxy%.2d" % i,
+                "ip": ip,
+                "mac": mac})
+        ip_start += swpro
+        for i in xrange(lb):
+            mac = rand_mac()
+            ip = networks[0]["net-ip"] + "." + str(ip_start + i + 1)
+            dhcp_records += "\n" + dhcp_hostline.format(
+                server_mac=mac,
+                server_name="load-balancer%.2d" % i,
+                server_ip=ip)
+            lab_boxes["load-balancer"].append({
+                "hostname": "load-balancer%.2d" % i,
+                "name": lab_id + "-load-balancer%.2d" % i,
+                "ip": ip,
+                "mac": mac})
+        ip_start += lb
+
 
     for net in networks:
         net_xml = net['xml'].format(name=net['name'], net_ip=net["net-ip"], dhcp_records=dhcp_records)
@@ -610,6 +675,122 @@ def main():
         else:
             final_result["servers"]["control-servers"] = [control_box_config]
         print >> sys.stderr, "Created control-server", control["name"], "with ip", control["ip"]
+
+    for swsto in lab_boxes["swift-storage"]:
+        yaml_config = create_host_seed_yaml(conf, box=swsto, btype="swift-storage")
+        disk = main_disk_create(
+                                name=swsto["name"],
+                                size=10,
+                                config=conf,
+                                conn=conn,
+                                boot_type=opts.boot,
+                                img_path=lab_img_path,
+                                user_seed_yaml=yaml_config,
+                                img_uncomp_path=new_img_path,
+                                lab_id=lab_id)
+        vm_xml = conf["params"]["swift-storage"]["xml"].format(
+            name=swsto["name"],
+            ram=4*1024*1024,
+            disk=disk,
+            compute_server_cpu=compute_cpus,
+            net_boot_name=conf["params"]["networks"][0]["name"],
+            mac=swsto["mac"],
+            net_admin_name=conf["params"]["networks"][1]["name"],
+            net_internal_name=conf["params"]["networks"][3]["name"],
+        )
+        create_vm(conn, vm_xml)
+        box_config = {
+            "ip": swsto["ip"],
+            "mac": swsto["mac"],
+            "hostname": swsto["hostname"],
+            "vm_name": swsto["name"],
+            "user": "root",
+            "password": "ubuntu",
+            "admin_interface": "eth1",
+            "internal_interface": "eth2",
+        }
+        if "swift-storage" in final_result["servers"]:
+            final_result["servers"]["swift-storage"].append(box_config)
+        else:
+            final_result["servers"]["swift-storage"] = [box_config]
+        print >> sys.stderr, "Created swift-storage", swsto["name"], "with ip", swsto["ip"]
+
+    for swpro in lab_boxes["swift-proxy"]:
+        yaml_config = create_host_seed_yaml(conf, box=swpro, btype="swift-proxy")
+        disk = main_disk_create(
+                                name=swpro["name"],
+                                size=10,
+                                config=conf,
+                                conn=conn,
+                                boot_type=opts.boot,
+                                img_path=lab_img_path,
+                                user_seed_yaml=yaml_config,
+                                img_uncomp_path=new_img_path,
+                                lab_id=lab_id)
+        vm_xml = conf["params"]["swift-proxy"]["xml"].format(
+            name=swpro["name"],
+            ram=4*1024*1024,
+            disk=disk,
+            compute_server_cpu=compute_cpus,
+            net_boot_name=conf["params"]["networks"][0]["name"],
+            mac=swpro["mac"],
+            net_admin_name=conf["params"]["networks"][1]["name"],
+            net_internal_name=conf["params"]["networks"][3]["name"],
+        )
+        create_vm(conn, vm_xml)
+        box_config = {
+            "ip": swpro["ip"],
+            "mac": swpro["mac"],
+            "hostname": swpro["hostname"],
+            "vm_name": swpro["name"],
+            "user": "root",
+            "password": "ubuntu",
+            "admin_interface": "eth1",
+            "internal_interface": "eth2",
+        }
+        if "swift-proxy" in final_result["servers"]:
+            final_result["servers"]["swift-proxy"].append(box_config)
+        else:
+            final_result["servers"]["swift-proxy"] = [box_config]
+        print >> sys.stderr, "Created swift-proxy", swpro["name"], "with ip", swpro["ip"]
+
+    for lb in lab_boxes["load-balancer"]:
+        yaml_config = create_host_seed_yaml(conf, box=lb, btype="load-balancer")
+        disk = main_disk_create(
+                                name=lb["name"],
+                                size=10,
+                                config=conf,
+                                conn=conn,
+                                boot_type=opts.boot,
+                                img_path=lab_img_path,
+                                user_seed_yaml=yaml_config,
+                                img_uncomp_path=new_img_path,
+                                lab_id=lab_id)
+        vm_xml = conf["params"]["load-balancer"]["xml"].format(
+            name=lb["name"],
+            ram=4*1024*1024,
+            disk=disk,
+            compute_server_cpu=compute_cpus,
+            net_boot_name=conf["params"]["networks"][0]["name"],
+            mac=lb["mac"],
+            net_admin_name=conf["params"]["networks"][1]["name"],
+        )
+        create_vm(conn, vm_xml)
+        box_config = {
+            "ip": lb["ip"],
+            "mac": lb["mac"],
+            "hostname": lb["hostname"],
+            "vm_name": lb["name"],
+            "user": "root",
+            "password": "ubuntu",
+            "admin_interface": "eth1",
+        }
+        if "load-balancer" in final_result["servers"]:
+            final_result["servers"]["load-balancer"].append(box_config)
+        else:
+            final_result["servers"]["load-balancer"] = [box_config]
+        print >> sys.stderr, "Created load-balancer", lb["name"], "with ip", lb["ip"]
+
     print yaml.dump(final_result)
     conn.close()
 
