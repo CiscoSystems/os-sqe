@@ -10,6 +10,15 @@ local=en_US \
 log_host=172.29.74.151 \
 netcfg/choose_interface=auto"
 
+profile:
+  name: "precise"
+  arch: "x86_64"
+  kopts: "log_port=514 \
+priority=critical \
+local=en_US \
+log_host=172.29.74.151 \
+netcfg/choose_interface=auto"
+
 node-global:
   #power_type should be ipmilan for CIMC, or cisco_ucs for UCS-M
   power_type: "ipmilan"

@@ -140,20 +140,6 @@ def prepare_cobbler(config, cob_file):
         ip_gateway=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1",
         ip_dns=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1"
     )
-
-    text_cobbler += '''
-
-profile:
-  name: "precise"
-  arch: "x86_64"
-  kopts: "log_port=514 \\
-priority=critical \\
-local=en_US \\
-log_host=172.29.74.151 \\
-netcfg/choose_interface=auto"
-
-        '''
-
     servers = config['servers']['control-servers'] + \
         config["servers"]["compute-servers"] + \
         config["servers"]["swift-storage"] + \
