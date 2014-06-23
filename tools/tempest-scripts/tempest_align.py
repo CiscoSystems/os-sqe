@@ -2,9 +2,9 @@ import argparse
 import yaml
 import sys
 
-from fabric.api import sudo, settings, run, hide, local, put, shell_env, cd, get
-from fabric.contrib.files import sed, exists, contains, append
-from fabric.colors import green, red, yellow
+from fabric.api import sudo, settings, run, hide, local
+from fabric.contrib.files import sed, append
+
 
 __author__ = 'sshnaidm'
 
@@ -15,8 +15,10 @@ def apply_multi(config, user, password, gateway, force, verb_mode, ssh_key_file)
         setts["host_string"] = box["ip"]
         print >> sys.stderr, "Configuring control machine", setts
         with settings(**setts), hide(*verbose):
-            append("/etc/nova/nova.conf", "default_floating_pool=public", use_sudo=use_sudo_flag)
+            run_func("sed -i '2idefault_floating_pool=public' /etc/nova/nova.conf")
             run_func("service nova-api restart")
+            run_func("nova floating-ip-create")
+
 
     def run_on_compute(box, setts, verbose, run_func, use_sudo_flag):
         setts["host_string"] = box["ip"]
@@ -40,9 +42,9 @@ def apply_multi(config, user, password, gateway, force, verb_mode, ssh_key_file)
         use_sudo_flag = False
         run_func = run
 
-    for control in config["servers"]["control-servers"]:
+    for control in config['servers']["control-servers"]:
         run_on_control(control, job_settings, verb_mode, run_func, use_sudo_flag)
-    for compute in config["servers"]["compute-servers"]:
+    for compute in config['servers']["compute-servers"]:
         run_on_compute(compute, job_settings, verb_mode, run_func, use_sudo_flag)
 
 
@@ -129,7 +131,7 @@ def main():
             sys.exit(1)
         if "aio" in config["servers"]:
             apply_aio(
-                host=config["servers"]["aio"]["ip"],
+                host=config["servers"]["ip"],
                 user=opts.user,
                 password=opts.password,
                 gateway=opts.gateway,
