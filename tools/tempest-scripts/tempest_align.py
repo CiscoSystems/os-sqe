@@ -5,7 +5,6 @@ import sys
 from fabric.api import sudo, settings, run, hide, local
 from fabric.contrib.files import sed, append
 
-
 __author__ = 'sshnaidm'
 
 
@@ -73,8 +72,9 @@ def apply_aio(host, user, password, gateway, force, verb_mode, ssh_key_file):
 
     else:
         with settings(**job_settings), hide(*verb_mode):
-            append("/etc/nova/nova.conf", "default_floating_pool=public", use_sudo=use_sudo_flag)
+            run_func("sed -i '2idefault_floating_pool=public' /etc/nova/nova.conf")
             run_func("service nova-api restart")
+            run_func("nova floating-ip-create")
             sed("/etc/nova/nova-compute.conf", "virt_type=kvm", "virt_type=qemu", use_sudo=use_sudo_flag)
             run_func("service nova-compute restart")
             sed("/etc/swift/container-server.conf", "allow_versions = false", "allow_versions = true",
@@ -129,9 +129,9 @@ def main():
         except IOError as e:
             print >> sys.stderr, "Not found file {file}: {exc}".format(file=opts.config_file, exc=e)
             sys.exit(1)
-        if "aio" in config['servers']:
+        if "aio" in config["servers"]:
             apply_aio(
-                host=config['servers']["aio"]["ip"],
+                host=config["servers"]["ip"],
                 user=opts.user,
                 password=opts.password,
                 gateway=opts.gateway,
