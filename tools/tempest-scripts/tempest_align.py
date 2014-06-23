@@ -129,9 +129,9 @@ def main():
         except IOError as e:
             print >> sys.stderr, "Not found file {file}: {exc}".format(file=opts.config_file, exc=e)
             sys.exit(1)
-        if "aio" in config["servers"]:
+        if "aio" in config['servers']:
             apply_aio(
-                host=config["servers"]["ip"],
+                host=config['servers']["aio"]["ip"],
                 user=opts.user,
                 password=opts.password,
                 gateway=opts.gateway,
