@@ -453,9 +453,23 @@ params:
               </nat>
             </forward>
             <domain name='domain.name'/>
+            <dns>
+              <host ip='{net_ip}.2'>
+                <hostname>build-server</hostname>
+                <hostname>build-server.domain.name</hostname>
+              </host>
+              <host ip='{net_ip}.253'>
+                <hostname>control</hostname>
+                <hostname>control.domain.name</hostname>
+              </host>
+              <host ip='{net_ip}.252'>
+                <hostname>swiftproxy</hostname>
+                <hostname>swiftproxy.domain.name</hostname>
+              </host>
+            </dns>
             <ip address='{net_ip}.1' netmask='255.255.255.0'>
               <dhcp>
-                <range start='{net_ip}.2' end='{net_ip}.254' />
+                <range start='{net_ip}.2' end='{net_ip}.250' />
                 {dhcp_records}
               </dhcp>
             </ip>
@@ -471,6 +485,14 @@ params:
               <host ip='{net_ip}.2'>
                 <hostname>build-server</hostname>
                 <hostname>build-server.domain.name</hostname>
+              </host>
+              <host ip='{net_ip}.253'>
+                <hostname>control</hostname>
+                <hostname>control.domain.name</hostname>
+              </host>
+              <host ip='{net_ip}.252'>
+                <hostname>swiftproxy</hostname>
+                <hostname>swiftproxy.domain.name</hostname>
               </host>
             </dns>
             <ip address='{net_ip}.1' netmask='255.255.255.0'>
@@ -546,6 +568,12 @@ params:
         <driver name='qemu' type='raw'/>
         <source file='{seed_disk}'/>
         <target dev='hda' bus='ide'/>
+      </disk>
+    storage_disk: |
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{output_file}'/>
+        <target dev='{target}' bus='virtio'/>
       </disk>
   hosts_template: |
     127.0.0.1 localhost

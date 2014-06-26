@@ -16,7 +16,7 @@ node-global:
   power_user: "admin"
   power_pass: "password"
   kickstart: "/etc/cobbler/preseed/cisco-preseed"
-  kopts: "netcfg/get_nameservers='{ip_dns} 172.29.74.154' \
+  kopts: "netcfg/get_nameservers={ip_dns} \
 netcfg/confirm_static=true \
 netcfg/get_ipaddress={int_ipadd} \
 netcfg/get_gateway={ip_gateway} \
