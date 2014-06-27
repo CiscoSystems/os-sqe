@@ -2,6 +2,7 @@
 import libvirt
 import argparse
 import random
+import string
 import yaml
 import os
 import re
@@ -116,19 +117,20 @@ def convert_image(path, new_path):
 
 
 def main_disk_create(name="", size=0, config=None, conn=None, img_path="", boot_type="net", user_seed_yaml=None,
-                     img_uncomp_path=None, lab_id="lab1"):
+                     img_uncomp_path=None, lab_id="lab1", storage=0):
     path = os.path.join(img_path, name + ".qcow2")
     size_bytes = size*1024*1024*1024
+    pool = conn.storagePoolLookupByName("default-" + lab_id)
     if boot_type == "net":
         vol_xml = config["params"]["vol"]["xml"].format(name=name, size=size_bytes, path=path)
         #_, tmp_file = mkstemp(prefix="disk_vol_")
         #with open(tmp_file, "w") as f:
         #    f.write(vol_xml)
         #run_cmd(["virsh", "vol-create",  "--pool", "default-" + lab_id, "--file", tmp_file])
-        pool = conn.storagePoolLookupByName("default-" + lab_id)
+
         vol = pool.createXML(vol_xml, 1)
         #os.remove(tmp_file)
-        return config["params"]["vol"]["virt_disk"].format(output_file=path)
+        disks_xml = config["params"]["vol"]["virt_disk"].format(output_file=path)
     elif boot_type == "cloudimg":
         seed_disk = os.path.join(img_path, name + "-seed.qcow2")
         #img_uncomp_path=os.path.join(IMG_PATH, "lab-backing.qcow2")
@@ -138,7 +140,22 @@ def main_disk_create(name="", size=0, config=None, conn=None, img_path="", boot_
         run_cmd(["qemu-img", "create", "-f", "qcow2", "-b", img_uncomp_path, path, "%sG" % size])
         run_cmd(["cloud-localds", seed_disk, tmp_file])
         os.remove(tmp_file)
-        return config["params"]["vol"]["cloudimg_disk"].format(output_file=path, seed_disk=seed_disk)
+        disks_xml = config["params"]["vol"]["cloudimg_disk"].format(output_file=path, seed_disk=seed_disk)
+    if storage:
+        storage_xml = ''
+        targets = ["vd" + i for i in string.ascii_lowercase[1:]]
+        for num in xrange(1, storage + 1):
+            stor_name = name + "-add%d" % num
+            disk_path = os.path.join(img_path, stor_name + ".qcow2")
+            disk_add_xml = config["params"]["vol"]["xml"].format(name=stor_name, size=size_bytes, path=disk_path)
+            vol = pool.createXML(disk_add_xml, 1)
+            storage_xml += config["params"]["vol"]["storage_disk"].format(
+                output_file=disk_path,
+                target=targets[num - 1]
+            )
+        disks_xml += storage_xml
+            #run_cmd(["qemu-img", "create", "-f", "qcow2", "-b", img_uncomp_path, path, "%sG" % size])
+    return disks_xml
 
 
 def create_vm(conn, xml):
@@ -480,11 +497,11 @@ def main():
     ############ BOXES ############
     remove_all_imgs(lab_img_path)
     pool_name = "default-" + lab_id
-    if opts.boot == "net":
-        if pool_found(conn, pool_name):
-            pool_delete(conn, pool_name)
-        pool_create(conn, conf['params']['pool']['xml'].format(
-            name=pool_name, path=lab_img_path))
+    #if opts.boot == "net":
+    if pool_found(conn, pool_name):
+        pool_delete(conn, pool_name)
+    pool_create(conn, conf['params']['pool']['xml'].format(
+        name=pool_name, path=lab_img_path))
 
     new_img_path = os.path.join(lab_img_path, lab_id + "-backing.img")
     convert_image(ubuntu_img_path, new_img_path)
@@ -591,6 +608,7 @@ def main():
             f.write(external_net_subnet)
 
     ### create other servers
+    compute_storage = 3 if ha_mode else 0
     for compute in lab_boxes["compute-servers"]:
         yaml_config = create_host_seed_yaml(conf, box=compute, btype="compute-server")
         disk = main_disk_create(name=compute["name"],
@@ -601,7 +619,8 @@ def main():
                                 img_path=lab_img_path,
                                 user_seed_yaml=yaml_config,
                                 img_uncomp_path=new_img_path,
-                                lab_id=lab_id)
+                                lab_id=lab_id,
+                                storage=compute_storage)
         vm_xml = conf["params"]["compute-server"]["xml"].format(
             name=compute["name"],
             ram=4*1024*1024,
@@ -676,6 +695,7 @@ def main():
             final_result["servers"]["control-servers"] = [control_box_config]
         print >> sys.stderr, "Created control-server", control["name"], "with ip", control["ip"]
 
+    sw_storage = 3
     for swsto in lab_boxes["swift-storage"]:
         yaml_config = create_host_seed_yaml(conf, box=swsto, btype="swift-storage")
         disk = main_disk_create(
@@ -687,7 +707,8 @@ def main():
                                 img_path=lab_img_path,
                                 user_seed_yaml=yaml_config,
                                 img_uncomp_path=new_img_path,
-                                lab_id=lab_id)
+                                lab_id=lab_id,
+                                storage=sw_storage)
         vm_xml = conf["params"]["swift-storage"]["xml"].format(
             name=swsto["name"],
             ram=4*1024*1024,

@@ -8,19 +8,49 @@ import re
 import time
 
 from fabric.api import sudo, settings, run, hide, put, shell_env, cd, get
-from fabric.contrib.files import exists, contains
+from fabric.contrib.files import exists, contains, append, sed
 from fabric.colors import green, red, yellow
 
 __author__ = 'sshnaidm'
 
+dump = lambda x: yaml.dump(x, default_flow_style=False)
 CONFIG_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../libvirt-scripts", "templates")
 DOMAIN_NAME = "domain.name"
 ip_re = re.compile("\d+\.\d+\.\d+\.\d+")
 APPLY_LIMIT = 3
+LOGS_COPY = {
+    "/etc": "etc_configs",
+    "/var/log": "all_logs",
+    "/etc/puppet": "puppet_configs",
+}
+
+
+def logs_bu(run_func=None, hostname=None, start=False):
+    dirname = "test_data"
+    if "WORKSPACE" in os.environ:
+        path = os.path.join(os.environ["WORKSPACE"], dirname)
+    else:
+        cur_dir = os.path.dirname(__file__)
+        path = os.path.join(cur_dir, dirname)
+    if not os.path.exists(path):
+        os.mkdir(path)
+    if start:
+        for i in os.listdir(path):
+            os.remove(os.path.join(path, i))
+    for dirlog in LOGS_COPY:
+        filename = LOGS_COPY[dirlog] + "_" + hostname
+        run_func("tar -zcf /tmp/{filename}.tar.gz {dirlog} 2>/dev/null".format(filename=filename, dirlog=dirlog))
+        get("/tmp/{filename}.tar.gz".format(filename=filename), path)
+        run_func("rm -rf /tmp/{filename}.tar.gz".format(filename=filename))
 
 
 def change_ip_to(string, ip):
     return ip_re.sub(ip, string)
+
+
+def all_servers(config):
+    ssum = lambda x,y: x+y if isinstance(y, list) else x + [y]
+    return reduce(ssum, config['servers'].values(), [])
 
 
 def quit_if_fail(command):
@@ -67,127 +97,181 @@ def update_time(func):
         func("/etc/init.d/ntp start")
 
 
-def fullha_spec(config, fh_file):
-    ip = ".".join((config['servers']['control-servers'][0]['ip'].split(".")[:3])) + ".253"
-    conf = yaml.load(fh_file)
-    conf["coe::base::controller_hostname"] = "control"
-    conf["horizon::keystone_url"] = change_ip_to(conf["horizon::keystone_url"], ip)
-    conf["controller_names"] = [c["hostname"] for c in config['servers']['control-servers']]
-    conf["openstack-ha::load-balancer::controller_ipaddresses"] = [c["ip"]
-                                                                   for c in config['servers']['control-servers']]
-    conf["nova::memcached_servers"] = [i["ip"] + ":11211" for i in config['servers']['control-servers']]
-    conf["rabbit_hosts"] = [i["hostname"] + ":5672" for i in config['servers']['control-servers']]
-    conf["galera::galera_master"] = config['servers']['control-servers'][0]["hostname"] + "." + DOMAIN_NAME
-    conf["galera_backup_names"] = [i["hostname"] for i in config['servers']['control-servers'][1:]]
-    conf["galera_backup_ipaddresses"] = [i["ip"] for i in config['servers']['control-servers'][1:]]
-    return yaml.dump(conf)
+def prepare_files(config, paths, use_sudo_flag):
 
+    def prepare_fullha(config, ha_file):
+        conf = yaml.load(ha_file)
+        net_ip = ".".join((config['servers']['control-servers'][0]['ip'].split(".")[:3]))
+        vipc = net_ip + ".253"
+        conf["coe::base::controller_hostname"] = "control-server"
+        conf["horizon::keystone_url"] = change_ip_to(conf["horizon::keystone_url"], vipc)
+        conf["controller_names"] = [c["hostname"] for c in config['servers']['control-servers']]
+        conf["openstack-ha::load-balancer::controller_ipaddresses"] = [c["ip"]
+                                                                       for c in config['servers']['control-servers']]
+        conf["openstack-ha::load-balancer::swift_proxy_ipaddresses"] = [c["ip"]
+                                                                       for c in config['servers']['swift-proxy']]
+        conf["openstack-ha::load-balancer::swift_proxy_names"] = [c["hostname"]
+                                                                       for c in config['servers']['swift-proxy']]
+        vipsw = net_ip + ".252"
+        conf["openstack::swift::proxy::swift_proxy_net_ip"] = vipsw
+        conf["openstack::swift::proxy::swift_memcache_servers"] = [i["ip"] + ":11211"
+                                                                   for i in config['servers']['swift-proxy']]
+        conf["nova::memcached_servers"] = [i["ip"] + ":11211" for i in config['servers']['control-servers']]
+        conf["rabbit_hosts"] = [i["hostname"] + ":5672" for i in config['servers']['control-servers']]
+        conf["galera::galera_servers"] = [c["ip"] for c in config['servers']['control-servers']]
+        conf["galera::galera_master"] = config['servers']['control-servers'][0]["hostname"] + "." + DOMAIN_NAME
+        conf["galera_master_name"] = config['servers']['control-servers'][0]["hostname"]
+        conf["galera_master_ipaddress"] = config['servers']['control-servers'][0]["ip"]
+        conf["galera_backup_names"] = [i["hostname"] for i in config['servers']['control-servers'][1:]]
+        conf["galera_backup_ipaddresses"] = [i["ip"] for i in config['servers']['control-servers'][1:]]
+        conf["openstack::swift::storage-node::storage_devices"] += ["vdb", "vdc", "vdd"]
+        return dump(conf)
 
-def fullha_common(config, common_file):
+    def prepare_common(config, common_file):
+        conf = yaml.load(common_file)
+        net_ip = ".".join((config['servers']['control-servers'][0]['ip'].split(".")[:3]))
+        vipc = net_ip + ".253"
+        conf["controller_public_address"] = vipc
+        conf["controller_admin_address"] = vipc
+        conf["controller_internal_address"] = vipc
+        conf["coe::base::controller_hostname"] = "control-server"
+        conf["domain_name"] = "domain.name"
+        conf["ntp_servers"] = ["ntp.esl.cisco.com"]
+        conf["external_interface"] = "eth4"
+        conf["nova::compute::vncserver_proxyclient_address"] = "%{ipaddress_eth0}"
+        conf["build_node_name"] = "build-server"
+        conf["controller_public_url"] = change_ip_to(
+            conf["controller_public_url"],
+            vipc)
+        conf["controller_admin_url"] = change_ip_to(
+            conf["controller_admin_url"],
+            vipc)
+        conf["controller_internal_url"] = change_ip_to(
+            conf["controller_internal_url"],
+            vipc)
+        conf["cobbler_node_ip"] = config['servers']['build-server']['ip']
+        conf["node_subnet"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".0"
+        conf["node_gateway"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".1"
+        vipsw = ".".join((config['servers']['control-servers'][0]['ip'].split(".")[:3])) + ".252"
+        conf["swift_internal_address"] = vipsw
+        conf["swift_public_address"] = vipsw
+        conf["swift_admin_address"] = vipsw
+        conf['mysql::server::override_options']['mysqld']['bind-address'] = "0.0.0.0"
+        #    config['servers']['control-servers'][0]['ip']
+        conf['swift_storage_interface'] = "eth2"
+        conf['swift_local_net_ip'] = "%{ipaddress_eth2}"
+        conf['internal_ip'] = "%{ipaddress_eth0}"
+        conf['public_interface'] = "eth0"
+        conf['private_interface'] = "eth0"
+        conf['install_drive'] = "/dev/vda"
+        conf['mon_initial_members'] = config['servers']['control-servers'][0]["hostname"]
+        conf['ceph_primary_mon'] = config['servers']['control-servers'][0]["hostname"]
+        conf['ceph_monitor_address'] = config['servers']['control-servers'][0]["ip"]
+        conf['ceph_cluster_interface'] = "eth0"
+        conf['ceph_cluster_network'] = net_ip + ".0/24"
+        conf['ceph_public_interface'] = "eth0"
+        conf['ceph_public_network'] = net_ip + ".0/24"
+        return dump(conf)
 
-    print " >>>> FABRIC "
-    print config
-    print " >>>> FABRIC "
-    print common_file
-
-    conf = yaml.load(common_file)
-
-    conf["controller_public_address"] = config['servers']['control-servers'][0]['ip']
-    conf["controller_admin_address"] = config['servers']['control-servers'][0]['ip']
-    conf["controller_internal_address"] = config['servers']['control-servers'][0]['ip']
-    conf["coe::base::controller_hostname"] = "control-server00"
-    conf["domain_name"] = "domain.name"
-    conf["ntp_servers"] = ["ntp.esl.cisco.com"]
-    conf["external_interface"] = "eth4"
-    conf["nova::compute::vncserver_proxyclient_address"] = "%{ipaddress_eth0}"
-    conf["build_node_name"] = "build-server"
-    conf["controller_public_url"] = change_ip_to(
-        conf["controller_public_url"],
-        config['servers']['control-servers'][0]['ip'])
-    conf["controller_admin_url"] = change_ip_to(
-        conf["controller_admin_url"],
-        config['servers']['control-servers'][0]['ip'])
-    conf["controller_internal_url"] = change_ip_to(
-        conf["controller_internal_url"],
-        config['servers']['control-servers'][0]['ip'])
-    conf["cobbler_node_ip"] = config['servers']['build-server']['ip']
-    conf["node_subnet"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".0"
-    conf["node_gateway"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".1"
-    conf["swift_internal_address"] = config['servers']['control-servers'][0]['ip']
-    conf["swift_public_address"] = config['servers']['control-servers'][0]['ip']
-    conf["swift_admin_address"] = config['servers']['control-servers'][0]['ip']
-    conf['mysql::server::override_options']['mysqld']['bind-address'] = config['servers']['control-servers'][0]['ip']
-    conf['internal_ip'] = "%{ipaddress_eth0}"
-    conf['public_interface'] = "eth0"
-    conf['private_interface'] = "eth0"
-    return yaml.dump(conf)
-
-
-def prepare_cobbler(config, cob_file):
-    """
-        Function creates cobbler configuration
-
-    :param config:  configuration of lab boxes
-    :param cob_file: the provided cobbler.yaml from distro
-    :return: text dump of new cobbler.yaml file
-    """
-    new_conf = {}
-    name = "trusty"
-    with open(os.path.join(CONFIG_PATH, "cobbler.yaml")) as f:
-        text_cobbler = f.read()
-    text_cobbler = text_cobbler.format(
-        int_ipadd="{$eth0_ip-address}",
-        ip_gateway=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1",
-        ip_dns=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1"
-    )
-    servers = config['servers']['control-servers'] + \
-        config["servers"]["compute-servers"] + \
-        config["servers"]["swift-storage"] + \
-        config["servers"]["swift-proxy"] + \
-        config["servers"]["load-balancer"]
-    for c in servers:
-        new_conf[c['hostname']] = {
-            "hostname": c['hostname'] + "." + DOMAIN_NAME,
-            "power_address": c["ip"],
-            "profile": "%s-x86_64" % name,
-            "interfaces": {
-                "eth0": {
-                    "mac-address": c["mac"],
-                    "dns-name": c['hostname'] + "." + DOMAIN_NAME,
-                    "ip-address": c["ip"],
-                    "static": "0"
+    def prepare_cobbler(config, cob_file):
+        new_conf = {}
+        name = "trusty"
+        with open(os.path.join(CONFIG_PATH, "cobbler.yaml")) as f:
+            text_cobbler = f.read()
+        text_cobbler = text_cobbler.format(
+            int_ipadd="{$eth0_ip-address}",
+            ip_gateway=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1",
+            ip_dns=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1"
+        )
+        servers = config['servers']['control-servers'] + \
+            config["servers"]["compute-servers"] + \
+            config["servers"]["swift-storage"] + \
+            config["servers"]["swift-proxy"] + \
+            config["servers"]["load-balancer"]
+        for c in servers:
+            new_conf[c['hostname']] = {
+                "hostname": c['hostname'] + "." + DOMAIN_NAME,
+                "power_address": c["ip"],
+                "profile": "%s-x86_64" % name,
+                "interfaces": {
+                    "eth0": {
+                        "mac-address": c["mac"],
+                        "dns-name": c['hostname'] + "." + DOMAIN_NAME,
+                        "ip-address": c["ip"],
+                        "static": "0"
+                    }
                 }
             }
-        }
 
-    return text_cobbler + "\n" + yaml.dump(new_conf)
+        return text_cobbler + "\n" + yaml.dump(new_conf)
+
+    def prepare_role(config, role_file):
+        roles = {config["servers"]["build-server"]["hostname"]: "build"}
+        for c in config["servers"]["control-servers"]:
+            roles[c["hostname"]] = "controller"
+        for c in config["servers"]["compute-servers"]:
+            roles[c["hostname"]] = "compute"
+        for c in config["servers"]["swift-storage"]:
+            roles[c["hostname"]] = "swift_storage"
+        for c in config["servers"]["swift-proxy"]:
+            roles[c["hostname"]] = "swift_proxy"
+        for c in config["servers"]["load-balancer"]:
+            roles[c["hostname"]] = "load_balancer"
+        return dump(roles)
+
+    def prepare_build(config, build_file):
+        return build_file
+
+    for path in paths:
+        fd = StringIO()
+        warn_if_fail(get(path, fd))
+        old_file = fd.getvalue()
+        file_name = os.path.basename(path)
+        print " >>>> FABRIC OLD %s\n" % file_name, old_file
+        if file_name == "user.common.yaml":
+            new_file = prepare_common(config, old_file)
+        elif file_name == "user.full_ha.yaml":
+            new_file = prepare_fullha(config, old_file)
+        elif file_name == "cobbler.yaml":
+            new_file = prepare_cobbler(config, old_file)
+        elif file_name == "role_mappings.yaml":
+            new_file = prepare_role(config, old_file)
+        elif file_name == "build_server.yaml":
+            new_file = prepare_build(config, old_file)
+        print " >>>> FABRIC NEW %s\n" % file_name, new_file
+        warn_if_fail(put(StringIO(new_file), path, use_sudo=use_sudo_flag))
 
 
-def role_mappings(config):
-    roles = {}
-    for c in config["servers"]["control-servers"]:
-        roles.update({c["hostname"]: "controller"})
-    for c in config["servers"]["compute-servers"]:
-        roles.update({c["hostname"]: "compute"})
-    roles.update({config["servers"]["build-server"]["hostname"]: "build"})
-    roles.update({"load-balancer01": "load_balancer", "load-balancer02": "load_balancer"})
-    roles.update({
-        "load-balancer01": "load_balancer",
-        "load-balancer02": "load_balancer",
-        "swift-proxy01": "swift_proxy",
-        "swift-proxy02": "swift_proxy",
-        "swift-storage01": "swift_storage",
-        "swift-storage02": "swift_storage",
-        "swift-storage03": "swift_storage"
-    })
+def prepare_new_files(config, path, use_sudo_flag):
+    for compute in config["servers"]["compute-servers"]:
+        file_name = compute["hostname"] + ".yaml"
+        new_path = os.path.join(path, file_name)
+        ceph = {}
+        ceph["cephdeploy::has_compute"] = True
+        ceph["cephdeploy::osdwrapper::disks"] = ["vdb", "vdc", "vdd"]
+        warn_if_fail(put(StringIO(dump(ceph)), new_path, use_sudo=use_sudo_flag))
+        warn_if_fail(put(StringIO(dump(ceph)), os.path.join(path, file_name.replace("-", "_")),
+                         use_sudo=use_sudo_flag))
 
-    return yaml.dump(roles)
+def prepare_hosts(config):
+    hosts = '\n'
+    net_ip = ".".join(config["servers"]["control-servers"][0]["ip"].split(".")[:3])
+    hosts += "{ip}    control.{domain}    control\n".format(ip=net_ip + ".253", domain=DOMAIN_NAME)
+    hosts += "{ip}    swiftproxy.{domain}    swiftproxy\n".format(ip=net_ip + ".252", domain=DOMAIN_NAME)
+    for s in all_servers(config):
+        hosts += "{ip}    {hostname}.{domain}    {hostname}\n".format(
+            ip=s["ip"],
+            hostname=s["hostname"],
+            domain=DOMAIN_NAME
+        )
+    return hosts
 
 
 def run_services(host,
                  settings_dict,
                  envs=None,
-                 verbose=None,):
+                 verbose=None,
+                 config=None):
     """
         Install OS with COI on control and compute servers
 
@@ -200,8 +284,10 @@ def run_services(host,
     verbose = verbose or []
     if settings_dict['user'] != 'root':
         run_func = sudo
+        use_sudo_flag = True
     else:
         run_func = run
+        use_sudo_flag = False
     print >> sys.stderr, "FABRIC connecting to", settings_dict["host_string"], host["hostname"]
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         with cd("/root/"):
@@ -210,15 +296,29 @@ def run_services(host,
             run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
                      '-o Dpkg::Options::="--force-confdef" -o '
                      'Dpkg::Options::="--force-confold" dist-upgrade')
+            # prepare /etc/hosts
+            if config:
+                append("/etc/hosts", prepare_hosts(config))
             run_func("apt-get install -y git")
             run_func("git clone -b icehouse https://github.com/CiscoSystems/puppet_openstack_builder")
-            with cd("/root/puppet_openstack_builder"):
-                    run_func('git checkout i.0')
+            #with cd("/root/puppet_openstack_builder"):
+            #        run_func('git checkout i.0')
+            sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
+                            "icehouse/snapshots/i.0",
+                            "icehouse-proposed", use_sudo=use_sudo_flag)
             with cd("/root/puppet_openstack_builder/install-scripts"):
                 warn_if_fail(run_func("./setup.sh"))
                 warn_if_fail(run_func('puppet agent --enable'))
                 warn_if_fail(run_func("puppet agent -td --server=build-server.domain.name --pluginsync"))
+        logs_bu(run_func=run_func, hostname=host["hostname"])
 
+
+def resolve_names(run_func, use_sudo_flag):
+    import socket
+    ip_arch = socket.gethostbyname("archive.ubuntu.com")
+    ip_cisco = socket.gethostbyname("openstack-repo.cisco.com")
+    run_func("echo -e '%s    archive.ubuntu.com\n' >> /etc/hosts" % ip_arch)
+    run_func("echo -e '%s    openstack-repo.cisco.com\n' >> /etc/hosts" % ip_cisco)
 
 def install_openstack(settings_dict,
                       envs=None,
@@ -247,10 +347,7 @@ def install_openstack(settings_dict,
     else:
         use_sudo_flag = False
         run_func = run
-    with open(os.path.join(CONFIG_PATH, "buildserver_yaml")) as f:
-                    build_yaml = f.read()
-    roles_file = role_mappings(config)
-    print >> sys.stderr, roles_file
+
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         with cd("/root/"):
             if proxy:
@@ -270,62 +367,55 @@ def install_openstack(settings_dict,
                 warn_if_fail(run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
                                       '-o Dpkg::Options::="--force-confdef" -o '
                                       'Dpkg::Options::="--force-confold" dist-upgrade'))
+                # prepare /etc/hosts file
+                append("/etc/hosts", prepare_hosts(config))
                 with cd("/root"):
                     warn_if_fail(run_func("git clone -b icehouse "
                                           "https://github.com/CiscoSystems/puppet_openstack_builder"))
-                with cd("/root/puppet_openstack_builder"):
-                    run_func('git checkout i.0')
-                with cd("/root/puppet_openstack_builder/install-scripts"):
-                    warn_if_fail(run_func("./install.sh"))
-                roles_file = role_mappings(config)
-                fd = StringIO()
-                warn_if_fail(get("/etc/puppet/data/hiera_data/user.common.yaml", fd))
-                new_user_common = fullha_common(config, fd.getvalue())
-                fd = StringIO()
-                warn_if_fail(get("/etc/puppet/data/hiera_data/user.full_ha.yaml", fd))
-                new_user_fullha = fullha_spec(config, fd.getvalue())
-                warn_if_fail(put(StringIO(new_user_fullha),
-                                 "/etc/puppet/data/hiera_data/user.full_ha.yaml",
-                                 use_sudo=use_sudo_flag))
-                warn_if_fail(put(StringIO(new_user_common),
-                                 "/etc/puppet/data/hiera_data/user.common.yaml",
-                                 use_sudo=use_sudo_flag))
-                warn_if_fail(put(StringIO(roles_file),
-                                 "/etc/puppet/data/role_mappings.yaml",
-                                 use_sudo=use_sudo_flag))
-                fd = StringIO()
-                warn_if_fail(get("/etc/puppet/data/cobbler/cobbler.yaml", fd))
-                new_cobbler = prepare_cobbler(config, fd.getvalue())
-                warn_if_fail(put(StringIO(new_cobbler),
-                                 "/etc/puppet/data/cobbler/cobbler.yaml",
-                                 use_sudo=use_sudo_flag))
-                # warn_if_fail(put(StringIO(build_yaml),
-                #                 "/etc/puppet/data/hiera_data/hostname/build_server.yaml",
-                #                 use_sudo=use_sudo_flag))
-                # warn_if_fail(put(StringIO(build_yaml),
-                #                 "/etc/puppet/data/hiera_data/hostname/build-server.yaml",
-                #                 use_sudo=use_sudo_flag))
+                    with cd("puppet_openstack_builder"):
+                        ## run the latest
+                        #run_func('git checkout i.0')
+                        sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
+                            "icehouse/snapshots/i.0",
+                            "icehouse-proposed", use_sudo=use_sudo_flag)
+                        with cd("install-scripts"):
+                            warn_if_fail(run_func("./install.sh"))
+                prepare_files(config,
+                              paths=(
+                                  "/etc/puppet/data/hiera_data/user.common.yaml",
+                                  "/etc/puppet/data/hiera_data/user.full_ha.yaml",
+                                  "/etc/puppet/data/cobbler/cobbler.yaml",
+                                  "/etc/puppet/data/role_mappings.yaml",
+                                  "/etc/puppet/data/hiera_data/hostname/build_server.yaml"
+                              ),
+                              use_sudo_flag=use_sudo_flag)
+                prepare_new_files(
+                    config,
+                    path="/etc/puppet/data/hiera_data/hostname",
+                    use_sudo_flag=use_sudo_flag
+                )
+                resolve_names(run_func, use_sudo_flag)
                 result = run_func('puppet apply -v /etc/puppet/manifests/site.pp')
+                tries = 1
                 if use_cobbler:
                     cobbler_error = "[cobbler-sync]/returns: unable to connect to cobbler on localhost using cobbler"
-                    tries = 1
                     while cobbler_error in result and tries <= APPLY_LIMIT:
                         time.sleep(60)
                         print >> sys.stderr, "Cobbler is not installed properly, running apply again"
                         result = run_func('puppet apply -v /etc/puppet/manifests/site.pp', pty=False)
                         tries += 1
-                else:
-                    error = "Error:"
-                    tries = 1
-                    while error in result and tries <= APPLY_LIMIT:
-                        time.sleep(60)
-                        print >> sys.stderr, "Some errors found, running apply again"
-                        result = run_func('puppet apply -v /etc/puppet/manifests/site.pp', pty=False)
-                        tries += 1
+                error = "Error:"
+                while error in result and tries <= APPLY_LIMIT:
+                    time.sleep(60)
+                    print >> sys.stderr, "Some errors found, running apply again"
+                    result = run_func('puppet apply -v /etc/puppet/manifests/site.pp', pty=False)
+                    tries += 1
                 if exists('/root/openrc'):
                     get('/root/openrc', "./openrc")
                 else:
                     print (red("No openrc file, something went wrong! :("))
+                print (green("Copying logs and configs"))
+                logs_bu(run_func=run_func, hostname=config["servers"]["build-server"]["hostname"], start=True)
                 print (green("Finished!"))
                 return True
             elif not force and prepare:
@@ -521,17 +611,18 @@ def main():
             job_settings['host_string'] = hosts[0]
             track_cobbler(config, job_settings)
         else:
-            servers = config["servers"]["control-servers"] + \
-                config["servers"]["compute-servers"] + \
+            servers = config["servers"]["load-balancer"] + \
                 config["servers"]["swift-storage"] + \
                 config["servers"]["swift-proxy"] + \
-                config["servers"]["load-balancer"]
+                config["servers"]["control-servers"] + \
+                config["servers"]["compute-servers"]
             for host in servers:
                 job_settings['host_string'] = host["ip"]
                 run_services(host,
                              job_settings,
                              verbose=verb_mode,
                              envs=envs_build,
+                             config=config
                              )
 
 if __name__ == "__main__":

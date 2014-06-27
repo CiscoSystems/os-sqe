@@ -135,6 +135,8 @@ full-2role: 2role run-tempest
 
 full-2role-quick: 2role run-tempest-parallel
 
+full-fullha: fullha run-tempest
+
 test-me:
 	@echo "$(CYAN)>>>> test your commands :) ...$(RESET)"
 	echo ${LAB}
