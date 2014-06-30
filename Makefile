@@ -5,6 +5,13 @@ CYAN=$(shell echo `tput bold``tput setaf 6`)
 RED=$(shell echo `tput bold``tput setaf 1`)
 RESET=$(shell echo `tput sgr0`)
 #WORKSPACE=$(shell echo ${WORKSPACE})
+ifndef LAB
+    LAB="lab1"
+endif
+ifndef WORKSPACE
+    WORKSPACE=$$(pwd)"/.."
+endif
+
 
 clean:
 	@echo "$(CYAN)>>> Cleaning...$(RESET)"
@@ -14,7 +21,7 @@ clean:
 	find . -name '*~' | xargs rm || :
 
 venv:
-	@echo "$(CYAN)>>>> Creating virtualenv...$(RESET)"
+	@echo "$(CYAN)>>>> Creating virtualenv for LAB=${LAB}...$(RESET)"
 	test $(VENV)/requirements_packages_installed -nt requirements_packages || sudo apt-get install -y `cat requirements_packages` || :
 	test -d $(VENV) || virtualenv --setuptools $(VENV)
 
@@ -42,31 +49,31 @@ help:
 prepare-aio:
 	@echo "$(CYAN)>>>> Preparing AIO box...$(RESET)"
 	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
-	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img -o > config_file
+	time $(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img -o > config_file
 
 prepare-aio-local:
 	@echo "$(CYAN)>>>> Preparing AIO box...$(RESET)"
-	./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l lab1 -d /media/hdd/tmpdir/tmp/imgs -z /media/hdd/tmpdir/trusty-server-cloudimg-amd64-disk1.img -o > config_file
+	time ./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l lab1 -d /media/hdd/tmpdir/tmp/imgs -z /media/hdd/tmpdir/trusty-server-cloudimg-amd64-disk1.img -o > config_file
 
 prepare-2role:
 	@echo "$(CYAN)>>>> Preparing 2_role boxes...$(RESET)"
 	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
-	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
+	time $(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
 
 prepare-2role-cobbler:
 	@echo "$(CYAN)>>>> Preparing 2_role boxes for cobbler...$(RESET)"
 	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
-	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b net -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
+	time $(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -b net -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
 
 prepare-fullha:
 	@echo "$(CYAN)>>>> Preparing full HA boxes...$(RESET)"
 	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
-	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -s -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
+	time $(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -s -b cloudimg -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
 
 prepare-fullha-cobbler:
 	@echo "$(CYAN)>>>> Preparing full HA boxes for cobbler...$(RESET)"
 	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
-	$(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -s -b net -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
+	time $(PYTHON) ./tools/libvirt-scripts/create.py -u root -a localhost -s -b net -l ${LAB} -d /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img > config_file
 
 
 give-a-time:
@@ -74,28 +81,28 @@ give-a-time:
 
 install-aio:
 	@echo "$(CYAN)>>>> Installing AIO...$(RESET)"
-	$(PYTHON) ./tools/deployers/install_aio_coi.py -c config_file
+	time $(PYTHON) ./tools/deployers/install_aio_coi.py -c config_file
 
 install-2role:
 	@echo "$(CYAN)>>>> Installing 2_role multinode...$(RESET)"
-	$(PYTHON) ./tools/deployers/install_aio_2role.py -c config_file
+	time $(PYTHON) ./tools/deployers/install_aio_2role.py -c config_file
 
 install-2role-cobbler:
 	@echo "$(CYAN)>>>> Installing 2_role multinode with cobbler...$(RESET)"
-	$(PYTHON) ./tools/deployers/install_aio_2role.py -e -c config_file
+	time $(PYTHON) ./tools/deployers/install_aio_2role.py -e -c config_file
 
 install-fullha:
 	@echo "$(CYAN)>>>> Installing full HA setup...$(RESET)"
-	$(PYTHON) ./tools/deployers/install_fullha.py -c config_file
+	time $(PYTHON) ./tools/deployers/install_fullha.py -c config_file
 
 install-fullha-cobbler:
 	@echo "$(CYAN)>>>> Installing full HA setup with cobbler...$(RESET)"
-	$(PYTHON) ./tools/deployers/install_fullha.py -e -c config_file
+	time $(PYTHON) ./tools/deployers/install_fullha.py -e -c config_file
 
 prepare-tempest:
 	@echo "$(CYAN)>>>> Preparing tempest...$(RESET)"
-	$(PYTHON) ./tools/tempest-scripts/tempest_align.py -c config_file -u localadmin -p ubuntu
-	python ${WORKSPACE}/tempest/tools/install_venv.py
+	time $(PYTHON) ./tools/tempest-scripts/tempest_align.py -c config_file -u localadmin -p ubuntu
+	time python ${WORKSPACE}/tempest/tools/install_venv.py
 	${WORKSPACE}/tempest/.venv/bin/pip install junitxml python-ceilometerclient nose testresources testtools
 	. ${WORKSPACE}/tempest/.venv/bin/activate
 	./tools/tempest-scripts/tempest_unconfig.sh
@@ -104,12 +111,12 @@ prepare-tempest:
 
 run-tests:
 	@echo "$(CYAN)>>>> Run tempest tests ...$(RESET)"
-	/bin/bash ./tools/tempest-scripts/run_tempest_tests.sh
+	time /bin/bash ./tools/tempest-scripts/run_tempest_tests.sh
 
 run-tests-parallel:
 	@echo "$(CYAN)>>>> Run tempest tests in parallel ...$(RESET)"
 	sed -i 's/testr run/testr run --parallel /g' ./tools/tempest-scripts/run_tempest_tests.sh
-	/bin/bash ./tools/tempest-scripts/run_tempest_tests.sh
+	time /bin/bash ./tools/tempest-scripts/run_tempest_tests.sh
 
 init: venv requirements
 
@@ -140,4 +147,5 @@ full-fullha: fullha run-tempest
 test-me:
 	@echo "$(CYAN)>>>> test your commands :) ...$(RESET)"
 	echo ${LAB}
-	echo $$(grep OS_AUTH_URL ./openrc | grep -Eo "/.*:" | sed "s@/@@g"  | sed "s@:@@g")
+	echo ${WORKSPACE}
+	ls ${WORKSPACE}
