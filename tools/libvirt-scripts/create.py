@@ -795,6 +795,7 @@ def main():
             net_boot_name=conf["params"]["networks"][0]["name"],
             mac=lb["mac"],
             net_admin_name=conf["params"]["networks"][1]["name"],
+            net_internal_name=conf["params"]["networks"][3]["name"],
         )
         create_vm(conn, vm_xml)
         box_config = {
