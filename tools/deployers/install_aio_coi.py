@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from StringIO import StringIO
+import os
 import urllib2
 import argparse
 import sys
@@ -168,8 +169,8 @@ def main():
                                  "ff1b295b97ed777f2544d5424b/install_icehouse_cisco.sh"),
                         dest='url',
                         help='Url from where to download COI installer')
-    parser.add_argument('-k', action='store', dest='ssh_key_file', default='~/.ssh/id_rsa',
-                        help='SSH key file, default=~/.ssh/id_rsa')
+    parser.add_argument('-k', action='store', dest='ssh_key_file', default=None,
+                        help='SSH key file, default is from repo')
     parser.add_argument('-t', action='store_true', dest='test_mode', default=False,
                         help='Just run it to test host connectivity, if fine - return 0')
     parser.add_argument('-z', action='store_true', dest='prepare_mode', default=False,
@@ -185,13 +186,14 @@ def main():
         verb_mode = ['output', 'running', 'warnings']
     else:
         verb_mode = []
+    path2ssh = os.path.join(os.path.dirname(__file__), "..", "libvirt-scripts", "id_rsa")
+    ssh_key_file = opts.ssh_key_file if opts.ssh_key_file else path2ssh
     if not opts.config_file:
         envs_aio = {"default_interface": opts.default_interface,
                     "external_interface": opts.default_interface}
         hosts = opts.hosts
         user = opts.user
         password = opts.password
-        ssh_key_file = opts.ssh_key_file
     else:
         # TODO: parse config here
         with open(opts.config_file) as f:
@@ -202,7 +204,6 @@ def main():
         password = aio["password"]
         envs_aio = {"default_interface": aio["default_interface"],
                     "external_interface": aio["external_interface"]}
-        ssh_key_file = opts.ssh_key_file
 
     job_settings = {"host_string": "",
                     "user": user,

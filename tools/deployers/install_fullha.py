@@ -462,8 +462,8 @@ def main():
                                  "93540685a1e611c52ac47af55d92f713b4af0a77/install_icehouse_cisco.sh"),
                         dest='url',
                         help='Url from where to download COI installer')
-    parser.add_argument('-k', action='store', dest='ssh_key_file', default='~/.ssh/id_rsa',
-                        help='SSH key file, default=~/.ssh/id_rsa')
+    parser.add_argument('-k', action='store', dest='ssh_key_file', default=None,
+                        help='SSH key file, default is from repo')
     parser.add_argument('-e', action='store_true', dest='use_cobbler', default=False,
                         help='Use cobbler for deploying control and compute nodes')
     parser.add_argument('-z', action='store_true', dest='prepare_mode', default=False,
@@ -483,6 +483,8 @@ def main():
         verb_mode = ['output', 'running', 'warnings']
     else:
         verb_mode = []
+    path2ssh = os.path.join(os.path.dirname(__file__), "..", "libvirt-scripts", "id_rsa")
+    ssh_key_file = opts.ssh_key_file if opts.ssh_key_file else path2ssh
     if not opts.config_file:
         envs_build = {
             "vendor": "cisco",
@@ -492,7 +494,6 @@ def main():
         hosts = opts.hosts
         user = opts.user
         password = opts.password
-        ssh_key_file = opts.ssh_key_file
         config = None
     else:
         try:
@@ -510,7 +511,6 @@ def main():
             "scenario": "full_ha",
             "build_server_ip": build["ip"]
         }
-        ssh_key_file = opts.ssh_key_file
 
     job_settings = {"host_string": "",
                     "user": user,
