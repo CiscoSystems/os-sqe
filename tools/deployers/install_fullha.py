@@ -4,20 +4,20 @@ import argparse
 import sys
 import yaml
 import os
-import re
 import time
 
 from fabric.api import sudo, settings, run, hide, put, shell_env, cd, get
 from fabric.contrib.files import exists, contains, append, sed
-from fabric.colors import green, red, yellow
+from fabric.colors import green, red
 
+from utils import collect_logs, dump, all_servers, quit_if_fail, warn_if_fail, update_time, resolve_names, CONFIG_PATH,\
+    LOGS_COPY, change_ip_to
 __author__ = 'sshnaidm'
 
-dump = lambda x: yaml.dump(x, default_flow_style=False)
-CONFIG_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../libvirt-scripts", "templates")
 DOMAIN_NAME = "domain.name"
-ip_re = re.compile("\d+\.\d+\.\d+\.\d+")
+
 APPLY_LIMIT = 3
+# override logs dirs if you need
 LOGS_COPY = {
     "/etc": "etc_configs",
     "/var/log": "all_logs",
@@ -25,81 +25,10 @@ LOGS_COPY = {
 }
 
 
-def logs_bu(run_func=None, hostname=None, start=False):
-    dirname = "test_data"
-    if "WORKSPACE" in os.environ:
-        path = os.path.join(os.environ["WORKSPACE"], dirname)
-    else:
-        cur_dir = os.path.dirname(__file__)
-        path = os.path.join(cur_dir, dirname)
-    if not os.path.exists(path):
-        os.mkdir(path)
-    if start:
-        for i in os.listdir(path):
-            os.remove(os.path.join(path, i))
-    for dirlog in LOGS_COPY:
-        filename = LOGS_COPY[dirlog] + "_" + hostname
-        run_func("tar -zcf /tmp/{filename}.tar.gz {dirlog} 2>/dev/null".format(filename=filename, dirlog=dirlog))
-        get("/tmp/{filename}.tar.gz".format(filename=filename), path)
-        run_func("rm -rf /tmp/{filename}.tar.gz".format(filename=filename))
-
-
-def change_ip_to(string, ip):
-    return ip_re.sub(ip, string)
-
-
-def all_servers(config):
-    ssum = lambda x,y: x+y if isinstance(y, list) else x + [y]
-    return reduce(ssum, config['servers'].values(), [])
-
-
-def quit_if_fail(command):
-    """
-        Function quits all application if given command failed
-
-    :param command: Command to execute
-    """
-    if command.failed:
-        print(red('FAB ERROR: Command failed'))
-        if 'command' in command.__dict__:
-            print(red('FAB ERROR: Command {cmd} returned {code}'.format(
-                cmd=command.command, code=command.return_code)))
-        sys.exit(command.return_code)
-
-
-def warn_if_fail(command):
-    """
-        Function prints warning to log if given command failed
-
-    :param command: Command to execute
-    """
-    if command.failed:
-        print(yellow('FAB ERROR: Command failed'))
-        if 'command' in command.__dict__:
-            print(yellow('FAB ERROR: Command {cmd} returned {code}'.format(
-                cmd=command.command, code=command.return_code)))
-
-
-def update_time(func):
-    """
-        Update time on remote machine
-
-    :param func: function to execute the ntpdate with
-    """
-    ntp = False
-    if exists("/etc/init.d/ntp"):
-        ntp = True
-        func("/etc/init.d/ntp stop")
-    if func("ntpdate ntp.esl.cisco.com").failed:
-        if func("ntpdate 10.81.254.202").failed:
-            func("ntpdate ntp.ubuntu.com")
-    if ntp:
-        func("/etc/init.d/ntp start")
-
-
 def prepare_files(config, paths, use_sudo_flag):
 
     def prepare_fullha(config, ha_file):
+        """ Prepare user.full_ha.file """
         conf = yaml.load(ha_file)
         net_ip = ".".join((config['servers']['control-servers'][0]['ip'].split(".")[:3]))
         vipc = net_ip + ".253"
@@ -113,7 +42,7 @@ def prepare_files(config, paths, use_sudo_flag):
         conf["openstack-ha::load-balancer::swift_proxy_names"] = [c["hostname"]
                                                                        for c in config['servers']['swift-proxy']]
         vipsw = net_ip + ".252"
-        conf["openstack::swift::proxy::swift_proxy_net_ip"] = vipsw
+        conf["openstack::swift::proxy::swift_proxy_net_ip"] = "%{ipaddress_eth2}"
         conf["openstack::swift::proxy::swift_memcache_servers"] = [i["ip"] + ":11211"
                                                                    for i in config['servers']['swift-proxy']]
         conf["nova::memcached_servers"] = [i["ip"] + ":11211" for i in config['servers']['control-servers']]
@@ -124,10 +53,11 @@ def prepare_files(config, paths, use_sudo_flag):
         conf["galera_master_ipaddress"] = config['servers']['control-servers'][0]["ip"]
         conf["galera_backup_names"] = [i["hostname"] for i in config['servers']['control-servers'][1:]]
         conf["galera_backup_ipaddresses"] = [i["ip"] for i in config['servers']['control-servers'][1:]]
-        conf["openstack::swift::storage-node::storage_devices"] += ["vdb", "vdc", "vdd"]
+        conf["openstack::swift::storage-node::storage_devices"] = ["vdb", "vdc", "vdd"]
         return dump(conf)
 
     def prepare_common(config, common_file):
+        """ Prepare user.common.file """
         conf = yaml.load(common_file)
         net_ip = ".".join((config['servers']['control-servers'][0]['ip'].split(".")[:3]))
         vipc = net_ip + ".253"
@@ -174,6 +104,7 @@ def prepare_files(config, paths, use_sudo_flag):
         return dump(conf)
 
     def prepare_cobbler(config, cob_file):
+        """ Prepare cobbler.yaml.file """
         new_conf = {}
         name = "trusty"
         with open(os.path.join(CONFIG_PATH, "cobbler.yaml")) as f:
@@ -206,6 +137,7 @@ def prepare_files(config, paths, use_sudo_flag):
         return text_cobbler + "\n" + yaml.dump(new_conf)
 
     def prepare_role(config, role_file):
+        """ Prepare role_mappings file """
         roles = {config["servers"]["build-server"]["hostname"]: "build"}
         for c in config["servers"]["control-servers"]:
             roles[c["hostname"]] = "controller"
@@ -222,38 +154,65 @@ def prepare_files(config, paths, use_sudo_flag):
     def prepare_build(config, build_file):
         return build_file
 
+    map = {
+        "user.common.yaml": prepare_common,
+        "user.full_ha.yaml": prepare_fullha,
+        "role_mappings.yaml": prepare_role,
+        "cobbler.yaml": prepare_cobbler,
+        "build_server.yaml": prepare_build
+    }
     for path in paths:
         fd = StringIO()
         warn_if_fail(get(path, fd))
         old_file = fd.getvalue()
         file_name = os.path.basename(path)
         print " >>>> FABRIC OLD %s\n" % file_name, old_file
-        if file_name == "user.common.yaml":
-            new_file = prepare_common(config, old_file)
-        elif file_name == "user.full_ha.yaml":
-            new_file = prepare_fullha(config, old_file)
-        elif file_name == "cobbler.yaml":
-            new_file = prepare_cobbler(config, old_file)
-        elif file_name == "role_mappings.yaml":
-            new_file = prepare_role(config, old_file)
-        elif file_name == "build_server.yaml":
-            new_file = prepare_build(config, old_file)
+        new_file = map[file_name](config, old_file)
         print " >>>> FABRIC NEW %s\n" % file_name, new_file
         warn_if_fail(put(StringIO(new_file), path, use_sudo=use_sudo_flag))
 
 
 def prepare_new_files(config, path, use_sudo_flag):
+    """ Prepare hostname specific files in puppet/data/hiera_data/hostname """
+
+    def write(text, path, filename, sudo):
+        fd = StringIO(text)
+        warn_if_fail(put(fd, os.path.join(path, filename), use_sudo=sudo))
+        warn_if_fail(put(fd, os.path.join(path, filename.replace("-", "_")), use_sudo=sudo))
+
     for compute in config["servers"]["compute-servers"]:
         file_name = compute["hostname"] + ".yaml"
-        new_path = os.path.join(path, file_name)
         ceph = {}
         ceph["cephdeploy::has_compute"] = True
         ceph["cephdeploy::osdwrapper::disks"] = ["vdb", "vdc", "vdd"]
-        warn_if_fail(put(StringIO(dump(ceph)), new_path, use_sudo=use_sudo_flag))
-        warn_if_fail(put(StringIO(dump(ceph)), os.path.join(path, file_name.replace("-", "_")),
-                         use_sudo=use_sudo_flag))
+        write(dump(ceph), path, file_name, use_sudo_flag)
+    for num, lb in enumerate(config["servers"]["load-balancer"]):
+        if num == 0:
+            lb_text = ("openstack-ha::load-balancer::controller_state: MASTER\n"
+                       "openstack-ha::load-balancer::swift_proxy_state: BACKUP\n"
+            )
+        else:
+            lb_text = ("openstack-ha::load-balancer::controller_state: BACKUP\n"
+                       "openstack-ha::load-balancer::swift_proxy_state: MASTER\n"
+            )
+        file_name = lb["hostname"] + ".yaml"
+        write(lb_text, path, file_name, use_sudo_flag)
+    for num, sw in enumerate(config["servers"]["swift-storage"]):
+        sw_text = (
+            'openstack::swift::storage-node::swift_zone: {num}\n'
+            'coe::network::interface::interface_name: "%{{swift_storage_interface}}"\n'
+            'coe::network::interface::ipaddress: "%{{swift_local_net_ip}}"\n'
+            'coe::network::interface::netmask: "%{{swift_storage_netmask}}"\n'.format(num=num+1)
+        )
+        file_name = sw["hostname"] + ".yaml"
+        write(sw_text, path, file_name, use_sudo_flag)
+    file_name = config["servers"]["build-server"]["hostname"] + ".yaml"
+    b_text = "apache::default_vhost: true"
+    write(b_text, path, file_name, use_sudo_flag)
+
 
 def prepare_hosts(config):
+    """ Prepare /etc/hosts file """
     hosts = '\n'
     net_ip = ".".join(config["servers"]["control-servers"][0]["ip"].split(".")[:3])
     hosts += "{ip}    control.{domain}    control\n".format(ip=net_ip + ".253", domain=DOMAIN_NAME)
@@ -273,12 +232,13 @@ def run_services(host,
                  verbose=None,
                  config=None):
     """
-        Install OS with COI on control and compute servers
+        Install OS with COI on other servers
 
     :param host: configuration of current lab box
     :param settings_dict: settings dictionary for Fabric
     :param envs: environment variables to inject when executing job
     :param verbose: if to hide all output or print everything
+    :param config: configurations of all boxes for /etc/hosts
     """
     envs = envs or {}
     verbose = verbose or []
@@ -301,6 +261,7 @@ def run_services(host,
                 append("/etc/hosts", prepare_hosts(config))
             run_func("apt-get install -y git")
             run_func("git clone -b icehouse https://github.com/CiscoSystems/puppet_openstack_builder")
+            # use latest, not i.0 release
             #with cd("/root/puppet_openstack_builder"):
             #        run_func('git checkout i.0')
             sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
@@ -310,15 +271,8 @@ def run_services(host,
                 warn_if_fail(run_func("./setup.sh"))
                 warn_if_fail(run_func('puppet agent --enable'))
                 warn_if_fail(run_func("puppet agent -td --server=build-server.domain.name --pluginsync"))
-        logs_bu(run_func=run_func, hostname=host["hostname"])
+                collect_logs(run_func=run_func, hostname=host["hostname"])
 
-
-def resolve_names(run_func, use_sudo_flag):
-    import socket
-    ip_arch = socket.gethostbyname("archive.ubuntu.com")
-    ip_cisco = socket.gethostbyname("openstack-repo.cisco.com")
-    run_func("echo -e '%s    archive.ubuntu.com\n' >> /etc/hosts" % ip_arch)
-    run_func("echo -e '%s    openstack-repo.cisco.com\n' >> /etc/hosts" % ip_cisco)
 
 def install_openstack(settings_dict,
                       envs=None,
@@ -373,7 +327,7 @@ def install_openstack(settings_dict,
                     warn_if_fail(run_func("git clone -b icehouse "
                                           "https://github.com/CiscoSystems/puppet_openstack_builder"))
                     with cd("puppet_openstack_builder"):
-                        ## run the latest
+                        ## run the latest, not i.0 release
                         #run_func('git checkout i.0')
                         sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
                             "icehouse/snapshots/i.0",
@@ -415,7 +369,7 @@ def install_openstack(settings_dict,
                 else:
                     print (red("No openrc file, something went wrong! :("))
                 print (green("Copying logs and configs"))
-                logs_bu(run_func=run_func, hostname=config["servers"]["build-server"]["hostname"], start=True)
+                collect_logs(run_func=run_func, hostname=config["servers"]["build-server"]["hostname"], clean=True)
                 print (green("Finished!"))
                 return True
             elif not force and prepare:
@@ -489,26 +443,6 @@ def track_cobbler(config, setts):
             sys.exit(1)
 
 
-def run_probe(settings_dict, envs=None, verbose=None):
-    """
-    Before installing OS check connectivity and executing with this function on remote host
-
-    :param settings_dict:  settings dictionary for Fabric
-    :param envs: environment variables to inject when executing job
-    :param verbose: if to hide all output or print everything
-    :return: response code of executed command or 1 if exception
-    """
-    envs = envs or {}
-    verbose = verbose or []
-    try:
-        with settings(**settings_dict), hide(*verbose), shell_env(**envs):
-            res = run("ls /tmp/")
-    except Exception as e:
-        print "Exception: ", e
-        return 1
-    return res.return_code
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', action='store', dest='user',
@@ -530,8 +464,6 @@ def main():
                         help='Url from where to download COI installer')
     parser.add_argument('-k', action='store', dest='ssh_key_file', default='~/.ssh/id_rsa',
                         help='SSH key file, default=~/.ssh/id_rsa')
-    parser.add_argument('-t', action='store_true', dest='test_mode', default=False,
-                        help='Just run it to test host connectivity, if fine - return 0')
     parser.add_argument('-e', action='store_true', dest='use_cobbler', default=False,
                         help='Use cobbler for deploying control and compute nodes')
     parser.add_argument('-z', action='store_true', dest='prepare_mode', default=False,
@@ -587,14 +519,10 @@ def main():
                     "key_filename": ssh_key_file,
                     "abort_on_prompts": True,
                     "gateway": opts.gateway}
-    if opts.test_mode:
-        job_settings['host_string'] = hosts[0]
-        job_settings['command_timeout'] = 15
-        sys.exit(run_probe(job_settings, verbose=verb_mode, envs=envs_build))
     for host in hosts:
         job_settings['host_string'] = host
-        print job_settings
-        print envs_build
+        print >> sys.stderr, job_settings
+        print >> sys.stderr, envs_build
         res = install_openstack(job_settings,
                                 verbose=verb_mode,
                                 envs=envs_build,

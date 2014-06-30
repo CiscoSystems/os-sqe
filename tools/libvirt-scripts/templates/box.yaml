@@ -415,6 +415,9 @@ params:
         <interface type='network'>
           <source network='{net_admin_name}'/>
         </interface>
+        <interface type='network'>
+          <source network='{net_internal_name}'/>
+        </interface>
         <input type='mouse' bus='ps2'/>
         <graphics type='vnc' port='-1' autoport='yes'/>
       </devices>
