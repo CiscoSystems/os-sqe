@@ -72,7 +72,7 @@ function copy_jenkins_jobs {
     echo "Started copying jobs"
     jobs=$(ssh root@${JENKINS_GATE} "ssh root@${JENKINS_LOCAL_IP} ls /var/lib/jenkins/jobs/")
     for job in $jobs; do
-        scp -Cp -o -q "ProxyCommand ssh root@${JENKINS_GATE} nc ${JENKINS_LOCAL_IP} 22"  \
+        scp -Cqp -o "ProxyCommand ssh -q root@${JENKINS_GATE} nc ${JENKINS_LOCAL_IP} 22"  \
         root@${JENKINS_LOCAL_IP}:/var/lib/jenkins/jobs/${job}/config.xml $curdir/jobs/${job}.xml
     done
     echo "Finished copying jobs"
@@ -85,13 +85,13 @@ function backup_jenkins {
     echo "Stopping Jenkins gracefully"
     ssh  root@${JENKINS_GATE} "$stop"
     sleep 30
-    jenkins_status=$(ssh  root@${JENKINS_GATE} "ssh root@${JENKINS_LOCAL_IP} /etc/init.d/jenkins status")
+    jenkins_status=$(ssh  root@${JENKINS_GATE} "ssh root@${JENKINS_LOCAL_IP} /etc/init.d/jenkins status" 2>/dev/null)
     start_time=$(date +%s)
     echo "Checking Jenkins status: ${jenkins_status}"
     while [[ $jenkins_status == *"is running"* ]] &&  [ $(echo `date +%s` - $start_time |bc) -lt ${SHUT_TIMEOUT} ];
     do
         sleep 10;
-        jenkins_status=$(ssh  root@${JENKINS_GATE} "ssh root@${JENKINS_LOCAL_IP} /etc/init.d/jenkins status")
+        jenkins_status=$(ssh  root@${JENKINS_GATE} "ssh root@${JENKINS_LOCAL_IP} /etc/init.d/jenkins status" 2>/dev/null)
     done
     echo "Force stopping Jenkins service if it wasn't stopped"
     ssh  root@${JENKINS_GATE} "ssh root@${JENKINS_LOCAL_IP} /etc/init.d/jenkins stop"
