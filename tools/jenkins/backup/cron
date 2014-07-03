@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# test -e /tmp/openstack-sqe && rm -rf /tmp/openstack-sqe; cd /tmp; \
+# git clone https://github.com/CiscoSystems/openstack-sqe.git; \
+# cd /tmp/openstack-sqe || cd /tmp/openstack-sqe; \
+# git pull; cd tools/jenkins/backup/; /bin/bash ./cron
+
+BUDIR=/tmp/regular_backup_dir_dont_touch
+rm -rf $BUDIR
+mkdir -p $BUDIR
+cd $BUDIR
+git clone https://github.com/CiscoSystems/openstack-sqe.git
+cd openstack-sqe/tools/jenkins/backup
+/bin/bash ./backup.sh 2>&1 | tee  /tmp/backup_$(date +%y%m%d).log | /usr/bin/mail -s "Backup of "$(date +%D)" passed successfully"
+/bin/bash ./jobs_backup.sh

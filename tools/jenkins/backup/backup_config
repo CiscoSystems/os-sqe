@@ -1,0 +1,15 @@
+BU_DIR="/opt/bu"
+DATE="$(date +%y%m%d)"
+JENKINS_LOCAL_IP="192.168.122.119"
+JENKINS_GATE="172.29.173.233"
+JENKINS_HOME="/var/lib/jenkins"
+JENKINS_VM_NAME="jenkins"
+JENKINS_CLI="/opt/exe"
+ZUUL_VM_NAME="zuul"
+ZUUL_LOCAL_IP="192.168.122.83"
+SHUT_TIMEOUT=3600
+DST_URL=" qemu+ssh://${JENKINS_GATE}/system"
+LOCAL_URL="qemu:///system"
+MAILTO="sshnaidm@cisco.com"
+mail_srv_ip="outbound.cisco.com"
+LIMIT_BU=5
