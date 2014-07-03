@@ -133,12 +133,14 @@ def main_disk_create(name="", size=0, config=None, conn=None, img_path="", boot_
         disks_xml = config["params"]["vol"]["virt_disk"].format(output_file=path)
     elif boot_type == "cloudimg":
         seed_disk = os.path.join(img_path, name + "-seed.qcow2")
+        tmp_seed_disk = os.path.join(img_path, name + "-seed1.qcow2")
         #img_uncomp_path=os.path.join(IMG_PATH, "lab-backing.qcow2")
         _, tmp_file = mkstemp(prefix="useryaml_")
         with open(tmp_file, "w") as f:
             f.write("#cloud-config\n" + user_seed_yaml)
         run_cmd(["qemu-img", "create", "-f", "qcow2", "-b", img_uncomp_path, path, "%sG" % size])
-        run_cmd(["cloud-localds", seed_disk, tmp_file])
+        run_cmd(["cloud-localds", tmp_seed_disk, tmp_file])
+        run_cmd(["qemu-img", "convert", "-O", "qcow2", tmp_seed_disk, seed_disk])
         os.remove(tmp_file)
         disks_xml = config["params"]["vol"]["cloudimg_disk"].format(output_file=path, seed_disk=seed_disk)
     if storage:
