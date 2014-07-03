@@ -568,7 +568,7 @@ params:
         <target dev='vda' bus='virtio'/>
       </disk>
       <disk type='file' device='disk'>
-        <driver name='qemu' type='raw'/>
+        <driver name='qemu' type='qcow2'/>
         <source file='{seed_disk}'/>
         <target dev='hda' bus='ide'/>
       </disk>
