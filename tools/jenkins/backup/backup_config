@@ -13,3 +13,4 @@ LOCAL_URL="qemu:///system"
 MAILTO="sshnaidm@cisco.com"
 mail_srv_ip="outbound.cisco.com"
 LIMIT_BU=5
+REPO_URL=https://github.com/CiscoSystems/openstack-sqe.git

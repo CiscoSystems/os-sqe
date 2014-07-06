@@ -1,0 +1,142 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>&quot;All in one&quot; standalone openstack installation and running tempest on it.&#xd;
+AIO on VM&#xd;
+Tempest on node</description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
+    <scms>
+      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
+        <configVersion>2</configVersion>
+        <userRemoteConfigs>
+          <hudson.plugins.git.UserRemoteConfig>
+            <url>https://git.openstack.org/stackforge/rally</url>
+          </hudson.plugins.git.UserRemoteConfig>
+        </userRemoteConfigs>
+        <branches>
+          <hudson.plugins.git.BranchSpec>
+            <name>*/master</name>
+          </hudson.plugins.git.BranchSpec>
+        </branches>
+        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+        <submoduleCfg class="list"/>
+        <extensions>
+          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+            <relativeTargetDir>rally</relativeTargetDir>
+          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+        </extensions>
+      </hudson.plugins.git.GitSCM>
+      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
+        <configVersion>2</configVersion>
+        <userRemoteConfigs>
+          <hudson.plugins.git.UserRemoteConfig>
+            <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
+          </hudson.plugins.git.UserRemoteConfig>
+        </userRemoteConfigs>
+        <branches>
+          <hudson.plugins.git.BranchSpec>
+            <name>*/master</name>
+          </hudson.plugins.git.BranchSpec>
+        </branches>
+        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+        <submoduleCfg class="list"/>
+        <extensions>
+          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+            <relativeTargetDir>openstack-sqe</relativeTargetDir>
+          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
+        </extensions>
+      </hudson.plugins.git.GitSCM>
+      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
+        <configVersion>2</configVersion>
+        <userRemoteConfigs>
+          <hudson.plugins.git.UserRemoteConfig>
+            <url>https://github.com/CiscoSystems/puppet_openstack_builder</url>
+          </hudson.plugins.git.UserRemoteConfig>
+        </userRemoteConfigs>
+        <branches>
+          <hudson.plugins.git.BranchSpec>
+            <name>*/icehouse</name>
+          </hudson.plugins.git.BranchSpec>
+        </branches>
+        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+        <submoduleCfg class="list"/>
+        <extensions>
+          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+            <relativeTargetDir>puppet_openstack_builder</relativeTargetDir>
+          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
+        </extensions>
+      </hudson.plugins.git.GitSCM>
+    </scms>
+  </scm>
+  <assignedNode>jvnode2</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command># Reverting to initial snapshot
+#virsh -c qemu+ssh://localadmin@vhost/system snapshot-revert $BOX before_os
+#sleep 10</command>
+    </hudson.tasks.Shell>
+    <org.jvnet.hudson.plugins.SSHBuilder plugin="ssh@2.4">
+      <siteName>root@aio4:22</siteName>
+      <command>echo&lt;&lt;EOF
+curl https://gist.githubusercontent.com/rickerc/9836426/raw/7f5d2ba507d99134e280f5118f588687146701f4/install_icehouse_cisco.sh &gt; install_icehouse_cisco.sh
+sed -i &quot;s@\./install.sh@ls ~/puppet_openstack_builder/install-scripts/install.sh; sed -i &apos;s/install.log 2&gt;\&amp;1/install.log/g&apos; install.sh\n./install.sh@g&quot; install_icehouse_cisco.sh
+echo -e &quot;\npuppet apply /etc/puppet/manifests/site.pp\n&quot; &gt;&gt; install_icehouse_cisco.sh
+nohup /bin/bash /root/install_icehouse_cisco.sh 2&gt;&amp;1 | tee ./install.log
+sed -i &quot;s/virt_type=kvm/virt_type=qemu/g&quot; /etc/nova/nova-compute.conf
+service nova-compute restart
+sed -i &quot;s/allow_versions = false/allow_versions = true/g&quot; /etc/swift/container-server.conf
+swift-init container-server restart
+EOF</command>
+    </org.jvnet.hudson.plugins.SSHBuilder>
+    <hudson.tasks.Shell>
+      <command>scp root@$BOX:/root/openrc .
+source ./openrc
+
+#python $WORKSPACE/tempest/tools/install_venv.py
+#source $WORKSPACE/tempest/.venv/bin/activate
+#pip install junitxml python-ceilometerclient
+
+#/bin/bash $WORKSPACE/openstack-sqe/tools/tempest-scripts/tempest_unconfig.sh
+#/bin/bash $WORKSPACE/openstack-sqe/tools/tempest-scripts/tempest_configurator.sh
+#/bin/bash $WORKSPACE/openstack-sqe/tools/tempest-scripts/config_creator.sh $IP1
+
+#mv $WORKSPACE/tempest.conf.jenkins $WORKSPACE/tempest/etc/tempest.conf
+
+#cd $WORKSPACE/tempest/
+#testr init || :
+#testr run --subunit | subunit-2to1 | tools/colorizer.py || :
+#testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=&quot;${WORKSPACE}/nosetests.xml&quot; || :
+/bin/bash $WORKSPACE/rally/install_rally.sh -v</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.chucknorris.CordellWalkerRecorder plugin="chucknorris@0.5">
+      <factGenerator/>
+    </hudson.plugins.chucknorris.CordellWalkerRecorder>
+    <hudson.plugins.logparser.LogParserPublisher plugin="log-parser@1.0.8">
+      <unstableOnWarning>false</unstableOnWarning>
+      <failBuildOnError>false</failBuildOnError>
+      <parsingRulesPath>/var/lib/jenkins/custom_configs/parsing_rules</parsingRulesPath>
+    </hudson.plugins.logparser.LogParserPublisher>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.4.0">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
+      <script>echo BOX=aio4
+echo IP1=$(getent hosts aio4 | awk {&apos;print $1&apos;})</script>
+      <onlyRunOnParent>false</onlyRunOnParent>
+    </com.lookout.jenkins.EnvironmentScript>
+  </buildWrappers>
+</project>

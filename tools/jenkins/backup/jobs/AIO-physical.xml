@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Run AIO on physical server 172.29.173.232 via ssh commands</description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <org.jvnet.hudson.plugins.SSHBuilder plugin="ssh@2.4">
+      <siteName>root@172.29.173.232:22</siteName>
+      <command>rm -rf install*
+rm -rf myex  openrc  puppet_openstack_builder  run_puppet.sh
+export external_interface=eth2
+export default_interface=eth1
+curl https://gist.githubusercontent.com/rickerc/9836426/raw/7f5d2ba507d99134e280f5118f588687146701f4/install_icehouse_cisco.sh &gt; install_icehouse_cisco.sh
+sed -i &quot;s@\./install.sh@ls ~/puppet_openstack_builder/install-scripts/install.sh; sed -i &apos;s/install.log 2&gt;\&amp;1/install.log/g&apos; install.sh\n./install.sh@g&quot; install_icehouse_cisco.sh
+echo -e &quot;\npuppet apply /etc/puppet/manifests/site.pp\n&quot; &gt;&gt; install_icehouse_cisco.sh
+nohup /bin/bash /root/install_icehouse_cisco.sh 2&gt;&amp;1 | tee ./install.log</command>
+    </org.jvnet.hudson.plugins.SSHBuilder>
+  </builders>
+  <publishers/>
+  <buildWrappers>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.4.0">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+  </buildWrappers>
+</project>
