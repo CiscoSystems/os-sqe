@@ -17,7 +17,7 @@ function run() {
 
 function update_time {
     /etc/init.d/ntp stop;
-    run ntpdate ntp.esl.cisco.com || run ntpdate ntp.ubuntu.com || run ntpdate 10.81.254.131;
+    /usr/sbin/ntpdate ntp.esl.cisco.com || /usr/sbin/ntpdate ntp.ubuntu.com || /usr/sbin/ntpdate 10.81.254.131 || /usr/sbin/ntpdate 10.81.254.202;
     /etc/init.d/ntp start;
 }
 
