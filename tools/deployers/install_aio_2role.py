@@ -4,63 +4,26 @@ import argparse
 import sys
 import yaml
 import os
-import re
 import time
 
 from fabric.api import sudo, settings, run, hide, put, shell_env, cd, get
 from fabric.contrib.files import exists, contains
-from fabric.colors import green, red, yellow
+from fabric.colors import green, red
+
+from utils import collect_logs, warn_if_fail, update_time, resolve_names, CONFIG_PATH, change_ip_to
+
 
 __author__ = 'sshnaidm'
 
-CONFIG_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../libvirt-scripts", "templates")
+
 DOMAIN_NAME = "domain.name"
-ip_re = re.compile("\d+\.\d+\.\d+\.\d+")
 APPLY_LIMIT = 3
-
-def quit_if_fail(command):
-    """
-        Function quits all application if given command failed
-
-    :param command: Command to execute
-    """
-    if command.failed:
-        print(red('FAB ERROR: Command failed'))
-        if 'command' in command.__dict__:
-            print(red('FAB ERROR: Command {cmd} returned {code}'.format(
-                cmd=command.command, code=command.return_code)))
-        sys.exit(command.return_code)
-
-
-def warn_if_fail(command):
-    """
-        Function prints warning to log if given command failed
-
-    :param command: Command to execute
-    """
-    if command.failed:
-        print(yellow('FAB ERROR: Command failed'))
-        if 'command' in command.__dict__:
-            print(yellow('FAB ERROR: Command {cmd} returned {code}'.format(
-                cmd=command.command, code=command.return_code)))
-
-
-def update_time(func):
-    """
-        Update time on remote machine
-
-    :param func: function to execute the ntpdate with
-    """
-    ntp = False
-    if exists("/etc/init.d/ntp"):
-        ntp = True
-        func("/etc/init.d/ntp stop")
-    if func("ntpdate ntp.esl.cisco.com").failed:
-        if func("ntpdate 10.81.254.202").failed:
-            func("ntpdate ntp.ubuntu.com")
-    if ntp:
-        func("/etc/init.d/ntp start")
-
+# override logs dirs if you need
+#LOGS_COPY = {
+#    "/etc": "etc_configs",
+#    "/var/log": "all_logs",
+#    "/etc/puppet": "puppet_configs",
+#}
 
 def prepare2role(config, common_file):
     """
@@ -70,9 +33,6 @@ def prepare2role(config, common_file):
     :param common_file: the provided user.common.yaml from distro
     :return: text dump of new user.common.yaml file
     """
-
-    def change_ip_to(string, ip):
-        return ip_re.sub(ip, string)
 
     print >> sys.stderr, " >>>> FABRIC box configurations"
     print config
@@ -178,7 +138,7 @@ def role_mappings(config):
     return yaml.dump(roles)
 
 
-def run_services(conf,
+def run_services(host,
                  settings_dict,
                  envs=None,
                  verbose=None,):
@@ -212,6 +172,7 @@ def run_services(conf,
                 warn_if_fail(run_func("./setup.sh"))
                 warn_if_fail(run_func('puppet agent --enable'))
                 warn_if_fail(run_func("puppet agent -td --server=build-server.domain.name --pluginsync"))
+                collect_logs(run_func=run_func, hostname=host["hostname"])
 
 
 def install_openstack(settings_dict,
@@ -287,25 +248,28 @@ def install_openstack(settings_dict,
                 warn_if_fail(put(StringIO(new_cobbler),
                                  "/etc/puppet/data/cobbler/cobbler.yaml",
                                  use_sudo=use_sudo_flag))
-                # warn_if_fail(put(StringIO(build_yaml),
-                #                 "/etc/puppet/data/hiera_data/hostname/build_server.yaml",
-                #                 use_sudo=use_sudo_flag))
-                # warn_if_fail(put(StringIO(build_yaml),
-                #                 "/etc/puppet/data/hiera_data/hostname/build-server.yaml",
-                #                 use_sudo=use_sudo_flag))
+                resolve_names(run_func, use_sudo_flag)
                 result = run_func('puppet apply -v /etc/puppet/manifests/site.pp')
+                tries = 1
                 if use_cobbler:
                     cobbler_error = "[cobbler-sync]/returns: unable to connect to cobbler on localhost using cobbler"
-                    tries = 1
                     while cobbler_error in result and tries <= APPLY_LIMIT:
                         time.sleep(60)
                         print >> sys.stderr, "Cobbler is not installed properly, running apply again"
                         result = run_func('puppet apply -v /etc/puppet/manifests/site.pp', pty=False)
                         tries += 1
+                error = "Error:"
+                while error in result and tries <= APPLY_LIMIT:
+                    time.sleep(60)
+                    print >> sys.stderr, "Some errors found, running apply again"
+                    result = run_func('puppet apply -v /etc/puppet/manifests/site.pp', pty=False)
+                    tries += 1
                 if exists('/root/openrc'):
                     get('/root/openrc', "./openrc")
                 else:
                     print (red("No openrc file, something went wrong! :("))
+                print (green("Copying logs and configs"))
+                collect_logs(run_func=run_func, hostname=config["servers"]["build-server"]["hostname"], clean=True)
                 print (green("Finished!"))
                 return True
             elif not force and prepare:
@@ -503,14 +467,14 @@ def main():
         else:
             for host in config["servers"]["control-servers"]:
                 job_settings['host_string'] = host["ip"]
-                run_services(config,
+                run_services(host,
                              job_settings,
                              verbose=verb_mode,
                              envs=envs_build,
                              )
             for host in config["servers"]["compute-servers"]:
                 job_settings['host_string'] = host["ip"]
-                run_services(config,
+                run_services(host,
                              job_settings,
                              verbose=verb_mode,
                              envs=envs_build,
