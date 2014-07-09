@@ -15,7 +15,9 @@ def apply_multi(config, user, password, gateway, force, verb_mode, ssh_key_file)
         print >> sys.stderr, "Configuring control machine", setts
         with settings(**setts), hide(*verbose):
             run_func("sed -i '2idefault_floating_pool=public' /etc/nova/nova.conf")
+            run_func("sed -i '3ischeduler_driver=nova.scheduler.filter_scheduler.FilterScheduler' /etc/nova/nova.conf")
             run_func("service nova-api restart")
+            run_func("service nova-scheduler restart")
             run_func("nova floating-ip-create")
 
 
