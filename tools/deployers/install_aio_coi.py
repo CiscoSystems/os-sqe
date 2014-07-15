@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from StringIO import StringIO
 import os
-import urllib2
 import argparse
 import sys
 import yaml
@@ -9,29 +8,15 @@ import yaml
 from fabric.api import sudo, settings, run, hide, put, shell_env, local, cd, get
 from fabric.contrib.files import sed, append, exists
 from fabric.colors import green, red, yellow
+import time
+from utils import collect_logs, warn_if_fail, quit_if_fail
 
 from workarounds import fix_aio as fix
 
 
 __author__ = 'sshnaidm'
 
-
-def quit_if_fail(command):
-    if command.failed:
-        print(red('FAB ERROR: Command failed'))
-        if 'command' in command.__dict__:
-            print(red('FAB ERROR: Command {cmd} returned {code}'.format(
-                cmd=command.command, code=command.return_code)))
-        sys.exit(command.return_code)
-
-
-def warn_if_fail(command):
-    if command.failed:
-        print(yellow('FAB ERROR: Command failed'))
-        if 'command' in command.__dict__:
-            print(yellow('FAB ERROR: Command {cmd} returned {code}'.format(
-                cmd=command.command, code=command.return_code)))
-
+APPLY_LIMIT = 3
 
 def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, prepare=False, force=False):
     """
@@ -46,8 +31,6 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, p
     """
     envs = envs or {}
     verbose = verbose or []
-    response = urllib2.urlopen(url_script)
-    install_script = response.read()
     if settings_dict['user'] != 'root':
         use_sudo_flag = True
         run_func = sudo
@@ -70,31 +53,38 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, p
                              "127.0.1.1 all-in-one all-in-one.domain.name", use_sudo=use_sudo_flag))
             warn_if_fail(put(StringIO("all-in-one"), "/etc/hostname", use_sudo=use_sudo_flag))
             warn_if_fail(run_func("hostname all-in-one"))
-            fix("before_script")
-            warn_if_fail(put(StringIO(install_script), "/root/install_icehouse_cisco.sh", use_sudo=use_sudo_flag))
-            fix("before_run")
-            #warn_if_fail(sed("/root/install_icehouse_cisco.sh", "patch -p1", "patch -p1 -N"))
-
-
-            #for i in xrange(4):
-            #    warn_if_fail(run_func(
-            #        'echo -e "\npuppet apply /etc/puppet/manifests/site.pp\n" >> /root/install_icehouse_cisco.sh'))
             if use_sudo_flag:
                 append("/etc/sudoers",
                        "{user} ALL=(ALL) NOPASSWD: ALL".format(user=settings_dict['user']),
                        use_sudo=True)
-            # FIXME: SSH hangs when changing interface used by it.
+            with cd("/root"):
+                    warn_if_fail(run_func("git clone -b icehouse "
+                                          "https://github.com/CiscoSystems/puppet_openstack_builder"))
             # Create another interface with different network and connect with it
             if not force and not prepare:
-                run_func('/bin/bash /root/install_icehouse_cisco.sh')
-                fix("after_run")
+                with cd("puppet_openstack_builder"):
+                    ## run the latest, not i.0 release
+                    sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
+                        "icehouse/snapshots/i.0",
+                        "icehouse-proposed", use_sudo=use_sudo_flag)
+                    with cd("install-scripts"):
+                        result = run_func("./install.sh")
+                        tries = 1
+                        error = "Error:"
+                        while error in result and tries <= APPLY_LIMIT:
+                            time.sleep(60)
+                            print >> sys.stderr, "Some errors found, running apply again"
+                            result = run_func('puppet apply -v /etc/puppet/manifests/site.pp', pty=False)
+                            tries += 1
                 if exists('/root/openrc'):
                     get('/root/openrc', "./openrc")
                 else:
                     print (red("No openrc file, something went wrong! :("))
+                print (green("Copying logs and configs"))
+                collect_logs(run_func=run_func, hostname="aio", clean=True)
                 print (green("Finished!"))
                 return True
-    if not prepare:
+    if force and not prepare:
         shell_envs = ";".join(["export " + k + "=" + v for k, v in envs.iteritems()]) or ""
         sudo_mode = "sudo " if use_sudo_flag else ''
         if not settings_dict['gateway']:
@@ -195,7 +185,6 @@ def main():
         user = opts.user
         password = opts.password
     else:
-        # TODO: parse config here
         with open(opts.config_file) as f:
             config = yaml.load(f)
         aio = config['servers']['aio']

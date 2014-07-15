@@ -257,6 +257,7 @@ params:
       runcmd:
          - ifdown
          - hostname
+         - fdisk
   swift-storage:
     xml: |
       <domain type='kvm'>
@@ -601,11 +602,22 @@ params:
         dns-nameservers {net_ip}.1 {dns}
         dns-search cisco.com
   manual_interface_template: |
-     auto {int_name}
-     iface {int_name} inet manual
+    auto {int_name}
+    iface {int_name} inet manual
         up ifconfig $IFACE 0.0.0.0 up
         up ip link set $IFACE promisc on
         down ifconfig $IFACE 0.0.0.0 down
+  fdisk: |
+    #!/bin/bash
+    for disk in $(ls /dev/vd* | grep -v vda | grep -vE "[0-9]"); do
+    echo "Formatting $disk";
+    echo "n
+    p
+    1
+
+
+    w
+    "|fdisk $disk;mkfs.ext4 $disk; done
   id_rsa_pub:
     - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC1Dykyl50Emjbn7OakKg/yAecWlIQwZl25ukCB1XvOr9bKh+Uz+KTkVztBfwipo4NhFt9ijAo5b4NMzHYcCTtX+g/3qFbCQan7JN6SabehV1Wg+5rTbBkaL6sjQFvoKg061md9w2cOXjH04l2tNL0KrlIIlTfB5/m1r2dvw3IxePs6mz5+sUzG5wUi2/y/hpDa0cmRUIrx8W3IzXIaxQC5SIhZ0KHKlTWi3Vde289XRNOFk41bvzqP9iEoA7ESE5IK1D8hMSlJ5ApoOU6K5W5H49qVkl/Q05ptAuqy5cWC9Zur7c2Z3tMjX2lLMC8d6XHPMgg7F+V6sX+MyawQ+jhX test.node@example.com
     - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC0qFJEDKFjKx/SSpUClF01AA6EKHv3X/OG8d1sEF6aIrwwOHZgbMMX9t+ZzxqdrJ1OHLWnxrcpn03naZ2p9CPyahsT+yBONq0rw4Zsp8LFTpC8JLCZkss6Ki5En+BpiNDgOyIU2cCYVN5ahXC+xFT9gWSY/nikJ5bbqgTI5swNFhBILFnBFjkifkhD3yuWQzkX2gOI6uCgRJLyu5XxVepVAS8X2yXYUcORO2BHYASmtWNo0oFXyqXHp4xQGwGs0WCBxaxl8OA5GBTF1YGxDW9HJqMPySAg6oVcHykaUxyXOwI0U8HdU9PTMUz0zzzBg739EW6rsBm5wF+RvEnrsMJZ localadmin@autoqa

@@ -86,10 +86,12 @@ install-aio:
 install-2role:
 	@echo "$(CYAN)>>>> Installing 2_role multinode...$(RESET)"
 	time $(PYTHON) ./tools/deployers/install_aio_2role.py -c config_file
+	touch 2role
 
 install-2role-cobbler:
 	@echo "$(CYAN)>>>> Installing 2_role multinode with cobbler...$(RESET)"
 	time $(PYTHON) ./tools/deployers/install_aio_2role.py -e -c config_file
+	touch 2role
 
 install-fullha:
 	@echo "$(CYAN)>>>> Installing full HA setup...$(RESET)"
@@ -107,6 +109,7 @@ prepare-tempest:
 	. ${WORKSPACE}/tempest/.venv/bin/activate
 	./tools/tempest-scripts/tempest_unconfig.sh
 	./tools/tempest-scripts/tempest_configurator.sh $$(grep OS_AUTH_URL ./openrc | grep -Eo "/.*:" | sed "s@/@@g"  | sed "s@:@@g")
+	test -e 2role && sed -i "s/.*[sS]wift.*\=.*[Tt]rue.*/swift=false/g" ./tempest.conf.jenkins || :
 	mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
 
 run-tests:

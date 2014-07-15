@@ -69,9 +69,13 @@ def net_undefine(conn, net_name):
     try:
         net.destroy()
     except libvirtError:
-        print >> sys.stderr, "Net %s wasn't active, nothing to delete" % net_name
-        return
-    net.undefine()
+        print >> sys.stderr, "Net %s wasn't active, undefining" % net_name
+    try:
+        net.undefine()
+    except libvirtError:
+        print >> sys.stderr, "Net %s is stuck, removing with virsh" % net_name
+        run_cmd(["virsh", "-c", "qemu:///system", "net-undefine", net_name])
+
 
 
 def pool_delete(conn, name):
@@ -261,6 +265,10 @@ def create_host_seed_yaml(config, box, btype):
         "content": hosts_file,
         "path": "/etc/hosts",
         })
+    user_seed_yaml["write_files"].append({
+        "content": config['params']['fdisk'],
+        "path": "/tmp/fdisk.sh",
+        })
     ## I'm really tired to investigate why this doesn't work!!!!
     #hostname_file = config['params']['hostname_template'].format(
     #    server_name=box["hostname"],
@@ -279,6 +287,9 @@ def create_host_seed_yaml(config, box, btype):
                 int_name = interf[2]
                 full_cmd.append("/sbin/ifdown {int} && /sbin/ifup {int}".format(int=int_name))
             full_cmd.append("/etc/init.d/networking restart")
+        elif "fdisk" in cmd:
+        #    full_cmd.append("/bin/bash /tmp/fdisk.sh;")
+            full_cmd.append("echo 'Formatting disk';")
         else:
             full_cmd.append(cmd)
     user_seed_yaml['runcmd'] = full_cmd
@@ -515,7 +526,7 @@ def main():
         yaml_config = create_host_seed_yaml(conf, box=aio, btype="aio-server")
         conf_yaml = yaml.load(yaml_config)
         disk = main_disk_create(name=aio["name"],
-                                size=10,  # in GB
+                                size=60,  # in GB
                                 config=conf,
                                 conn=conn,
                                 boot_type=opts.boot,
@@ -614,7 +625,7 @@ def main():
     for compute in lab_boxes["compute-servers"]:
         yaml_config = create_host_seed_yaml(conf, box=compute, btype="compute-server")
         disk = main_disk_create(name=compute["name"],
-                                size=10,  # in GB
+                                size=60,  # in GB
                                 config=conf,
                                 conn=conn,
                                 boot_type=opts.boot,
@@ -702,7 +713,7 @@ def main():
         yaml_config = create_host_seed_yaml(conf, box=swsto, btype="swift-storage")
         disk = main_disk_create(
                                 name=swsto["name"],
-                                size=10,
+                                size=60,
                                 config=conf,
                                 conn=conn,
                                 boot_type=opts.boot,
