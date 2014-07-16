@@ -563,5 +563,9 @@ api_v3=false
 # Enable VNC console. This configuration value should be same
 # as [nova.vnc]->vnc_enabled in nova.conf (boolean value)
 #vnc_console=false
+tenant_network_v6_cidr=2003::/64
+tenant_network_v6_mask_bits=96
+ipv6=true
+ipv6_subnet_attributes=true
 EOF
 

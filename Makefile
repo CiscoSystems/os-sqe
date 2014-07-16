@@ -6,10 +6,10 @@ RED=$(shell echo `tput bold``tput setaf 1`)
 RESET=$(shell echo `tput sgr0`)
 #WORKSPACE=$(shell echo ${WORKSPACE})
 ifndef LAB
-    LAB="lab1"
+	LAB="lab1"
 endif
 ifndef WORKSPACE
-    WORKSPACE=$$(pwd)"/.."
+	WORKSPACE=$$(pwd)"/.."
 endif
 
 
@@ -101,6 +101,10 @@ install-fullha-cobbler:
 	@echo "$(CYAN)>>>> Installing full HA setup with cobbler...$(RESET)"
 	time $(PYTHON) ./tools/deployers/install_fullha.py -e -c config_file
 
+install-devstack:
+	@echo "$(CYAN)>>>> Installing Devstack...$(RESET)"
+	time $(PYTHON) ./tools/deployers/install_devstack.py -c config_file  -u localadmin -p ubuntu
+
 prepare-tempest:
 	@echo "$(CYAN)>>>> Preparing tempest...$(RESET)"
 	time $(PYTHON) ./tools/tempest-scripts/tempest_align.py -c config_file -u localadmin -p ubuntu
@@ -132,6 +136,8 @@ aio: init prepare-aio give-a-time install-aio
 fullha: init prepare-fullha give-a-time install-fullha
 
 fullha-cobbler: init prepare-fullha-cobbler give-a-time install-fullha-cobbler
+
+devstack: init prepare-aio give-a-time install-devstack
 
 run-tempest: prepare-tempest run-tests
 
