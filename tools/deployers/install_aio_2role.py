@@ -69,6 +69,9 @@ def prepare2role(config, common_file):
     conf['public_interface'] = "eth0"
     conf['private_interface'] = "eth0"
     conf['install_drive'] = "/dev/vda"
+    conf['ipv6_ra'] = 1
+    conf['packages'] = conf['packages'] + " radvd"
+    conf['service-plugins'] += ["neutron.services.metering.metering_plugin.MeteringPlugin"]
     return yaml.dump(conf)
 
 
@@ -154,8 +157,10 @@ def run_services(host,
     verbose = verbose or []
     if settings_dict['user'] != 'root':
         run_func = sudo
+        use_sudo_flag = True
     else:
         run_func = run
+        use_sudo_flag = False
     print >> sys.stderr, "FABRIC connecting to", settings_dict["host_string"],
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         with cd("/root/"):
@@ -166,8 +171,10 @@ def run_services(host,
                      'Dpkg::Options::="--force-confold" dist-upgrade')
             run_func("apt-get install -y git")
             run_func("git clone -b icehouse https://github.com/CiscoSystems/puppet_openstack_builder")
-            with cd("/root/puppet_openstack_builder"):
-                    run_func('git checkout i.0')
+            ## run the latest, not i.0 release
+            sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
+                        "icehouse/snapshots/i.0",
+                        "icehouse-proposed", use_sudo=use_sudo_flag)
             with cd("/root/puppet_openstack_builder/install-scripts"):
                 warn_if_fail(run_func("./setup.sh"))
                 warn_if_fail(run_func('puppet agent --enable'))
