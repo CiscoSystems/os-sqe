@@ -1,27 +1,22 @@
 #!/usr/bin/env python
 from StringIO import StringIO
 import argparse
-import sys
-import yaml
 import os
+import yaml
 
-from fabric.api import sudo, settings, run, hide, put, shell_env, local, cd, get
-from fabric.contrib.files import exists, contains, append, sed
-from fabric.colors import green, red, yellow
+from fabric.api import sudo, settings, run, hide, put, shell_env, cd, get
+from fabric.contrib.files import exists
+from fabric.colors import green, red
 
-from workarounds import fix_aio as fix
-from utils import collect_logs, dump, all_servers, quit_if_fail, warn_if_fail, update_time, resolve_names, CONFIG_PATH, \
-    LOGS_COPY, change_ip_to
+from utils import warn_if_fail, quit_if_fail, update_time
 
 __author__ = 'sshnaidm'
 
 DOMAIN_NAME = "domain.name"
-APPLY_LIMIT = 3
 # override logs dirs if you need
 LOGS_COPY = {
     "/etc": "etc_configs",
     "/var/log": "all_logs",
-    "/etc/puppet": "puppet_configs",
 }
 
 SERVICES = ['neutron-', 'nova', 'glance', 'cinder', 'keystone']
@@ -33,20 +28,19 @@ def apply_changes():
     apply_patches()
     warn_if_fail(run("./stack.sh"))
 
-
 def apply_patches():
     warn_if_fail(run("git fetch https://review.openstack.org/openstack-dev/devstack "
     "refs/changes/87/87987/12 && git format-patch -1  FETCH_HEAD"))
-    
+
     #warn_if_fail(run("git fetch https://review.openstack.org/openstack-dev/devstack "
     #"refs/changes/23/97823/1 && git format-patch -1  FETCH_HEAD"))
 
 def kill_services():
-    func_run = sudo
     for service in SERVICES:
-        func_run("pkill -f %s" % service)
-    func_run("rm -rf /var/lib/dpkg/lock")
-    func_run("rm -rf /var/log/libvirt/libvirtd.log")
+        sudo("pkill -f %s" % service)
+    sudo("rm -rf /var/lib/dpkg/lock")
+    sudo("rm -rf /var/log/libvirt/libvirtd.log")
+
 
 def make_local(filepath, sudo_flag):
     conf = """[[local|localrc]]
@@ -84,63 +78,39 @@ TEMPEST_BRANCH=ipv6
     warn_if_fail(put(fd, filepath, use_sudo=sudo_flag))
 
 
-
-
-
-def install_openstack(settings_dict, envs=None, verbose=None, prepare=False, proxy=None, config=None):
-    """
-    Install OS with COI with script provided by Chris on any host(s)
-
-    :param settings_dict: settings dictionary for Fabric
-    :param envs: environment variables to inject when executing job
-    :param verbose: if to hide all output or print everything
-    :param url_script: URl of Cisco installer script from Chris
-    :return: always true
-    """
+def install_devstack(settings_dict,
+                     envs=None,
+                     verbose=None,
+                     proxy=None,
+                     patch=False):
     envs = envs or {}
     verbose = verbose or []
-    if settings_dict['user'] != 'root':
-        use_sudo_flag = True
-        run_func = sudo
-    else:
-        use_sudo_flag = False
-        run_func = run
-
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         if proxy:
             warn_if_fail(put(StringIO('Acquire::http::proxy "http://proxy.esl.cisco.com:8080/";'),
                              "/etc/apt/apt.conf.d/00proxy",
-                             use_sudo=use_sudo_flag))
+                             use_sudo=True))
             warn_if_fail(put(StringIO('Acquire::http::Pipeline-Depth "0";'),
                              "/etc/apt/apt.conf.d/00no_pipelining",
-                             use_sudo=use_sudo_flag))
-        update_time(run_func)
-        warn_if_fail(run_func("apt-get update"))
-        warn_if_fail(run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
-                              '-o Dpkg::Options::="--force-confdef" -o '
-                              'Dpkg::Options::="--force-confold" dist-upgrade'))
-        warn_if_fail(run_func("apt-get install -y git python-pip"))
+                             use_sudo=True))
+        update_time(run)
+        warn_if_fail(sudo("apt-get update"))
+        warn_if_fail(sudo("apt-get install -y git python-pip"))
         warn_if_fail(run("git config --global user.email 'test.node@example.com';"
                          "git config --global user.name 'Test Node'"))
-        warn_if_fail(sed("/etc/hosts", "127.0.1.1.*",
-                         "127.0.1.1 all-in-one all-in-one.domain.name", use_sudo=use_sudo_flag))
-        warn_if_fail(put(StringIO("all-in-one"), "/etc/hostname", use_sudo=use_sudo_flag))
-        warn_if_fail(run_func("hostname all-in-one"))
-        if prepare:
-            return True
-        else:
-            warn_if_fail(run("git clone https://github.com/openstack-dev/devstack.git"))
-            make_local("devstack/local.conf", sudo_flag=False)
-            with cd("devstack"):
-                warn_if_fail(run("./stack.sh"))
+        run("rm -rf ~/devstack")
+        quit_if_fail(run("git clone https://github.com/openstack-dev/devstack.git"))
+        make_local("devstack/local.conf", sudo_flag=False)
+        with cd("devstack"):
+            warn_if_fail(run("./stack.sh"))
+            if patch:
                 apply_changes()
-
         if exists('~/devstack/openrc'):
             get('~/devstack/openrc', "./openrc")
         else:
             print (red("No openrc file, something went wrong! :("))
-    print (green("Finished!"))
-    return True
+        print (green("Finished!"))
+        return True
 
 
 def main():
@@ -149,25 +119,21 @@ def main():
                         help='User to run the script with')
     parser.add_argument('-p', action='store', dest='password',
                         help='Password for user and sudo')
-    parser.add_argument('-a', action='append', dest='hosts', default=[],
-                        help='List of hosts for action')
+    parser.add_argument('-a', action='store', dest='host', default=None,
+                        help='IP of host in to install Devstack on')
     parser.add_argument('-g', action='store', dest='gateway', default=None,
                         help='Gateway to connect to host')
     parser.add_argument('-q', action='store_true', default=False, dest='quiet',
                         help='Make all silently')
-    parser.add_argument('-x', action='store', default="eth1", dest='external_interface',
-                        help='External interface: eth0, eth1... default=eth1')
-    parser.add_argument('-d', action='store', default="eth0", dest='default_interface',
-                        help='Default interface: eth0, eth1... default=eth0')
     parser.add_argument('-k', action='store', dest='ssh_key_file', default=None,
                         help='SSH key file, default is from repo')
-    parser.add_argument('-z', action='store_true', dest='prepare_mode', default=False,
-                        help='Only prepare, don`t run the main script')
     parser.add_argument('-j', action='store_true', dest='proxy', default=False,
                         help='Use cisco proxy if installing from Cisco local network')
+    parser.add_argument('-m', action='store_true', default=False, dest='patch',
+                        help='If apply patches to Devstack')
     parser.add_argument('-c', action='store', dest='config_file', default=None,
                         help='Configuration file, default is None')
-    parser.add_argument('--version', action='version', version='%(prog)s 1.0')
+    parser.add_argument('--version', action='version', version='%(prog)s 2.0')
 
     opts = parser.parse_args()
     if opts.quiet:
@@ -176,45 +142,31 @@ def main():
         verb_mode = []
     path2ssh = os.path.join(os.path.dirname(__file__), "..", "libvirt-scripts", "id_rsa")
     ssh_key_file = opts.ssh_key_file if opts.ssh_key_file else path2ssh
-    if not opts.config_file:
-        envs_aio = {"default_interface": opts.default_interface,
-                    "external_interface": opts.default_interface}
-        hosts = opts.hosts
-        user = opts.user
-        password = opts.password
-        config = None
-    else:
-        try:
-            with open(opts.config_file) as f:
-                config = yaml.load(f)
-        except IOError as e:
-            print >> sys.stderr, "Not found file {file}: {exc}".format(file=opts.config_file, exc=e)
-            sys.exit(1)
-        aio = config['servers']['aio']
-        hosts = [aio["ip"]]
-        user = opts.user
-        password = opts.password
-        envs_aio = {"default_interface": aio["default_interface"],
-                    "external_interface": aio["external_interface"]}
 
-    job_settings = {"host_string": "",
-                    "user": user,
-                    "password": password,
-                    "warn_only": True,
-                    "key_filename": ssh_key_file,
-                    "abort_on_prompts": True,
-                    "gateway": opts.gateway}
-    for host in hosts:
-        job_settings['host_string'] = host
-        print >> sys.stderr, job_settings
-        print >> sys.stderr, envs_aio
-        res = install_openstack(job_settings,
-                                verbose=verb_mode,
-                                envs=envs_aio,
-                                prepare=opts.prepare_mode,
-                                proxy=opts.proxy)
-        if res:
-            print "Job with host {host} finished successfully!".format(host=host)
+    if not opts.config_file:
+        job = {"host_string": opts.host,
+               "user": opts.user,
+               "password": opts.password,
+               "warn_only": True,
+               "key_filename": ssh_key_file,
+               "abort_on_prompts": True,
+               "gateway": opts.gateway}
+    else:
+        with open(opts.config_file) as f:
+            config = yaml.load(f)
+        aio = config['servers']['aio']
+        job = {"host_string": aio["ip"],
+               "user": opts.user or aio["user"],
+               "password": opts.password or aio["password"],
+               "warn_only": True,
+               "key_filename": ssh_key_file,
+               "abort_on_prompts": True,
+               "gateway": opts.gateway or None}
+
+    res = install_devstack(job, verb_mode, opts.proxy, opts.patch)
+
+    if res:
+        print "Job with host {host} finished successfully!".format(host=opts.host)
 
 
 if __name__ == "__main__":
