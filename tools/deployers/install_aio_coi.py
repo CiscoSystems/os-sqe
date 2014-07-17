@@ -67,6 +67,9 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, p
                     sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
                         "icehouse/snapshots/i.0",
                         "icehouse-proposed", use_sudo=use_sudo_flag)
+                    sed("/root/puppet_openstack_builder/data/hiera_data/vendor/cisco_coi_common.yaml",
+                            "/snapshots/i.0",
+                            "-proposed", use_sudo=use_sudo_flag)
                     with cd("install-scripts"):
                         result = run_func("./install.sh")
                         tries = 1
