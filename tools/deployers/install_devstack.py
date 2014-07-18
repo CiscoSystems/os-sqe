@@ -69,8 +69,8 @@ DEBUG=True
 LOGFILE=/tmp/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/logs
-TEMPEST_REPO=https://github.com/kshileev/tempest.git
-TEMPEST_BRANCH=ipv6
+TEMPEST_REPO=https://github.com/CiscoSystems/tempest.git
+TEMPEST_BRANCH=master-in-use
 #RECLONE=no
 #OFFLINE=True
 """
