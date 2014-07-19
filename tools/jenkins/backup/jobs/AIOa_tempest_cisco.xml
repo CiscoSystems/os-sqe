@@ -20,12 +20,12 @@ Fixed custom tempest on node&#xd;
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/terrrakot/tempest.git</url>
+            <url>https://github.com/CiscoSystems/tempest.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/swfix2</name>
+            <name>*/master-in-use</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -46,7 +46,7 @@ Fixed custom tempest on node&#xd;
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/newest</name>
+            <name>*/master</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>

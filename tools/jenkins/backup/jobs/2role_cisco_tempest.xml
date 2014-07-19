@@ -43,7 +43,7 @@
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/newest</name>
+            <name>*/master</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -171,7 +171,7 @@ cp ${WORKSPACE}/nosetests_cisco.xml ${WORKSPACE}/nosetests_2role.xml</command>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
       <script>echo LAB=lab4
-echo REG=&apos;(?!.*tempest.api.object_storage|.*swift.*|.*hint_group.*)tempest&apos; </script>
+echo REG=&apos;(?!.*tempest.api.object_storage|.*swift.*|.*hint.*)tempest&apos; </script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

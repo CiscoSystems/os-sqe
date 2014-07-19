@@ -17,12 +17,12 @@
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/terrrakot/tempest.git</url>
+            <url>https://github.com/CiscoSystems/tempest.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/swfix</name>
+            <name>*/master-in-use</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -43,7 +43,7 @@
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/newest</name>
+            <name>*/fix</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -107,7 +107,7 @@ make full-2role</command>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
       <script>echo LAB=lab8
-echo REG=&apos;(?!.*tempest.api.object_storage|.*swift.*|.*hint_group.*)tempest&apos; </script>
+echo REG=&apos;.*meter.*&apos; </script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

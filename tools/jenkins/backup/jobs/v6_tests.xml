@@ -23,27 +23,6 @@
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/CiscoSystems/tempest.git</url>
-          </hudson.plugins.git.UserRemoteConfig>
-        </userRemoteConfigs>
-        <branches>
-          <hudson.plugins.git.BranchSpec>
-            <name>*/master-in-use</name>
-          </hudson.plugins.git.BranchSpec>
-        </branches>
-        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
-        <submoduleCfg class="list"/>
-        <extensions>
-          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-            <relativeTargetDir>tempest</relativeTargetDir>
-          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
-        </extensions>
-      </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
-        <configVersion>2</configVersion>
-        <userRemoteConfigs>
-          <hudson.plugins.git.UserRemoteConfig>
             <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
@@ -55,10 +34,10 @@
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
         <submoduleCfg class="list"/>
         <extensions>
+          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
           <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
             <relativeTargetDir>openstack-sqe</relativeTargetDir>
           </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
     </scms>
@@ -72,16 +51,13 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>cd $WORKSPACE/openstack-sqe/
-make devstack
+      <command>cd ${WORKSPACE}/openstack-sqe &amp;&amp; make devstack
+
 STACK_IP=$(cat $WORKSPACE/openstack-sqe/config_file  | grep -Eo &quot;ip: [0-9\.]+&quot; | sed &quot;s/ip: //g&quot;)
-ssh -t localadmin@$STACK_IP &quot;cd /opt/stack/tempest; testr init; /opt/stack/tempest/run_tempest.sh -V $REG&quot; ||:
-ssh -t localadmin@$STACK_IP &quot;echo &apos;start&apos;; \
-source /opt/stack/tempest/.venv/bin/activate; \
-pip install junitxml; \
-cd /opt/stack/tempest/; \
-testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=&apos;/tmp/nosetests.xml&apos;&quot; ||:
-scp localadmin@$STACK_IP:/tmp/nosetests.xml $WORKSPACE/nosetests.xml
+ssh -t localadmin@$STACK_IP &quot;cd /opt/stack/tempest &amp;&amp; testr init &amp;&amp; cat etc/ipv6_tempests_list.txt | xargs testr run&quot; || :
+ssh -t localadmin@$STACK_IP &quot;cd /opt/stack/tempest &amp;&amp; cat etc/ipv6_tempests_list.txt | xargs testr run&quot; || :
+ssh -t localadmin@$STACK_IP &quot;echo &apos;start&apos; &amp;&amp; sudo pip install junitxml &amp;&amp; cd /opt/stack/tempest &amp;&amp; testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=&apos;/tmp/ipv6_tests.xml&apos;&quot; ||:
+scp localadmin@$STACK_IP:/tmp/ipv6_tests.xml $WORKSPACE/ipv6_tests.xml
 </command>
     </hudson.tasks.Shell>
   </builders>
@@ -95,7 +71,7 @@ scp localadmin@$STACK_IP:/tmp/nosetests.xml $WORKSPACE/nosetests.xml
       <parsingRulesPath>/var/lib/jenkins/custom_configs/parsing_rules2</parsingRulesPath>
     </hudson.plugins.logparser.LogParserPublisher>
     <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>nosetests.xml</testResults>
+      <testResults>ipv6_tests.xml</testResults>
       <keepLongStdio>true</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>
@@ -105,8 +81,8 @@ scp localadmin@$STACK_IP:/tmp/nosetests.xml $WORKSPACE/nosetests.xml
       <colorMapName>xterm</colorMapName>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo LAB=lab10
-echo REG=&apos;tempest.*.test_network.*&apos;</script>
+      <script>echo LAB=lab9
+</script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>
