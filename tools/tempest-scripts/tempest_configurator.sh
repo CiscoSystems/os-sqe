@@ -366,7 +366,7 @@ accounts_quotas_available = True
 container_quotas_available = True
 
 # Set operator role for tests that require creating a container
-operator_role = _member_
+operator_role = SwiftOperator
 
 [boto]
 # This section contains configuration options used when executing tests
