@@ -1,10 +1,13 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <project>
   <actions/>
-  <description>&quot;All in one&quot; standalone openstack installation and running our version of tempest on it.&#xd;
-AIO on VM&#xd;
-Fixed custom tempest on node&#xd;
-229 lab2</description>
+  <description>Using cloud images</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>5</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
   <keepDependencies>false</keepDependencies>
   <properties>
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
@@ -15,23 +18,23 @@ Fixed custom tempest on node&#xd;
     </com.sonyericsson.rebuild.RebuildSettings>
     <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@1.8.3">
       <maxConcurrentPerNode>0</maxConcurrentPerNode>
-      <maxConcurrentTotal>0</maxConcurrentTotal>
-      <throttleEnabled>false</throttleEnabled>
+      <maxConcurrentTotal>6</maxConcurrentTotal>
+      <throttleEnabled>true</throttleEnabled>
       <throttleOption>project</throttleOption>
     </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
   </properties>
   <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
     <scms>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/terrrakot/tempest.git</url>
+            <url>https://github.com/CiscoSystems/tempest.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/upd</name>
+            <name>*/master-in-use</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -40,19 +43,18 @@ Fixed custom tempest on node&#xd;
           <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
             <relativeTargetDir>tempest</relativeTargetDir>
           </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
+            <url>https://github.com/terrrakot/openstack-sqe.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/master</name>
+            <name>*/cloud</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -61,52 +63,45 @@ Fixed custom tempest on node&#xd;
           <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
             <relativeTargetDir>openstack-sqe</relativeTargetDir>
           </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
-        </extensions>
-      </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
-        <configVersion>2</configVersion>
-        <userRemoteConfigs>
-          <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/CiscoSystems/puppet_openstack_builder</url>
-          </hudson.plugins.git.UserRemoteConfig>
-        </userRemoteConfigs>
-        <branches>
-          <hudson.plugins.git.BranchSpec>
-            <name>*/icehouse</name>
-          </hudson.plugins.git.BranchSpec>
-        </branches>
-        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
-        <submoduleCfg class="list"/>
-        <extensions>
-          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-            <relativeTargetDir>puppet_openstack_builder</relativeTargetDir>
-          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.173.230</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
-  <concurrentBuild>false</concurrentBuild>
+  <concurrentBuild>true</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>cd $WORKSPACE/openstack-sqe
-make full-aio
-cp $WORKSPACE/nosetests.xml ${WORKSPACE}/nosetests_cisco.xml</command>
+      <command>cd $WORKSPACE/openstack-sqe/
+export LAB=$(python ./tools/get_pool.py)
+make devstack-snapshot &amp;&amp; make devstack-tempest || :
+make shutdown || :
+rm /tmp/lock.${LAB}
+test -e subunit2html.py || wget https://raw.githubusercontent.com/openstack-infra/config/master/modules/openstack_project/files/slave_scripts/subunit2html.py
+python subunit2html.py $WORKSPACE/openstack-sqe/testr_results.subunit testr_results.html ||:</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
     <hudson.plugins.chucknorris.CordellWalkerRecorder plugin="chucknorris@0.5">
       <factGenerator/>
     </hudson.plugins.chucknorris.CordellWalkerRecorder>
+    <org.jenkinsci.plugins.postbuildscript.PostBuildScript plugin="postbuildscript@0.16">
+      <buildSteps>
+        <hudson.tasks.Shell>
+          <command>curl http://172.29.173.133:8080/job/${JOB_NAME}/${BUILD_NUMBER}/consoleText 2&gt;/dev/null | gzip - &gt;  $WORKSPACE/openstack-sqe/console.gz  || :
+rm /tmp/lock.$LAB ||:
+ssh localadmin@172.29.173.228 &quot;mkdir -p /opt/www/${JOB_NAME}/${BUILD_NUMBER}&quot;</command>
+        </hudson.tasks.Shell>
+      </buildSteps>
+      <scriptOnlyIfSuccess>false</scriptOnlyIfSuccess>
+      <scriptOnlyIfFailure>false</scriptOnlyIfFailure>
+    </org.jenkinsci.plugins.postbuildscript.PostBuildScript>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>*xml</artifacts>
+      <artifacts>openstack-sqe/console*,openstack-sqe/nosetests*.xml</artifacts>
       <latestOnly>false</latestOnly>
       <allowEmptyArchive>false</allowEmptyArchive>
     </hudson.tasks.ArtifactArchiver>
@@ -115,17 +110,27 @@ cp $WORKSPACE/nosetests.xml ${WORKSPACE}/nosetests_cisco.xml</command>
       <failBuildOnError>false</failBuildOnError>
       <parsingRulesPath>/var/lib/jenkins/custom_configs/parsing_rules2</parsingRulesPath>
     </hudson.plugins.logparser.LogParserPublisher>
+    <hudson.tasks.junit.JUnitResultArchiver>
+      <testResults>openstack-sqe/nosetests*.xml</testResults>
+      <keepLongStdio>true</keepLongStdio>
+      <testDataPublishers/>
+    </hudson.tasks.junit.JUnitResultArchiver>
+    <hudson.tasks.Mailer plugin="mailer@1.8">
+      <recipients>sshnaidm</recipients>
+      <dontNotifyEveryUnstableBuild>false</dontNotifyEveryUnstableBuild>
+      <sendToIndividuals>false</sendToIndividuals>
+    </hudson.tasks.Mailer>
     <jenkins.plugins.publish__over__ssh.BapSshPublisherPlugin plugin="publish-over-ssh@1.11">
       <consolePrefix>SSH: </consolePrefix>
       <delegate>
         <publishers>
           <jenkins.plugins.publish__over__ssh.BapSshPublisher>
-            <configName>172.29.173.229</configName>
-            <verbose>false</verbose>
+            <configName>172.29.173.228</configName>
+            <verbose>true</verbose>
             <transfers>
               <jenkins.plugins.publish__over__ssh.BapSshTransfer>
-                <remoteDirectory>workspace/AIOa_weekly</remoteDirectory>
-                <sourceFiles>nosetests_cisco.xml</sourceFiles>
+                <remoteDirectory>/opt/www/${JOB_NAME}/${BUILD_NUMBER}</remoteDirectory>
+                <sourceFiles>openstack-sqe/console*,openstack-sqe/nosetests*.xml</sourceFiles>
                 <excludes></excludes>
                 <removePrefix></removePrefix>
                 <remoteDirectorySDF>false</remoteDirectorySDF>
@@ -141,6 +146,12 @@ cp $WORKSPACE/nosetests.xml ${WORKSPACE}/nosetests_cisco.xml</command>
             </transfers>
             <useWorkspaceInPromotion>false</useWorkspaceInPromotion>
             <usePromotionTimestamp>false</usePromotionTimestamp>
+            <credentials class="jenkins.plugins.publish_over_ssh.BapSshCredentials">
+              <secretPassphrase>WAAsWsi9/63ynVzHnSm9QUlZ3eCWmiWohbWAZkK3edE=</secretPassphrase>
+              <key></key>
+              <keyPath></keyPath>
+              <username>localadmin</username>
+            </credentials>
           </jenkins.plugins.publish__over__ssh.BapSshPublisher>
         </publishers>
         <continueOnError>false</continueOnError>
@@ -149,19 +160,14 @@ cp $WORKSPACE/nosetests.xml ${WORKSPACE}/nosetests_cisco.xml</command>
         <hostConfigurationAccess class="jenkins.plugins.publish_over_ssh.BapSshPublisherPlugin" reference="../.."/>
       </delegate>
     </jenkins.plugins.publish__over__ssh.BapSshPublisherPlugin>
-    <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>nosetests_cisco.xml</testResults>
-      <keepLongStdio>false</keepLongStdio>
-      <testDataPublishers/>
-    </hudson.tasks.junit.JUnitResultArchiver>
   </publishers>
   <buildWrappers>
     <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.4.0">
       <colorMapName>xterm</colorMapName>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo LAB=lab2
-echo REG=&apos;(?!.*hint_group.*)tempest&apos;</script>
+      <script>echo POOL=200-205
+echo REG=&apos;tempest.*.test_network.*&apos;</script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

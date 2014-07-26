@@ -44,7 +44,7 @@
   </scm>
   <assignedNode>172.29.173.232</assignedNode>
   <canRoam>false</canRoam>
-  <disabled>false</disabled>
+  <disabled>true</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
@@ -54,9 +54,8 @@
       <command>cd ${WORKSPACE}/openstack-sqe &amp;&amp; make devstack
 
 STACK_IP=$(cat $WORKSPACE/openstack-sqe/config_file  | grep -Eo &quot;ip: [0-9\.]+&quot; | sed &quot;s/ip: //g&quot;)
-ssh -t localadmin@$STACK_IP &quot;cd /opt/stack/tempest &amp;&amp; testr init &amp;&amp; cat etc/ipv6_tempests_list.txt | xargs testr run&quot; || :
-ssh -t localadmin@$STACK_IP &quot;cd /opt/stack/tempest &amp;&amp; cat etc/ipv6_tempests_list.txt | xargs testr run&quot; || :
-ssh -t localadmin@$STACK_IP &quot;echo &apos;start&apos; &amp;&amp; sudo pip install junitxml &amp;&amp; cd /opt/stack/tempest &amp;&amp; testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=&apos;/tmp/ipv6_tests.xml&apos;&quot; ||:
+ssh -t localadmin@$STACK_IP &quot;cd /opt/stack/tempest; testr init &amp;&amp; testr run --load-list=/opt/stack/tempest/etc/ipv6_tempests_list.txt&quot; || :
+ssh -t localadmin@$STACK_IP &quot;sudo pip install junitxml; cd /opt/stack/tempest; testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=&apos;/tmp/ipv6_tests.xml&apos;&quot; ||:
 scp localadmin@$STACK_IP:/tmp/ipv6_tests.xml $WORKSPACE/ipv6_tests.xml
 </command>
     </hudson.tasks.Shell>
