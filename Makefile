@@ -11,7 +11,7 @@ endif
 ifndef WORKSPACE
 	WORKSPACE=$$(pwd)"/.."
 endif
-
+TPATH=$(WORKSPACE)"/tempest/.venv/bin"
 
 clean:
 	@echo "$(CYAN)>>> Cleaning...$(RESET)"
@@ -111,8 +111,8 @@ prepare-tempest:
 	time python ${WORKSPACE}/tempest/tools/install_venv.py
 	${WORKSPACE}/tempest/.venv/bin/pip install junitxml python-ceilometerclient nose testresources testtools
 	. ${WORKSPACE}/tempest/.venv/bin/activate
-	./tools/tempest-scripts/tempest_unconfig.sh
-	./tools/tempest-scripts/tempest_configurator.sh $$(grep OS_AUTH_URL ./openrc | grep -Eo "/.*:" | sed "s@/@@g"  | sed "s@:@@g")
+	PATH=${PATH}:$(TPATH) ./tools/tempest-scripts/tempest_unconfig.sh
+	PATH=${PATH}:$(TPATH) ./tools/tempest-scripts/tempest_configurator.sh $$(grep OS_AUTH_URL ./openrc | grep -Eo "/.*:" | sed "s@/@@g"  | sed "s@:@@g")
 	test -e 2role && sed -i "s/.*[sS]wift.*\=.*[Tt]rue.*/swift=false/g" ./tempest.conf.jenkins || :
 	mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
 
