@@ -1,0 +1,183 @@
+lab1:
+  net_start: 192.168.10
+  ip_start: 2
+lab2:
+   net_start: 192.168.15
+   ip_start: 2
+lab3:
+   net_start: 192.168.20
+   ip_start: 2
+lab4:
+   net_start: 192.168.25
+   ip_start: 2
+lab5:
+   net_start: 192.168.30
+   ip_start: 2
+lab6:
+   net_start: 192.168.35
+   ip_start: 2
+lab7:
+   net_start: 192.168.40
+   ip_start: 2
+lab8:
+   net_start: 192.168.45
+   ip_start: 2
+lab9:
+   net_start: 192.168.50
+   ip_start: 2
+lab10:
+   net_start: 192.168.55
+   ip_start: 2
+lab11:
+   net_start: 192.168.60
+   ip_start: 2
+lab12:
+   net_start: 192.168.65
+   ip_start: 2
+lab13:
+   net_start: 192.168.70
+   ip_start: 2
+lab14:
+   net_start: 192.168.75
+   ip_start: 2
+lab15:
+   net_start: 192.168.80
+   ip_start: 2
+lab16:
+   net_start: 192.168.85
+   ip_start: 2
+lab17:
+   net_start: 192.168.90
+   ip_start: 2
+lab18:
+   net_start: 192.168.95
+   ip_start: 2
+lab19:
+   net_start: 192.168.100
+   ip_start: 2
+lab20:
+   net_start: 192.168.105
+   ip_start: 2
+lab21:
+   net_start: 192.168.110
+   ip_start: 2
+lab22:
+   net_start: 192.168.115
+   ip_start: 2
+lab23:
+   net_start: 192.168.125
+   ip_start: 2
+lab24:
+   net_start: 192.168.130
+   ip_start: 2
+lab25:
+   net_start: 192.168.135
+   ip_start: 2
+lab100:
+   net_start: 10.10.1
+   ip_start: 2
+lab101:
+   net_start: 10.10.2
+   ip_start: 2
+lab102:
+   net_start: 10.10.3
+   ip_start: 2
+lab103:
+   net_start: 10.10.4
+   ip_start: 2
+lab104:
+   net_start: 10.10.5
+   ip_start: 2
+lab105:
+   net_start: 10.10.6
+   ip_start: 2
+lab106:
+   net_start: 10.10.7
+   ip_start: 2
+lab107:
+   net_start: 10.10.8
+   ip_start: 2
+lab108:
+   net_start: 10.10.9
+   ip_start: 2
+lab109:
+   net_start: 10.10.10
+   ip_start: 2
+lab110:
+   net_start: 10.10.11
+   ip_start: 2
+lab111:
+   net_start: 10.10.12
+   ip_start: 2
+lab112:
+   net_start: 10.10.13
+   ip_start: 2
+lab113:
+   net_start: 10.10.14
+   ip_start: 2
+lab114:
+   net_start: 10.10.15
+   ip_start: 2
+lab115:
+   net_start: 10.10.16
+   ip_start: 2
+lab200:
+   net_start: 10.20.1
+   ip_start: 2
+lab201:
+   net_start: 10.20.2
+   ip_start: 2
+lab202:
+   net_start: 10.20.3
+   ip_start: 2
+lab203:
+   net_start: 10.20.4
+   ip_start: 2
+lab204:
+   net_start: 10.20.5
+   ip_start: 2
+lab205:
+   net_start: 10.20.6
+   ip_start: 2
+lab206:
+   net_start: 10.20.7
+   ip_start: 2
+lab207:
+   net_start: 10.20.8
+   ip_start: 2
+lab208:
+   net_start: 10.20.9
+   ip_start: 2
+lab209:
+   net_start: 10.20.10
+   ip_start: 2
+lab210:
+   net_start: 10.20.11
+   ip_start: 2
+lab211:
+   net_start: 10.20.12
+   ip_start: 2
+lab212:
+   net_start: 10.20.13
+   ip_start: 2
+lab213:
+   net_start: 10.20.14
+   ip_start: 2
+lab214:
+   net_start: 10.20.15
+   ip_start: 2
+lab215:
+   net_start: 10.20.16
+   ip_start: 2
+lab216:
+   net_start: 10.20.17
+   ip_start: 2
+lab217:
+   net_start: 10.20.18
+   ip_start: 2
+lab218:
+   net_start: 10.20.19
+   ip_start: 2
+lab219:
+   net_start: 10.20.20
+   ip_start: 2

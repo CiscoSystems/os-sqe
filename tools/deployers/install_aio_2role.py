@@ -10,9 +10,8 @@ from fabric.api import sudo, settings, run, hide, put, shell_env, cd, get
 from fabric.contrib.files import exists, contains, sed
 from fabric.colors import green, red
 
-from utils import collect_logs, dump, all_servers, quit_if_fail, warn_if_fail, update_time, resolve_names, CONFIG_PATH,\
-    LOGS_COPY, change_ip_to
-
+from utils import collect_logs, warn_if_fail, update_time, resolve_names, change_ip_to, dump
+CONFIG_PATH=os.path.join(os.path.abspath(os.path.dirname(__file__)), "../libvirt-scripts", "templates")
 __author__ = 'sshnaidm'
 
 
@@ -40,39 +39,45 @@ def prepare2role(config, common_file):
     print common_file
 
     conf = yaml.load(common_file)
-    conf["controller_public_address"] = config['servers']['control-servers'][0]['ip']
-    conf["controller_admin_address"] = config['servers']['control-servers'][0]['ip']
-    conf["controller_internal_address"] = config['servers']['control-servers'][0]['ip']
-    conf["coe::base::controller_hostname"] = "control-server00"
+    print >> sys.stderr, " >>>> FABRIC loaded user.common.yaml file"
+    print conf
+    conf["controller_public_address"] = config['servers']['control-server'][0]['ip']
+    conf["controller_admin_address"] = config['servers']['control-server'][0]['ip']
+    conf["controller_internal_address"] = config['servers']['control-server'][0]['ip']
+    conf["coe::base::controller_hostname"] = config['servers']['control-server'][0]['hostname']
     conf["domain_name"] = "domain.name"
     conf["ntp_servers"] = ["ntp.esl.cisco.com"]
-    conf["external_interface"] = "eth4"
-    conf["nova::compute::vncserver_proxyclient_address"] = "%{ipaddress_eth0}"
-    conf["build_node_name"] = "build-server"
+    conf['public_interface'] = config['servers']['control-server'][0]['admin_interface']
+    conf['private_interface'] = config['servers']['control-server'][0]['admin_interface']
+    conf["external_interface"] = config['servers']['control-server'][0]['external_interface']
+    conf['internal_ip'] = "%%{ipaddress_%s}" % config['servers']['control-server'][0]['admin_interface']
+    conf["nova::compute::vncserver_proxyclient_address"] = "%%{ipaddress_%s}" % \
+                                                           config['servers']['control-server'][0]['admin_interface']
+    conf["build_node_name"] = config['servers']['build-server'][0]['hostname']
+    conf["admin_user"] = "localadmin"
+    conf["password_crypted"] = ("$6$UfgWxrIv$k4KfzAEMqMg.fppmSOTd0usI4j6gfjs0962."
+                                "JXsoJRWa5wMz8yQk4SfInn4.WZ3L/MCt5u.62tHDGB36EhiKF1")
     conf["controller_public_url"] = change_ip_to(
         conf["controller_public_url"],
-        config['servers']['control-servers'][0]['ip'])
+        config['servers']['control-server'][0]['ip'])
     conf["controller_admin_url"] = change_ip_to(
         conf["controller_admin_url"],
-        config['servers']['control-servers'][0]['ip'])
+        config['servers']['control-server'][0]['ip'])
     conf["controller_internal_url"] = change_ip_to(
         conf["controller_internal_url"],
-        config['servers']['control-servers'][0]['ip'])
-    conf["cobbler_node_ip"] = config['servers']['build-server']['ip']
+        config['servers']['control-server'][0]['ip'])
+    conf["cobbler_node_ip"] = config['servers']['build-server'][0]['ip']
     conf["node_subnet"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".0"
     conf["node_gateway"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".1"
-    conf["swift_internal_address"] = config['servers']['control-servers'][0]['ip']
-    conf["swift_public_address"] = config['servers']['control-servers'][0]['ip']
-    conf["swift_admin_address"] = config['servers']['control-servers'][0]['ip']
-    conf['mysql::server::override_options']['mysqld']['bind-address'] = config['servers']['control-servers'][0]['ip']
-    conf['internal_ip'] = "%{ipaddress_eth0}"
-    conf['public_interface'] = "eth0"
-    conf['private_interface'] = "eth0"
-    conf['install_drive'] = "/dev/vda"
+    conf["swift_internal_address"] = config['servers']['control-server'][0]['ip']
+    conf["swift_public_address"] = config['servers']['control-server'][0]['ip']
+    conf["swift_admin_address"] = config['servers']['control-server'][0]['ip']
+    conf['mysql::server::override_options']['mysqld']['bind-address'] = config['servers']['control-server'][0]['ip']
     conf['ipv6_ra'] = 1
     conf['packages'] = conf['packages'] + " radvd"
+    conf['install_drive'] = "/dev/vda"
     conf['service_plugins'] += ["neutron.services.metering.metering_plugin.MeteringPlugin"]
-    return yaml.dump(conf)
+    return dump(conf)
 
 
 def prepare_cobbler(config, cob_file):
@@ -89,11 +94,11 @@ def prepare_cobbler(config, cob_file):
         text_cobbler = f.read()
     text_cobbler = text_cobbler.format(
         int_ipadd="{$eth0_ip-address}",
-        ip_gateway=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1",
-        ip_dns=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1"
+        ip_gateway=".".join((config['servers']['build-server'][0]["ip"].split(".")[:3])) + ".1",
+        ip_dns=".".join((config['servers']['build-server'][0]["ip"].split(".")[:3])) + ".1"
     )
 
-    for c in config['servers']['control-servers']:
+    for c in config['servers']['control-server']:
         new_conf[c['hostname']] = {
             "hostname": c['hostname'] + "." + DOMAIN_NAME,
             "power_address": c["ip"],
@@ -107,7 +112,7 @@ def prepare_cobbler(config, cob_file):
                 }
             }
         }
-    for c in config['servers']['compute-servers']:
+    for c in config['servers']['compute-server']:
         new_conf[c['hostname']] = {
             "hostname": c['hostname'] + "." + DOMAIN_NAME,
             "power_address": c["ip"],
@@ -122,7 +127,7 @@ def prepare_cobbler(config, cob_file):
             }
         }
 
-    return text_cobbler + "\n" + yaml.dump(new_conf)
+    return text_cobbler + "\n" + dump(new_conf)
 
 
 def role_mappings(config):
@@ -133,12 +138,12 @@ def role_mappings(config):
     :return: text dump of new role_mappings.yaml file
     """
     roles = {}
-    for c in config["servers"]["control-servers"]:
+    for c in config["servers"]["control-server"]:
         roles.update({c["hostname"]: "controller"})
-    for c in config["servers"]["compute-servers"]:
+    for c in config["servers"]["compute-server"]:
         roles.update({c["hostname"]: "compute"})
-    roles.update({config["servers"]["build-server"]["hostname"]: "build"})
-    return yaml.dump(roles)
+    roles.update({config["servers"]["build-server"][0]["hostname"]: "build"})
+    return dump(roles)
 
 
 def run_services(host,
@@ -157,8 +162,10 @@ def run_services(host,
     verbose = verbose or []
     if settings_dict['user'] != 'root':
         run_func = sudo
+        use_sudo_flag = True
     else:
         run_func = run
+        use_sudo_flag = False
     print >> sys.stderr, "FABRIC connecting to", settings_dict["host_string"],
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         with cd("/root/"):
@@ -169,14 +176,13 @@ def run_services(host,
                      'Dpkg::Options::="--force-confold" dist-upgrade')
             run_func("apt-get install -y git")
             run_func("git clone -b icehouse https://github.com/CiscoSystems/puppet_openstack_builder")
+            ## run the latest, not i.0 release
             sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
                         "icehouse/snapshots/i.0",
-                        "icehouse-proposed")
-            #with cd("/root/puppet_openstack_builder"):
-            #        run_func('git checkout i.0')
+                        "icehouse-proposed", use_sudo=use_sudo_flag)
             sed("/root/puppet_openstack_builder/data/hiera_data/vendor/cisco_coi_common.yaml",
                             "/snapshots/i.0",
-                            "-proposed")
+                            "-proposed", use_sudo=use_sudo_flag)
             with cd("/root/puppet_openstack_builder/install-scripts"):
                 warn_if_fail(run_func("./setup.sh"))
                 warn_if_fail(run_func('puppet agent --enable'))
@@ -214,6 +220,8 @@ def install_openstack(settings_dict,
     with open(os.path.join(CONFIG_PATH, "buildserver_yaml")) as f:
                     build_yaml = f.read()
     roles_file = role_mappings(config)
+    print "Job settings", settings_dict
+    print "Env settings", envs
     print >> sys.stderr, roles_file
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
         with cd("/root/"):
@@ -234,19 +242,19 @@ def install_openstack(settings_dict,
                 warn_if_fail(run_func('DEBIAN_FRONTEND=noninteractive apt-get -y '
                                       '-o Dpkg::Options::="--force-confdef" -o '
                                       'Dpkg::Options::="--force-confold" dist-upgrade'))
-                with cd("/root"):
-                    warn_if_fail(run_func("git clone -b icehouse "
-                                          "https://github.com/CiscoSystems/puppet_openstack_builder"))
-                with cd("puppet_openstack_builder"):
+                warn_if_fail(run_func("git clone -b icehouse "
+                                        "https://github.com/CiscoSystems/puppet_openstack_builder"))
+
                     ## run the latest, not i.0 release
-                    sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
-                        "icehouse/snapshots/i.0",
-                        "icehouse-proposed", use_sudo=use_sudo_flag)
-                    sed("/root/puppet_openstack_builder/data/hiera_data/vendor/cisco_coi_common.yaml",
+                sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
+                    "icehouse/snapshots/i.0",
+                    "icehouse-proposed", use_sudo=use_sudo_flag)
+                sed("/root/puppet_openstack_builder/data/hiera_data/vendor/cisco_coi_common.yaml",
                             "/snapshots/i.0",
                             "-proposed", use_sudo=use_sudo_flag)
-                    with cd("install-scripts"):
-                        warn_if_fail(run_func("./install.sh"))
+                with cd("puppet_openstack_builder/install-scripts"):
+                    warn_if_fail(run_func("./install.sh"))
+                run_func("cp /etc/puppet/data/hiera_data/user.common.yaml /tmp/myfile")
                 fd = StringIO()
                 warn_if_fail(get("/etc/puppet/data/hiera_data/user.common.yaml", fd))
                 new_user_common = prepare2role(config, fd.getvalue())
@@ -284,7 +292,7 @@ def install_openstack(settings_dict,
                 else:
                     print (red("No openrc file, something went wrong! :("))
                 print (green("Copying logs and configs"))
-                collect_logs(run_func=run_func, hostname=config["servers"]["build-server"]["hostname"], clean=True)
+                collect_logs(run_func=run_func, hostname=config["servers"]["build-server"][0]["hostname"], clean=True)
                 print (green("Finished!"))
                 return True
             elif not force and prepare:
@@ -320,7 +328,7 @@ def track_cobbler(config, setts):
 
     wait_os_up = 20*60
     wait_catalog = 40*60
-    hosts = config["servers"]["compute-servers"] + config["servers"]["control-servers"]
+    hosts = config["servers"]["compute-server"] + config["servers"]["control-server"]
     # reset machines
     try:
         import libvirt
@@ -376,9 +384,9 @@ def run_probe(settings_dict, envs=None, verbose=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-u', action='store', dest='user',
+    parser.add_argument('-u', action='store', dest='user', default=None,
                         help='User to run the script with')
-    parser.add_argument('-p', action='store', dest='password',
+    parser.add_argument('-p', action='store', dest='password', default=None,
                         help='Password for user and sudo')
     parser.add_argument('-a', action='append', dest='hosts', default=[],
                         help='List of hosts for action')
@@ -439,55 +447,48 @@ def main():
         except IOError as e:
             print >> sys.stderr, "Not found file {file}: {exc}".format(file=opts.config_file, exc=e)
             sys.exit(1)
-        build = config['servers']['build-server']
-        hosts = [build["ip"]]
-        user = build["user"]
-        password = build["password"]
-        envs_build = {"default_interface": build["default_interface"],
-                      "external_interface": build["external_interface"],
-                      "vendor": "cisco",
-                      "scenario": "2_role",
-                      "build_server_ip": build["ip"]}
+        build = config['servers']['build-server'][0]
+        host = build["ip"]
+        user = opts.user or build["user"]
+        password = opts.password or build["password"]
+        envs_build = {
+            "vendor": "cisco",
+            "scenario": "2_role",
+            "build_server_ip": build["ip"]
+        }
 
-    job_settings = {"host_string": "",
+    job_settings = {"host_string": host,
                     "user": user,
                     "password": password,
                     "warn_only": True,
                     "key_filename": ssh_key_file,
                     "abort_on_prompts": True,
                     "gateway": opts.gateway}
-    if opts.test_mode:
-        job_settings['host_string'] = hosts[0]
-        job_settings['command_timeout'] = 15
-        sys.exit(run_probe(job_settings, verbose=verb_mode, envs=envs_build))
-    for host in hosts:
-        job_settings['host_string'] = host
-        print job_settings
-        print envs_build
-        res = install_openstack(job_settings,
-                                verbose=verb_mode,
-                                envs=envs_build,
-                                url_script=opts.url,
-                                prepare=opts.prepare_mode,
-                                force=opts.force,
-                                config=config,
-                                use_cobbler=opts.use_cobbler,
-                                proxy=opts.proxy)
-        if res:
-            print "Job with host {host} finished successfully!".format(host=host)
+    print >> sys.stderr, job_settings
+    res = install_openstack(job_settings,
+                            verbose=verb_mode,
+                            envs=envs_build,
+                            url_script=opts.url,
+                            prepare=opts.prepare_mode,
+                            force=opts.force,
+                            config=config,
+                            use_cobbler=opts.use_cobbler,
+                            proxy=opts.proxy)
+    if res:
+        print "Job with host {host} finished successfully!".format(host=host)
     if not opts.only_build:
         if opts.use_cobbler:
-            job_settings['host_string'] = hosts[0]
+            job_settings['host_string'] = host
             track_cobbler(config, job_settings)
         else:
-            for host in config["servers"]["control-servers"]:
+            for host in config["servers"]["control-server"]:
                 job_settings['host_string'] = host["ip"]
                 run_services(host,
                              job_settings,
                              verbose=verb_mode,
                              envs=envs_build,
                              )
-            for host in config["servers"]["compute-servers"]:
+            for host in config["servers"]["compute-server"]:
                 job_settings['host_string'] = host["ip"]
                 run_services(host,
                              job_settings,

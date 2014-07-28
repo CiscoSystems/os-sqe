@@ -11,8 +11,6 @@ from fabric.colors import green, red, yellow
 import time
 from utils import collect_logs, warn_if_fail, quit_if_fail
 
-from workarounds import fix_aio as fix
-
 
 __author__ = 'sshnaidm'
 
@@ -57,10 +55,8 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, p
                 append("/etc/sudoers",
                        "{user} ALL=(ALL) NOPASSWD: ALL".format(user=settings_dict['user']),
                        use_sudo=True)
-            with cd("/root"):
-                    warn_if_fail(run_func("git clone -b icehouse "
-                                          "https://github.com/CiscoSystems/puppet_openstack_builder"))
-            # Create another interface with different network and connect with it
+            warn_if_fail(run_func("git clone -b icehouse "
+                                  "https://github.com/CiscoSystems/puppet_openstack_builder"))
             if not force and not prepare:
                 with cd("puppet_openstack_builder"):
                     ## run the latest, not i.0 release
@@ -71,7 +67,8 @@ def install_openstack(settings_dict, envs=None, verbose=None, url_script=None, p
                             "/snapshots/i.0",
                             "-proposed", use_sudo=use_sudo_flag)
                     with cd("install-scripts"):
-                        result = run_func("./install.sh")
+                        run_func("./install.sh")
+                        result = run_func('puppet apply -v /etc/puppet/manifests/site.pp', pty=False)
                         tries = 1
                         error = "Error:"
                         while error in result and tries <= APPLY_LIMIT:
@@ -143,9 +140,9 @@ def run_probe(settings_dict, envs=None, verbose=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-u', action='store', dest='user',
+    parser.add_argument('-u', action='store', dest='user', default=None,
                         help='User to run the script with')
-    parser.add_argument('-p', action='store', dest='password',
+    parser.add_argument('-p', action='store', dest='password', default=None,
                         help='Password for user and sudo')
     parser.add_argument('-a', action='append', dest='hosts', default=[],
                         help='List of hosts for action')
@@ -183,42 +180,41 @@ def main():
     ssh_key_file = opts.ssh_key_file if opts.ssh_key_file else path2ssh
     if not opts.config_file:
         envs_aio = {"default_interface": opts.default_interface,
-                    "external_interface": opts.default_interface}
-        hosts = opts.hosts
+                    "external_interface": opts.default_interface,
+                    "scenario": "all_in_one",
+                    "vendor": "cisco"
+        }
+        host = opts.hosts[0]
         user = opts.user
         password = opts.password
     else:
         with open(opts.config_file) as f:
             config = yaml.load(f)
-        aio = config['servers']['aio']
-        hosts = [aio["ip"]]
-        user = aio["user"]
-        password = aio["password"]
-        envs_aio = {"default_interface": aio["default_interface"],
-                    "external_interface": aio["external_interface"]}
-
-    job_settings = {"host_string": "",
+        aio = config['servers']['aio-server'][0]
+        host = aio["ip"]
+        user = opts.user or aio["user"]
+        password = opts.password or aio["password"]
+        envs_aio = {"default_interface": aio["internal_interface"],
+                    "external_interface": aio["external_interface"],
+                    "scenario": "all_in_one",
+                    "vendor": "cisco"
+        }
+    job_settings = {"host_string": host,
                     "user": user,
                     "password": password,
                     "warn_only": True,
                     "key_filename": ssh_key_file,
                     "abort_on_prompts": True,
                     "gateway": opts.gateway}
-    if opts.test_mode:
-        job_settings['host_string'] = hosts[0]
-        job_settings['command_timeout'] = 15
-        sys.exit(run_probe(job_settings, verbose=verb_mode, envs=envs_aio))
-    for host in hosts:
-        job_settings['host_string'] = host
-        print job_settings
-        res = install_openstack(job_settings,
-                                verbose=verb_mode,
-                                envs=envs_aio,
-                                url_script=opts.url,
-                                prepare=opts.prepare_mode,
-                                force=opts.force)
-        if res:
-            print "Job with host {host} finished successfully!".format(host=host)
+    print job_settings
+    res = install_openstack(job_settings,
+                            verbose=verb_mode,
+                            envs=envs_aio,
+                            url_script=opts.url,
+                            prepare=opts.prepare_mode,
+                            force=opts.force)
+    if res:
+        print "Job with host {host} finished successfully!".format(host=host)
 
 
 if __name__ == "__main__":

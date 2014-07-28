@@ -5,7 +5,7 @@ import os
 import yaml
 
 from fabric.api import sudo, settings, run, hide, put, shell_env, cd, get
-from fabric.contrib.files import exists
+from fabric.contrib.files import exists, append
 from fabric.colors import green, red
 
 from utils import warn_if_fail, quit_if_fail, update_time
@@ -71,6 +71,10 @@ USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/logs
 TEMPEST_REPO=https://github.com/CiscoSystems/tempest.git
 TEMPEST_BRANCH=master-in-use
+P_VERSION=4+6
+IPV6_PRIVATE_RANGE=2001:dead:beef:deed::/64
+IPV6_NETWORK_GATEWAY=2001:dead:beef:deed::1
+REMOVE_PUBLIC_BRIDGE=False
 #RECLONE=no
 #OFFLINE=True
 """
@@ -86,6 +90,8 @@ def install_devstack(settings_dict,
     envs = envs or {}
     verbose = verbose or []
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
+        if exists("/etc/gai.conf"):
+            append("/etc/gai.conf", "precedence ::ffff:0:0/96  100", use_sudo=True)
         if proxy:
             warn_if_fail(put(StringIO('Acquire::http::proxy "http://proxy.esl.cisco.com:8080/";'),
                              "/etc/apt/apt.conf.d/00proxy",
@@ -154,7 +160,7 @@ def main():
     else:
         with open(opts.config_file) as f:
             config = yaml.load(f)
-        aio = config['servers']['aio']
+        aio = config['servers']['devstack-server'][0]
         job = {"host_string": aio["ip"],
                "user": opts.user or aio["user"],
                "password": opts.password or aio["password"],

@@ -1,1 +1,1 @@
-git build-essential python-virtualenv python-pip python-dev qemu-utils qemu-kvm virtinst cloud-utils pkg-config libvirt-dev libyaml-dev libssl-dev libffi-dev libxml2-dev libxslt1-dev ntp
+make python-virtualenv python-pip python-dev qemu-utils virtinst cloud-utils pkg-config libvirt-dev libyaml-dev libssl-dev libffi-dev libxml2-dev libxslt1-dev ntp

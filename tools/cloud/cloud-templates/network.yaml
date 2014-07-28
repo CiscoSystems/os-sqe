@@ -1,0 +1,75 @@
+template:
+  xml: |
+        <network>
+          <name>{name}</name>
+          {nat}
+          <domain name='{domain}'/>
+          {dns}
+          <ip address='{net_ip}.1' netmask='255.255.255.0'>
+          {dhcp}
+          </ip>
+        </network>
+  xml6: |
+        <network>
+          <name>{name}</name>
+          {nat}
+          <domain name='{domain}'/>
+          {dns}
+          <ip family="ipv6" address='{gateway}' prefix='{prefix}'>
+          {dhcp}
+          </ip>
+        </network>
+  xml64: |
+        <network>
+          <name>{name}</name>
+          {nat}
+          <domain name='{domain}'/>
+          {dns}
+          <ip family="ipv6" address='{gateway}' prefix='{prefix}'/>
+          <ip address='{net_ip}.1' netmask='255.255.255.0'>
+          {dhcp}
+          </ip>
+        </network>
+  dns_def: |
+        <dns>
+          {dns_records}
+        </dns>
+  dns_host: |
+        <host ip='{net_ip}.{host_ip}'>
+          <hostname>{host}</hostname>
+          <hostname>{host}.{domain}</hostname>
+        </host>
+  dns6_host: |
+        <host ip='{net_ip}::{host_ip}'>
+          <hostname>{host}</hostname>
+          <hostname>{host}.{domain}</hostname>
+        </host>
+  dhcp_def: |
+        <dhcp>
+          <range start='{net_ip}.2' end='{net_ip}.250' />
+          {dhcp_records}
+        </dhcp>
+  dhcp_def6: |
+        <dhcp>
+          <range start='{start_ip}' end='{end_ip}' />
+          {dhcp_records}
+        </dhcp>
+  dhcp_host: |
+        <host mac="{mac}" name="{hostname}.{domain}" ip="{ip}"/>
+  dhcp_host6: |
+        <host id="{id}" name="{hostname}.{domain}" ip="{ip}"/>
+  nat: |
+        <forward mode='nat'>
+          <nat>
+            <port start='1024' end='65535'/>
+          </nat>
+        </forward>
+  interface: |
+        <interface type='network'>
+          <source network='{net_name}'/>
+        </interface>
+  interface_dhcp: |
+        <interface type='network'>
+          <source network='{net_name}'/>
+          <mac address='{mac}'/>
+        </interface>

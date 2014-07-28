@@ -15,9 +15,7 @@ def apply_multi(config, user, password, gateway, force, verb_mode, ssh_key_file)
         print >> sys.stderr, "Configuring control machine", setts
         with settings(**setts), hide(*verbose):
             run_func("sed -i '2idefault_floating_pool=public' /etc/nova/nova.conf")
-            run_func("sed -i '3ischeduler_driver=nova.scheduler.filter_scheduler.FilterScheduler' /etc/nova/nova.conf")
             run_func("service nova-api restart")
-            run_func("service nova-scheduler restart")
             run_func("nova floating-ip-create")
 
 
@@ -43,9 +41,9 @@ def apply_multi(config, user, password, gateway, force, verb_mode, ssh_key_file)
         use_sudo_flag = False
         run_func = run
 
-    for control in config['servers']["control-servers"]:
+    for control in config['servers']["control-server"]:
         run_on_control(control, job_settings, verb_mode, run_func, use_sudo_flag)
-    for compute in config['servers']["compute-servers"]:
+    for compute in config['servers']["compute-server"]:
         run_on_compute(compute, job_settings, verb_mode, run_func, use_sudo_flag)
 
 
@@ -131,9 +129,9 @@ def main():
         except IOError as e:
             print >> sys.stderr, "Not found file {file}: {exc}".format(file=opts.config_file, exc=e)
             sys.exit(1)
-        if "aio" in config["servers"]:
+        if "aio-server" in config["servers"]:
             apply_aio(
-                host=config["servers"]["aio"]["ip"],
+                host=config["servers"]["aio-server"][0]["ip"],
                 user=opts.user,
                 password=opts.password,
                 gateway=opts.gateway,
