@@ -30,13 +30,13 @@ def prepare_files(config, paths, use_sudo_flag):
     def prepare_fullha(config, ha_file):
         """ Prepare user.full_ha.file """
         conf = yaml.load(ha_file)
-        net_ip = ".".join((config['servers']['control-servers'][0]['ip'].split(".")[:3]))
+        net_ip = ".".join((config['servers']['control-server'][0]['ip'].split(".")[:3]))
         vipc = net_ip + ".253"
         conf["coe::base::controller_hostname"] = "control-server"
         conf["horizon::keystone_url"] = change_ip_to(conf["horizon::keystone_url"], vipc)
-        conf["controller_names"] = [c["hostname"] for c in config['servers']['control-servers']]
+        conf["controller_names"] = [c["hostname"] for c in config['servers']['control-server']]
         conf["openstack-ha::load-balancer::controller_ipaddresses"] = [c["ip"]
-                                                                       for c in config['servers']['control-servers']]
+                                                                       for c in config['servers']['control-server']]
         conf["openstack-ha::load-balancer::swift_proxy_ipaddresses"] = [c["ip"]
                                                                        for c in config['servers']['swift-proxy']]
         conf["openstack-ha::load-balancer::swift_proxy_names"] = [c["hostname"]
@@ -45,21 +45,21 @@ def prepare_files(config, paths, use_sudo_flag):
         conf["openstack::swift::proxy::swift_proxy_net_ip"] = "%{ipaddress_eth2}"
         conf["openstack::swift::proxy::swift_memcache_servers"] = [i["ip"] + ":11211"
                                                                    for i in config['servers']['swift-proxy']]
-        conf["nova::memcached_servers"] = [i["ip"] + ":11211" for i in config['servers']['control-servers']]
-        conf["rabbit_hosts"] = [i["hostname"] + ":5672" for i in config['servers']['control-servers']]
-        conf["galera::galera_servers"] = [c["ip"] for c in config['servers']['control-servers']]
-        conf["galera::galera_master"] = config['servers']['control-servers'][0]["hostname"] + "." + DOMAIN_NAME
-        conf["galera_master_name"] = config['servers']['control-servers'][0]["hostname"]
-        conf["galera_master_ipaddress"] = config['servers']['control-servers'][0]["ip"]
-        conf["galera_backup_names"] = [i["hostname"] for i in config['servers']['control-servers'][1:]]
-        conf["galera_backup_ipaddresses"] = [i["ip"] for i in config['servers']['control-servers'][1:]]
+        conf["nova::memcached_servers"] = [i["ip"] + ":11211" for i in config['servers']['control-server']]
+        conf["rabbit_hosts"] = [i["hostname"] + ":5672" for i in config['servers']['control-server']]
+        conf["galera::galera_servers"] = [c["ip"] for c in config['servers']['control-server']]
+        conf["galera::galera_master"] = config['servers']['control-server'][0]["hostname"] + "." + DOMAIN_NAME
+        conf["galera_master_name"] = config['servers']['control-server'][0]["hostname"]
+        conf["galera_master_ipaddress"] = config['servers']['control-server'][0]["ip"]
+        conf["galera_backup_names"] = [i["hostname"] for i in config['servers']['control-server'][1:]]
+        conf["galera_backup_ipaddresses"] = [i["ip"] for i in config['servers']['control-server'][1:]]
         conf["openstack::swift::storage-node::storage_devices"] = ["vdb", "vdc", "vdd"]
         return dump(conf)
 
     def prepare_common(config, common_file):
         """ Prepare user.common.file """
         conf = yaml.load(common_file)
-        net_ip = ".".join((config['servers']['control-servers'][0]['ip'].split(".")[:3]))
+        net_ip = ".".join((config['servers']['control-server'][0]['ip'].split(".")[:3]))
         vipc = net_ip + ".253"
         conf["controller_public_address"] = vipc
         conf["controller_admin_address"] = vipc
@@ -79,24 +79,24 @@ def prepare_files(config, paths, use_sudo_flag):
         conf["controller_internal_url"] = change_ip_to(
             conf["controller_internal_url"],
             vipc)
-        conf["cobbler_node_ip"] = config['servers']['build-server']['ip']
+        conf["cobbler_node_ip"] = config['servers']['build-server'][0]['ip']
         conf["node_subnet"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".0"
         conf["node_gateway"] = ".".join(conf["cobbler_node_ip"].split(".")[:3]) + ".1"
-        vipsw = ".".join((config['servers']['control-servers'][0]['ip'].split(".")[:3])) + ".252"
+        vipsw = ".".join((config['servers']['control-server'][0]['ip'].split(".")[:3])) + ".252"
         conf["swift_internal_address"] = vipsw
         conf["swift_public_address"] = vipsw
         conf["swift_admin_address"] = vipsw
         conf['mysql::server::override_options']['mysqld']['bind-address'] = "0.0.0.0"
-        #    config['servers']['control-servers'][0]['ip']
+        #    config['servers']['control-server'][0]['ip']
         conf['swift_storage_interface'] = "eth2"
         conf['swift_local_net_ip'] = "%{ipaddress_eth2}"
         conf['internal_ip'] = "%{ipaddress_eth0}"
         conf['public_interface'] = "eth0"
         conf['private_interface'] = "eth0"
         conf['install_drive'] = "/dev/vda"
-        conf['mon_initial_members'] = config['servers']['control-servers'][0]["hostname"]
-        conf['ceph_primary_mon'] = config['servers']['control-servers'][0]["hostname"]
-        conf['ceph_monitor_address'] = config['servers']['control-servers'][0]["ip"]
+        conf['mon_initial_members'] = config['servers']['control-server'][0]["hostname"]
+        conf['ceph_primary_mon'] = config['servers']['control-server'][0]["hostname"]
+        conf['ceph_monitor_address'] = config['servers']['control-server'][0]["ip"]
         conf['ceph_cluster_interface'] = "eth0"
         conf['ceph_cluster_network'] = net_ip + ".0/24"
         conf['ceph_public_interface'] = "eth0"
@@ -111,11 +111,11 @@ def prepare_files(config, paths, use_sudo_flag):
             text_cobbler = f.read()
         text_cobbler = text_cobbler.format(
             int_ipadd="{$eth0_ip-address}",
-            ip_gateway=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1",
-            ip_dns=".".join((config['servers']['build-server']["ip"].split(".")[:3])) + ".1"
+            ip_gateway=".".join((config['servers']['build-server'][0]["ip"].split(".")[:3])) + ".1",
+            ip_dns=".".join((config['servers']['build-server'][0]["ip"].split(".")[:3])) + ".1"
         )
-        servers = config['servers']['control-servers'] + \
-            config["servers"]["compute-servers"] + \
+        servers = config['servers']['control-server'] + \
+            config["servers"]["compute-server"] + \
             config["servers"]["swift-storage"] + \
             config["servers"]["swift-proxy"] + \
             config["servers"]["load-balancer"]
@@ -138,10 +138,10 @@ def prepare_files(config, paths, use_sudo_flag):
 
     def prepare_role(config, role_file):
         """ Prepare role_mappings file """
-        roles = {config["servers"]["build-server"]["hostname"]: "build"}
-        for c in config["servers"]["control-servers"]:
+        roles = {config["servers"]["build-server"][0]["hostname"]: "build"}
+        for c in config["servers"]["control-server"]:
             roles[c["hostname"]] = "controller"
-        for c in config["servers"]["compute-servers"]:
+        for c in config["servers"]["compute-server"]:
             roles[c["hostname"]] = "compute"
         for c in config["servers"]["swift-storage"]:
             roles[c["hostname"]] = "swift_storage"
@@ -180,7 +180,7 @@ def prepare_new_files(config, path, use_sudo_flag):
         warn_if_fail(put(fd, os.path.join(path, filename), use_sudo=sudo))
         warn_if_fail(put(fd, os.path.join(path, filename.replace("-", "_")), use_sudo=sudo))
 
-    for compute in config["servers"]["compute-servers"]:
+    for compute in config["servers"]["compute-server"]:
         file_name = compute["hostname"] + ".yaml"
         ceph = {}
         ceph["cephdeploy::has_compute"] = True
@@ -206,7 +206,7 @@ def prepare_new_files(config, path, use_sudo_flag):
         )
         file_name = sw["hostname"] + ".yaml"
         write(sw_text, path, file_name, use_sudo_flag)
-    file_name = config["servers"]["build-server"]["hostname"] + ".yaml"
+    file_name = config["servers"]["build-server"][0]["hostname"] + ".yaml"
     b_text = "apache::default_vhost: true"
     write(b_text, path, file_name, use_sudo_flag)
 
@@ -214,7 +214,7 @@ def prepare_new_files(config, path, use_sudo_flag):
 def prepare_hosts(config):
     """ Prepare /etc/hosts file """
     hosts = '\n'
-    net_ip = ".".join(config["servers"]["control-servers"][0]["ip"].split(".")[:3])
+    net_ip = ".".join(config["servers"]["control-server"][0]["ip"].split(".")[:3])
     hosts += "{ip}    control.{domain}    control\n".format(ip=net_ip + ".253", domain=DOMAIN_NAME)
     hosts += "{ip}    swiftproxy.{domain}    swiftproxy\n".format(ip=net_ip + ".252", domain=DOMAIN_NAME)
     for s in all_servers(config):
@@ -267,6 +267,9 @@ def run_services(host,
             sed("/root/puppet_openstack_builder/install-scripts/cisco.install.sh",
                             "icehouse/snapshots/i.0",
                             "icehouse-proposed", use_sudo=use_sudo_flag)
+            sed("/root/puppet_openstack_builder/data/hiera_data/vendor/cisco_coi_common.yaml",
+                            "/snapshots/i.0",
+                            "-proposed", use_sudo=use_sudo_flag)
             with cd("/root/puppet_openstack_builder/install-scripts"):
                 warn_if_fail(run_func("./setup.sh"))
                 warn_if_fail(run_func('puppet agent --enable'))
@@ -372,7 +375,7 @@ def install_openstack(settings_dict,
                 else:
                     print (red("No openrc file, something went wrong! :("))
                 print (green("Copying logs and configs"))
-                collect_logs(run_func=run_func, hostname=config["servers"]["build-server"]["hostname"], clean=True)
+                collect_logs(run_func=run_func, hostname=config["servers"]["build-server"][0]["hostname"], clean=True)
                 print (green("Finished!"))
                 return True
             elif not force and prepare:
@@ -408,8 +411,8 @@ def track_cobbler(config, setts):
 
     wait_os_up = 15*60
     wait_catalog = 40*60
-    hosts = config['servers']['control-servers'] + \
-        config["servers"]["compute-servers"] + \
+    hosts = config['servers']['control-server'] + \
+        config["servers"]["compute-server"] + \
         config["servers"]["swift-storage"] + \
         config["servers"]["swift-proxy"] + \
         config["servers"]["load-balancer"]
@@ -505,10 +508,10 @@ def main():
         except IOError as e:
             print >> sys.stderr, "Not found file {file}: {exc}".format(file=opts.config_file, exc=e)
             sys.exit(1)
-        build = config['servers']['build-server']
+        build = config['servers']['build-server'][0]
         hosts = [build["ip"]]
-        user = build["user"]
-        password = build["password"]
+        user = opts.user or build["user"]
+        password = opts.password or build["password"]
         envs_build = {
             "vendor": "cisco",
             "scenario": "full_ha",
@@ -545,8 +548,8 @@ def main():
             servers = config["servers"]["load-balancer"] + \
                 config["servers"]["swift-storage"] + \
                 config["servers"]["swift-proxy"] + \
-                config["servers"]["control-servers"] + \
-                config["servers"]["compute-servers"]
+                config["servers"]["control-server"] + \
+                config["servers"]["compute-server"]
             for host in servers:
                 job_settings['host_string'] = host["ip"]
                 run_services(host,
