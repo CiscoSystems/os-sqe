@@ -33,9 +33,12 @@ class SeedStorage:
 
     def define_interfaces(self):
         nets = self.full_conf['networks']
+        used_nets = self.full_conf["servers"][self.server]['params']['networks']
+        filtered_nets = [i for i in nets if i.keys()[0] in used_nets]
         ifupdown = []
-        for num, net in enumerate(nets):
-            net_name = make_network_name(self.lab_id, net.keys()[0])
+        for num, net in enumerate(filtered_nets):
+            conf_net_name = net.keys()[0]
+            net_name = make_network_name(self.lab_id, conf_net_name)
             network = Network.pool[net_name][1]
             combine_func = Network6.network_combine if network.ipv6 else Network.network_combine
             interface = network.interface
