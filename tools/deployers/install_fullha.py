@@ -42,7 +42,7 @@ def prepare_files(config, paths, use_sudo_flag):
         conf["openstack-ha::load-balancer::swift_proxy_names"] = [c["hostname"]
                                                                        for c in config['servers']['swift-proxy']]
         vipsw = net_ip + ".252"
-        conf["openstack::swift::proxy::swift_proxy_net_ip"] = "%{ipaddress_eth2}"
+        conf["openstack::swift::proxy::swift_proxy_net_ip"] = "%{ipaddress_eth1}"
         conf["openstack::swift::proxy::swift_memcache_servers"] = [i["ip"] + ":11211"
                                                                    for i in config['servers']['swift-proxy']]
         conf["nova::memcached_servers"] = [i["ip"] + ":11211" for i in config['servers']['control-server']]
@@ -86,10 +86,11 @@ def prepare_files(config, paths, use_sudo_flag):
         conf["swift_internal_address"] = vipsw
         conf["swift_public_address"] = vipsw
         conf["swift_admin_address"] = vipsw
+        conf["swift_proxy_net_ip"] = "%{ipaddress_eth0}"
         conf['mysql::server::override_options']['mysqld']['bind-address'] = "0.0.0.0"
         #    config['servers']['control-server'][0]['ip']
-        conf['swift_storage_interface'] = "eth2"
-        conf['swift_local_net_ip'] = "%{ipaddress_eth2}"
+        conf['swift_storage_interface'] = "eth0"
+        conf['swift_local_net_ip'] = "%{ipaddress_eth0}"
         conf['internal_ip'] = "%{ipaddress_eth0}"
         conf['public_interface'] = "eth0"
         conf['private_interface'] = "eth0"
@@ -275,6 +276,74 @@ def run_services(host,
                 warn_if_fail(run_func('puppet agent --enable'))
                 warn_if_fail(run_func("puppet agent -td --server=build-server.domain.name --pluginsync"))
                 collect_logs(run_func=run_func, hostname=host["hostname"])
+
+
+def run_db_sync_control(host,
+                 settings_dict,
+                 envs=None,
+                 verbose=None,
+                 config=None):
+    envs = envs or {}
+    verbose = verbose or []
+    if settings_dict['user'] != 'root':
+        run_func = sudo
+        use_sudo_flag = True
+    else:
+        run_func = run
+        use_sudo_flag = False
+    print >> sys.stderr, "FABRIC connecting to", settings_dict["host_string"], host["hostname"]
+    with settings(**settings_dict), hide(*verbose), shell_env(**envs):
+        run_func("service mysql restart;"
+                 "sleep 180;"
+                 "service keystone stop;"
+                 "keystone-manage token_flush;"
+                 "keystone-manage db_sync;"
+                 "service keystone start;"
+                 "service glance-api stop;"
+                 "service glance-registry stop;"
+                 "glance-manage db_sync;"
+                 "service glance-api start;"
+                 "service glance-registry start;"
+                 "service nova-api stop;"
+                 "service nova-scheduler stop;"
+                 "service nova-conductor stop;"
+                 "service nova-cert stop;"
+                 "service nova-consoleauth stop;"
+                 "service nova-novncproxy stop;"
+                 "nova-manage db sync;"
+                 "service nova-api start;"
+                 "service nova-scheduler start;"
+                 "service nova-conductor start;"
+                 "service nova-cert start;"
+                 "service nova-consoleauth start;"
+                 "service nova-novncproxy start;"
+                 "service cinder-api stop;"
+                 "service cinder-scheduler stop;"
+                 "cinder-manage db sync;"
+                 "service cinder-api start;"
+                 "service cinder-scheduler start;"
+                 "service neutron-server restart;"
+                 "service neutron-dhcp-agent restart;"
+                 "service neutron-metadata-agent restart")
+
+def run_db_sync_compute(host,
+                 settings_dict,
+                 envs=None,
+                 verbose=None,
+                 config=None):
+    envs = envs or {}
+    verbose = verbose or []
+    if settings_dict['user'] != 'root':
+        run_func = sudo
+        use_sudo_flag = True
+    else:
+        run_func = run
+        use_sudo_flag = False
+    print >> sys.stderr, "FABRIC connecting to", settings_dict["host_string"], host["hostname"]
+    with settings(**settings_dict), hide(*verbose), shell_env(**envs):
+        run_func("service nova-compute stop;"
+                 "nova-manage db sync;"
+                 "service nova-compute start")
 
 
 def install_openstack(settings_dict,
@@ -545,11 +614,7 @@ def main():
             job_settings['host_string'] = hosts[0]
             track_cobbler(config, job_settings)
         else:
-            servers = config["servers"]["load-balancer"] + \
-                config["servers"]["swift-storage"] + \
-                config["servers"]["swift-proxy"] + \
-                config["servers"]["control-server"] + \
-                config["servers"]["compute-server"]
+            servers = config["servers"]["load-balancer"] + config["servers"]["control-server"]
             for host in servers:
                 job_settings['host_string'] = host["ip"]
                 run_services(host,
@@ -558,6 +623,37 @@ def main():
                              envs=envs_build,
                              config=config
                              )
+            for host in config["servers"]["control-server"]:
+                job_settings['host_string'] = host["ip"]
+                run_db_sync_control(host,
+                             job_settings,
+                             verbose=verb_mode,
+                             envs=envs_build,
+                             config=config)
+            for host in config["servers"]["compute-server"]:
+                job_settings['host_string'] = host["ip"]
+                run_services(host,
+                             job_settings,
+                             verbose=verb_mode,
+                             envs=envs_build,
+                             config=config
+                             )
+            for host in config["servers"]["compute-server"]:
+                job_settings['host_string'] = host["ip"]
+                run_db_sync_compute(host,
+                             job_settings,
+                             verbose=verb_mode,
+                             envs=envs_build,
+                             config=config)
+            for host in config["servers"]["swift-storage"] + config["servers"]["swift-proxy"]:
+                job_settings['host_string'] = host["ip"]
+                run_services(host,
+                             job_settings,
+                             verbose=verb_mode,
+                             envs=envs_build,
+                             config=config
+                             )
+
 
 if __name__ == "__main__":
     main()
