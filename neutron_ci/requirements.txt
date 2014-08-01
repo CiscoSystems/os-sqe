@@ -1,0 +1,6 @@
+mysql-python
+sqlalchemy
+testtools
+netifaces
+nose
+fabric
