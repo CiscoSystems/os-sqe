@@ -4,7 +4,7 @@
   <description></description>
   <logRotator class="hudson.tasks.LogRotator">
     <daysToKeep>-1</daysToKeep>
-    <numToKeep>200</numToKeep>
+    <numToKeep>400</numToKeep>
     <artifactDaysToKeep>-1</artifactDaysToKeep>
     <artifactNumToKeep>-1</artifactNumToKeep>
   </logRotator>
@@ -16,8 +16,14 @@
     <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.21">
       <autoRebuild>false</autoRebuild>
     </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@1.8.3">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
   </properties>
-  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.2.1">
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.2.2">
     <configVersion>2</configVersion>
     <userRemoteConfigs>
       <hudson.plugins.git.UserRemoteConfig>
@@ -26,7 +32,7 @@
     </userRemoteConfigs>
     <branches>
       <hudson.plugins.git.BranchSpec>
-        <name>*/master</name>
+        <name>*/refactoring</name>
       </hudson.plugins.git.BranchSpec>
     </branches>
     <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -42,38 +48,30 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>./run_cisco_smoke_zuul.sh || :
+      <command>export ZUUL_MERGER_GIT=http://172.29.173.135/p/
 
-cd /opt/stack/tempest
-testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=&quot;${WORKSPACE}/nosetests.xml&quot; || :</command>
-    </hudson.tasks.Shell>
-    <hudson.tasks.Shell>
-      <command>files=&apos;nexus_console_log.txt nexus_stack_sh_log.txt nexus-neutron-svr-pre-test.log nexus_tempest_log.txt nexus-neutron-server.log&apos;
+export NEXUS_IP=172.29.172.140
+export NEXUS_USER=admin
+export NEXUS_PASSWORD=c3l12345
+export NEXUS_INTF_NUM=1/43
+export NEXUS_VLAN_START=3050
+export NEXUS_VLAN_END=3059
 
-cat &gt;&gt;/home/ubuntu/.ssh/known_hosts&lt;&lt;EOF
-|1|ejnKhkRrj96mJj9pv6WJtTDdpN4=|nq2bLYfJOD7AD+rO4SHwFysf9Ow= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBK++7Bpvy60tgFtzc02N9K91N7+DXo+Cr6xuxLZv9nsqx4LXVrrh2pge5OwljtChnYNJyz3lc81rvmwmE7OU4TA=
-EOF
+export CONSOLE_LOG_LEVEL=10
 
-pass=&apos;N3u+r0N&apos;
-logpass=/home/cisco_neutron_ci/jlogs/${JOB_NAME}/${BUILD_NUMBER}/
-sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 mkdir -p ${logpass}
-sshpass -p ${pass} rsync -ave ssh ${files} cisco_neutron_ci@128.107.233.28:${logpass}</command>
+sudo pip install -r requirements.txt
+nosetests nexus_ci/tests/test_monolithic_nexus.py</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
-    <hudson.tasks.ArtifactArchiver>
-      <artifacts>nexus_console_log.txt, nexus_stack_sh_log.txt, nexus-neutron-svr-pre-test.log, nexus_tempest_log.txt, nexus-neutron-server.log, nexus_xml.log</artifacts>
-      <latestOnly>false</latestOnly>
-      <allowEmptyArchive>false</allowEmptyArchive>
-    </hudson.tasks.ArtifactArchiver>
     <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>nosetests.xml</testResults>
+      <testResults>logs/tempest.xml</testResults>
       <keepLongStdio>false</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>
   </publishers>
   <buildWrappers>
-    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.20">
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.21">
       <deleteDirs>false</deleteDirs>
       <cleanupParameter></cleanupParameter>
       <externalDelete></externalDelete>

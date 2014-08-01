@@ -1,7 +1,13 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <project>
   <actions/>
-  <description>2role scenario with cobbler, on VMs, with running Cisco modified tempest tests on it.</description>
+  <description>Using cloud images</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>5</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
   <keepDependencies>false</keepDependencies>
   <properties>
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
@@ -17,27 +23,6 @@
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/CiscoSystems/tempest.git</url>
-          </hudson.plugins.git.UserRemoteConfig>
-        </userRemoteConfigs>
-        <branches>
-          <hudson.plugins.git.BranchSpec>
-            <name>*/master-in-use</name>
-          </hudson.plugins.git.BranchSpec>
-        </branches>
-        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
-        <submoduleCfg class="list"/>
-        <extensions>
-          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-            <relativeTargetDir>tempest</relativeTargetDir>
-          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
-        </extensions>
-      </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
-        <configVersion>2</configVersion>
-        <userRemoteConfigs>
-          <hudson.plugins.git.UserRemoteConfig>
             <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
@@ -49,58 +34,44 @@
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
         <submoduleCfg class="list"/>
         <extensions>
+          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
           <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
             <relativeTargetDir>openstack-sqe</relativeTargetDir>
           </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
-        </extensions>
-      </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
-        <configVersion>2</configVersion>
-        <userRemoteConfigs>
-          <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/CiscoSystems/puppet_openstack_builder</url>
-          </hudson.plugins.git.UserRemoteConfig>
-        </userRemoteConfigs>
-        <branches>
-          <hudson.plugins.git.BranchSpec>
-            <name>*/icehouse</name>
-          </hudson.plugins.git.BranchSpec>
-        </branches>
-        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
-        <submoduleCfg class="list"/>
-        <extensions>
-          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-            <relativeTargetDir>puppet_openstack_builder</relativeTargetDir>
-          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
   <assignedNode>172.29.173.232</assignedNode>
   <canRoam>false</canRoam>
-  <disabled>false</disabled>
+  <disabled>true</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>cd $WORKSPACE/openstack-sqe/
-make 2role-cobbler
-make run-tempest</command>
+      <command>cd ${WORKSPACE}/openstack-sqe &amp;&amp; make devstack
+
+STACK_IP=$(cat $WORKSPACE/openstack-sqe/config_file  | grep -Eo &quot;ip: [0-9\.]+&quot; | sed &quot;s/ip: //g&quot;)
+ssh -t localadmin@$STACK_IP &quot;cd /opt/stack/tempest; testr init &amp;&amp; testr run --load-list=/opt/stack/tempest/etc/ipv6_tempests_list.txt&quot; || :
+ssh -t localadmin@$STACK_IP &quot;sudo pip install junitxml; cd /opt/stack/tempest; testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=&apos;/tmp/ipv6_tests.xml&apos;&quot; ||:
+scp localadmin@$STACK_IP:/tmp/ipv6_tests.xml $WORKSPACE/ipv6_tests.xml
+</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
+    <hudson.plugins.chucknorris.CordellWalkerRecorder plugin="chucknorris@0.5">
+      <factGenerator/>
+    </hudson.plugins.chucknorris.CordellWalkerRecorder>
     <hudson.plugins.logparser.LogParserPublisher plugin="log-parser@1.0.8">
       <unstableOnWarning>false</unstableOnWarning>
       <failBuildOnError>false</failBuildOnError>
       <parsingRulesPath>/var/lib/jenkins/custom_configs/parsing_rules2</parsingRulesPath>
     </hudson.plugins.logparser.LogParserPublisher>
     <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>nosetests.xml</testResults>
-      <keepLongStdio>false</keepLongStdio>
+      <testResults>ipv6_tests.xml</testResults>
+      <keepLongStdio>true</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>
   </publishers>
@@ -109,8 +80,8 @@ make run-tempest</command>
       <colorMapName>xterm</colorMapName>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo LAB=lab5
-echo REG=&apos;(?!.*tempest.api.object_storage|.*swift.*)tempest&apos; </script>
+      <script>echo LAB=lab9
+</script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

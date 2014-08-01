@@ -11,13 +11,19 @@
   <keepDependencies>false</keepDependencies>
   <properties>
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
-      <enabled>true</enabled>
+      <enabled>false</enabled>
     </org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty>
     <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.21">
       <autoRebuild>false</autoRebuild>
     </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@1.8.3">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
   </properties>
-  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.2.1">
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.2.2">
     <configVersion>2</configVersion>
     <userRemoteConfigs>
       <hudson.plugins.git.UserRemoteConfig>
@@ -33,36 +39,24 @@
     <submoduleCfg class="list"/>
     <extensions/>
   </scm>
-  <assignedNode>nexus-ci_devstack</assignedNode>
+  <assignedNode>nexus-lab1</assignedNode>
   <canRoam>false</canRoam>
-  <disabled>false</disabled>
+  <disabled>true</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>./run_cisco_smoke_zuul.sh || :
+      <command>./run_apic_smoke_zuul.sh || :
 
 cd /opt/stack/tempest
 testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=&quot;${WORKSPACE}/nosetests.xml&quot; || :</command>
     </hudson.tasks.Shell>
-    <hudson.tasks.Shell>
-      <command>files=&apos;nexus_console_log.txt nexus_stack_sh_log.txt nexus-neutron-svr-pre-test.log nexus_tempest_log.txt nexus-neutron-server.log&apos;
-
-cat &gt;&gt;/home/ubuntu/.ssh/known_hosts&lt;&lt;EOF
-|1|ejnKhkRrj96mJj9pv6WJtTDdpN4=|nq2bLYfJOD7AD+rO4SHwFysf9Ow= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBK++7Bpvy60tgFtzc02N9K91N7+DXo+Cr6xuxLZv9nsqx4LXVrrh2pge5OwljtChnYNJyz3lc81rvmwmE7OU4TA=
-EOF
-
-pass=&apos;N3u+r0N&apos;
-logpass=/home/cisco_neutron_ci/jlogs/${JOB_NAME}/${BUILD_NUMBER}/
-sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 mkdir -p ${logpass}
-sshpass -p ${pass} rsync -ave ssh ${files} cisco_neutron_ci@128.107.233.28:${logpass}</command>
-    </hudson.tasks.Shell>
   </builders>
   <publishers>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>nexus_console_log.txt, nexus_stack_sh_log.txt, nexus-neutron-svr-pre-test.log, nexus_tempest_log.txt, nexus-neutron-server.log, nexus_xml.log</artifacts>
+      <artifacts>apic_console_log.txt, apic_stack_sh_log.txt, apic_tempest_log.txt, apic-neutron-svr-initial.log, apic-neutron-server.log</artifacts>
       <latestOnly>false</latestOnly>
       <allowEmptyArchive>false</allowEmptyArchive>
     </hudson.tasks.ArtifactArchiver>
@@ -73,7 +67,7 @@ sshpass -p ${pass} rsync -ave ssh ${files} cisco_neutron_ci@128.107.233.28:${log
     </hudson.tasks.junit.JUnitResultArchiver>
   </publishers>
   <buildWrappers>
-    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.20">
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.21">
       <deleteDirs>false</deleteDirs>
       <cleanupParameter></cleanupParameter>
       <externalDelete></externalDelete>

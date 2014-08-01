@@ -47,12 +47,12 @@ Fixed custom tempest on node&#xd;
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
+            <url>https://github.com/terrrakot/openstack-sqe.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/master</name>
+            <name>*/cloud</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -87,7 +87,7 @@ Fixed custom tempest on node&#xd;
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.173.230</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -96,9 +96,13 @@ Fixed custom tempest on node&#xd;
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>cd $WORKSPACE/openstack-sqe
-make full-aio
-cp $WORKSPACE/nosetests.xml ${WORKSPACE}/nosetests_cisco.xml</command>
+      <command>cd $WORKSPACE/openstack-sqe/
+make aio
+#if [ -s &quot;$WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set&quot; ]; then
+#make full-aio
+#fi
+#python $WORKSPACE/openstack-sqe/tools/tempest-scripts/junit_merge.py $(ls $WORKSPACE/openstack-sqe/nosetests*xml) &gt; $WORKSPACE/result.xml
+#cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_cisco.xml</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
@@ -150,7 +154,7 @@ cp $WORKSPACE/nosetests.xml ${WORKSPACE}/nosetests_cisco.xml</command>
       </delegate>
     </jenkins.plugins.publish__over__ssh.BapSshPublisherPlugin>
     <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>nosetests_cisco.xml</testResults>
+      <testResults>result.xml</testResults>
       <keepLongStdio>false</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>

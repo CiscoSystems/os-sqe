@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
+      <enabled>false</enabled>
+    </org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <org.jvnet.jenkins.plugins.nodelabelparameter.NodeParameterDefinition plugin="nodelabelparameter@1.5.1">
+          <name></name>
+          <description></description>
+          <allowedSlaves/>
+          <defaultSlaves>
+            <string>debug_nexus</string>
+          </defaultSlaves>
+          <triggerIfResult>multiSelectionDisallowed</triggerIfResult>
+          <allowMultiNodeSelection>false</allowMultiNodeSelection>
+          <triggerConcurrentBuilds>false</triggerConcurrentBuilds>
+          <ignoreOfflineNodes>false</ignoreOfflineNodes>
+          <nodeEligibility class="org.jvnet.jenkins.plugins.nodelabelparameter.node.AllNodeEligibility"/>
+        </org.jvnet.jenkins.plugins.nodelabelparameter.NodeParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.21">
+      <autoRebuild>false</autoRebuild>
+    </com.sonyericsson.rebuild.RebuildSettings>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.2.1">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>http://172.29.173.134/nfedotov/nexus_ci.git</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>refactoring</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>export BASE_LOG_PATH=&apos;92/105792/3/check&apos;
+export ZUUL_PIPELINE=check
+export ZUUL_UUID=d15abdc11a5a4ec183646fb55e603b2d
+export LOG_PATH=92/105792/3/check/ml2_nexus/d15abdc
+export ZUUL_CHANGE_IDS=105792,3
+export ZUUL_PATCHSET=3
+export ZUUL_BRANCH=master
+export ZUUL_REF=refs/zuul/master/Z6acc697bbd1a4fad84348abddbd7cd1b
+export ZUUL_COMMIT=6748c6f098fc218582903d1f8c0342c1d1747d5f
+export ZUUL_URL=&apos;&apos;
+export ZUUL_CHANGE=105792
+export ZUUL_CHANGES=openstack/neutron:master:refs/changes/92/105792/3
+export ZUUL_PROJECT=openstack/neutron
+
+export ZUUL_MERGER_GIT=http://172.29.173.135/p/
+
+export NEXUS_IP=172.29.172.140
+export NEXUS_USER=admin
+export NEXUS_PASSWORD=c3l12345
+export NEXUS_INTF_NUM=1/45
+export NEXUS_VLAN_START=3070
+export NEXUS_VLAN_END=3079
+
+sudo pip install -r requirements.txt
+nosetests nexus_ci.tests.ml2_nexus</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
