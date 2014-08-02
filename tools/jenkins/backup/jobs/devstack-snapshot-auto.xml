@@ -25,7 +25,7 @@
   </properties>
   <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
     <scms>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
@@ -45,7 +45,7 @@
           </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
         </extensions>
       </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
@@ -77,6 +77,7 @@
   <builders>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
+rm -rf nosetests*xml
 export LAB=$(python ./tools/get_pool.py)
 make devstack-snapshot &amp;&amp; make devstack-tempest || :
 make shutdown || :
@@ -115,7 +116,7 @@ ssh localadmin@172.29.173.228 &quot;mkdir -p /opt/www/${JOB_NAME}/${BUILD_NUMBER
       <keepLongStdio>true</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>
-    <hudson.tasks.Mailer plugin="mailer@1.8">
+    <hudson.tasks.Mailer plugin="mailer@1.9">
       <recipients>sshnaidm</recipients>
       <dontNotifyEveryUnstableBuild>false</dontNotifyEveryUnstableBuild>
       <sendToIndividuals>false</sendToIndividuals>

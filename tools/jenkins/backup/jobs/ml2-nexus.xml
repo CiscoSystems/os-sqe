@@ -39,6 +39,7 @@
     <submoduleCfg class="list"/>
     <extensions/>
   </scm>
+  <quietPeriod>10</quietPeriod>
   <assignedNode>nexus-ci_devstack</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
@@ -67,6 +68,9 @@ sudo git clone -b master https://github.com/CiscoSystems/ncclient.git ${NCCLIENT
 cd ${NCCLIENT_DIR}
 sudo python setup.py install
 cd ${WORKSPACE}
+
+sudo cp sources.list /etc/apt/
+sudo apt-get update
 
 ./run_ml2_smoke_zuul.sh || :
 

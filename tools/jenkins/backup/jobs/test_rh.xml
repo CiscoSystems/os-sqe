@@ -49,7 +49,7 @@
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/master</name>
+            <name>*/rh</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -84,7 +84,7 @@
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.230</assignedNode>
+  <assignedNode>172.29.173.229</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -94,83 +94,16 @@
   <builders>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
-make full-2role
-if grep -q tempest $WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set; then
-make full-2role
-fi
-python $WORKSPACE/openstack-sqe/tools/tempest-scripts/junit_merge.py $(ls $WORKSPACE/openstack-sqe/nosetests*xml) &gt; $WORKSPACE/result.xml
-cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_cisco.xml
-cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_2role.xml</command>
+make init
+make aio</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
     <hudson.plugins.chucknorris.CordellWalkerRecorder plugin="chucknorris@0.5">
       <factGenerator/>
     </hudson.plugins.chucknorris.CordellWalkerRecorder>
-    <hudson.tasks.ArtifactArchiver>
-      <artifacts>openstack-sqe/*.xml</artifacts>
-      <latestOnly>false</latestOnly>
-      <allowEmptyArchive>false</allowEmptyArchive>
-    </hudson.tasks.ArtifactArchiver>
-    <jenkins.plugins.publish__over__ssh.BapSshPublisherPlugin plugin="publish-over-ssh@1.11">
-      <consolePrefix>SSH: </consolePrefix>
-      <delegate>
-        <publishers>
-          <jenkins.plugins.publish__over__ssh.BapSshPublisher>
-            <configName>172.29.173.229</configName>
-            <verbose>false</verbose>
-            <transfers>
-              <jenkins.plugins.publish__over__ssh.BapSshTransfer>
-                <remoteDirectory>workspace/2role_regular</remoteDirectory>
-                <sourceFiles>result.xml</sourceFiles>
-                <excludes></excludes>
-                <removePrefix></removePrefix>
-                <remoteDirectorySDF>false</remoteDirectorySDF>
-                <flatten>false</flatten>
-                <cleanRemote>false</cleanRemote>
-                <noDefaultExcludes>false</noDefaultExcludes>
-                <makeEmptyDirs>false</makeEmptyDirs>
-                <patternSeparator>[, ]+</patternSeparator>
-                <execCommand></execCommand>
-                <execTimeout>120000</execTimeout>
-                <usePty>false</usePty>
-              </jenkins.plugins.publish__over__ssh.BapSshTransfer>
-            </transfers>
-            <useWorkspaceInPromotion>false</useWorkspaceInPromotion>
-            <usePromotionTimestamp>false</usePromotionTimestamp>
-          </jenkins.plugins.publish__over__ssh.BapSshPublisher>
-          <jenkins.plugins.publish__over__ssh.BapSshPublisher>
-            <configName>172.29.173.229</configName>
-            <verbose>false</verbose>
-            <transfers>
-              <jenkins.plugins.publish__over__ssh.BapSshTransfer>
-                <remoteDirectory>workspace/AIO_2role_tempest_compare</remoteDirectory>
-                <sourceFiles>nosetests_2role.xml</sourceFiles>
-                <excludes></excludes>
-                <removePrefix></removePrefix>
-                <remoteDirectorySDF>false</remoteDirectorySDF>
-                <flatten>false</flatten>
-                <cleanRemote>false</cleanRemote>
-                <noDefaultExcludes>false</noDefaultExcludes>
-                <makeEmptyDirs>false</makeEmptyDirs>
-                <patternSeparator>[, ]+</patternSeparator>
-                <execCommand></execCommand>
-                <execTimeout>120000</execTimeout>
-                <usePty>false</usePty>
-              </jenkins.plugins.publish__over__ssh.BapSshTransfer>
-            </transfers>
-            <useWorkspaceInPromotion>false</useWorkspaceInPromotion>
-            <usePromotionTimestamp>false</usePromotionTimestamp>
-          </jenkins.plugins.publish__over__ssh.BapSshPublisher>
-        </publishers>
-        <continueOnError>false</continueOnError>
-        <failOnError>false</failOnError>
-        <alwaysPublishFromMaster>false</alwaysPublishFromMaster>
-        <hostConfigurationAccess class="jenkins.plugins.publish_over_ssh.BapSshPublisherPlugin" reference="../.."/>
-      </delegate>
-    </jenkins.plugins.publish__over__ssh.BapSshPublisherPlugin>
     <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>result.xml</testResults>
+      <testResults>nosetests.xml</testResults>
       <keepLongStdio>false</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>
@@ -180,8 +113,8 @@ cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_2role.xml</command>
       <colorMapName>xterm</colorMapName>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo LAB=lab4
-echo REG=&apos;(?!.*tempest.api.object_storage|.*swift.*|.*hint_group.*)tempest&apos; </script>
+      <script>echo LAB=lab9
+echo REG=&apos;.*meter.*&apos; </script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

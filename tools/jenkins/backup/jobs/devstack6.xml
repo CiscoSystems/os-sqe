@@ -10,6 +10,9 @@
   </logRotator>
   <keepDependencies>false</keepDependencies>
   <properties>
+    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.9.1">
+      <projectUrl>https://github.com/CiscoSystems/tempest.git/</projectUrl>
+    </com.coravy.hudson.plugins.github.GithubProjectProperty>
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
       <enabled>false</enabled>
     </org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty>
@@ -29,6 +32,7 @@
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
+            <refspec>+refs/pull/*:refs/remotes/origin/pr/*</refspec>
             <url>https://github.com/CiscoSystems/tempest.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
@@ -55,7 +59,7 @@
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/cloud</name>
+            <name>*/devstack</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -74,13 +78,17 @@
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
-  <triggers/>
+  <triggers>
+    <hudson.triggers.SCMTrigger>
+      <spec>* * * * * </spec>
+      <ignorePostCommitHooks>false</ignorePostCommitHooks>
+    </hudson.triggers.SCMTrigger>
+  </triggers>
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
-make devstack
-</command>
+make devstack6</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
@@ -93,7 +101,7 @@ make devstack
       <parsingRulesPath>/var/lib/jenkins/custom_configs/parsing_rules2</parsingRulesPath>
     </hudson.plugins.logparser.LogParserPublisher>
     <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>nosetests.xml</testResults>
+      <testResults>openstack-sqe/nosetests*.xml</testResults>
       <keepLongStdio>true</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>

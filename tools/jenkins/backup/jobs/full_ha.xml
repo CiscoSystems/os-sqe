@@ -4,7 +4,7 @@
   <description>Using cloud images</description>
   <logRotator class="hudson.tasks.LogRotator">
     <daysToKeep>-1</daysToKeep>
-    <numToKeep>5</numToKeep>
+    <numToKeep>15</numToKeep>
     <artifactDaysToKeep>-1</artifactDaysToKeep>
     <artifactNumToKeep>-1</artifactNumToKeep>
   </logRotator>
@@ -25,7 +25,7 @@
   </properties>
   <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
     <scms>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
@@ -46,16 +46,16 @@
           <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
+            <url>https://github.com/terrrakot/openstack-sqe.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/master</name>
+            <name>*/fullha</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -67,7 +67,7 @@
           <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.1">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
@@ -90,7 +90,7 @@
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.173.229</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -101,7 +101,7 @@
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
 make fullha
-make run-tempest</command>
+#make run-tempest</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
@@ -114,7 +114,7 @@ make run-tempest</command>
       <parsingRulesPath>/var/lib/jenkins/custom_configs/parsing_rules2</parsingRulesPath>
     </hudson.plugins.logparser.LogParserPublisher>
     <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>nosetests.xml</testResults>
+      <testResults>openstack-sqe/nosetests*.xml</testResults>
       <keepLongStdio>true</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>

@@ -86,7 +86,7 @@ Original tempest on node</description>
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.173.230</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -97,7 +97,7 @@ Original tempest on node</description>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe
 make full-aio
-cp $WORKSPACE/nosetests.xml ${WORKSPACE}/nosetests_orig.xml</command>
+cp $WORKSPACE/openstack-sqe/nosetests*.xml ${WORKSPACE}/nosetests_orig.xml</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
