@@ -106,7 +106,7 @@ def install_devstack(settings_dict,
             warn_if_fail(put(StringIO('Acquire::http::Pipeline-Depth "0";'),
                              "/etc/apt/apt.conf.d/00no_pipelining",
                              use_sudo=True))
-        update_time(run)
+        update_time(sudo)
         warn_if_fail(sudo("apt-get update"))
         warn_if_fail(sudo("apt-get install -y git python-pip"))
         warn_if_fail(run("git config --global user.email 'test.node@example.com';"
@@ -146,9 +146,9 @@ def main():
                         help='If apply patches to Devstack')
     parser.add_argument('-c', action='store', dest='config_file', default=None,
                         help='Configuration file, default is None')
-    parser.add_argument('--ip-version', action='store', dest='ipversion', default=4,
+    parser.add_argument('--ip-version', action='store', dest='ipversion', type=int, default=4,
                         choices=[4,6,64], help='IP version in local.conf, default is 4')
-    parser.add_argument('--mgmt-version', action='store', dest='mgmt', default=4,
+    parser.add_argument('--mgmt-version', action='store', dest='mgmt', type=int, default=4,
                         choices=[4,6,64], help='MGMT net IP version, default is 4')
     parser.add_argument('--disable-tempest', action='store_true', default=False, dest='tempest_disbale',
                         help="Don't install tempest on devstack")
