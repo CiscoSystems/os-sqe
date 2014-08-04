@@ -1,3 +1,0 @@
-qemu-kvm
-libvirt-bin
-cloud-utils
