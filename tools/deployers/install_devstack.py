@@ -42,9 +42,16 @@ def kill_services():
     sudo("rm -rf /var/log/libvirt/libvirtd.log")
 
 
-def make_local(filepath, sudo_flag):
+def make_local(filepath, sudo_flag, opts):
+    ipversion = "4+6" if opts.ipversion == 64 else str(opts.ipversion)
+    mgmt = "4+6" if opts.mgmt == 64 else str(opts.mgmt)
+    tempest = "" if opts.tempest_disbale else """
+enable_service tempest
+TEMPEST_REPO=https://github.com/CiscoSystems/tempest.git
+TEMPEST_BRANCH=master-in-use"""
+
     conf = """[[local|localrc]]
-ADMIN_PASSWORD=secret
+ADMIN_PASSWORD=Cisco123
 DATABASE_PASSWORD=$ADMIN_PASSWORD
 RABBIT_PASSWORD=$ADMIN_PASSWORD
 SERVICE_PASSWORD=$ADMIN_PASSWORD
@@ -60,7 +67,7 @@ enable_service q-dhcp
 enable_service q-meta
 enable_service q-lbaas
 enable_service neutron
-enable_service tempest
+{tempest}
 NOVA_USE_NEUTRON_API=v2
 VOLUME_BACKING_FILE_SIZE=2052M
 API_RATE_LIMIT=False
@@ -69,15 +76,14 @@ DEBUG=True
 LOGFILE=/tmp/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/logs
-TEMPEST_REPO=https://github.com/CiscoSystems/tempest.git
-TEMPEST_BRANCH=master-in-use
-P_VERSION=4+6
+IP_VERSION={ipversion}
+MGMT_NET={mgmt}
 IPV6_PRIVATE_RANGE=2001:dead:beef:deed::/64
 IPV6_NETWORK_GATEWAY=2001:dead:beef:deed::1
 REMOVE_PUBLIC_BRIDGE=False
 #RECLONE=no
 #OFFLINE=True
-"""
+""".format(ipversion=ipversion, mgmt=mgmt, tempest=tempest)
     fd = StringIO(conf)
     warn_if_fail(put(fd, filepath, use_sudo=sudo_flag))
 
@@ -86,7 +92,8 @@ def install_devstack(settings_dict,
                      envs=None,
                      verbose=None,
                      proxy=None,
-                     patch=False):
+                     patch=False,
+                     opts=None):
     envs = envs or {}
     verbose = verbose or []
     with settings(**settings_dict), hide(*verbose), shell_env(**envs):
@@ -106,7 +113,7 @@ def install_devstack(settings_dict,
                          "git config --global user.name 'Test Node'"))
         run("rm -rf ~/devstack")
         quit_if_fail(run("git clone https://github.com/openstack-dev/devstack.git"))
-        make_local("devstack/local.conf", sudo_flag=False)
+        make_local("devstack/local.conf", sudo_flag=False, opts=opts)
         with cd("devstack"):
             warn_if_fail(run("./stack.sh"))
             if patch:
@@ -139,6 +146,13 @@ def main():
                         help='If apply patches to Devstack')
     parser.add_argument('-c', action='store', dest='config_file', default=None,
                         help='Configuration file, default is None')
+    parser.add_argument('--ip-version', action='store', dest='ipversion', default=4,
+                        choices=[4,6,64], help='IP version in local.conf, default is 4')
+    parser.add_argument('--mgmt-version', action='store', dest='mgmt', default=4,
+                        choices=[4,6,64], help='MGMT net IP version, default is 4')
+    parser.add_argument('--disable-tempest', action='store_true', default=False, dest='tempest_disbale',
+                        help="Don't install tempest on devstack")
+
     parser.add_argument('--version', action='version', version='%(prog)s 2.0')
 
     opts = parser.parse_args()
@@ -169,7 +183,11 @@ def main():
                "abort_on_prompts": True,
                "gateway": opts.gateway or None}
 
-    res = install_devstack(job, verb_mode, opts.proxy, opts.patch)
+    res = install_devstack(settings_dict=job,
+                           verbose=verb_mode,
+                           proxy=opts.proxy,
+                           patch=opts.patch,
+                           opts=opts)
 
     if res:
         print "Job with host {host} finished successfully!".format(host=opts.host)
