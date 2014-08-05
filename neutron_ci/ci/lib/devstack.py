@@ -155,7 +155,7 @@ class DevStack(object):
 
             # Convert subunit to html
             with open(subunit2html_path, 'w') as f:
-                url = 'wget https://raw.githubusercontent.com/' \
+                url = 'https://raw.githubusercontent.com/' \
                       'openstack-infra/config/master/modules/' \
                       'openstack_project/files/slave_scripts/subunit2html.py'
                 r = requests.get(url)
