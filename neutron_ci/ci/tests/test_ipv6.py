@@ -24,7 +24,7 @@ RABBIT_PASSWORD=$ADMIN_PASSWORD
 SERVICE_PASSWORD=$ADMIN_PASSWORD
 SERVICE_TOKEN=1112f596-76f3-11e3-b3b2-e716f9080d50
 MYSQL_PASSWORD=nova
-ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,cinder,c-sch,c-api,c-vol,n-sch,n-novnc,n-xvnc,n-cauth,horizon,rabbit
+ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,n-sch,n-novnc,n-xvnc,n-cauth,horizon,rabbit
 enable_service mysql
 disable_service n-net
 enable_service q-svc
