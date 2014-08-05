@@ -20,8 +20,8 @@ import netifaces
 
 class Node(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, default_nic='eth0'):
+        self._default_nic = default_nic
 
     @property
     def hostname(self):
@@ -29,7 +29,5 @@ class Node(object):
 
     @property
     def ip(self):
-        ips = netifaces.ifaddresses('eth0')
-        # 2 - AF_INET address family
-        # 0 - first address of interface
-        return ips[2][0]['addr']
+        ips = netifaces.ifaddresses(self._default_nic)
+        return ips[netifaces.AF_INET][0]['addr']
