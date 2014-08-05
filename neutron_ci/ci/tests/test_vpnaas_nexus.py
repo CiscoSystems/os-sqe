@@ -17,11 +17,11 @@
 import urlparse
 import os
 from ci.jenkins_vars import WORKSPACE
-from ci import jenkins_vars as var
+from ci import jenkins_vars as var, PARENT_FOLDER_PATH
 from ci.lib.test_case import BaseTestCase
 
 
-TEST_LIST_FILE = os.path.join(var.WORKSPACE, 'cisco_vpn_tests.txt')
+TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_vpn_tests.txt')
 LOCAL_CONF = '''
 [[local|localrc]]
 NEUTRON_REPO={neutron_repo}
