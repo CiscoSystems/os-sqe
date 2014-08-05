@@ -16,7 +16,9 @@
 
 import urlparse
 import os
-from ci import jenkins_vars as var, PARENT_FOLDER_PATH
+from ci import ZUUL_URL, ZUUL_PROJECT, ZUUL_REF, NEXUS_IP, \
+    NEXUS_PASSWORD, NEXUS_USER, NEXUS_INTF_NUM, NEXUS_VLAN_END, \
+    NEXUS_VLAN_START, SCREEN_LOG_PATH, PARENT_FOLDER_PATH
 from ci.lib.test_case import NexusTestCase
 
 
@@ -69,15 +71,15 @@ class MonolithicNexusTest(NexusTestCase):
         NexusTestCase.setUpClass()
 
         local_conf = LOCAL_CONF.format(
-            neutron_repo=urlparse.urljoin(var.ZUUL_URL, var.ZUUL_PROJECT),
-            neutron_branch=var.ZUUL_REF,
-            nexus_ip=var.NEXUS_IP,
-            nexus_user=var.NEXUS_USER,
-            nexus_pass=var.NEXUS_PASSWORD,
+            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
+            neutron_branch=ZUUL_REF,
+            nexus_ip=NEXUS_IP,
+            nexus_user=NEXUS_USER,
+            nexus_pass=NEXUS_PASSWORD,
             hostname=cls.node.hostname,
-            nexus_intf_num=var.NEXUS_INTF_NUM,
-            vlan_start=var.NEXUS_VLAN_START, vlan_end=var.NEXUS_VLAN_END,
-            JOB_LOG_PATH=var.JOB_LOG_PATH)
+            nexus_intf_num=NEXUS_INTF_NUM,
+            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
+            JOB_LOG_PATH=SCREEN_LOG_PATH)
 
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()

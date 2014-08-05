@@ -18,6 +18,36 @@ import os
 import logging
 import logging.handlers
 
+# Jenkins variables
+WORKSPACE = os.environ.get('WORKSPACE')
+SCREEN_LOG_PATH = os.path.join(WORKSPACE, 'logs')
+PARENT_FOLDER_PATH = os.path.dirname(os.path.dirname(__file__))
+
+# Zuul variables
+BASE_LOG_PATH = os.environ.get('BASE_LOG_PATH')
+ZUUL_PIPELINE = os.environ.get('ZUUL_PIPELINE')
+OFFLINE_NODE_WHEN_COMPLETE = os.environ.get('OFFLINE_NODE_WHEN_COMPLETE')
+ZUUL_UUID = os.environ.get('ZUUL_UUID')
+LOG_PATH = os.environ.get('LOG_PATH')
+ZUUL_CHANGE_IDS = os.environ.get('ZUUL_CHANGE_IDS')
+ZUUL_PATCHSET = os.environ.get('ZUUL_PATCHSET')
+ZUUL_BRANCH = os.environ.get('ZUUL_BRANCH')
+ZUUL_REF = os.environ.get('ZUUL_REF')
+ZUUL_COMMIT = os.environ.get('ZUUL_COMMIT')
+ZUUL_URL = os.environ.get('ZUUL_URL')
+ZUUL_CHANGE = os.environ.get('ZUUL_CHANGE')
+ZUUL_CHANGES = os.environ.get('ZUUL_CHANGES')
+ZUUL_PROJECT = os.environ.get('ZUUL_PROJECT')
+
+# Configurations
+NEXUS_IP = os.environ.get('NEXUS_IP')
+NEXUS_USER = os.environ.get('NEXUS_USER')
+NEXUS_PASSWORD = os.environ.get('NEXUS_PASSWORD')
+NEXUS_INTF_NUM = os.environ.get('NEXUS_INTF_NUM')
+NEXUS_VLAN_START = os.environ.get('NEXUS_VLAN_START')
+NEXUS_VLAN_END = os.environ.get('NEXUS_VLAN_END')
+
+# Configure handlers for the root logger
 logger = logging.getLogger()
 formatter = logging.Formatter('%(asctime)s %(name)s: %(lineno)d, '
                               '%(levelname)s: %(message)s')
@@ -30,9 +60,25 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 # Handler for console.txt
-info_file_handler = logging.FileHandler('console.txt')
+info_file_handler = logging.FileHandler(
+    os.path.join(WORKSPACE, 'console.txt'))
 info_file_handler.setLevel(logging.INFO)
 info_file_handler.setFormatter(formatter)
 logger.addHandler(info_file_handler)
 
-PARENT_FOLDER_PATH = os.path.dirname(os.path.dirname(__file__))
+# Print variables to debug log to help reproduce a build
+values = locals()
+msg = ['export {0}={1}'.format(key, values[key])
+       for key in dir() if key[0].isupper()]
+msg.insert(0, os.linesep)
+logger.debug(os.linesep.join(msg))
+
+# Raise exception if there are undefined variables
+defined = [values[key] is not None for key in dir()
+           if key[0].isupper()]
+if not all(defined):
+    raise Exception('There are undefined environment variables.')
+
+# Create log path
+if not os.path.exists(SCREEN_LOG_PATH):
+    os.mkdir(SCREEN_LOG_PATH)

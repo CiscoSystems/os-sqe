@@ -17,7 +17,9 @@
 import socket
 import urlparse
 import os
-from ci import jenkins_vars as var, PARENT_FOLDER_PATH
+from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, WORKSPACE, \
+    NEXUS_VLAN_START, NEXUS_VLAN_END, SCREEN_LOG_PATH, \
+    NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD, ZUUL_REF
 from ci.lib.test_case import NexusTestCase
 
 
@@ -89,7 +91,7 @@ class ML2NexusTest(NexusTestCase):
                                   router_ip=router_ip,
                                   username=router_user,
                                   password=router_pass)
-        path = os.path.join(var.WORKSPACE, Q_PLUGIN_EXTRA_CONF_FILES)
+        path = os.path.join(WORKSPACE, Q_PLUGIN_EXTRA_CONF_FILES)
         with open(path, 'w') as f:
             f.write(ini)
 
@@ -98,18 +100,18 @@ class ML2NexusTest(NexusTestCase):
         NexusTestCase.setUpClass()
 
         local_conf = LOCAL_CONF.format(
-            neutron_repo=urlparse.urljoin(var.ZUUL_URL, var.ZUUL_PROJECT),
-            neutron_branch=var.ZUUL_REF,
-            Q_PLUGIN_EXTRA_CONF_PATH=var.WORKSPACE,
+            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
+            neutron_branch=ZUUL_REF,
+            Q_PLUGIN_EXTRA_CONF_PATH=WORKSPACE,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
-            vlan_start=var.NEXUS_VLAN_START, vlan_end=var.NEXUS_VLAN_END,
-            JOB_LOG_PATH=var.JOB_LOG_PATH)
+            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
+            JOB_LOG_PATH=SCREEN_LOG_PATH)
 
         cls.create_ml2_conf_ini(host=socket.gethostname(),
-                                host_port=var.NEXUS_INTF_NUM,
-                                router_ip=var.NEXUS_IP,
-                                router_user=var.NEXUS_USER,
-                                router_pass=var.NEXUS_PASSWORD)
+                                host_port=NEXUS_INTF_NUM,
+                                router_ip=NEXUS_IP,
+                                router_user=NEXUS_USER,
+                                router_pass=NEXUS_PASSWORD)
 
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()

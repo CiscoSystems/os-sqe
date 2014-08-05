@@ -18,9 +18,11 @@ import logging
 import shutil
 import os
 from testtools import TestCase
+from ci import WORKSPACE, SCREEN_LOG_PATH, NEXUS_IP, NEXUS_USER, \
+    NEXUS_PASSWORD, NEXUS_INTF_NUM, NEXUS_VLAN_START, \
+    NEXUS_VLAN_END
 from ci.lib.lab.node import Node
 from ci.lib.utils import run_cmd_line, get_public_key, clear_nexus_config
-from ci import jenkins_vars as var
 from ci.lib.devstack import DevStack
 
 
@@ -66,19 +68,19 @@ class BaseTestCase(TestCase):
         except Exception as e:
             logger.error(e)
         finally:
-            os.chdir(var.WORKSPACE)
+            os.chdir(WORKSPACE)
 
     @classmethod
     def tearDownClass(cls):
         # Copy local* files to workspace folder
         if cls.devstack.localrc is not None:
-            shutil.copy(cls.devstack.localrc_path, var.WORKSPACE)
+            shutil.copy(cls.devstack.localrc_path, WORKSPACE)
         if cls.devstack.local_conf is not None:
-            shutil.copy(cls.devstack.localconf_path, var.WORKSPACE)
+            shutil.copy(cls.devstack.localconf_path, WORKSPACE)
 
         # Copy screen logs to workspace
         run_cmd_line('find {p} -type l -exec cp "{{}}" {d} \;'
-                     ''.format(p='/opt/stack/screen-logs', d=var.JOB_LOG_PATH),
+                     ''.format(p='/opt/stack/screen-logs', d=SCREEN_LOG_PATH),
                      shell=True)
 
 
@@ -89,14 +91,14 @@ class NexusTestCase(BaseTestCase):
         BaseTestCase.setUpClass()
 
         # Add nexus public key to known_hosts
-        key = get_public_key(var.NEXUS_IP)
+        key = get_public_key(NEXUS_IP)
         with open(os.path.expanduser('~/.ssh/known_hosts'), 'w') as kh:
             kh.writelines(key)
 
         # Clear Nexus config
-        clear_nexus_config(var.NEXUS_IP, var.NEXUS_USER,
-                           var.NEXUS_PASSWORD, var.NEXUS_INTF_NUM,
-                           var.NEXUS_VLAN_START, var.NEXUS_VLAN_END)
+        clear_nexus_config(NEXUS_IP, NEXUS_USER,
+                           NEXUS_PASSWORD, NEXUS_INTF_NUM,
+                           NEXUS_VLAN_START, NEXUS_VLAN_END)
 
     @classmethod
     def tearDownClass(cls):

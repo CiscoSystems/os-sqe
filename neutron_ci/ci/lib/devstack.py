@@ -18,7 +18,7 @@ import logging
 import os
 import requests
 from ci.lib import utils
-from ci.jenkins_vars import WORKSPACE, JOB_LOG_PATH
+from ci import WORKSPACE, SCREEN_LOG_PATH
 
 
 logger = logging.getLogger(__name__)
@@ -130,7 +130,7 @@ class DevStack(object):
 
     def tempest_last2junitxml(self):
         try:
-            junitxml_path = os.path.join(JOB_LOG_PATH, 'tempest.xml')
+            junitxml_path = os.path.join(SCREEN_LOG_PATH, 'tempest.xml')
             os.chdir(self._tempest_path)
             cmd = 'testr last --subunit | subunit-1to2 | subunit2junitxml ' \
                   '--output-to="{xml}"'.format(xml=junitxml_path)
@@ -143,7 +143,7 @@ class DevStack(object):
     def tempest_last2html(self):
         try:
             subunit_path = os.path.join(WORKSPACE, 'testr_results.subunit')
-            html_path = os.path.join(JOB_LOG_PATH, 'testr_results.html')
+            html_path = os.path.join(SCREEN_LOG_PATH, 'testr_results.html')
             subunit2html_path = os.path.join(WORKSPACE, 'subunit2html.py')
 
             # Export tempest results to subunit file

@@ -16,8 +16,8 @@
 
 import urlparse
 import os
-from ci.jenkins_vars import WORKSPACE
-from ci import jenkins_vars as var, PARENT_FOLDER_PATH
+from ci import PARENT_FOLDER_PATH, WORKSPACE, ZUUL_URL, ZUUL_PROJECT, \
+    ZUUL_REF, SCREEN_LOG_PATH
 from ci.lib.test_case import BaseTestCase
 
 
@@ -65,9 +65,9 @@ class VpnaasNexusTest(BaseTestCase):
         BaseTestCase.setUpClass()
 
         local_conf = LOCAL_CONF.format(
-            neutron_repo=urlparse.urljoin(var.ZUUL_URL, var.ZUUL_PROJECT),
-            neutron_branch=var.ZUUL_REF,
-            JOB_LOG_PATH=var.JOB_LOG_PATH)
+            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
+            neutron_branch=ZUUL_REF,
+            JOB_LOG_PATH=SCREEN_LOG_PATH)
 
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()
