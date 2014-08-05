@@ -29,11 +29,6 @@ logger = logging.getLogger(__name__)
 
 class BaseTestCase(TestCase):
 
-    NEUTRON_PROCESSES = [
-        'neutron-server', 'neutron-openvswitch-agent',
-        'neutron-dhcp-agent', 'neutron-l3-agent',
-        'neutron-metadata-agent', 'neutron-lbaas-agent']
-
     @classmethod
     def setUpClass(cls):
         cls.devstack = DevStack()
