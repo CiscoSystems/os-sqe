@@ -78,6 +78,8 @@ class DevStack(object):
                 logger.info(f.read())
             cmd = "git am --signoff < {p}".format(p=patch_path)
             utils.run_cmd_line(cmd, shell=True)
+        except Exception as e:
+            logger.error(e)
         finally:
             os.chdir(WORKSPACE)
 
@@ -91,6 +93,8 @@ class DevStack(object):
             os.chdir(self._clone_path)
             output, code = utils.run_cmd_line(
                 './stack.sh', check_result=False, shell=True)
+        except Exception as e:
+            logger.error(e)
         finally:
             os.chdir(WORKSPACE)
         return code
@@ -117,6 +121,8 @@ class DevStack(object):
 
             self.tempest_last2junitxml()
             self.tempest_last2html()
+        except Exception as e:
+            logger.error(e)
         finally:
             os.chdir(WORKSPACE)
         return code
@@ -128,6 +134,8 @@ class DevStack(object):
             cmd = 'testr last --subunit | subunit-1to2 | subunit2junitxml ' \
                   '--output-to="{xml}"'.format(xml=junitxml_path)
             utils.run_cmd_line(cmd, shell=True)
+        except Exception as e:
+            logger.error(e)
         finally:
             os.chdir(WORKSPACE)
 
@@ -148,5 +156,7 @@ class DevStack(object):
             utils.run_cmd_line(
                 'python subunit2html.py {s} {path}'
                 ''.format(s=subunit_path, path=path), shell=True)
+        except Exception as e:
+            logger.error(e)
         finally:
             os.chdir(WORKSPACE)

@@ -14,6 +14,7 @@
 #
 # @author: Dane LeBlanc, Nikolay Fedotov, Cisco Systems, Inc.
 
+import logging
 import shutil
 import os
 from testtools import TestCase
@@ -21,6 +22,9 @@ from ci.lib.lab.node import Node
 from ci.lib.utils import run_cmd_line, get_public_key, clear_nexus_config
 from ci import jenkins_vars as var
 from ci.lib.devstack import DevStack
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseTestCase(TestCase):
@@ -64,6 +68,8 @@ class BaseTestCase(TestCase):
         try:
             os.chdir(ncclient_dir)
             run_cmd_line('sudo python setup.py install', shell=True)
+        except Exception as e:
+            logger.error(e)
         finally:
             os.chdir(var.WORKSPACE)
 
