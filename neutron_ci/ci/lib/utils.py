@@ -18,6 +18,7 @@ import logging
 import subprocess
 import os
 import inspect
+from neutron_ci.ci import PARENT_FOLDER_PATH
 
 
 logger = logging.getLogger(__name__)
@@ -41,11 +42,10 @@ def run_cmd_line(cmd_str, stderr=None, shell=False, check_result=True):
 
 def clear_nexus_config(ip, user, password, intf_num, vlan_start, vlan_end):
     logger.info('Clearing nexus config')
-    path = os.path.dirname(
-        os.path.abspath(inspect.getfile(inspect.currentframe())))
+    script_path = os.path.join(PARENT_FOLDER_PATH, 'tools/clear_nexus_config.py')
     cmd = 'python {script} {ip} {user} {password} {intf_num} {vlan_start} ' \
           '{vlan_end}' \
-          ''.format(script=os.path.join(path, 'clear_nexus_config.py'),
+          ''.format(script=script_path,
                     ip=ip, user=user, password=password,
                     intf_num=intf_num, vlan_start=vlan_start,
                     vlan_end=vlan_end)

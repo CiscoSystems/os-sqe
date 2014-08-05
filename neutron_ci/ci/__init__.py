@@ -34,3 +34,5 @@ info_file_handler = logging.FileHandler('console.txt')
 info_file_handler.setLevel(logging.INFO)
 info_file_handler.setFormatter(formatter)
 logger.addHandler(info_file_handler)
+
+PARENT_FOLDER_PATH = os.path.dirname(os.path.dirname(__file__))
