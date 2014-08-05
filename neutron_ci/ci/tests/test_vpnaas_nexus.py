@@ -22,7 +22,8 @@ from ci.lib.test_case import BaseTestCase
 
 
 TEST_LIST_FILE = os.path.join(var.WORKSPACE, 'cisco_vpn_tests.txt')
-LOCALRC = '''
+LOCAL_CONF = '''
+[[local|localrc]]
 NEUTRON_REPO={neutron_repo}
 NEUTRON_BRANCH={neutron_branch}
 
@@ -63,12 +64,12 @@ class VpnaasNexusTest(BaseTestCase):
     def setUpClass(cls):
         BaseTestCase.setUpClass()
 
-        localrc = LOCALRC.format(
+        local_conf = LOCAL_CONF.format(
             neutron_repo=urlparse.urljoin(var.ZUUL_URL, var.ZUUL_PROJECT),
             neutron_branch=var.ZUUL_REF,
             JOB_LOG_PATH=var.JOB_LOG_PATH)
 
-        cls.devstack.localrc = localrc
+        cls.devstack.local_conf = local_conf
         cls.devstack.clone()
         cls.devstack.patch(os.path.join(
             WORKSPACE, 'cisco_vpnaas_enabled.devstack.patch'))

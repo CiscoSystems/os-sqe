@@ -21,7 +21,8 @@ from ci.lib.test_case import NexusTestCase
 
 
 TEST_LIST_FILE = os.path.join(var.WORKSPACE, 'cisco_plugin_tests.txt')
-LOCALRC = '''
+LOCAL_CONF = '''
+[[local|localrc]]
 NEUTRON_REPO={neutron_repo}
 NEUTRON_BRANCH={neutron_branch}
 
@@ -67,7 +68,7 @@ class MonolithicNexusTest(NexusTestCase):
     def setUpClass(cls):
         NexusTestCase.setUpClass()
 
-        localrc = LOCALRC.format(
+        local_conf = LOCAL_CONF.format(
             neutron_repo=urlparse.urljoin(var.ZUUL_URL, var.ZUUL_PROJECT),
             neutron_branch=var.ZUUL_REF,
             nexus_ip=var.NEXUS_IP,
@@ -78,7 +79,7 @@ class MonolithicNexusTest(NexusTestCase):
             vlan_start=var.NEXUS_VLAN_START, vlan_end=var.NEXUS_VLAN_END,
             JOB_LOG_PATH=var.JOB_LOG_PATH)
 
-        cls.devstack.localrc = localrc
+        cls.devstack.local_conf = local_conf
         cls.devstack.clone()
 
     def test_tempest(self):

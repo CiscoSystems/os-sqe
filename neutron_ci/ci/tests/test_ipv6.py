@@ -16,7 +16,8 @@
 
 from ci.lib.test_case import BaseTestCase
 
-LOCALRC = '''
+LOCAL_CONF = '''
+[[local|localrc]]
 ADMIN_PASSWORD=secret
 DATABASE_PASSWORD=$ADMIN_PASSWORD
 RABBIT_PASSWORD=$ADMIN_PASSWORD
@@ -60,7 +61,7 @@ class IPv6Test(BaseTestCase):
     def setUpClass(cls):
         BaseTestCase.setUpClass()
 
-        cls.devstack.localrc = LOCALRC
+        cls.devstack.local_conf = LOCAL_CONF
         cls.devstack.clone()
 
     def test_tempest(self):
