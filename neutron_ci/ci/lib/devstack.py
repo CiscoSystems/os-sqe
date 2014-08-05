@@ -16,6 +16,7 @@
 
 import logging
 import os
+import requests
 from ci.lib import utils
 from ci.jenkins_vars import WORKSPACE, JOB_LOG_PATH
 
@@ -142,20 +143,28 @@ class DevStack(object):
     def tempest_last2html(self):
         try:
             subunit_path = os.path.join(WORKSPACE, 'testr_results.subunit')
+            html_path = os.path.join(JOB_LOG_PATH, 'testr_results.html')
+            subunit2html_path = os.path.join(WORKSPACE, 'subunit2html.py')
+
+            # Export tempest results to subunit file
             os.chdir(self._tempest_path)
             utils.run_cmd_line(
                 'testr last --subunit > "{s}"'.format(s=subunit_path),
                 shell=True)
             os.chdir(WORKSPACE)
-            utils.run_cmd_line(
-                'wget https://raw.githubusercontent.com/openstack-infra/'
-                'config/master/modules/openstack_project/files/'
-                'slave_scripts/subunit2html.py', shell=True)
 
-            path = os.path.join(JOB_LOG_PATH, 'testr_results.html')
+            # Convert subunit to html
+            with open(subunit2html_path, 'w') as f:
+                url = 'wget https://raw.githubusercontent.com/' \
+                      'openstack-infra/config/master/modules/' \
+                      'openstack_project/files/slave_scripts/subunit2html.py'
+                r = requests.get(url)
+                f.write(r.text)
+
             utils.run_cmd_line(
-                'python subunit2html.py {s} {path}'
-                ''.format(s=subunit_path, path=path), shell=True)
+                'python {s2h} {s} {h}'
+                ''.format(s2h=subunit2html_path, s=subunit_path, h=html_path),
+                shell=True)
         except Exception as e:
             logger.error(e)
         finally:
