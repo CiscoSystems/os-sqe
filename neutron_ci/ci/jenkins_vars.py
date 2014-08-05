@@ -55,5 +55,11 @@ msg = ['export {0}={1}'.format(key, values[key])
 msg.insert(0, os.linesep)
 logger.debug(os.linesep.join(msg))
 
+# Raise exception if there are undefined variables
+defined = [values[key] is not None for key in dir()
+           if key[0].isupper()]
+if not all(defined):
+    raise Exception('There are undefined environment variables.')
+
 if not os.path.exists(JOB_LOG_PATH):
     os.mkdir(JOB_LOG_PATH)
