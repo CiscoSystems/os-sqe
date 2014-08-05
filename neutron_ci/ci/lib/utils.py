@@ -17,8 +17,7 @@
 import logging
 import subprocess
 import os
-import inspect
-from neutron_ci.ci import PARENT_FOLDER_PATH
+from ci import PARENT_FOLDER_PATH
 
 
 logger = logging.getLogger(__name__)
