@@ -20,6 +20,7 @@ import requests
 import urlparse
 import os
 from fabric.api import run, cd, env
+from fabric.contrib.files import exists
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -43,7 +44,8 @@ if __name__ == '__main__':
     if 'artifacts' not in json_data:
         raise Exception('No artifacts found. Nothing to download.')
 
-    run('[ ! -d "{p}" ] && mkdir -p "{p}"'.format(p=path), warn_only=True)
+    if not exists(path):
+        run('mkdir -p "{p}"'.format(p=path), warn_only=True)
     with cd(path):
         # Create directories
         dirs = list()
