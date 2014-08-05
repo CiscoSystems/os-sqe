@@ -103,7 +103,7 @@ class DevStack(object):
             logger.info(f.read())
 
         try:
-            os.chdir(os.path.join('/opt/stack/', 'tempest'))
+            os.chdir('/opt/stack/tempest')
             if not os.path.isdir('.testrepository'):
                 utils.run_cmd_line(
                     'testr init', check_result=False, shell=True)
