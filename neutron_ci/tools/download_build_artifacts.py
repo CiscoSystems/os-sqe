@@ -21,14 +21,13 @@ import urlparse
 import os
 from fabric.api import run, cd, env
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--build-url', required=True)
-parser.add_argument('--host', required=True)
-parser.add_argument('--login', required=True)
-parser.add_argument('--password', required=True)
-parser.add_argument('--path', required=True)
-
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--build-url', required=True)
+    parser.add_argument('--host', required=True)
+    parser.add_argument('--login', required=True)
+    parser.add_argument('--password', required=True)
+    parser.add_argument('--path', required=True)
     args = parser.parse_args()
 
     env.disable_known_hosts = True
