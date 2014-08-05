@@ -82,14 +82,18 @@ class OSWebCreds:
             "password": self.password,
         }
         local_params = dict(PARAMS, region=PARAMS['region'] % self.ip)
-        url = "http://" + self.ip + "/horizon"
         s = requests.Session()
-        login_page = s.get(url)
+        add_url = "/horizon"
+        url = "http://" + self.ip
+        login_page = s.get(url + add_url)
+        if login_page.status_code != requests.codes.ok:
+            add_url = ""
+            login_page = s.get(url)
         token = token_re.search(login_page.content).group(1)
         local_params.update({"csrfmiddlewaretoken":token})
-        login_url = "http://" + self.ip + "/horizon/auth/login/"
+        login_url = "http://" + self.ip + add_url + "/auth/login/"
         s.post(login_url, data=local_params)
-        rc_url = "http://" + self.ip + "/horizon/project/access_and_security/api_access/openrc/"
+        rc_url = "http://" + self.ip + add_url + "/project/access_and_security/api_access/openrc/"
         rc_file = s.get(rc_url)
         return rc_file
 
@@ -119,7 +123,7 @@ class Tempest:
         self.ipv = openrc["ipv"]
         self.external_net = openrc["external_net"]
         self.tmp_dir = "/tmp/"
-        self.locks_dir = os.path.join(os.path.dirname(__file__), "locks")
+        self.locks_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "locks"))
 
     def unconfig(self):
         cur_dir = os.path.join(os.path.dirname(__file__))
@@ -174,7 +178,7 @@ class Tempest:
         else:
             os.makedirs(img_dir)
         if not os.path.exists(self.locks_dir):
-            os.makedirs(img_dir)
+            os.makedirs(self.locks_dir)
         print "Downloading cirros-0.3.2-x86_64-disk.img ...."
         img_path = os.path.join(img_dir, "cirros-0.3.2-x86_64-disk.img")
         urllib.urlretrieve(CIRROS_URL, img_path)
@@ -220,7 +224,8 @@ class Tempest:
             print e
         admin = next((i for i in self.keystone.users.list() if i.name == "admin"), None)
         # if not successful creating admin - set its password
-        admin = self.keystone.users.update_password(admin.id, DEFAULT_PASS)
+        #admin = self.keystone.users.update_password(admin.id, DEFAULT_PASS)
+        print self.keystone.roles.list()
         admin_role = next((i for i in self.keystone.roles.list() if i.name == "admin"), None)
         if admin is None or admin_role is None:
             print "Can not get admin details!"
@@ -256,7 +261,7 @@ class Tempest:
                 'subnet':
                     {'name':"sub",
                      'network_id': public_net['network']['id'],
-                     'ip_version': 4,
+                     'ip_version': 6,
                      'cidr': self.external_net + '/64',
                      'dns_nameservers': [self.external_net + "1"]
                     }})
@@ -280,7 +285,7 @@ class Tempest:
                 'subnet':
                     {'name':"sub",
                      'network_id': private_net['network']['id'],
-                     'ip_version': 4,
+                     'ip_version': 6,
                      'cidr': DEFAULT_IPV6_INT + '/64',
                      'dns_nameservers': [self.external_net + "1"]
                     }})
@@ -308,9 +313,9 @@ class Tempest:
         data =  self.create_config()
 
         if 'WORKSPACE' in os.environ:
-            tempest_dir = os.path.join(os.environ['WORKSPACE'], "tempest/.venv/bin")
+            tempest_dir = os.path.abspath(os.path.join(os.environ['WORKSPACE'], "tempest/.venv/bin"))
         else:
-            tempest_dir = os.path.join(os.path.dirname(__file__), "..", "..", "tempest/.venv/bin")
+            tempest_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tempest/.venv/bin"))
         parser = ConfigParser.SafeConfigParser(defaults={
             "debug": "True",
             "log_file": "tempest.log",
@@ -418,7 +423,6 @@ class Tempest:
         return parser
 
     def config(self):
-        self.create_config()
         return self.create_config_file()
 
 def parse_config(o):
@@ -487,7 +491,8 @@ def main():
     tempest.unconfig()
     if not opts.unconfig:
         file = tempest.config()
-        file.write(opts.output)
+        with open(opts.output, "w") as f:
+            file.write(f)
 
 if __name__ == "__main__":
     main()
