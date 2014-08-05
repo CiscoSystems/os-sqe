@@ -95,8 +95,8 @@ def clear_nexus_config(host, user, password, intf_num, vlan_start, vlan_end):
             except operations.rpc.RPCError:
                 # Vlan might not be configured.
                 pass
-        sys.exit(0)
-    sys.exit(1)
+        return 0
+    return 1
 
 
 def print_usage():
@@ -116,5 +116,6 @@ if __name__ == '__main__':
     if len(sys.argv) != 7:
         print_usage()
         sys.exit(1)
-    clear_nexus_config(sys.argv[1], sys.argv[2], sys.argv[3],
-                       sys.argv[4], sys.argv[5], sys.argv[6])
+    res = clear_nexus_config(sys.argv[1], sys.argv[2], sys.argv[3],
+                             sys.argv[4], sys.argv[5], sys.argv[6])
+    sys.exit(res)
