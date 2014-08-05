@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import argparse
 import glob
 import keystoneclient.v2_0.client
@@ -129,7 +130,7 @@ class Tempest:
         print "Deleting cirros-0.3.1-x86_64-disk.img ...."
         for i in glob.glob("./cirros-*img"):
             os.remove(i)
-        os.remove(os.path.join(cur_dir, "trusty-server-cloudimg-amd64-disk1.img"))
+        #os.remove(os.path.join(cur_dir, "trusty-server-cloudimg-amd64-disk1.img"))
         print "Deleting glance images ....."
         for img in self.glance.images.list():
             self.glance.images.delete(img)
@@ -155,9 +156,10 @@ class Tempest:
         for i in self.neutron.list_routers()['routers']:
             self.neutron.delete_router(i['id'])
         for i in self.neutron.list_networks()['networks']:
-            self.neutron.delete_network(i)
+
+            self.neutron.delete_network(i['id'])
         for i in self.neutron.list_subnets()['subnets']:
-            self.neutron.delete_subnet(i)
+            self.neutron.delete_subnet(i['id'])
         #for i in os.listdir(self.tmp_dir):
         #    if "cirros-0.3.1-x86_64-uec" in i:
         #        os.remove(i)
@@ -481,7 +483,6 @@ def main():
 
     opts = parser.parse_args()
     options = parse_config(opts)
-    print options
     tempest = Tempest(options)
     tempest.unconfig()
     if not opts.unconfig:
