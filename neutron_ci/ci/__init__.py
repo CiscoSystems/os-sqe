@@ -74,8 +74,10 @@ msg.insert(0, os.linesep)
 logger.debug(os.linesep.join(msg))
 
 # Raise exception if there are undefined variables
+nullable = ['NEXUS_IP', 'NEXUS_USER', 'NEXUS_PASSWORD',
+            'NEXUS_INTF_NUM', 'NEXUS_VLAN_START', 'NEXUS_VLAN_END']
 defined = [values[key] is not None for key in dir()
-           if key[0].isupper()]
+           if key[0].isupper() and key not in nullable]
 if not all(defined):
     raise Exception('There are undefined environment variables.')
 
