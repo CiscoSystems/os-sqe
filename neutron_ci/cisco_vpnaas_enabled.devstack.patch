@@ -1,0 +1,28 @@
+From e4adac56e81d46a82df898d800e0e98746fb9b52 Mon Sep 17 00:00:00 2001
+From: Nikolay Fedotov <nfedotov@cisco.com>
+Date: Wed, 23 Jul 2014 12:42:06 +0400
+Subject: [PATCH] Patch
+
+---
+ stack.sh | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/stack.sh b/stack.sh
+index 94b90d1..48654c3 100755
+--- a/stack.sh
++++ b/stack.sh
+@@ -1128,6 +1128,11 @@ fi
+ # Phase: post-config
+ merge_config_group $TOP_DIR/local.conf post-config
+ 
++PATCH_OPENSWAN_SERVICE_PROVIDER='service_provider=VPN:openswan'
++PATCH_CISCO_SERVICE_PROVIDE='service_provider=VPN:cisco'
++PATCH_NEUTRON_CONFIG='/etc/neutron/neutron.conf'
++sudo sed -i "s/${PATCH_OPENSWAN_SERVICE_PROVIDER}/# ${PATCH_OPENSWAN_SERVICE_PROVIDER}/" ${PATCH_NEUTRON_CONFIG}
++sudo sed -i "s/# ${PATCH_CISCO_SERVICE_PROVIDE}/${PATCH_CISCO_SERVICE_PROVIDE}/" ${PATCH_NEUTRON_CONFIG}
+ 
+ # Launch Services
+ # ===============
+-- 
+1.9.0
+
