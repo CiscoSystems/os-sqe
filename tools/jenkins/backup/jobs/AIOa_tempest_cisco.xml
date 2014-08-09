@@ -4,7 +4,7 @@
   <description>&quot;All in one&quot; standalone openstack installation and running our version of tempest on it.&#xd;
 AIO on VM&#xd;
 Fixed custom tempest on node&#xd;
-229 lab2</description>
+230 lab2</description>
   <keepDependencies>false</keepDependencies>
   <properties>
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">

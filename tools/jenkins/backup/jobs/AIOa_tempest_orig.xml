@@ -97,7 +97,11 @@ Original tempest on node</description>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe
 make full-aio
-cp $WORKSPACE/openstack-sqe/nosetests*.xml ${WORKSPACE}/nosetests_orig.xml</command>
+if grep -q tempest $WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set; then
+make full-aio
+fi
+python $WORKSPACE/openstack-sqe/tools/tempest-scripts/junit_merge.py $(ls $WORKSPACE/openstack-sqe/nosetests*xml) &gt; $WORKSPACE/result.xml
+cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_orig.xml</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>

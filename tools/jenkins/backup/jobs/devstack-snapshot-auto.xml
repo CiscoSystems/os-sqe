@@ -49,12 +49,12 @@
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/terrrakot/openstack-sqe.git</url>
+            <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/cloud</name>
+            <name>*/master</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -78,9 +78,11 @@
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
 rm -rf nosetests*xml
+rm -rf $WORKSPACE/tempest/.testrepo*
 export LAB=$(python ./tools/get_pool.py)
 make devstack-snapshot &amp;&amp; make devstack-tempest || :
 make shutdown || :
+. .env/bin/activate
 rm /tmp/lock.${LAB}
 test -e subunit2html.py || wget https://raw.githubusercontent.com/openstack-infra/config/master/modules/openstack_project/files/slave_scripts/subunit2html.py
 python subunit2html.py $WORKSPACE/openstack-sqe/testr_results.subunit testr_results.html ||:</command>
@@ -168,7 +170,7 @@ ssh localadmin@172.29.173.228 &quot;mkdir -p /opt/www/${JOB_NAME}/${BUILD_NUMBER
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
       <script>echo POOL=200-205
-echo REG=&apos;tempest.*.test_network.*&apos;</script>
+echo REG=&apos;tempest.scenario.test_network_basic_ops&apos;</script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

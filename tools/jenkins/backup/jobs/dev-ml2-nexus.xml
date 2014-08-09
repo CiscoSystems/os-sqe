@@ -27,12 +27,12 @@
     <configVersion>2</configVersion>
     <userRemoteConfigs>
       <hudson.plugins.git.UserRemoteConfig>
-        <url>http://172.29.173.134/nfedotov/nexus_ci.git</url>
+        <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
       </hudson.plugins.git.UserRemoteConfig>
     </userRemoteConfigs>
     <branches>
       <hudson.plugins.git.BranchSpec>
-        <name>*/refactoring</name>
+        <name>*/neutron_ci</name>
       </hudson.plugins.git.BranchSpec>
     </branches>
     <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -41,11 +41,11 @@
   </scm>
   <assignedNode>nexus-ci_devstack</assignedNode>
   <canRoam>false</canRoam>
-  <disabled>true</disabled>
+  <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
-  <concurrentBuild>false</concurrentBuild>
+  <concurrentBuild>true</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
       <command>export NEXUS_IP=172.29.172.140
@@ -53,6 +53,7 @@ export NEXUS_USER=admin
 export NEXUS_PASSWORD=c3l12345
 export CONSOLE_LOG_LEVEL=10
 
+cd neutron_ci
 sudo pip install -r requirements.txt
 
 # Get parameters
@@ -60,17 +61,31 @@ CONNECTION=&quot;mysql://jenkins:Cisco123@192.168.0.177/neutron&quot;
 python tools/parameters.py allocate --connection=${CONNECTION} --wait &gt; params.sh
 source params.sh
 
-
-
-nosetests ci/tests/test_ml2_nexus.py
+nosetests ci/tests/test_ml2_nexus.py || :
 
 # Release parameters
 python tools/parameters.py release --connection=${CONNECTION} --id=${PARAM_ID}</command>
     </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>cat &gt;&gt;/home/ubuntu/.ssh/known_hosts&lt;&lt;EOF
+|1|ejnKhkRrj96mJj9pv6WJtTDdpN4=|nq2bLYfJOD7AD+rO4SHwFysf9Ow= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBK++7Bpvy60tgFtzc02N9K91N7+DXo+Cr6xuxLZv9nsqx4LXVrrh2pge5OwljtChnYNJyz3lc81rvmwmE7OU4TA=
+EOF
+
+files=&apos;console.txt local.conf&apos;
+
+pass=&apos;N3u+r0N&apos;
+logpass=/home/cisco_neutron_ci/jlogs/${JOB_NAME}/${BUILD_NUMBER}/
+sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 mkdir -p ${logpass} || :
+sshpass -p ${pass} rsync -ave ssh ${files} cisco_neutron_ci@128.107.233.28:${logpass} || :
+sshpass -p ${pass} rsync -ave ssh logs cisco_neutron_ci@128.107.233.28:${logpass} || :
+
+sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 gzip -9 &quot;${logpass}*&quot; || :
+sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 gzip -9 &quot;${logpass}/logs/*&quot;  || :</command>
+    </hudson.tasks.Shell>
   </builders>
   <publishers>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>localrc, console.txt, logs/*</artifacts>
+      <artifacts>localrc, local.conf, console.txt, logs/*</artifacts>
       <latestOnly>false</latestOnly>
       <allowEmptyArchive>false</allowEmptyArchive>
     </hudson.tasks.ArtifactArchiver>

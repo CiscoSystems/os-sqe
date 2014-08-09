@@ -95,8 +95,8 @@
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
 make fullha-cobbler || :
-sleep 1800
-make run-tempest</command>
+#sleep 1800
+#make run-tempest</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>

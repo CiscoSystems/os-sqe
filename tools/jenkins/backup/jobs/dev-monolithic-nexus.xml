@@ -27,12 +27,12 @@
     <configVersion>2</configVersion>
     <userRemoteConfigs>
       <hudson.plugins.git.UserRemoteConfig>
-        <url>http://172.29.173.134/nfedotov/nexus_ci.git</url>
+        <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
       </hudson.plugins.git.UserRemoteConfig>
     </userRemoteConfigs>
     <branches>
       <hudson.plugins.git.BranchSpec>
-        <name>*/refactoring</name>
+        <name>*/neutron-ci-devstack-commit</name>
       </hudson.plugins.git.BranchSpec>
     </branches>
     <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -45,7 +45,7 @@
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
-  <concurrentBuild>false</concurrentBuild>
+  <concurrentBuild>true</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
       <command>export NEXUS_IP=172.29.172.140
@@ -53,6 +53,7 @@ export NEXUS_USER=admin
 export NEXUS_PASSWORD=c3l12345
 export CONSOLE_LOG_LEVEL=10
 
+cd neutron_ci
 sudo pip install -r requirements.txt
 
 # Get parameters
@@ -60,7 +61,9 @@ CONNECTION=&quot;mysql://jenkins:Cisco123@192.168.0.177/neutron&quot;
 python tools/parameters.py allocate --connection=${CONNECTION} --wait &gt; params.sh
 source params.sh
 
-nosetests ci/tests/test_monolithic_nexus.py
+export DEVSTACK_COMMIT=d127ce38a6e9fd6ec3787ad42e2984a0fd1b6d82
+
+nosetests ci/tests/test_monolithic_nexus.py || :
 
 # Release parameters
 python tools/parameters.py release --connection=${CONNECTION} --id=${PARAM_ID}</command>
@@ -68,7 +71,7 @@ python tools/parameters.py release --connection=${CONNECTION} --id=${PARAM_ID}</
   </builders>
   <publishers>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>localrc, console.txt, logs/*</artifacts>
+      <artifacts>localrc, local.conf, console.txt, logs/*</artifacts>
       <latestOnly>false</latestOnly>
       <allowEmptyArchive>false</allowEmptyArchive>
     </hudson.tasks.ArtifactArchiver>
