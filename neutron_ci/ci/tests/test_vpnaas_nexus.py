@@ -16,7 +16,7 @@
 
 import urlparse
 import os
-from ci import PARENT_FOLDER_PATH, WORKSPACE, ZUUL_URL, ZUUL_PROJECT, \
+from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, \
     ZUUL_REF, SCREEN_LOG_PATH
 from ci.lib.test_case import BaseTestCase
 
@@ -72,7 +72,7 @@ class VpnaasNexusTest(BaseTestCase):
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()
         cls.devstack.patch(os.path.join(
-            WORKSPACE, 'cisco_vpnaas_enabled.devstack.patch'))
+            PARENT_FOLDER_PATH, 'cisco_vpnaas_enabled.devstack.patch'))
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
