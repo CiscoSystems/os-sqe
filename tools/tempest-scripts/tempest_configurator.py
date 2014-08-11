@@ -17,7 +17,7 @@ __author__ = 'sshnaidm'
 env_re = re.compile("export (OS_[A-Z0-9_]+=.*$)")
 token_re = re.compile("name='csrfmiddlewaretoken' value='([^']+)'")
 ip_re = re.compile("((?:\d+\.){3}\d+)")
-
+region_re = re.compile('name="region" type="hidden" value="([^"]+)"')
 
 NOVACLIENT_VERSION = '2'
 CINDERCLIENT_VERSION = '1'
@@ -76,12 +76,10 @@ class OSWebCreds:
         self.password = password
 
     def get_file_from_url(self):
-        PARAMS = {
-            "region": "http://%s:5000/v2.0",
+        local_params = {
             "username": self.user,
             "password": self.password,
         }
-        local_params = dict(PARAMS, region=PARAMS['region'] % self.ip)
         s = requests.Session()
         add_url = "/horizon"
         url = "http://" + self.ip
@@ -90,7 +88,9 @@ class OSWebCreds:
             add_url = ""
             login_page = s.get(url)
         token = token_re.search(login_page.content).group(1)
-        local_params.update({"csrfmiddlewaretoken":token})
+        region = region_re.search(login_page.content).group(1)
+        local_params.update({"csrfmiddlewaretoken": token})
+        local_params.update({"region": region})
         login_url = "http://" + self.ip + add_url + "/auth/login/"
         s.post(login_url, data=local_params)
         rc_url = "http://" + self.ip + add_url + "/project/access_and_security/api_access/openrc/"
