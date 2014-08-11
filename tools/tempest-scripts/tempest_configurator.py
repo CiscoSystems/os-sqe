@@ -31,7 +31,7 @@ DEMO_TENANT = "demo"
 ALT_USER = "alt_demo"
 ALT_PASS = "secret"
 ALT_TENANT = "alt_demo"
-DEFAULT_IPV4_INT = "192.168.10"
+DEFAULT_IPV4_INT = "192.168.1"
 DEFAULT_IPV6_INT = "fd00::"
 
 CIRROS_URL = "http://172.29.173.233/cirros-0.3.2-x86_64-disk.img"
@@ -123,11 +123,11 @@ class Tempest:
         self.ipv = openrc["ipv"]
         self.external_net = openrc["external_net"]
         self.tmp_dir = "/tmp/"
-        self.locks_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "locks"))
+        self.curdir = os.path.dirname(__file__)
+        self.locks_dir = os.path.abspath(os.path.join(self.curdir, "locks"))
 
     def unconfig(self):
-        cur_dir = os.path.join(os.path.dirname(__file__))
-        img_dir = os.path.join(cur_dir, "prepare_for_tempest_dir")
+        img_dir = os.path.join(self.curdir, "prepare_for_tempest_dir")
         if os.path.exists(img_dir):
             for i in os.listdir(img_dir):
                 os.remove(os.path.join(img_dir,i))
@@ -156,6 +156,8 @@ class Tempest:
         for i in [port for port in self.neutron.list_ports()['ports']]:
             if i['device_owner'] == 'network:router_interface':
                 self.neutron.remove_interface_router(i['device_id'], {"port_id": i['id']})
+            else:
+                self.neutron.delete_port(i['id'])
         print "Deleting routers ...."
         for i in self.neutron.list_routers()['routers']:
             self.neutron.delete_router(i['id'])
@@ -169,8 +171,7 @@ class Tempest:
         #        os.remove(i)
 
     def create_config(self):
-        cur_dir = os.path.join(os.path.dirname(__file__))
-        img_dir = os.path.join(cur_dir, "prepare_for_tempest_dir")
+        img_dir = os.path.join(self.curdir, "prepare_for_tempest_dir")
         print "Reinitialize the dir..."
         if os.path.exists(img_dir):
             for i in os.listdir(img_dir):
@@ -183,13 +184,13 @@ class Tempest:
         img_path = os.path.join(img_dir, "cirros-0.3.2-x86_64-disk.img")
         urllib.urlretrieve(CIRROS_URL, img_path)
         img1 = self.glance.images.create(
-            data=img_path,
+            data=open(img_path, 'rb'),
             name="cirros-0.3.2",
             disk_format="qcow2",
             container_format="bare",
             is_public=True)
         img2 = self.glance.images.create(
-            data=img_path,
+            data=open(img_path, 'rb'),
             name="ubuntu",
             disk_format="qcow2",
             container_format="bare",
@@ -225,7 +226,6 @@ class Tempest:
         admin = next((i for i in self.keystone.users.list() if i.name == "admin"), None)
         # if not successful creating admin - set its password
         #admin = self.keystone.users.update_password(admin.id, DEFAULT_PASS)
-        print self.keystone.roles.list()
         admin_role = next((i for i in self.keystone.roles.list() if i.name == "admin"), None)
         if admin is None or admin_role is None:
             print "Can not get admin details!"
@@ -250,19 +250,25 @@ class Tempest:
         if self.ipv == 4:
             sub_public = self.neutron.create_subnet({
                 'subnet':
-                    {'name':"sub",
+                    {'name':"public_sub",
                      'network_id': public_net['network']['id'],
                      'ip_version': 4,
                      'cidr': self.external_net + '.0/24',
+                     'allocation_pools': [{'start': self.external_net + '.50',
+                                           'end': self.external_net + '.250'}],
+                     'enable_dhcp': False,
                      'dns_nameservers': [self.external_net + ".1", '8.8.8.8']
                     }})
         else:
             sub_public = self.neutron.create_subnet({
                 'subnet':
-                    {'name':"sub",
+                    {'name':"public_sub",
                      'network_id': public_net['network']['id'],
                      'ip_version': 6,
                      'cidr': self.external_net + '/64',
+                     'allocation_pools': [{'start': self.external_net + ':30',
+                                           'end': self.external_net + ':ffff'}],
+                     'enable_dhcp': False,
                      'dns_nameservers': [self.external_net + "1"]
                     }})
         private_net = self.neutron.create_network({
@@ -274,7 +280,7 @@ class Tempest:
         if self.ipv == 4:
             sub_private = self.neutron.create_subnet({
                 'subnet':
-                    {'name':"sub",
+                    {'name':"private_sub",
                      'network_id': private_net['network']['id'],
                      'ip_version': 4,
                      'cidr': DEFAULT_IPV4_INT + '.0/24',
@@ -283,7 +289,7 @@ class Tempest:
         else:
             sub_private = self.neutron.create_subnet({
                 'subnet':
-                    {'name':"sub",
+                    {'name':"private_sub",
                      'network_id': private_net['network']['id'],
                      'ip_version': 6,
                      'cidr': DEFAULT_IPV6_INT + '/64',
@@ -309,13 +315,15 @@ class Tempest:
             "public_net": public_net,
         }
 
-    def create_config_file(self):
-        data =  self.create_config()
+    def create_config_file(self, data):
+
 
         if 'WORKSPACE' in os.environ:
             tempest_dir = os.path.abspath(os.path.join(os.environ['WORKSPACE'], "tempest/.venv/bin"))
         else:
-            tempest_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tempest/.venv/bin"))
+            tempest_dir = os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__), "..", "..", "..","tempest/.venv/bin"))
         parser = ConfigParser.SafeConfigParser(defaults={
             "debug": "True",
             "log_file": "tempest.log",
@@ -324,6 +332,8 @@ class Tempest:
         })
         parser.add_section("cli")
         parser.set('cli', "cli_dir", tempest_dir)
+        parser.set('cli', 'enabled', 'True')
+        parser.set('cli', 'has_manage', 'False')
         parser.add_section("compute")
         parser.set("compute", "catalog_type", "compute")
         parser.set("compute", "ssh_connect_method", "floating")
@@ -338,10 +348,14 @@ class Tempest:
         parser.set("compute", "network_for_ssh", "net10")
         parser.set("compute", "fixed_network_name", "net10")
         parser.set("compute", "ssh_user", "cirros")
-        parser.set("compute", "allow_tenant_isolation", "True")
+        parser.set("compute", "allow_tenant_isolation", "False")
         parser.set("compute", "build_timeout", "300")
         parser.set("compute", "build_interval", "10")
-        parser.set("compute", "run_ssh", "False")
+        #parser.set("compute", "run_ssh", "False")
+        parser.set("compute", "run_ssh", "True")
+        parser.set("compute", "ssh_connect_method", "fixed")
+        parser.set("compute", "ssh_timeout", "90")
+        parser.set("compute", "use_floatingip_for_ssh", "True")
         parser.set("compute", "image_ssh_password", "cubswin:)")
         parser.set("compute", "image_alt_ssh_password", "cubswin:)")
         parser.set("compute", "volume_device_name", "vdb")
@@ -353,11 +367,11 @@ class Tempest:
         parser.set("compute-feature-enabled", "block_migration_for_live_migration", "False")
         parser.set("compute-feature-enabled", "change_password", "False")
         parser.set("compute-feature-enabled", "live_migration", "False")
-        parser.set("compute-feature-enabled", "resize", "True")
+        parser.set("compute-feature-enabled", "resize", "False")
         parser.set("compute-feature-enabled", "api_v3", "False")
         parser.add_section("dashboard")
-        parser.set("dashboard", "login_url", "http://%s/auth/login/" % data["ip"])
-        parser.set("dashboard", "dashboard_url", "http://%s/" % data["ip"])
+        parser.set("dashboard", "login_url", "http://%s/horizon/auth/login/" % data["ip"])
+        parser.set("dashboard", "dashboard_url", "http://%s/horizon" % data["ip"])
         parser.add_section("identity")
         parser.set("identity", "disable_ssl_certificate_validation", "False")
         parser.set("identity", "catalog_type", "identity")
@@ -380,10 +394,10 @@ class Tempest:
         parser.add_section("image")
         parser.set("image", "catalog_type", "image")
         parser.set("image", "api_version", "1")
-        parser.set("image", "http_image", "http://download.cirros-cloud.net/0.3.2/cirros-0.3.2-x86_64-uec.tar.gz")
+        parser.set("image", "http_image", "http://172.29.173.233/cirros-0.3.2-x86_64-uec.tar.gz")
         parser.add_section("network")
-        parser.set("network", "tenant_network_cidr", DEFAULT_IPV4_INT + '.0/24')
-        parser.set("network", "tenant_network_v6_cidr", DEFAULT_IPV6_INT + '/64')
+        parser.set("network", "tenant_network_cidr", "172.16.0.0/12")
+        parser.set("network", "tenant_network_v6_cidr", '2003::/64')
         parser.set("network", "tenant_network_mask_bits", "24")
         parser.set("network", "tenant_network_v6_mask_bits", "96")
         parser.set("network", "tenant_networks_reachable", "False")
@@ -411,29 +425,54 @@ class Tempest:
         parser.add_section("telemetry")
         parser.set("telemetry", "too_slow_to_test", "False")
         parser.add_section("volume")
-        parser.set("volume", "build_timeout", "196")
+        parser.set("volume", "catalog_type", "volume")
+        parser.set("volume", "build_interval", "10")
+        parser.set("volume", "build_timeout", "300")
+        parser.set("volume", "disk_format", "raw")
+        parser.set("volume", "volume_size", "1")
         parser.add_section("volume-feature-enabled")
         parser.set("volume-feature-enabled", "backup", "False")
+        parser.set("volume-feature-enabled", "snapshot", "True")
+        parser.set("volume-feature-enabled", "api_extensions", "all")
+        parser.set("volume-feature-enabled", "api_v1", "True")
+        parser.set("volume-feature-enabled", "api_v2", "True")
         parser.add_section("object-storage")
         parser.set("object-storage", "container_sync_timeout" ,"120")
         parser.set("object-storage", "container_sync_interval" ,"5")
         parser.set("object-storage", "accounts_quotas_available" ,"True")
         parser.set("object-storage", "container_quotas_available" ,"True")
         parser.set("object-storage", "operator_role" ,"SwiftOperator")
+        parser.add_section("orchestration")
+        parser.set("orchestration", "catalog_type", "orchestration")
+        parser.set("orchestration", "build_timeout" ,"300")
+        parser.set("orchestration", "instance_type" ,"m1.micro")
+        parser.set("orchestration", "max_template_size", "524288")
+        parser.add_section("boto")
+        parser.set("boto", "ec2_url", "http://%s:8773/services/Cloud" % data["ip"])
+        parser.set("boto", "s3_url", "http://%s:3333" % data["ip"])
+        parser.set("boto", "s3_materials_path", "/opt/stack/devstack/files/images/s3-materials/cirros-0.3.1")
+        parser.set("boto", "ari_manifest", "cirros-0.3.1-x86_64-initrd.manifest.xml")
+        parser.set("boto", "ami_manifest", "cirros-0.3.1-x86_64-blank.img.manifest.xml")
+        parser.set("boto", "aki_manifest", "cirros-0.3.1-x86_64-vmlinuz.manifest.xml")
+        parser.set("boto", "instance_type", "m1.tiny")
+        parser.set("boto", "http_socket_timeout", "5")
+        parser.set("boto", "num_retries ", "1")
+        parser.set("boto", "build_timeout", "120")
+        parser.set("boto", "build_interval", "1")
+
         return parser
 
     def config(self):
-        return self.create_config_file()
+        return self.create_config_file(self.create_config())
 
 def parse_config(o):
     config = {}
     if 'OS_AUTH_URL' in os.environ:
-        config["auth_url"] = os.environ['OS_AUTH_URL']
-        config["tenant_id"] = os.environ['OS_TENANT_ID']
-        config["tenant_name"] = os.environ['OS_TENANT_NAME']
-        config["username"] = os.environ['OS_USERNAME']
-        config["password"] = os.environ['OS_PASSWORD']
-        config["region"] = os.environ['OS_REGION_NAME']
+        config["OS_AUTH_URL"] = os.environ['OS_AUTH_URL']
+        config["OS_TENANT_NAME"] = os.environ['OS_TENANT_NAME']
+        config["OS_USERNAME"] = os.environ['OS_USERNAME']
+        config["OS_PASSWORD"] = os.environ['OS_PASSWORD']
+        config["OS_REGION_NAME"] = os.environ['OS_REGION_NAME']
     elif o.openrc:
         text = o.openrc.read()
         o.openrc.close()
@@ -455,8 +494,8 @@ def parse_config(o):
         sys.exit(1)
     config["ipv"] = 4 if o.ipv == 4 else 6
     cur_dir = os.path.join(os.path.dirname(__file__))
-    if os.path.exists(os.path.join(cur_dir, "external_net")):
-        with open(os.path.join(cur_dir, "external_net")) as f:
+    if os.path.exists(os.path.join(cur_dir, "..", "..", "external_net")):
+        with open(os.path.join(cur_dir, "..", "..", "external_net")) as f:
             config["external_net"] = f.read()
     else:
         if o.ipv == 4:
