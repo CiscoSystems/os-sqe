@@ -11,3 +11,13 @@ nose>=1.3.3
 testresources>=0.2.7
 testtools>=0.9.35
 python-subunit
+python-ceilometerclient>=1.0.6
+python-glanceclient>=0.13.1
+python-keystoneclient>=0.9.0
+-e git+http://git.openstack.org/cgit/openstack/python-novaclient#egg=python-novaclient
+python-neutronclient>=2.3.5,<3
+python-cinderclient>=1.0.7
+python-heatclient>=0.2.9
+python-ironicclient
+python-saharaclient>=0.6.0
+python-swiftclient>=2.0.2
