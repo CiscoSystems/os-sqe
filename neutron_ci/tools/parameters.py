@@ -49,25 +49,28 @@ def add_parameters(args):
     parameters = Parameters(text=unicode(text))
     session.add(parameters)
     session.commit()
+    session.close()
 
 
 def allocate(args):
-    while True:
+    looking = True
+    while looking:
         session = Session()
         param = session.query(Parameters).filter(
             Parameters.blocked==False).order_by(Parameters.timestamp).first()
         if not param:
+            print('# There are not free parameters')
             if args.wait:
-                print('# No free parameters yet. Sleep for {t} seconds'
+                print('# Sleep for {t} seconds'
                       ''.format(t=args.sleep_time))
                 time.sleep(args.sleep_time)
-                continue
-            raise Exception('There are not free parameters')
-        param.blocked = True
-        session.commit()
-        print('export PARAM_ID={id}'.format(id=param.id))
-        print(param.text)
-        break
+        else:
+            param.blocked = True
+            session.commit()
+            print('export PARAM_ID={id}'.format(id=param.id))
+            print(param.text)
+            looking = False
+        session.close()
 
 
 def release(args):
@@ -77,6 +80,7 @@ def release(args):
         raise Exception('Not found')
     param.blocked = False
     session.commit()
+    session.close()
     print('Released')
 
 
