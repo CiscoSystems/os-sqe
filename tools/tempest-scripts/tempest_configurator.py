@@ -418,7 +418,7 @@ class Tempest:
         parser.set("service_available", "heat", "True")
         parser.set("service_available", "ceilometer", "True")
         parser.set("service_available", "swift", "True")
-        parser.set("service_available", "cinder", "True")
+        parser.set("service_available", "cinder", "False")
         parser.set("service_available", "nova", "True")
         parser.set("service_available", "glance", "True")
         parser.set("service_available", "horizon", "True")
