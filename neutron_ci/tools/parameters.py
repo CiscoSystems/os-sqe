@@ -45,43 +45,61 @@ def sync_db(args):
 
 def add_parameters(args):
     session = Session()
-    text = args.file.read()
-    parameters = Parameters(text=unicode(text))
-    session.add(parameters)
-    session.commit()
-    session.close()
+    try:
+        text = args.file.read()
+        parameters = Parameters(text=unicode(text))
+        session.add(parameters)
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 def allocate(args):
     looking = True
     while looking:
         session = Session()
-        param = session.query(Parameters).filter(
-            Parameters.blocked==False).order_by(Parameters.timestamp).first()
-        if not param:
-            print('# There are not free parameters')
-            if args.wait:
-                print('# Sleep for {t} seconds'
-                      ''.format(t=args.sleep_time))
-                time.sleep(args.sleep_time)
-        else:
-            param.blocked = True
-            session.commit()
-            print('export PARAM_ID={id}'.format(id=param.id))
-            print(param.text)
-            looking = False
-        session.close()
+        try:
+            param = session.query(Parameters).filter(
+                Parameters.blocked==False).order_by(
+                Parameters.timestamp).first()
+            if not param:
+                print('# There are not free parameters')
+                if args.wait:
+                    print('# Sleep for {t} seconds'
+                          ''.format(t=args.sleep_time))
+                    time.sleep(args.sleep_time)
+                else:
+                    looking = False
+            else:
+                param.blocked = True
+                session.commit()
+                print('export PARAM_ID={id}'.format(id=param.id))
+                print(param.text)
+                looking = False
+        except:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
 
 def release(args):
     session = Session()
-    param = session.query(Parameters).get(args.id)
-    if not param:
-        raise Exception('Not found')
-    param.blocked = False
-    session.commit()
-    session.close()
-    print('Released')
+    try:
+        param = session.query(Parameters).get(args.id)
+        if not param:
+            raise Exception('Not found')
+        param.blocked = False
+        session.commit()
+        print('Released')
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 if __name__ == '__main__':
