@@ -20,8 +20,11 @@ import os
 from testtools import TestCase
 from ci import WORKSPACE, SCREEN_LOG_PATH, NEXUS_IP, NEXUS_USER, \
     NEXUS_PASSWORD, NEXUS_INTF_NUM, NEXUS_VLAN_START, \
-    NEXUS_VLAN_END
+    NEXUS_VLAN_END, OS_AUTH_URL, OS_PASSWORD, OS_USERNAME, \
+    PARENT_FOLDER_PATH, OS_TENANT_NAME, OS_IMAGE_NAME, \
+    OS_FLAVOR_NAME, OS_DNS
 from ci.lib.lab.node import Node
+from ci.lib.openstack import OpenStack
 from ci.lib.utils import run_cmd_line, get_public_key, clear_nexus_config
 from ci.lib.devstack import DevStack
 
@@ -103,3 +106,24 @@ class NexusTestCase(BaseTestCase):
     @classmethod
     def tearDownClass(cls):
         BaseTestCase.tearDownClass()
+
+
+class MultinodeTestCase(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.openstack = OpenStack(OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_TENANT_NAME)
+
+        template_path = os.path.join(PARENT_FOLDER_PATH, 'multinode-env.yaml')
+        image = cls.openstack.find_image(OS_IMAGE_NAME)
+        parameters = {
+            'image': image['name'],
+            'flavor': OS_FLAVOR_NAME,
+            'dns_nameserver': OS_DNS
+        }
+        cls.stack = cls.openstack.launch_stack(cls.__name__, template_path,
+                                               parameters)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.openstack.heat.stacks.delete(cls.stack.id)

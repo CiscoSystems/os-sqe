@@ -17,6 +17,7 @@
 import logging
 import subprocess
 import os
+import time
 from ci import PARENT_FOLDER_PATH
 
 
@@ -55,3 +56,12 @@ def get_public_key(host):
     cmd = 'ssh-keyscan -t rsa {host}'.format(host=host)
     output, code = run_cmd_line(cmd)
     return output
+
+
+def wait_until(predicate, timeout=60, period=5):
+    end = time.time() + timeout
+    while time.time() < end:
+        if predicate():
+            return True
+        time.sleep(period)
+    return False

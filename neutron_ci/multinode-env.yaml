@@ -1,0 +1,122 @@
+heat_template_version: 2013-05-23
+
+parameters:
+  image:
+    type: string
+    description: Name of image to use for servers
+  flavor:
+    type: string
+    description: Flavor to use for servers
+  private_net_name:
+    type: string
+    default: private_net
+    description: Name of private network to be created
+  private_net_cidr:
+    type: string
+    default: 192.168.10.0/24
+    description: Private network address (CIDR notation)
+  private_net_gateway:
+    type: string
+    default: 192.168.10.1
+    description: Private network gateway address
+  private_net_pool_start:
+    type: string
+    default: 192.168.10.2
+    description: Start of private network IP address allocation pool
+  private_net_pool_end:
+    type: string
+    default: 192.168.10.254
+    description: End of private network IP address allocation pool
+  management_net_id:
+    type: string
+    default: 05b68660-874e-4024-ade5-f9e2d8a15e77
+    description: ID of management network
+  management_subnet_id:
+    type: string
+    default: 4e10b931-6e90-4520-a63b-702f046d3b72
+    description: ID of subnet of management network
+  dns_nameserver:
+    type: string
+    description: DNS name server to be used during creating netwokrs
+
+resources:
+  private_net:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: private_net_name }
+
+  private_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: private_net }
+      cidr: { get_param: private_net_cidr }
+      gateway_ip: { get_param: private_net_gateway }
+      enable_dhcp: False
+      allocation_pools:
+        - start: { get_param: private_net_pool_start }
+          end: { get_param: private_net_pool_end }
+      dns_nameservers:
+        - { get_param: dns_nameserver }
+
+  server1_private_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: private_net }
+      fixed_ips:
+        - subnet_id: { get_resource: private_subnet }
+
+  server1_management_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: management_net_id }
+      fixed_ips:
+        - subnet_id: { get_param: management_subnet_id }
+
+  server1:
+    type: OS::Nova::Server
+    properties:
+      name: Server1
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      networks:
+        - port: { get_resource: server1_management_port }
+        - port: { get_resource: server1_private_port }
+
+  server2_private_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: private_net }
+      fixed_ips:
+        - subnet_id: { get_resource: private_subnet }
+
+  server2_management_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: management_net_id }
+      fixed_ips:
+        - subnet_id: { get_param: management_subnet_id }
+
+
+  server2:
+    type: OS::Nova::Server
+    properties:
+      name: Server2
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      networks:
+        - port: { get_resource: server2_management_port }
+        - port: { get_resource: server2_private_port }
+
+outputs:
+  server1_management_ip:
+    description: IP address of server1 in management network
+    value: { get_attr: [ server1, networks, neutron-ci, 0 ] }
+  server1_private_ip:
+    description: IP address of server1 in private network
+    value: { get_attr: [ server1, networks, private_net, 0 ] }
+  server2_management_ip:
+    description: IP address of server2 in management network
+    value: { get_attr: [ server2, networks, neutron-ci, 0 ] }
+  server2_private_ip:
+    description: IP address of server2 in private network
+    value: { get_attr: [ server2, networks, private_net, 0 ] }

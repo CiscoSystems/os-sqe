@@ -47,6 +47,17 @@ NEXUS_INTF_NUM = os.environ.get('NEXUS_INTF_NUM')
 NEXUS_VLAN_START = os.environ.get('NEXUS_VLAN_START')
 NEXUS_VLAN_END = os.environ.get('NEXUS_VLAN_END')
 
+OS_AUTH_URL = os.environ.get('OS_AUTH_URL')
+OS_USERNAME = os.environ.get('OS_USERNAME')
+OS_PASSWORD = os.environ.get('OS_PASSWORD')
+OS_TENANT_NAME = os.environ.get('OS_TENANT_NAME')
+
+OS_IMAGE_NAME = \
+    os.environ.get('OS_IMAGE_NAME',
+                   'devstack-trusty-\d+.template.openstack.org')
+OS_FLAVOR_NAME = os.environ.get('OS_FLAVOR_NAME', 'devstack.medium')
+OS_DNS = os.environ.get('OS_DNS')
+
 # Configure handlers for the root logger
 logger = logging.getLogger()
 formatter = logging.Formatter('%(asctime)s %(name)s: %(lineno)d, '
@@ -75,7 +86,9 @@ logger.debug(os.linesep.join(msg))
 
 # Raise exception if there are undefined variables
 nullable = ['NEXUS_IP', 'NEXUS_USER', 'NEXUS_PASSWORD',
-            'NEXUS_INTF_NUM', 'NEXUS_VLAN_START', 'NEXUS_VLAN_END']
+            'NEXUS_INTF_NUM', 'NEXUS_VLAN_START', 'NEXUS_VLAN_END',
+            'OS_AUTH_URL', 'OS_USERNAME', 'OS_PASSWORD', 'OS_TENANT_NAME',
+            'OS_IMAGE_NAME', 'OS_DNS']
 defined = [values[key] is not None for key in dir()
            if key[0].isupper() and key not in nullable]
 if not all(defined):
