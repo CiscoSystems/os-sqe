@@ -13,6 +13,11 @@
 #    under the License.
 #
 # @author: Dane LeBlanc, Nikolay Fedotov, Cisco Systems, Inc.
+import StringIO
+
+from fabric.context_managers import settings
+from fabric.contrib.files import append
+from fabric.operations import run, put
 
 import logging
 import shutil
@@ -121,8 +126,31 @@ class MultinodeTestCase(TestCase):
             'flavor': OS_FLAVOR_NAME,
             'dns_nameserver': OS_DNS
         }
-        cls.stack = cls.openstack.launch_stack(cls.__name__, template_path,
+        cls.stack, cls.outputs = cls.openstack.launch_stack(cls.__name__, template_path,
                                                parameters)
+
+        for i in range(1, 3):
+            man_ip = cls.outputs.get('server{0}_management_ip'.format(i))
+            pr_ip = cls.outputs.get('server{0}_private_ip'.format(i))
+            with settings(host_string=man_ip):
+                # host name
+                hostname = run('hostname')
+                s = '{ip} {hostname}.slave.openstack.org {hostname}'.format(
+                    ip=pr_ip, hostname=hostname)
+                append('/etc/hosts', s, use_sudo=True)
+
+                # configure eth1
+                eth1_cfg = StringIO.StringIO()
+                eth1_cfg.writelines([
+                    'auto eth1\n',
+                    'iface eth1 inet static\n',
+                    '\taddress {0}\n'.format(pr_ip),
+                    '\tnetmask 255.255.255.0\n',
+                    '\tgateway 192.168.10.1'])
+                put(eth1_cfg, '/etc/network/interfaces.d/eth1.cfg',
+                    use_sudo=True)
+                run('sudo ifup eth1')
+
 
     @classmethod
     def tearDownClass(cls):

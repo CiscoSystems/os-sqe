@@ -51,7 +51,8 @@ class OpenStack(object):
             get_the_stack = lambda: self.heat.stacks.get(stack['id'])
             utils.wait_until(
                 lambda: get_the_stack().status == 'CREATE_COMPLETE')
-            return get_the_stack()
+            stack = get_the_stack()
+            return (stack, {o['output_key']: o['output_value'] for o in stack.outputs})
 
     def find_image(self, name_regexp):
         pattern = re.compile(name_regexp)

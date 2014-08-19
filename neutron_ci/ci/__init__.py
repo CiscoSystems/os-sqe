@@ -13,6 +13,7 @@
 #    under the License.
 #
 # @author: Dane LeBlanc, Nikolay Fedotov, Cisco Systems, Inc.
+from fabric.state import env
 
 import os
 import logging
@@ -89,11 +90,14 @@ nullable = ['NEXUS_IP', 'NEXUS_USER', 'NEXUS_PASSWORD',
             'NEXUS_INTF_NUM', 'NEXUS_VLAN_START', 'NEXUS_VLAN_END',
             'OS_AUTH_URL', 'OS_USERNAME', 'OS_PASSWORD', 'OS_TENANT_NAME',
             'OS_IMAGE_NAME', 'OS_DNS']
-defined = [values[key] is not None for key in dir()
-           if key[0].isupper() and key not in nullable]
-if not all(defined):
-    raise Exception('There are undefined environment variables.')
+# defined = [values[key] is not None for key in dir()
+#            if key[0].isupper() and key not in nullable]
+# if not all(defined):
+#     raise Exception('There are undefined environment variables.')
 
 # Create log path
 if not os.path.exists(SCREEN_LOG_PATH):
     os.mkdir(SCREEN_LOG_PATH)
+
+# Set fabric settings
+env.disable_known_hosts = True
