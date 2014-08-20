@@ -109,6 +109,9 @@ def install_devstack(settings_dict,
                              "/etc/apt/apt.conf.d/00no_pipelining",
                              use_sudo=True))
         update_time(sudo)
+        if opts.ipversion != 4:
+            sudo("/sbin/sysctl -w net.ipv6.conf.all.forwarding=1")
+            append("/etc/sysctl.conf", "net.ipv6.conf.all.forwarding=1", use_sudo=True)
         warn_if_fail(sudo("apt-get update"))
         warn_if_fail(sudo("apt-get install -y git python-pip"))
         warn_if_fail(run("git config --global user.email 'test.node@example.com';"
