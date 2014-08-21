@@ -15,9 +15,9 @@
 # @author: Dane LeBlanc, Nikolay Fedotov, Cisco Systems, Inc.
 import StringIO
 
-from fabric.context_managers import settings
-from fabric.contrib.files import append
-from fabric.operations import run, put
+from fabric.context_managers import settings, cd
+from fabric.contrib.files import append, exists
+from fabric.operations import put, run
 
 import logging
 import shutil
@@ -126,31 +126,40 @@ class MultinodeTestCase(TestCase):
             'flavor': OS_FLAVOR_NAME,
             'dns_nameserver': OS_DNS
         }
-        cls.stack, cls.outputs = cls.openstack.launch_stack(cls.__name__, template_path,
-                                               parameters)
+        cls.stack, cls.outputs = cls.openstack.launch_stack(
+            cls.__name__, template_path, parameters)
 
+        hosts_ptrn = '{ip} {hostname}.slave.openstack.org {hostname}\n'
+        hosts = hosts_ptrn.format(ip=cls.outputs.get('server1_management_ip'), hostname='server1')
+        hosts += hosts_ptrn.format(ip=cls.outputs.get('server2_management_ip'), hostname='server2')
         for i in range(1, 3):
             man_ip = cls.outputs.get('server{0}_management_ip'.format(i))
-            pr_ip = cls.outputs.get('server{0}_private_ip'.format(i))
             with settings(host_string=man_ip):
                 # host name
-                hostname = run('hostname')
-                s = '{ip} {hostname}.slave.openstack.org {hostname}'.format(
-                    ip=pr_ip, hostname=hostname)
-                append('/etc/hosts', s, use_sudo=True)
+                append('/etc/hosts', hosts, use_sudo=True)
 
                 # configure eth1
                 eth1_cfg = StringIO.StringIO()
                 eth1_cfg.writelines([
                     'auto eth1\n',
-                    'iface eth1 inet static\n',
-                    '\taddress {0}\n'.format(pr_ip),
-                    '\tnetmask 255.255.255.0\n',
-                    '\tgateway 192.168.10.1'])
+                    'iface eth1 inet manual\n',
+                    '\tup ifconfig $IFACE 0.0.0.0 up\n',
+                    '\tup ip link set $IFACE promisc on\n',
+                    '\tdown ifconfig $IFACE 0.0.0.0 down'])
                 put(eth1_cfg, '/etc/network/interfaces.d/eth1.cfg',
                     use_sudo=True)
                 run('sudo ifup eth1')
 
+                # Install custom ncclient
+                ncclient_dir = '/opt/git/ncclient'
+                if exists(ncclient_dir):
+                    run('sudo rm -rf {0}'.format(ncclient_dir))
+                run('sudo pip uninstall -y ncclient || :')
+                run('sudo git clone --depth=1 -b master '
+                    'https://github.com/CiscoSystems/ncclient.git '
+                    '{NCCLIENT_DIR}'.format(NCCLIENT_DIR=ncclient_dir))
+                with cd(ncclient_dir):
+                    run('sudo python setup.py install')
 
     @classmethod
     def tearDownClass(cls):

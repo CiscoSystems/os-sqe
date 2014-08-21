@@ -18,7 +18,9 @@ LOCALCONF_CONTROLLER = '''
 [[local|localrc]]
 HOST_IP={HOST_IP}
 
-disable_service n-net
+MULTI_HOST=1
+
+disable_service n-net heat h-api h-api-cfn h-api-cw h-eng cinder c-api c-sch c-vol
 enable_service neutron
 enable_service tempest
 enable_service q-svc
@@ -42,8 +44,6 @@ VOLUME_BACKING_FILE_SIZE=2052M
 Q_PLUGIN=ml2
 Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,cisco_nexus
 Q_ML2_PLUGIN_TYPE_DRIVERS=vlan
-ENABLE_TENANT_TUNNELS=False
-Q_ML2_TENANT_NETWORK_TYPE=local
 Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
 Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
 ML2_VLAN_RANGES=physnet1:{vlan_start}:{vlan_end}
@@ -51,10 +51,14 @@ PHYSICAL_NETWORK=physnet1
 OVS_PHYSICAL_BRIDGE=br-eth1
 TENANT_VLAN_RANGE={vlan_start}:{vlan_end}
 ENABLE_TENANT_VLANS=True
-API_RATE_LIMIT=False
+ENABLE_TENANT_TUNNELS=False
+Q_ML2_TENANT_NETWORK_TYPE=vlan
+LOGFILE=/opt/stack/screen-logs/stack.sh.log
+SCREEN_LOGDIR=/opt/stack/screen-logs
 VERBOSE=True
 DEBUG=True
 USE_SCREEN=True
+API_RATE_LIMIT=False
 '''
 
 LOCALCONF_COMPUTE = '''
@@ -81,8 +85,6 @@ VOLUME_BACKING_FILE_SIZE=2052M
 Q_PLUGIN=ml2
 Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,cisco_nexus
 Q_ML2_PLUGIN_TYPE_DRIVERS=vlan
-ENABLE_TENANT_TUNNELS=False
-Q_ML2_TENANT_NETWORK_TYPE=local
 Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
 Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
 ML2_VLAN_RANGES=physnet1:{vlan_start}:{vlan_end}
@@ -90,18 +92,33 @@ PHYSICAL_NETWORK=physnet1
 OVS_PHYSICAL_BRIDGE=br-eth1
 TENANT_VLAN_RANGE={vlan_start}:{vlan_end}
 ENABLE_TENANT_VLANS=True
-API_RATE_LIMIT=False
+ENABLE_TENANT_TUNNELS=False
+Q_ML2_TENANT_NETWORK_TYPE=vlan
+LOGFILE=/opt/stack/screen-logs/stack.sh.log
+SCREEN_LOGDIR=/opt/stack/screen-logs
 VERBOSE=True
 DEBUG=True
 USE_SCREEN=True
 '''
+
+# ML2_CONF_INI = '''
+# [ml2_cisco]
+# managed_physical_network = physnet1
+#
+# [ml2_mech_cisco_nexus:{router_ip}]
+# {host}={port}
+# ssh_port=22
+# username={username}
+# password={password}
+# '''
 
 ML2_CONF_INI = '''
 [ml2_cisco]
 managed_physical_network = physnet1
 
 [ml2_mech_cisco_nexus:{router_ip}]
-{host}={port}
+server1=1/31
+server2=1/32
 ssh_port=22
 username={username}
 password={password}
@@ -119,13 +136,13 @@ class ML2MutinodeTest(MultinodeTestCase):
         cls.controller.local_conf = LOCALCONF_CONTROLLER.format(
             neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
             neutron_branch=ZUUL_REF,
-            HOST_IP=cls.outputs['server1_private_ip'],
+            HOST_IP=cls.outputs['server1_management_ip'],
             Q_PLUGIN_EXTRA_CONF_PATH=cls.controller._clone_path,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
             JOB_LOG_PATH=SCREEN_LOG_PATH)
         cls.controller.clone()
-        # Create ml2 config for cisco plugin
+        # Create ml2 config for cisco plugin. Put it to controller node
         with settings(host_string=cls.outputs['server1_management_ip']):
             host = run('hostname')
             ml2_conf_io = StringIO.StringIO()
@@ -142,8 +159,8 @@ class ML2MutinodeTest(MultinodeTestCase):
         cls.compute.local_conf = LOCALCONF_COMPUTE.format(
             neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
             neutron_branch=ZUUL_REF,
-            HOST_IP=cls.outputs['server2_private_ip'],
-            SERVICE_HOST=cls.outputs['server1_private_ip'],
+            HOST_IP=cls.outputs['server2_management_ip'],
+            SERVICE_HOST=cls.outputs['server1_management_ip'],
             Q_PLUGIN_EXTRA_CONF_PATH=cls.controller._clone_path,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
@@ -153,4 +170,11 @@ class ML2MutinodeTest(MultinodeTestCase):
     def test_tempest(self):
         self.assertTrue(self.controller.stack())
         self.assertTrue(self.compute.stack())
+
+        # Add port to data network bridge
+        for i in range(1, 3):
+            man_ip = self.outputs.get('server{0}_management_ip'.format(i))
+            with settings(host_string=man_ip):
+                run('sudo ovs-vsctl add-port br-eth1 eth1')
+
         self.controller.run_tempest(TEST_LIST_FILE)
