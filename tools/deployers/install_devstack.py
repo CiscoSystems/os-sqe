@@ -30,7 +30,9 @@ def apply_changes():
 
 def apply_patches():
     warn_if_fail(run("git fetch https://review.openstack.org/openstack-dev/devstack "
-    "refs/changes/87/87987/12 && git format-patch -1  FETCH_HEAD"))
+    "refs/changes/87/87987/12 && git format-patch -1 FETCH_HEAD"))
+    #warn_if_fail(run("git fetch https://review.openstack.org/openstack/neutron "
+    #"refs/changes/99/106299/11 && git format-patch -1 FETCH_HEAD"))
 
     #warn_if_fail(run("git fetch https://review.openstack.org/openstack-dev/devstack "
     #"refs/changes/23/97823/1 && git format-patch -1  FETCH_HEAD"))
@@ -81,7 +83,7 @@ MGMT_NET={mgmt}
 IPV6_PRIVATE_RANGE=2001:dead:beef:deed::/64
 IPV6_NETWORK_GATEWAY=2001:dead:beef:deed::1
 REMOVE_PUBLIC_BRIDGE=False
-#RECLONE=no
+RECLONE=no
 #OFFLINE=True
 """.format(ipversion=ipversion, mgmt=mgmt, tempest=tempest)
     fd = StringIO(conf)
@@ -107,6 +109,9 @@ def install_devstack(settings_dict,
                              "/etc/apt/apt.conf.d/00no_pipelining",
                              use_sudo=True))
         update_time(sudo)
+        if opts.ipversion != 4:
+            sudo("/sbin/sysctl -w net.ipv6.conf.all.forwarding=1")
+            append("/etc/sysctl.conf", "net.ipv6.conf.all.forwarding=1", use_sudo=True)
         warn_if_fail(sudo("apt-get update"))
         warn_if_fail(sudo("apt-get install -y git python-pip"))
         warn_if_fail(run("git config --global user.email 'test.node@example.com';"

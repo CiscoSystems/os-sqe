@@ -10,6 +10,12 @@ UBUNTU_DISK=http://172.29.173.233/trusty-server-cloudimg-amd64-disk1.img
 ifndef LAB
 	LAB="lab1"
 endif
+ifndef QA_WAITTIME
+	QA_WAITTIME=18000
+endif
+ifndef QA_KILLTIME
+	QA_KILLTIME=18060
+endif
 ifndef WORKSPACE
 	WORKSPACE=$$(pwd)"/.."
 endif
@@ -85,12 +91,12 @@ give-a-time:
 install-aio:
 	@echo "$(CYAN)>>>> Installing AIO...$(RESET)"
 	#time $(PYTHON) ./tools/deployers/install_coi.py -s all-in-one -c config_file -u root
-	time $(PYTHON) ./tools/deployers/install_aio_coi.py -c config_file -u root
+	time timeout --preserve-status -s 15 -k 10060 10000 $(PYTHON) ./tools/deployers/install_aio_coi.py -c config_file -u root
 
 install-2role:
 	@echo "$(CYAN)>>>> Installing 2_role multinode...$(RESET)"
 	#time $(PYTHON) ./tools/deployers/install_coi.py -s 2role -c config_file -u root
-	time $(PYTHON) ./tools/deployers/install_aio_2role.py -c config_file -u root
+	time timeout --preserve-status -s 15 -k 10060 10000 $(PYTHON) ./tools/deployers/install_aio_2role.py -c config_file -u root
 	touch 2role
 
 install-2role-cobbler:
@@ -102,7 +108,7 @@ install-2role-cobbler:
 install-fullha:
 	@echo "$(CYAN)>>>> Installing full HA setup...$(RESET)"
 	#time $(PYTHON) ./tools/deployers/install_coi.py -s fullha -c config_file -u root
-	time $(PYTHON) ./tools/deployers/install_fullha.py -c config_file -u root
+	time timeout --preserve-status -s 15 -k 10060 10000 time $(PYTHON) ./tools/deployers/install_fullha.py -c config_file -u root
 
 install-fullha-cobbler:
 	@echo "$(CYAN)>>>> Installing full HA setup with cobbler...$(RESET)"
@@ -134,7 +140,7 @@ prepare-tempest:
 
 run-tests:
 	@echo "$(CYAN)>>>> Run tempest tests ...$(RESET)"
-	time /bin/bash ./tools/tempest-scripts/run_tempest_tests.sh
+	time timeout --preserve-status -s 2 -k ${QA_KILLTIME} ${QA_WAITTIME} /bin/bash ./tools/tempest-scripts/run_tempest_tests.sh || :
 
 run-tests-parallel:
 	@echo "$(CYAN)>>>> Run tempest tests in parallel ...$(RESET)"
