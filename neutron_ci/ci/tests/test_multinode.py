@@ -1,7 +1,7 @@
 import os
 import StringIO
 from fabric.context_managers import settings
-from fabric.operations import put, run
+from fabric.operations import put, run, get
 
 import urlparse
 from ci import ZUUL_URL, ZUUL_PROJECT, ZUUL_REF, \
@@ -101,24 +101,12 @@ DEBUG=True
 USE_SCREEN=True
 '''
 
-# ML2_CONF_INI = '''
-# [ml2_cisco]
-# managed_physical_network = physnet1
-#
-# [ml2_mech_cisco_nexus:{router_ip}]
-# {host}={port}
-# ssh_port=22
-# username={username}
-# password={password}
-# '''
-
 ML2_CONF_INI = '''
 [ml2_cisco]
 managed_physical_network = physnet1
 
 [ml2_mech_cisco_nexus:{router_ip}]
-server1=2/1
-server2=2/2
+{map}
 ssh_port=22
 username={username}
 password={password}
@@ -131,36 +119,37 @@ class ML2MutinodeTest(MultinodeTestCase):
     def setUpClass(cls):
         MultinodeTestCase.setUpClass()
 
-        cls.controller = DevStack(host_string=cls.outputs['server1_nexus_ci_ip'],
-                                  clone_path='~/devstack')
+        cls.controller = DevStack(host_string=cls.VMs['control'].ip,
+                                  clone_path='/home/ubuntu/devstack')
         cls.controller.local_conf = LOCALCONF_CONTROLLER.format(
             neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
             neutron_branch=ZUUL_REF,
-            HOST_IP=cls.outputs['server1_nexus_ci_ip'],
+            HOST_IP=cls.VMs['control'].ip,
             Q_PLUGIN_EXTRA_CONF_PATH=cls.controller._clone_path,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
             JOB_LOG_PATH=SCREEN_LOG_PATH)
         cls.controller.clone()
         # Create ml2 config for cisco plugin. Put it to controller node
-        with settings(host_string=cls.outputs['server1_nexus_ci_ip']):
-            host = run('hostname')
+        with settings(host_string=cls.VMs['control'].ip):
+            map = [vm.name + '=' + vm.port for vm in cls.VMs.itervalues()]
             ml2_conf_io = StringIO.StringIO()
             ml2_conf_io.write(
                 ML2_CONF_INI.format(
-                    host=host, port=NEXUS_INTF_NUM, router_ip=NEXUS_IP,
+                    map=os.linesep.join(map),
+                    router_ip=NEXUS_IP,
                     username=NEXUS_USER,
                     password=NEXUS_PASSWORD))
             put(ml2_conf_io, os.path.join(cls.controller._clone_path,
                                           Q_PLUGIN_EXTRA_CONF_FILES))
 
-        cls.compute = DevStack(host_string=cls.outputs['server2_nexus_ci_ip'],
-                               clone_path='~/devstack')
+        cls.compute = DevStack(host_string=cls.VMs['compute'].ip,
+                               clone_path='/home/ubuntu/devstack')
         cls.compute.local_conf = LOCALCONF_COMPUTE.format(
             neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
             neutron_branch=ZUUL_REF,
-            HOST_IP=cls.outputs['server2_nexus_ci_ip'],
-            SERVICE_HOST=cls.outputs['server1_nexus_ci_ip'],
+            HOST_IP=cls.VMs['compute'].ip,
+            SERVICE_HOST=cls.VMs['control'].ip,
             Q_PLUGIN_EXTRA_CONF_PATH=cls.controller._clone_path,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
@@ -168,13 +157,26 @@ class ML2MutinodeTest(MultinodeTestCase):
         cls.compute.clone()
 
     def test_tempest(self):
-        self.assertTrue(self.controller.stack())
-        self.assertTrue(self.compute.stack())
+        self.assertFalse(self.controller.stack())
+        self.assertFalse(self.compute.stack())
 
         # Add port to data network bridge
-        for i in range(1, 3):
-            man_ip = self.outputs.get('server{0}_nexus_ci_ip'.format(i))
-            with settings(host_string=man_ip):
+        for ip in (self.VMs['control'].ip, self.VMs['compute'].ip):
+            with settings(host_string=ip):
                 run('sudo ovs-vsctl add-port br-eth1 eth1')
 
         self.controller.run_tempest(TEST_LIST_FILE)
+
+    @classmethod
+    def tearDownClass(cls):
+        # download devstack logs
+        for key, vm in cls.VMs.iteritems():
+            with settings(host_string=vm.ip, warn_only=True):
+                p = '~/screen-logs/'
+                run('mkdir {p}'.format(p=p))
+                run('find /opt/stack/screen-logs -type l '
+                    '-exec cp "{{}}" {p} \;'.format(p=p))
+                get(p + '/*', 'logs-' + key)
+                get('~/devstack/local.conf', 'local.conf-' + key)
+
+        MultinodeTestCase.tearDownClass()

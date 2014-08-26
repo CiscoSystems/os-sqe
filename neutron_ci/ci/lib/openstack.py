@@ -1,7 +1,9 @@
+import os
 import re
 from heatclient.v1.client import Client as HeatClient
 from keystoneclient.v2_0.client import Client as KeystoneClient
 from glanceclient.v2.client import Client as GlanceClient
+from glanceclient.common import utils as glance_utils
 from ci.lib import utils
 
 
@@ -59,3 +61,9 @@ class OpenStack(object):
         for img in self.glance.images.list():
             if pattern.match(img['name']):
                 return img
+
+    def download_image(self, image, path):
+        temp_path = path + '.tmp'
+        body = self.glance.images.data(image['id'])
+        glance_utils.save_image(body, temp_path)
+        os.rename(temp_path, path)

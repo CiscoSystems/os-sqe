@@ -131,7 +131,7 @@ class DevStack(object):
                     run('testr init')
                 # Run tempest
                 cmd = 'testr run --load-list="{tests_list}"' \
-                      ''.format(tests_list=test_list_path)
+                      ''.format(tests_list=temp_path)
                 failed = run(cmd).failed
 
             self.tempest_last2junitxml()

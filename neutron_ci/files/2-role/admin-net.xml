@@ -1,0 +1,26 @@
+<network>
+  <name>{name}</name>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <domain name='slave.openstack.org'/>
+  <dns>
+    <host ip='{control_servers_ip}'>
+      <hostname>control-server</hostname>
+      <hostname>control-server.slave.openstack.org</hostname>
+    </host>
+    <host ip='{compute_servers_ip}'>
+      <hostname>compute-server</hostname>
+      <hostname>compute-server.slave.openstack.org</hostname>
+    </host>
+  </dns>
+  <ip address='{ip}' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='{ip_start}' end='{ip_end}' />
+      <host mac="{control_servers_mac}" name="control-server" ip="{control_servers_ip}"/>
+      <host mac="{compute_servers_mac}" name="compute-server" ip="{compute_servers_ip}"/>
+    </dhcp>
+  </ip>
+</network>
