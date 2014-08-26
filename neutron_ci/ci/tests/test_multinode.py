@@ -117,8 +117,8 @@ ML2_CONF_INI = '''
 managed_physical_network = physnet1
 
 [ml2_mech_cisco_nexus:{router_ip}]
-server1=1/31
-server2=1/32
+server1=2/1
+server2=2/2
 ssh_port=22
 username={username}
 password={password}
@@ -131,19 +131,19 @@ class ML2MutinodeTest(MultinodeTestCase):
     def setUpClass(cls):
         MultinodeTestCase.setUpClass()
 
-        cls.controller = DevStack(host_string=cls.outputs['server1_management_ip'],
+        cls.controller = DevStack(host_string=cls.outputs['server1_nexus_ci_ip'],
                                   clone_path='~/devstack')
         cls.controller.local_conf = LOCALCONF_CONTROLLER.format(
             neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
             neutron_branch=ZUUL_REF,
-            HOST_IP=cls.outputs['server1_management_ip'],
+            HOST_IP=cls.outputs['server1_nexus_ci_ip'],
             Q_PLUGIN_EXTRA_CONF_PATH=cls.controller._clone_path,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
             JOB_LOG_PATH=SCREEN_LOG_PATH)
         cls.controller.clone()
         # Create ml2 config for cisco plugin. Put it to controller node
-        with settings(host_string=cls.outputs['server1_management_ip']):
+        with settings(host_string=cls.outputs['server1_nexus_ci_ip']):
             host = run('hostname')
             ml2_conf_io = StringIO.StringIO()
             ml2_conf_io.write(
@@ -154,13 +154,13 @@ class ML2MutinodeTest(MultinodeTestCase):
             put(ml2_conf_io, os.path.join(cls.controller._clone_path,
                                           Q_PLUGIN_EXTRA_CONF_FILES))
 
-        cls.compute = DevStack(host_string=cls.outputs['server2_management_ip'],
+        cls.compute = DevStack(host_string=cls.outputs['server2_nexus_ci_ip'],
                                clone_path='~/devstack')
         cls.compute.local_conf = LOCALCONF_COMPUTE.format(
             neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
             neutron_branch=ZUUL_REF,
-            HOST_IP=cls.outputs['server2_management_ip'],
-            SERVICE_HOST=cls.outputs['server1_management_ip'],
+            HOST_IP=cls.outputs['server2_nexus_ci_ip'],
+            SERVICE_HOST=cls.outputs['server1_nexus_ci_ip'],
             Q_PLUGIN_EXTRA_CONF_PATH=cls.controller._clone_path,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
@@ -173,7 +173,7 @@ class ML2MutinodeTest(MultinodeTestCase):
 
         # Add port to data network bridge
         for i in range(1, 3):
-            man_ip = self.outputs.get('server{0}_management_ip'.format(i))
+            man_ip = self.outputs.get('server{0}_nexus_ci_ip'.format(i))
             with settings(host_string=man_ip):
                 run('sudo ovs-vsctl add-port br-eth1 eth1')
 

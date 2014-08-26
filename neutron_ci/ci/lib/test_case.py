@@ -23,6 +23,7 @@ import logging
 import shutil
 import os
 from testtools import TestCase
+import time
 from ci import WORKSPACE, SCREEN_LOG_PATH, NEXUS_IP, NEXUS_USER, \
     NEXUS_PASSWORD, NEXUS_INTF_NUM, NEXUS_VLAN_START, \
     NEXUS_VLAN_END, OS_AUTH_URL, OS_PASSWORD, OS_USERNAME, \
@@ -128,12 +129,15 @@ class MultinodeTestCase(TestCase):
         }
         cls.stack, cls.outputs = cls.openstack.launch_stack(
             cls.__name__, template_path, parameters)
+        # sleep while instances are booting
+        time.sleep(30)
 
         hosts_ptrn = '{ip} {hostname}.slave.openstack.org {hostname}\n'
-        hosts = hosts_ptrn.format(ip=cls.outputs.get('server1_management_ip'), hostname='server1')
-        hosts += hosts_ptrn.format(ip=cls.outputs.get('server2_management_ip'), hostname='server2')
+        hosts = hosts_ptrn.format(ip=cls.outputs.get('server1_nexus_ci_ip'), hostname='server1')
+        hosts += hosts_ptrn.format(ip=cls.outputs.get('server2_nexus_ci_ip'), hostname='server2')
         for i in range(1, 3):
-            man_ip = cls.outputs.get('server{0}_management_ip'.format(i))
+            man_ip = cls.outputs.get('server{0}_nexus_ci_ip'.format(i))
+            pr_ip = cls.outputs.get('server{0}_private_ip'.format(i))
             with settings(host_string=man_ip):
                 # host name
                 append('/etc/hosts', hosts, use_sudo=True)
@@ -142,10 +146,10 @@ class MultinodeTestCase(TestCase):
                 eth1_cfg = StringIO.StringIO()
                 eth1_cfg.writelines([
                     'auto eth1\n',
-                    'iface eth1 inet manual\n',
-                    '\tup ifconfig $IFACE 0.0.0.0 up\n',
-                    '\tup ip link set $IFACE promisc on\n',
-                    '\tdown ifconfig $IFACE 0.0.0.0 down'])
+                    'iface eth1 inet static\n',
+                    '\taddress {0}\n'.format(pr_ip),
+                    '\tnetmask 255.255.255.0\n',
+                    '\tgateway 192.168.1{i}.1'.format(i=i)])
                 put(eth1_cfg, '/etc/network/interfaces.d/eth1.cfg',
                     use_sudo=True)
                 run('sudo ifup eth1')
@@ -160,6 +164,21 @@ class MultinodeTestCase(TestCase):
                     '{NCCLIENT_DIR}'.format(NCCLIENT_DIR=ncclient_dir))
                 with cd(ncclient_dir):
                     run('sudo python setup.py install')
+
+        with settings(host_string=cls.outputs.get('server1_nexus_ci_ip')):
+            # configure eth2
+            ip = cls.outputs.get('server1_mgmt_ip')
+            eth2_cfg = StringIO.StringIO()
+            eth2_cfg.writelines([
+                'auto eth2\n',
+                'iface eth2 inet static\n',
+                '\taddress {0}\n'.format(ip),
+                '\tnetmask 255.255.255.0\n',
+                '\tgateway 192.168.254.1'])
+            put(eth2_cfg, '/etc/network/interfaces.d/eth2.cfg',
+                use_sudo=True)
+            run('sudo ifup eth2')
+            run('sudo ip link set dev eth2 mtu 1450')
 
     @classmethod
     def tearDownClass(cls):
