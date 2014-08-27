@@ -43,15 +43,18 @@ DEBUG=True
 LOGFILE=/opt/stack/screen-logs/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
+#RECLONE=no
+#OFFLINE=True
+RECLONE=True
+
 TEMPEST_REPO=https://github.com/CiscoSystems/tempest.git
 TEMPEST_BRANCH=ipv6
 IP_VERSION=4+6
 IPV6_PRIVATE_RANGE=2001:dead:beef:deed::/64
 IPV6_NETWORK_GATEWAY=2001:dead:beef:deed::1
 REMOVE_PUBLIC_BRIDGE=False
-#RECLONE=no
-#OFFLINE=True
-RECLONE=True
+IPV6_PUBLIC_RANGE=2005::/64
+IPV6_PUBLIC_NETWORK_GATEWAY=2005::1
 '''
 
 
@@ -63,6 +66,7 @@ class IPv6Test(BaseTestCase):
 
         cls.devstack.local_conf = LOCAL_CONF
         cls.devstack.clone()
+        cls.devstack.download_gerrit_change('refs/changes/87/87987/14')
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())

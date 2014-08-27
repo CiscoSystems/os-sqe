@@ -84,6 +84,20 @@ class DevStack(object):
         finally:
             os.chdir(WORKSPACE)
 
+    def download_gerrit_change(
+            self, ref,
+            gerrit='https://review.openstack.org/openstack-dev/devstack'):
+        logger.info('Download gerrit ref {0}'.format(ref))
+        try:
+            os.chdir(self._clone_path)
+            cmd = "git fetch {g} {ref} && git checkout FETCH_HEAD" \
+                  "".format(g=gerrit, ref=ref)
+            utils.run_cmd_line(cmd, shell=True)
+        except Exception as e:
+            logger.error(e)
+        finally:
+            os.chdir(WORKSPACE)
+
     def stack(self):
         code = 0
         try:
