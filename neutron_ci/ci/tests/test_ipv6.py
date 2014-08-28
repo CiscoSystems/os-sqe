@@ -13,8 +13,11 @@
 #    under the License.
 #
 # @author: Dane LeBlanc, Nikolay Fedotov, Cisco Systems, Inc.
+import os
+from ci import WORKSPACE
 
 from ci.lib.test_case import BaseTestCase
+from ci.lib.utils import run_cmd_line
 
 LOCAL_CONF = '''
 [[local|localrc]]
@@ -67,6 +70,11 @@ class IPv6Test(BaseTestCase):
         cls.devstack.local_conf = LOCAL_CONF
         cls.devstack.clone()
         cls.devstack.download_gerrit_change('refs/changes/87/87987/14')
+
+        my_path = os.path.join(WORKSPACE, 'my')
+        run_cmd_line('git clone https://github.com/kshileev/my.git {d}'
+                     ''.format(d=my_path))
+        cls.devstack.patch(os.path.join(my_path, 'netns.diff'))
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
