@@ -128,9 +128,8 @@ class DevStack(object):
                     'testr init', check_result=False, shell=True)
 
             # Run tempest
-            cmd = 'testr run --load-list="{tests_list}" --subunit | ' \
-                  'subunit-2to1 | tools/colorizer.py ' \
-                  '|| :'.format(tests_list=test_list_path)
+            cmd = 'testr run --load-list="{tests_list}"' \
+                  ''.format(tests_list=test_list_path)
             output, code = utils.run_cmd_line(
                 cmd, check_result=False, shell=True)
 
