@@ -4,6 +4,7 @@ import sys
 import requests
 import json
 import xml.etree.ElementTree as Et
+import time
 
 __author__ = 'sshnaidm'
 
@@ -104,6 +105,10 @@ TOPOS = {
 }
 
 
+def str_time(t):
+    return time.strftime("%H h %M min", time.gmtime(int(t)))
+
+
 def make_links(data):
     if "TRIGGERED_JOB_NAMES" in os.environ:
         jobs = os.environ["TRIGGERED_JOB_NAMES"].split(",")
@@ -119,13 +124,14 @@ def make_links(data):
         if not topo:
             raise Exception("Running jobs are inconsistent with configuration")
         if topo in data:
-            data[topo]["results_link"] = link
+            if data[topo]['ok']:
+                data[topo]["results_link"] = link
             data[topo]["data_link"] = data_link
     return data
 
 
 def check_regression(data):
-    EMPTY_REGRESSION = {
+    empty_regression = {
         "failures_regression": "n/a",
         "passed_regression": "n/a",
         "skipped_regression": "n/a",
@@ -133,6 +139,8 @@ def check_regression(data):
         "total_regression": "n/a",
     }
     for topo in data:
+        if 'results_link' not in data[topo]:
+            continue
         prev_link = (os.environ["JENKINS_URL"] + "job/" + TOPOS[topo]["job"] + "/" +
                      str(int(os.environ["TRIGGERED_BUILD_NUMBER_" + TOPOS[topo]["job"]]) - 1) +
                      "/testReport/api/json?pretty=true")
@@ -144,8 +152,7 @@ def check_regression(data):
             data[topo]["regress"]["skipped_regression"] = data[topo]["skipped_number"] - int(result['skipCount'])
             data[topo]["regress"]["time_regression"] = data[topo]["time"] - float(result['duration'])
             data[topo]["regress"]["total_regression"] = data[topo]["tests_number"] - sum(
-                [int(i) for i in (result['passCount'], result['failCount'], result['skipCount'])
-                ])
+                [int(i) for i in (result['passCount'], result['failCount'], result['skipCount'])])
             for reg in data[topo]["regress"]:
                 number = data[topo]["regress"][reg]
                 if number > 0:
@@ -153,7 +160,7 @@ def check_regression(data):
                 else:
                     data[topo]["regress"][reg] = str(number)
         except Exception:
-            data[topo]["regress"] = EMPTY_REGRESSION
+            data[topo]["regress"] = empty_regression
     return data
 
 
@@ -173,6 +180,7 @@ def process_current(xmls):
         data[topo].update({"tests_number": int(test_suite.attrib['tests'])})
         data[topo].update({"errors_number": int(test_suite.attrib['errors'])})
         data[topo].update({"time": float(test_suite.attrib['time'])})
+        data[topo].update({"time_str": str_time(float(test_suite.attrib['time']))})
         skipped = tree.findall(".//skipped")
         data[topo].update({"skipped_number": len(skipped)})
         data[topo].update({"passes_number": int(test_suite.attrib['tests']) - (
@@ -192,14 +200,27 @@ def process_current2(xmls):
         if not topo:
             raise Exception("Running jobs are inconsistent with configuration")
         current_link = (os.environ["JENKINS_URL"] + "job/" + TOPOS[topo]["job"] + "/" +
-                     os.environ["TRIGGERED_BUILD_NUMBER_" + TOPOS[topo]["job"]] +
-                     "/testReport/api/json?pretty=true")
+                        os.environ["TRIGGERED_BUILD_NUMBER_" + TOPOS[topo]["job"]] +
+                        "/testReport/api/json?pretty=true")
+        current_build_link = (os.environ["JENKINS_URL"] + "job/" + TOPOS[topo]["job"] + "/" +
+                              os.environ["TRIGGERED_BUILD_NUMBER_" + TOPOS[topo]["job"]] +
+                              "/api/json?pretty=true")
+        try:
+            build_result = json.loads(requests.get(current_build_link).content)
+        except Exception as e:
+            print >> sys.stderr, "No current build from Jenkins API for %s : %s!" % (
+                TOPOS[topo]["job"], os.environ["TRIGGERED_BUILD_NUMBER_" + TOPOS[topo]["job"]]
+            )
+            continue
         try:
             result = json.loads(requests.get(current_link).content)
-            data[topo] = {}
+            data[topo] = {'ok': True}
             data[topo].update({"failures_number": int(result['failCount'])})
             data[topo].update({"passes_number": int(result['passCount'])})
             data[topo].update({"time": float(result['duration'])})
+            data[topo].update({"time_str": str_time(int(result['duration']))})
+            data[topo].update({"total_time": int(build_result['duration']) / 1000})
+            data[topo].update({"total_time_str": str_time(int(build_result['duration']) / 1000)})
             data[topo].update({"skipped_number": int(result['skipCount'])})
             data[topo].update({"tests_number": sum(
                 [int(i) for i in (result['passCount'], result['failCount'], result['skipCount'])]
@@ -208,7 +229,9 @@ def process_current2(xmls):
             print >> sys.stderr, "No current results from Jenkins API for %s : %s!" % (
                 TOPOS[topo]["job"], os.environ["TRIGGERED_BUILD_NUMBER_" + TOPOS[topo]["job"]]
             )
-
+            data[topo] = {'ok': False}
+            data[topo].update({"total_time": int(build_result['duration']) / 1000})
+            data[topo].update({"total_time_str": str_time(int(build_result['duration']) / 1000)})
     return data
 
 
@@ -221,8 +244,8 @@ def pretty_report(data):
 <td class="fail">FAILED TO TEST</td>
 <td>N/A</td>
 <td>N/A</td>
-<td>N/A</td>
-<td>N/A</td>
+<td><a href="{data_link}">[BUILD DATA FILES]</a></td>
+<td align=justify><strong>Total</strong>: {total_time_str}</td>
 </tr>
 """
     table_row_template = """
@@ -232,17 +255,19 @@ def pretty_report(data):
 <td class="skip">{skipped_number} ({regress[skipped_regression]})</td>
 <td>{tests_number} ({regress[total_regression]})</td>
 <td><a href="{results_link}">[DETAILED REPORT]</a></td>
-<td><a href="{data_link}">[TEST DATA FILES]</a></td>
-<td>{time} sec</td>
+<td><a href="{data_link}">[BUILD DATA FILES]</a></td>
+<td align=justify><strong>Tests:</strong> {time_str}<br><strong>Total</strong>: {total_time_str}</td>
 </tr>
 """
     for topo in data:
-        topos_template += table_row_template.format(
-            name=TOPOS[topo]["name"],
-            **data[topo])
-    for topo in TOPOS:
-        if topo not in data:
-            topos_template += failed_topo_template.format(name=TOPOS[topo]["name"])
+        if 'results_link' in data[topo]:
+            topos_template += table_row_template.format(
+                name=TOPOS[topo]["name"],
+                **data[topo])
+        else:
+            topos_template += failed_topo_template.format(
+                name=TOPOS[topo]["name"],
+                **data[topo])
     main_template = """
 <h2>COI CI report</h3>
 <h3>build #{build_number} of {date}</h4>
