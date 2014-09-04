@@ -117,7 +117,7 @@ install-fullha-cobbler:
 
 install-devstack:
 	@echo "$(CYAN)>>>> Installing Devstack...$(RESET)"
-	time $(PYTHON) ./tools/deployers/install_devstack.py -c config_file  -u localadmin -p ubuntu
+	time $(PYTHON) ./tools/deployers/install_devstack.py -c config_file  -u localadmin -p ubuntu -r ${TEMPEST_REPO} -b ${TEMPEST_BRANCH}
 	#time $(PYTHON) ./tools/deployers/install_coi.py -c config_file  -u localadmin -p ubuntu -s devstack
 
 prepare-devstack-tempest:
@@ -144,6 +144,10 @@ run-tests:
 run-snap-tests:
 	@echo "$(CYAN)>>>> Run tempest tests ...$(RESET)"
 	time timeout --preserve-status -s 2 -k ${QA_KILLTIME} ${QA_WAITTIME} /bin/bash ./tools/tempest-scripts/run_snap_tests.sh || :
+
+run-snap-tests-remote:
+	@echo "$(CYAN)>>>> Run tempest tests ...$(RESET)"
+	time timeout --preserve-status -s 2 -k ${QA_KILLTIME} ${QA_WAITTIME} /bin/bash ./tools/tempest-scripts/run_tempest_remote.sh || :
 
 run-tests-parallel:
 	@echo "$(CYAN)>>>> Run tempest tests in parallel ...$(RESET)"
@@ -226,6 +230,7 @@ snap-2role-create: snapshot-destroy 2role workaround-after snapshot-create
 snap-fullha-create: snapshot-destroy fullha workaround-after snapshot-create
 snap-devstack-create: snapshot-destroy devstack snapshot-create
 snap-devstack-tempest: snapshot-revert devstack-snap-prepare prepare-devstack-tempest
+snap-devstack-tempest-remote: init snapshot-revert devstack-snap-prepare
 snap-tempest: snapshot-revert snap-tempest-prepare
 
 test-me:
