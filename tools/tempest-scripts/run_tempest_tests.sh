@@ -7,11 +7,14 @@ cd $WORKSPACE/tempest/
 if [ ! -d .testrepository ]; then
     testr init || :
     if [ -s "$tests" ]; then
+        echo "Running tests from file ${tests}"
         testr run --load-list "$tests" --subunit  | subunit-2to1 | tools/colorizer.py || :
     else
+        echo "Running tests with regexp:'"$REG"'"
         testr run "$REG" --subunit | subunit-2to1 | tools/colorizer.py || :
     fi
 else
+    echo "Re-running failed tests"
     testr run --failing --subunit | subunit-2to1 | tools/colorizer.py || :
 fi
 results=${WORKSPACE}/openstack-sqe/nosetests_$(date  +%s).xml
