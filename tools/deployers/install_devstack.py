@@ -49,8 +49,8 @@ def make_local(filepath, sudo_flag, opts):
     mgmt = "4+6" if opts.mgmt == 64 else str(opts.mgmt)
     tempest = "" if opts.tempest_disbale else """
 enable_service tempest
-TEMPEST_REPO=https://github.com/CiscoSystems/tempest.git
-TEMPEST_BRANCH=master-in-use"""
+TEMPEST_REPO={repo}
+TEMPEST_BRANCH={branch}""".format(repo=opts.repo, branch=opts.branch)
 
     conf = """[[local|localrc]]
 ADMIN_PASSWORD=Cisco123
@@ -83,7 +83,7 @@ MGMT_NET={mgmt}
 IPV6_PRIVATE_RANGE=2001:dead:beef:deed::/64
 IPV6_NETWORK_GATEWAY=2001:dead:beef:deed::1
 REMOVE_PUBLIC_BRIDGE=False
-RECLONE=no
+RECLONE=True
 #OFFLINE=True
 """.format(ipversion=ipversion, mgmt=mgmt, tempest=tempest)
     fd = StringIO(conf)
@@ -127,6 +127,10 @@ def install_devstack(settings_dict,
             get('~/devstack/openrc', "./openrc")
         else:
             print (red("No openrc file, something went wrong! :("))
+        if exists('/opt/stack/tempest/etc/tempest.conf'):
+            get('/opt/stack/tempest/etc/tempest.conf', "./tempest.conf")
+        else:
+            print (red("No openrc file, something went wrong! :("))
         print (green("Finished!"))
         return True
 
@@ -157,7 +161,13 @@ def main():
                         choices=[4,6,64], help='MGMT net IP version, default is 4')
     parser.add_argument('--disable-tempest', action='store_true', default=False, dest='tempest_disbale',
                         help="Don't install tempest on devstack")
-
+    parser.add_argument('-r', action='store', dest='repo', nargs="?",
+                        const="https://github.com/CiscoSystems/tempest.git",
+                        default="https://github.com/CiscoSystems/tempest.git",
+                        help='Tempest repository, default is https://github.com/CiscoSystems/tempest.git')
+    parser.add_argument('-b', action='store', dest='branch', nargs="?",
+                        default="master-in-use", const="master-in-use",
+                        help='Tempest repository branch, default is master-in-use')
     parser.add_argument('--version', action='version', version='%(prog)s 2.0')
 
     opts = parser.parse_args()
