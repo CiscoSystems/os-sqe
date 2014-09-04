@@ -15,11 +15,11 @@ export DEV_IP=$(sed -n "/${labid}:/{n;p;n;p;}" tools/cloud/cloud-templates/lab.y
 source $WORKSPACE/openstack-sqe/.env/bin/activate
 if [ -s "$tests" ]; then
     $WORKSPACE/openstack-sqe/.env/bin/python \
-    $WORKSPACE/openstack-sqe/tools/tempest-scripts/run_tempest.py -r $DEV_IP -l "$tests" ||:
+    $WORKSPACE/openstack-sqe/sqe.py run_tempest -r $DEV_IP -l "$tests" ||:
 elif [ -n "$REG" ]; then
     $WORKSPACE/openstack-sqe/.env/bin/python \
-    $WORKSPACE/openstack-sqe/tools/tempest-scripts/run_tempest.py -r $DEV_IP -f "$REG" ||:
+    $WORKSPACE/openstack-sqe/sqe.py run_tempest -r $DEV_IP -f "$REG" ||:
 else
     $WORKSPACE/openstack-sqe/.env/bin/python \
-    $WORKSPACE/openstack-sqe/tools/tempest-scripts/run_tempest.py -r $DEV_IP ||:
+    $WORKSPACE/openstack-sqe/sqe.py run_tempest -r $DEV_IP ||:
 fi
