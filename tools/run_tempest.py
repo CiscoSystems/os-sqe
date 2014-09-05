@@ -27,7 +27,9 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
         with api.cd(tempest_dir):
             random_name = ''.join(random.choice(string.lowercase) for _ in range(5))
             api.run('git remote add {name} {repo}'.format(name=random_name, repo=tempest_repo))
-            api.run('git fetch {name} && git checkout -b {branch} {name}/{branch}'.format(name=random_name, branch=tempest_branch))
+            api.run('git fetch {name} {branch} && git checkout -b {branch} {name}/{branch}'.format(
+                name=random_name,
+                branch=tempest_branch))
             if tempest_list_file:
                 api.put(local_path=tempest_list_file, remote_path='list.txt')
             api.sudo(command='pip install junitxml')
@@ -46,18 +48,24 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
             else:
                 print(TEMPEST_FILE_SUBUNIT + ' is not created on remote', file=sys.stderr)
 
+DESCRIPTION = 'run tempest on the given remote host'
+
 
 def define_cli(p):
-    p.name = 'run_tempest'
-    p.description = 'runs tempest on remote host'
+    repo = 'https://github.com/CiscoSystems/tempest.git'
+    branch = 'master-in-use'
     p.add_argument('-r', '--remote', required=True,
-                   help='ip address of host where tempest is deployed')
-    p.add_argument('-u', '--user', default='localadmin')
-    p.add_argument('-p', '--password', default='ubuntu')
-    p.add_argument('-d', '--dir', default='/opt/stack/tempest')
-    p.add_argument('-v', '--venv', default=False, type=bool, help='use venv?')
-    p.add_argument('--repo', default='https://github.com/CiscoSystems/tempest.git', help='tempest repo')
-    p.add_argument('--branch', default='master-in-use', help='tempest branch')
+                   help='ip address of DNS name of the host where tempest is deployed')
+    p.add_argument('-u', '--user', default='localadmin',
+                   help='user name on the remote')
+    p.add_argument('-p', '--password', default='ubuntu',
+                   help='user password on the remote')
+    p.add_argument('-d', '--dir', default='/opt/stack/tempest',
+                   help='folder where tempeset is deployed')
+    p.add_argument('-v', '--venv', default=False, type=bool,
+                   help='switch usage of python venv on/off')
+    p.add_argument('--repo', nargs='?', const=repo, default=repo, help='tempest repo')
+    p.add_argument('--branch', nargs='?', const=branch, default=branch, help='tempest branch')
     p.add_argument('-f', '--filter', default='',
                    help='filter to choose a set of tests to be run')
     p.add_argument('-l', '--list', default=None, type=file,
@@ -73,7 +81,8 @@ def define_cli(p):
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p = argparse.ArgumentParser(description=DESCRIPTION,
+                                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     define_cli(p)
     args = p.parse_args()
     args.func(args)
