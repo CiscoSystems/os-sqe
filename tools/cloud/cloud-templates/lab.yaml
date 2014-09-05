@@ -715,3 +715,6 @@ lab447:
 lab448:
    net_start: 10.40.250
    ip_start: 2
+lab910:
+   net_start: 10.90.10
+   ip_start: 2
