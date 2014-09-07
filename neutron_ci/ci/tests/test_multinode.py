@@ -167,7 +167,7 @@ class ML2MutinodeTest(MultinodeTestCase):
             with settings(host_string=ip):
                 run('sudo ovs-vsctl add-port br-eth1 eth1')
 
-        self.controller.run_tempest(TEST_LIST_FILE)
+        self.assertFalse(self.controller.run_tempest(TEST_LIST_FILE))
 
     @classmethod
     def tearDownClass(cls):
