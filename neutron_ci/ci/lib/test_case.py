@@ -309,9 +309,6 @@ class MultinodeTestCase(TestCase):
                 with cd(ncclient_dir):
                     run('sudo python setup.py install')
 
-                # Install pip packages
-                run('sudo pip install junitxml')
-
         with settings(host_string=cls.VMs['control'].ip):
             # Configure eth2. Used to connect to Titanium mgmt interface
             eth2_cfg = StringIO.StringIO()
