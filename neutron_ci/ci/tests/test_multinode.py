@@ -179,4 +179,4 @@ class ML2MutinodeTest(MultinodeTestCase):
                 get(p + '/*', 'logs-' + key)
                 get('~/devstack/local.conf', 'local.conf-' + key)
 
-        MultinodeTestCase.tearDownClass()
+        # MultinodeTestCase.tearDownClass()
