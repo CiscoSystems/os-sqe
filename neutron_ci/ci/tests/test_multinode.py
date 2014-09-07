@@ -1,7 +1,7 @@
 import os
 import StringIO
 from fabric.context_managers import settings
-from fabric.operations import put, run, get
+from fabric.operations import put, run, get, local
 
 import urlparse
 from ci import ZUUL_URL, ZUUL_PROJECT, ZUUL_REF, \
@@ -174,11 +174,13 @@ class ML2MutinodeTest(MultinodeTestCase):
         # download devstack logs
         for key, vm in cls.VMs.iteritems():
             with settings(host_string=vm.ip, warn_only=True):
-                p = '~/screen-logs/'
+                p = '~/screen-logs'
+                lp = os.path.join(WORKSPACE, 'logs-' + key)
                 run('mkdir {p}'.format(p=p))
                 run('find /opt/stack/screen-logs -type l '
                     '-exec cp "{{}}" {p} \;'.format(p=p))
-                get(p + '/*', os.path.join(WORKSPACE, 'logs-' + key + '/'))
+                local('mkdir {0}'.format(lp))
+                get(p, lp)
                 get('~/devstack/local.conf', os.path.join(WORKSPACE, 'local.conf-' + key))
 
         # MultinodeTestCase.tearDownClass()
