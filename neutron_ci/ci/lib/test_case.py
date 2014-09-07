@@ -147,33 +147,14 @@ class MultinodeTestCase(TestCase):
         cls.disks = []
 
         # Parameters
-        TITANIUM_IMG = os.environ.get(
-            'TITANIUM_IMG',
-            os.path.expanduser('~/titanium.qcow'))
         USER_DATA_YAML = os.environ.get(
             'USER_DATA_YAML',
             os.path.join(PARENT_FOLDER_PATH, 'files/2-role/user-data.yaml'))
-        DNS = os.environ.get('DNS', '8.8.8.8')
         LIBVIRT_IMGS = '/var/lib/libvirt/images'
         UBUNTU_CLOUD_IMG = os.path.expanduser('~/devstack-trusty-1409997660.template.openstack.org.qcow')
-        IMAGES_PATH = os.path.expanduser('~/images')
+        TITANIUM_IMG = '~/titanium.qcow'
         DISK_SIZE = 20
         ID = int(time.time())
-
-        # Download fresh ubuntu image
-        # cls.openstack = OpenStack(OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_TENANT_NAME)
-        # image = cls.openstack.find_image(OS_IMAGE_NAME)
-        # if not os.path.exists(IMAGES_PATH):
-        #     os.makedirs(IMAGES_PATH)
-        # UBUNTU_CLOUD_IMG = os.path.join(IMAGES_PATH, image['name'] + '.qcow')
-        # if not os.path.exists(UBUNTU_CLOUD_IMG):
-        #     cls.openstack.download_image(image, UBUNTU_CLOUD_IMG)
-        #
-        # # Remove old images
-        # files = (os.path.join(IMAGES_PATH, fn) for fn in os.listdir(IMAGES_PATH))
-        # files = [(os.stat(path)[stat.ST_CTIME], path) for path in files]
-        # for path in sorted(files, reverse=True)[2:]:
-        #     os.remove(path[1])
 
         cls.VMs = {
             'control': VirtualMachine(ip=str(cls.admin_net[2]),
@@ -290,9 +271,6 @@ class MultinodeTestCase(TestCase):
         # sleep while instances are booting
         time.sleep(30)
 
-        resolv_conf = StringIO.StringIO()
-        resolv_conf.write('nameserver {ip}\n'.format(ip=DNS))
-
         hosts_ptrn = '{ip} {hostname}.slave.openstack.org {hostname}\n'
         hosts = hosts_ptrn.format(ip=cls.VMs['control'].ip, hostname='control-server')
         hosts += hosts_ptrn.format(ip=cls.VMs['compute'].ip, hostname='compute-server')
@@ -306,9 +284,6 @@ class MultinodeTestCase(TestCase):
 
                 # hosts
                 append('/etc/hosts', hosts, use_sudo=True)
-
-                # resolv.conf
-                append('/etc/resolvconf/resolv.conf.d/head', resolv_conf, use_sudo=True)
 
                 # configure eth1. Used for tenant networks. Bridged to
                 # certain titanium interface
