@@ -7,7 +7,7 @@ import urlparse
 from ci import ZUUL_URL, ZUUL_PROJECT, ZUUL_REF, \
     NEXUS_VLAN_START, NEXUS_VLAN_END, SCREEN_LOG_PATH, \
     NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD, \
-    PARENT_FOLDER_PATH
+    PARENT_FOLDER_PATH, WORKSPACE
 from ci.lib.devstack import DevStack
 from ci.lib.test_case import MultinodeTestCase
 
@@ -59,6 +59,7 @@ VERBOSE=True
 DEBUG=True
 USE_SCREEN=True
 API_RATE_LIMIT=False
+RECLONE=True
 '''
 
 LOCALCONF_COMPUTE = '''
@@ -99,6 +100,7 @@ SCREEN_LOGDIR=/opt/stack/screen-logs
 VERBOSE=True
 DEBUG=True
 USE_SCREEN=True
+RECLONE=True
 '''
 
 ML2_CONF_INI = '''
@@ -176,7 +178,7 @@ class ML2MutinodeTest(MultinodeTestCase):
                 run('mkdir {p}'.format(p=p))
                 run('find /opt/stack/screen-logs -type l '
                     '-exec cp "{{}}" {p} \;'.format(p=p))
-                get(p + '/*', 'logs-' + key)
-                get('~/devstack/local.conf', 'local.conf-' + key)
+                get(p + '/*', os.path.join(WORKSPACE, 'logs-' + key + '/'))
+                get('~/devstack/local.conf', os.path.join(WORKSPACE, 'local.conf-' + key))
 
         # MultinodeTestCase.tearDownClass()
