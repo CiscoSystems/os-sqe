@@ -298,7 +298,6 @@ class MultinodeTestCase(TestCase):
             put(eth2_cfg, '/etc/network/interfaces.d/eth2.cfg',
                 use_sudo=True)
             run('sudo ifup eth2')
-            run('sudo ip link set dev eth2 mtu 1450')
 
             # Wait for Titanium VM
             with settings(warn_only=True):
