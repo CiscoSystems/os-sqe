@@ -140,7 +140,8 @@ class MultinodeTestCase(TestCase):
         env.key_filename = os.path.expanduser('~/id_rsa')
         env.user = 'ubuntu'
 
-        cls.admin_net = cls.get_free_subnet('192.168.0.0/16', 24)
+        cls.ADMIN_NET = cls.get_free_subnet('192.168.0.0/16', 24)
+        cls.MGMT_NET = IPNetwork('192.168.254.0/24')
         cls.disks = []
 
         # Parameters
@@ -153,11 +154,11 @@ class MultinodeTestCase(TestCase):
 
         VirtualMachine = namedtuple('VirtualMachine', ['ip', 'mac', 'port', 'name'])
         cls.VMs = {
-            'control': VirtualMachine(ip=str(cls.admin_net[2]),
+            'control': VirtualMachine(ip=str(cls.ADMIN_NET[2]),
                                       mac=cls.rand_mac(),
                                       port='2/1',
                                       name='control-{0}'.format(ID),),
-            'compute': VirtualMachine(ip=str(cls.admin_net[3]),
+            'compute': VirtualMachine(ip=str(cls.ADMIN_NET[3]),
                                       mac=cls.rand_mac(),
                                       port='2/2',
                                       name='compute-{0}'.format(ID))}
@@ -174,8 +175,8 @@ class MultinodeTestCase(TestCase):
 
         # Create admin network
         with open(os.path.join(PARENT_FOLDER_PATH, 'files/2-role/admin-net.xml')) as f:
-            tmpl = f.read().format(name=cls.ADMIN_NAME, ip=cls.admin_net[1],
-                                   ip_start=cls.admin_net[2], ip_end=cls.admin_net[254],
+            tmpl = f.read().format(name=cls.ADMIN_NAME, ip=cls.ADMIN_NET[1],
+                                   ip_start=cls.ADMIN_NET[2], ip_end=cls.ADMIN_NET[254],
                                    control_servers_mac=cls.VMs['control'].mac,
                                    control_servers_ip=cls.VMs['control'].ip,
                                    compute_servers_mac=cls.VMs['compute'].mac,
@@ -300,9 +301,9 @@ class MultinodeTestCase(TestCase):
             eth2_cfg.writelines([
                 'auto eth2\n',
                 'iface eth2 inet static\n',
-                '\taddress 192.168.254.2\n',
-                '\tnetmask 255.255.255.0\n',
-                '\tgateway 192.168.254.1'])
+                '\taddress {0}\n'.format(cls.MGMT_NET[2]),
+                '\tnetmask {0}\n'.format(cls.MGMT_NET.netmask),
+                '\tgateway {0}'.format(cls.MGMT_NET[1])])
             put(eth2_cfg, '/etc/network/interfaces.d/eth2.cfg',
                 use_sudo=True)
             run('sudo ifup eth2')
