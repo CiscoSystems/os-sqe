@@ -27,7 +27,7 @@ from ci import WORKSPACE, SCREEN_LOG_PATH, NEXUS_IP, NEXUS_USER, \
     NEXUS_PASSWORD, NEXUS_INTF_NUM, NEXUS_VLAN_START, \
     NEXUS_VLAN_END, PARENT_FOLDER_PATH
 from ci.lib.lab.node import Node
-from ci.lib.utils import run_cmd_line, get_public_key, clear_nexus_config
+from ci.lib.utils import run_cmd_line, get_public_key, clear_nexus_config, wait_until
 from ci.lib.devstack import DevStack
 from fabric.context_managers import settings, cd
 from fabric.contrib.files import append, exists
@@ -302,11 +302,7 @@ class MultinodeTestCase(TestCase):
             # Wait for Titanium VM
             with settings(warn_only=True):
                 nexus_ready = lambda: not run('ping -c 1 {ip}'.format(ip=NEXUS_IP)).failed
-                for i in range(50):
-                    if nexus_ready():
-                       break
-                    time.sleep(6)
-                if not nexus_ready():
+                if not wait_until(nexus_ready, timeout=60 * 5):
                     raise Exception('Titanium VM is not online')
 
             # Add titanium public key to known_hosts
