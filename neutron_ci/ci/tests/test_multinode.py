@@ -23,7 +23,7 @@ HOST_IP={CONTROL_HOST_IP}
 
 MULTI_HOST=1
 
-disable_service n-net heat h-api h-api-cfn h-api-cw h-eng cinder c-api c-sch c-vol
+disable_service n-net heat h-api h-api-cfn h-api-cw h-eng cinder c-api c-sch c-vol n-novnc
 enable_service neutron
 enable_service tempest
 enable_service q-svc
@@ -84,7 +84,7 @@ SERVICE_TOKEN=nova
 SERVICE_PASSWORD=nova
 ADMIN_PASSWORD=nova
 
-ENABLED_SERVICES=n-cpu,neutron,n-api,n-novnc,q-agt
+ENABLED_SERVICES=n-cpu,neutron,n-api,q-agt
 
 LIBVIRT_TYPE=qemu
 NOVA_USE_QUANTUM_API=v2
