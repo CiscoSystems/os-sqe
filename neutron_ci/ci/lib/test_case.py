@@ -140,33 +140,34 @@ class MultinodeTestCase(TestCase):
         env.key_filename = os.path.expanduser('~/id_rsa')
         env.user = 'ubuntu'
 
-        cls.ADMIN_NET = cls.get_free_subnet('192.168.0.0/16', 24)
-        cls.MGMT_NET = IPNetwork('192.168.254.0/24')
         cls.disks = []
 
         # Parameters
         ID = int(time.time())
         USER_DATA_YAML = 'files/2-role/user-data.yaml'
         LIBVIRT_IMGS = '/var/lib/libvirt/images'
-        UBUNTU_CLOUD_IMG = os.path.expanduser('~/devstack-trusty-1409997660.template.openstack.org.qcow')
-        TITANIUM_IMG = '~/titanium.qcow'
+        UBUNTU_CLOUD_IMG = os.path.expanduser('~/devstack-trusty.template.openstack.org.qcow')
+        TITANIUM_IMG = os.path.expanduser('~/titanium.qcow')
         DISK_SIZE = 20
-
-        VirtualMachine = namedtuple('VirtualMachine', ['ip', 'mac', 'port', 'name'])
-        cls.VMs = {
-            'control': VirtualMachine(ip=str(cls.ADMIN_NET[2]),
-                                      mac=cls.rand_mac(),
-                                      port='2/1',
-                                      name='control-{0}'.format(ID),),
-            'compute': VirtualMachine(ip=str(cls.ADMIN_NET[3]),
-                                      mac=cls.rand_mac(),
-                                      port='2/2',
-                                      name='compute-{0}'.format(ID))}
+        ADMIN_NET = cls.get_free_subnet('192.168.0.0/16', 24)
+        MGMT_NET = IPNetwork('192.168.254.0/24')
         cls.TITANIUM = 'titanium-{0}'.format(ID)
+        cls.BRIDGE_MGMT = 'br{0}-m'.format(ID)
         cls.BRIDGE1 = 'br{0}-1'.format(ID)
         cls.BRIDGE2 = 'br{0}-2'.format(ID)
         cls.ADMIN_NAME = 'admin-{0}'.format(ID)
         cls.MGMT_NAME = 'mgmt-{0}'.format(ID)
+
+        VirtualMachine = namedtuple('VirtualMachine', ['ip', 'mac', 'port', 'name'])
+        cls.VMs = {
+            'control': VirtualMachine(ip=str(ADMIN_NET[2]),
+                                      mac=cls.rand_mac(),
+                                      port='2/1',
+                                      name='control-{0}'.format(ID),),
+            'compute': VirtualMachine(ip=str(ADMIN_NET[3]),
+                                      mac=cls.rand_mac(),
+                                      port='2/2',
+                                      name='compute-{0}'.format(ID))}
 
         ubuntu_img_path = os.path.join(LIBVIRT_IMGS, 'ubuntu-cloud{0}.qcow'.format(ID))
         local('sudo qemu-img convert -O qcow2 {source} {dest}'.format(
@@ -175,8 +176,8 @@ class MultinodeTestCase(TestCase):
 
         # Create admin network
         with open(os.path.join(PARENT_FOLDER_PATH, 'files/2-role/admin-net.xml')) as f:
-            tmpl = f.read().format(name=cls.ADMIN_NAME, ip=cls.ADMIN_NET[1],
-                                   ip_start=cls.ADMIN_NET[2], ip_end=cls.ADMIN_NET[254],
+            tmpl = f.read().format(name=cls.ADMIN_NAME, ip=ADMIN_NET[1],
+                                   ip_start=ADMIN_NET[2], ip_end=ADMIN_NET[254],
                                    control_servers_mac=cls.VMs['control'].mac,
                                    control_servers_ip=cls.VMs['control'].ip,
                                    compute_servers_mac=cls.VMs['compute'].mac,
@@ -188,18 +189,8 @@ class MultinodeTestCase(TestCase):
             local('sudo virsh net-autostart {0}'.format(cls.ADMIN_NAME))
             local('sudo virsh net-start {0}'.format(cls.ADMIN_NAME))
 
-        # Create management network
-        with open(os.path.join(PARENT_FOLDER_PATH, 'files/2-role/mgmt-net.xml')) as f:
-            tmpl = f.read().format(name=cls.MGMT_NAME)
-            tmpl_path = '/tmp/mgmt-net{0}.xml'.format(ID)
-            with open(tmpl_path, 'w') as o:
-                o.write(tmpl)
-            local('sudo virsh net-define {file}'.format(file=tmpl_path))
-            local('sudo virsh net-autostart {0}'.format(cls.MGMT_NAME))
-            local('sudo virsh net-start {0}'.format(cls.MGMT_NAME))
-
         # Create bridges
-        for br in (cls.BRIDGE1, cls.BRIDGE2):
+        for br in (cls.BRIDGE1, cls.BRIDGE2, cls.BRIDGE_MGMT):
             local('sudo brctl addbr {0}'.format(br))
             local('sudo ip link set dev {0} up'.format(br))
 
@@ -217,7 +208,7 @@ class MultinodeTestCase(TestCase):
             tmpl = f.read().format(
                 name=cls.VMs['control'].name,
                 admin_net_name=cls.ADMIN_NAME,
-                mgmt_net_name=cls.MGMT_NAME,
+                bridge_mgmt=cls.BRIDGE_MGMT,
                 disk=control_server_disk, disk_config=control_conf_disk,
                 admin_mac=cls.VMs['control'].mac, bridge=cls.BRIDGE1)
             tmpl_path = '/tmp/control-server{0}.xml'.format(ID)
@@ -256,7 +247,7 @@ class MultinodeTestCase(TestCase):
         with open(os.path.join(PARENT_FOLDER_PATH, 'files/2-role/titanium.xml')) as f:
             tmpl = f.read().format(
                 name=cls.TITANIUM,
-                mgmt_net_name=cls.MGMT_NAME,
+                bridge_mgmt=cls.BRIDGE_MGMT,
                 disk=titanium_disk,
                 bridge1=cls.BRIDGE1, bridge2=cls.BRIDGE2)
             tmpl_path = '/tmp/titanium{0}.xml'.format(ID)
@@ -301,9 +292,9 @@ class MultinodeTestCase(TestCase):
             eth2_cfg.writelines([
                 'auto eth2\n',
                 'iface eth2 inet static\n',
-                '\taddress {0}\n'.format(cls.MGMT_NET[2]),
-                '\tnetmask {0}\n'.format(cls.MGMT_NET.netmask),
-                '\tgateway {0}'.format(cls.MGMT_NET[1])])
+                '\taddress {0}\n'.format(MGMT_NET[2]),
+                '\tnetmask {0}\n'.format(MGMT_NET.netmask),
+                '\tgateway {0}'.format(MGMT_NET[1])])
             put(eth2_cfg, '/etc/network/interfaces.d/eth2.cfg',
                 use_sudo=True)
             run('sudo ifup eth2')
@@ -336,12 +327,11 @@ class MultinodeTestCase(TestCase):
             local('sudo virsh undefine {0}'.format(cls.TITANIUM))
 
             # Undefine networks
-            for name in (cls.ADMIN_NAME, cls.MGMT_NAME):
-                local('sudo virsh net-destroy {0}'.format(name))
-                local('sudo virsh net-undefine {0}'.format(name))
+            local('sudo virsh net-destroy {0}'.format(cls.ADMIN_NAME))
+            local('sudo virsh net-undefine {0}'.format(cls.ADMIN_NAME))
 
             # Delete bridges
-            for name in (cls.BRIDGE1, cls.BRIDGE2):
+            for name in (cls.BRIDGE1, cls.BRIDGE2, cls.BRIDGE_MGMT):
                 local('sudo ip link set dev {0} down'.format(name))
                 local('sudo brctl delbr {0}'.format(name))
 

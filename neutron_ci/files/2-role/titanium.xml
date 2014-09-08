@@ -29,8 +29,8 @@
       <source file='{disk}'/>
       <target dev='sda' bus='ide'/>
     </disk>
-    <interface type='network'>
-      <source network='{mgmt_net_name}'/>
+    <interface type='bridge'>
+      <source bridge='{bridge_mgmt}'/>
       <model type='e1000'/>
     </interface>
     <interface type='bridge'>
