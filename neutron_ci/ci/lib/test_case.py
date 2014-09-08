@@ -136,7 +136,6 @@ class MultinodeTestCase(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        VirtualMachine = namedtuple('VirtualMachine', ['ip', 'mac', 'port', 'name'])
         # Fabric's environment variables
         env.disable_known_hosts = True
         env.abort_exception = Exception
@@ -147,15 +146,14 @@ class MultinodeTestCase(TestCase):
         cls.disks = []
 
         # Parameters
-        USER_DATA_YAML = os.environ.get(
-            'USER_DATA_YAML',
-            os.path.join(PARENT_FOLDER_PATH, 'files/2-role/user-data.yaml'))
+        ID = int(time.time())
+        USER_DATA_YAML = 'files/2-role/user-data.yaml'
         LIBVIRT_IMGS = '/var/lib/libvirt/images'
         UBUNTU_CLOUD_IMG = os.path.expanduser('~/devstack-trusty-1409997660.template.openstack.org.qcow')
         TITANIUM_IMG = '~/titanium.qcow'
         DISK_SIZE = 20
-        ID = int(time.time())
 
+        VirtualMachine = namedtuple('VirtualMachine', ['ip', 'mac', 'port', 'name'])
         cls.VMs = {
             'control': VirtualMachine(ip=str(cls.admin_net[2]),
                                       mac=cls.rand_mac(),
