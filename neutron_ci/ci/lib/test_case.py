@@ -19,16 +19,14 @@ import logging
 import random
 import shutil
 import os
-import stat
 import time
 import StringIO
 from testtools import TestCase
 from netaddr import IPNetwork
 from ci import WORKSPACE, SCREEN_LOG_PATH, NEXUS_IP, NEXUS_USER, \
     NEXUS_PASSWORD, NEXUS_INTF_NUM, NEXUS_VLAN_START, \
-    NEXUS_VLAN_END, PARENT_FOLDER_PATH, OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_TENANT_NAME, OS_IMAGE_NAME
+    NEXUS_VLAN_END, PARENT_FOLDER_PATH
 from ci.lib.lab.node import Node
-from ci.lib.openstack import OpenStack
 from ci.lib.utils import run_cmd_line, get_public_key, clear_nexus_config
 from ci.lib.devstack import DevStack
 from fabric.context_managers import settings, cd
@@ -295,17 +293,6 @@ class MultinodeTestCase(TestCase):
                 put(eth1_cfg, '/etc/network/interfaces.d/eth1.cfg',
                     use_sudo=True)
                 run('sudo ifup eth1')
-
-                # Install custom (Cisco) ncclient
-                ncclient_dir = '/opt/git/ncclient'
-                if exists(ncclient_dir):
-                    run('sudo rm -rf {0}'.format(ncclient_dir))
-                run('sudo pip uninstall -y ncclient || :')
-                run('sudo git clone --depth=1 -b master '
-                    'https://github.com/CiscoSystems/ncclient.git '
-                    '{NCCLIENT_DIR}'.format(NCCLIENT_DIR=ncclient_dir))
-                with cd(ncclient_dir):
-                    run('sudo python setup.py install')
 
         with settings(host_string=cls.VMs['control'].ip):
             # Configure eth2. Used to connect to Titanium mgmt interface
