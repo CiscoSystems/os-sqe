@@ -256,13 +256,14 @@ class MultinodeTestCase(TestCase):
             local('sudo virsh define {s}'.format(s=tmpl_path))
             local('sudo virsh start {0}'.format(cls.TITANIUM))
 
-        # sleep while instances are booting
-        time.sleep(30)
-
         hosts_ptrn = '{ip} {hostname}.slave.openstack.org {hostname}\n'
         hosts = hosts_ptrn.format(ip=cls.VMs['control'].ip, hostname='control-server')
         hosts += hosts_ptrn.format(ip=cls.VMs['compute'].ip, hostname='compute-server')
         for vm in cls.VMs.itervalues():
+            with settings(warn_only=True):
+                vm_ready = lambda: not local('ping -c 1 {ip}'.format(ip=vm.ip)).failed
+                wait_until(vm_ready, timeout=60 * 5)
+
             with settings(host_string=vm.ip):
                 # hostname
                 hostname = StringIO.StringIO()
