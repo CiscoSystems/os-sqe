@@ -1,5 +1,6 @@
 import os
 import StringIO
+import logging
 from fabric.context_managers import settings
 from fabric.operations import put, run, get, local
 
@@ -121,6 +122,9 @@ password={password}
 '''
 
 
+logger = logging.getLogger(__name__)
+
+
 class ML2MutinodeTest(MultinodeTestCase):
 
     @classmethod
@@ -175,15 +179,17 @@ class ML2MutinodeTest(MultinodeTestCase):
     @classmethod
     def tearDownClass(cls):
         # download devstack logs
-        for key, vm in cls.VMs.iteritems():
-            with settings(host_string=vm.ip, warn_only=True):
-                p = '~/screen-logs'
-                lp = os.path.join(WORKSPACE, 'logs-' + key)
-                run('mkdir {p}'.format(p=p))
-                run('find /opt/stack/screen-logs -type l '
-                    '-exec cp "{{}}" {p} \;'.format(p=p))
-                local('mkdir {0}'.format(lp))
-                get(p, lp)
-                get('~/devstack/local.conf', os.path.join(WORKSPACE, 'local.conf-' + key))
-
+        try:
+            for key, vm in cls.VMs.iteritems():
+                with settings(host_string=vm.ip, warn_only=True):
+                    p = '~/screen-logs'
+                    lp = os.path.join(WORKSPACE, 'logs-' + key)
+                    run('mkdir {p}'.format(p=p))
+                    run('find /opt/stack/screen-logs -type l '
+                        '-exec cp "{{}}" {p} \;'.format(p=p))
+                    local('mkdir {0}'.format(lp))
+                    get(p, lp)
+                    get('~/devstack/local.conf', os.path.join(WORKSPACE, 'local.conf-' + key))
+        except TypeError as te:
+            logger.error(te)
         MultinodeTestCase.tearDownClass()
