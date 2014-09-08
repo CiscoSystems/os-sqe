@@ -144,12 +144,19 @@ class ML2MutinodeTest(MultinodeTestCase):
         }
 
         cls.controller = DevStack(host_string=cls.VMs['control'].ip,
-                                  clone_path='/home/ubuntu/devstack')
-        cls.controller.local_conf = LOCALCONF_CONTROLLER.format(**parameters)
-        cls.controller.clone()
+                                  clone_path='/home/ubuntu/devstack',
+                                  local_conf=LOCALCONF_CONTROLLER.format(**parameters))
+        cls.compute = DevStack(host_string=cls.VMs['compute'].ip,
+                               clone_path='/home/ubuntu/devstack',
+                               local_conf=LOCALCONF_COMPUTE.format(**parameters))
+
+    def test_tempest(self):
+        self.controller.clone()
+        self.compute.clone()
+
         # Create ml2 config for cisco plugin. Put it to controller node
-        with settings(host_string=cls.VMs['control'].ip):
-            map = [vm.name + '=' + vm.port for vm in cls.VMs.itervalues()]
+        with settings(host_string=self.VMs['control'].ip):
+            map = [vm.name + '=' + vm.port for vm in self.VMs.itervalues()]
             ml2_conf_io = StringIO.StringIO()
             ml2_conf_io.write(
                 ML2_CONF_INI.format(
@@ -157,15 +164,9 @@ class ML2MutinodeTest(MultinodeTestCase):
                     router_ip=NEXUS_IP,
                     username=NEXUS_USER,
                     password=NEXUS_PASSWORD))
-            put(ml2_conf_io, os.path.join(cls.controller._clone_path,
+            put(ml2_conf_io, os.path.join(self.controller._clone_path,
                                           Q_PLUGIN_EXTRA_CONF_FILES))
 
-        cls.compute = DevStack(host_string=cls.VMs['compute'].ip,
-                               clone_path='/home/ubuntu/devstack')
-        cls.compute.local_conf = LOCALCONF_COMPUTE.format(**parameters)
-        cls.compute.clone()
-
-    def test_tempest(self):
         self.assertFalse(self.controller.stack())
         self.assertFalse(self.compute.stack())
 
