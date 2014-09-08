@@ -60,7 +60,7 @@ OS_FLAVOR_NAME = os.environ.get('OS_FLAVOR_NAME', 'devstack.medium')
 OS_DNS = os.environ.get('OS_DNS')
 
 # Configure handlers for the root logger
-logger = logging.getLogger()
+logger = logging.getLogger('ci')
 formatter = logging.Formatter('%(asctime)s %(name)s: %(lineno)d, '
                               '%(levelname)s: %(message)s')
 
