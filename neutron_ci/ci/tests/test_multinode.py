@@ -19,7 +19,7 @@ LOCALCONF_CONTROLLER = '''
 NEUTRON_REPO={neutron_repo}
 NEUTRON_BRANCH={neutron_branch}
 
-HOST_IP={HOST_IP}
+HOST_IP={CONTROL_HOST_IP}
 
 MULTI_HOST=1
 
@@ -70,11 +70,11 @@ LOCALCONF_COMPUTE = '''
 NEUTRON_REPO={neutron_repo}
 NEUTRON_BRANCH={neutron_branch}
 
-HOST_IP={HOST_IP}
-SERVICE_HOST={SERVICE_HOST}
-MYSQL_HOST={SERVICE_HOST}
-RABBIT_HOST={SERVICE_HOST}
-GLANCE_HOSTPORT={SERVICE_HOST}:9292
+HOST_IP={COMPUTE_HOST_IP}
+SERVICE_HOST={CONTROL_HOST_IP}
+MYSQL_HOST={CONTROL_HOST_IP}
+RABBIT_HOST={CONTROL_HOST_IP}
+GLANCE_HOSTPORT={CONTROL_HOST_IP}:9292
 
 MULTI_HOST=1
 
@@ -127,16 +127,21 @@ class ML2MutinodeTest(MultinodeTestCase):
     def setUpClass(cls):
         MultinodeTestCase.setUpClass()
 
+        parameters = {
+            'neutron_repo': urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
+            'neutron_branch': ZUUL_REF,
+            'CONTROL_HOST_IP': cls.VMs['control'].ip,
+            'COMPUTE_HOST_IP': cls.VMs['compute'].ip,
+            'Q_PLUGIN_EXTRA_CONF_PATH': '/home/ubuntu/devstack',
+            'Q_PLUGIN_EXTRA_CONF_FILES': Q_PLUGIN_EXTRA_CONF_FILES,
+            'vlan_start': NEXUS_VLAN_START,
+            'vlan_end': NEXUS_VLAN_END,
+            'JOB_LOG_PATH': SCREEN_LOG_PATH,
+        }
+
         cls.controller = DevStack(host_string=cls.VMs['control'].ip,
                                   clone_path='/home/ubuntu/devstack')
-        cls.controller.local_conf = LOCALCONF_CONTROLLER.format(
-            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
-            neutron_branch=ZUUL_REF,
-            HOST_IP=cls.VMs['control'].ip,
-            Q_PLUGIN_EXTRA_CONF_PATH=cls.controller._clone_path,
-            Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
-            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
-            JOB_LOG_PATH=SCREEN_LOG_PATH)
+        cls.controller.local_conf = LOCALCONF_CONTROLLER.format(**parameters)
         cls.controller.clone()
         # Create ml2 config for cisco plugin. Put it to controller node
         with settings(host_string=cls.VMs['control'].ip):
@@ -153,15 +158,7 @@ class ML2MutinodeTest(MultinodeTestCase):
 
         cls.compute = DevStack(host_string=cls.VMs['compute'].ip,
                                clone_path='/home/ubuntu/devstack')
-        cls.compute.local_conf = LOCALCONF_COMPUTE.format(
-            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
-            neutron_branch=ZUUL_REF,
-            HOST_IP=cls.VMs['compute'].ip,
-            SERVICE_HOST=cls.VMs['control'].ip,
-            Q_PLUGIN_EXTRA_CONF_PATH=cls.controller._clone_path,
-            Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
-            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
-            JOB_LOG_PATH=SCREEN_LOG_PATH)
+        cls.compute.local_conf = LOCALCONF_COMPUTE.format(**parameters)
         cls.compute.clone()
 
     def test_tempest(self):
