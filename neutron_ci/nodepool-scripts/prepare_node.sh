@@ -41,33 +41,13 @@ wget http://launchpadlibrarian.net/135683014/bash_4.2-5ubuntu3_amd64.deb
 sudo dpkg -i ./bash_4.2-5ubuntu3_amd64.deb
 
 # Clone repositories. "RECLONE=True" should be added to localrc
-PROJECTS=()
-PROJECTS+=('openstack/requirements.git')
-PROJECTS+=('openstack-dev/pbr.git')
-PROJECTS+=('openstack/cliff.git')
-PROJECTS+=('openstack/oslo.i18n.git')
-PROJECTS+=('openstack/oslo.config.git')
-PROJECTS+=('openstack/oslo.messaging.git')
-PROJECTS+=('openstack/oslo.rootwrap.git')
-PROJECTS+=('openstack/oslo.db.git')
-PROJECTS+=('openstack/oslo.vmware.git')
-PROJECTS+=('openstack/pycadf.git')
-PROJECTS+=('openstack/stevedore.git')
-PROJECTS+=('openstack/taskflow.git')
-PROJECTS+=('openstack/python-keystoneclient.git')
-PROJECTS+=('openstack/python-glanceclient.git')
-PROJECTS+=('openstack/python-cinderclient.git')
-PROJECTS+=('openstack/python-novaclient.git')
-PROJECTS+=('openstack/python-swiftclient.git')
-PROJECTS+=('openstack/python-neutronclient.git')
-PROJECTS+=('openstack/keystonemiddleware.git')
-PROJECTS+=('openstack/python-openstackclient.git')
-PROJECTS+=('openstack/keystone.git')
-PROJECTS+=('openstack/glance.git')
-PROJECTS+=('openstack/cinder.git')
-PROJECTS+=('openstack/nova.git')
-PROJECTS+=('openstack/tempest.git')
-for PROJECT in ${PROJECTS[@]}; do
+PROJECTS="openstack/requirements.git openstack-dev/pbr.git openstack/cliff.git openstack/oslo.i18n.git"
+PROJECTS="${PROJECTS} openstack/oslo.config.git openstack/oslo.messaging.git openstack/oslo.rootwrap.git openstack/oslo.db.git"
+PROJECTS="${PROJECTS} openstack/oslo.vmware.git openstack/pycadf.git openstack/stevedore.git openstack/taskflow.git"
+PROJECTS="${PROJECTS} openstack/python-keystoneclient.git openstack/python-glanceclient.git openstack/python-cinderclient.git openstack/python-novaclient.git"
+PROJECTS="${PROJECTS} openstack/python-swiftclient.git openstack/python-neutronclient.git openstack/keystonemiddleware.git openstack/python-openstackclient.git"
+PROJECTS="${PROJECTS} openstack/keystone.git openstack/glance.git openstack/cinder.git openstack/nova.git openstack/tempest.git"
+for PROJECT in ${PROJECTS}; do
 	NAME=$(echo $PROJECT | grep -P -o '(?<=\/).*(?=.git)')
 	PROJECT_DEST=/opt/stack/${NAME}
 	sudo git clone git://git.openstack.org/${PROJECT} ${PROJECT_DEST}
