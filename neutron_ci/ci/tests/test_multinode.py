@@ -183,4 +183,4 @@ class ML2MutinodeTest(MultinodeTestCase):
                 get(p, lp)
                 get('~/devstack/local.conf', os.path.join(WORKSPACE, 'local.conf-' + key))
 
-        # MultinodeTestCase.tearDownClass()
+        MultinodeTestCase.tearDownClass()
