@@ -6,7 +6,7 @@ from fabric.operations import put, run, get, local
 import urlparse
 from ci import ZUUL_URL, ZUUL_PROJECT, ZUUL_REF, \
     NEXUS_VLAN_START, NEXUS_VLAN_END, SCREEN_LOG_PATH, \
-    NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD, \
+    NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD, \
     PARENT_FOLDER_PATH, WORKSPACE
 from ci.lib.devstack import DevStack
 from ci.lib.test_case import MultinodeTestCase
@@ -16,6 +16,9 @@ TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_plugin_tests.txt')
 Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_cisco.ini'
 LOCALCONF_CONTROLLER = '''
 [[local|localrc]]
+NEUTRON_REPO={neutron_repo}
+NEUTRON_BRANCH={neutron_branch}
+
 HOST_IP={HOST_IP}
 
 MULTI_HOST=1
@@ -64,6 +67,9 @@ RECLONE=True
 
 LOCALCONF_COMPUTE = '''
 [[local|localrc]]
+NEUTRON_REPO={neutron_repo}
+NEUTRON_BRANCH={neutron_branch}
+
 HOST_IP={HOST_IP}
 SERVICE_HOST={SERVICE_HOST}
 MYSQL_HOST={SERVICE_HOST}
