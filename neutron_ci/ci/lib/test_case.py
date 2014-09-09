@@ -283,7 +283,7 @@ class MultinodeTestCase(TestCase):
             with settings(host_string=vm.ip):
                 with settings(warn_only=True):
                     vm_ready = lambda: not run('ls').failed
-                    if wait_until(vm_ready, timeout=60 * 5):
+                    if not wait_until(vm_ready, timeout=60 * 5):
                         raise Exception('VM {0} failed'.format(vm.name))
 
                 # hostname

@@ -62,7 +62,10 @@ def get_public_key(host):
 def wait_until(predicate, timeout=60, period=5):
     end = time.time() + timeout
     while time.time() < end:
-        if predicate():
-            return True
+        try:
+            if predicate():
+                return True
+        except Exception as e:
+            logger.warning(e)
         time.sleep(period)
     return False
