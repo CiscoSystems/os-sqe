@@ -27,7 +27,8 @@ from ci import WORKSPACE, SCREEN_LOG_PATH, NEXUS_IP, NEXUS_USER, \
     NEXUS_PASSWORD, NEXUS_INTF_NUM, NEXUS_VLAN_START, \
     NEXUS_VLAN_END, PARENT_FOLDER_PATH
 from ci.lib.lab.node import Node
-from ci.lib.utils import run_cmd_line, get_public_key, clear_nexus_config, wait_until
+from ci.lib.utils import run_cmd_line, get_public_key, \
+    clear_nexus_config, wait_until
 from ci.lib.devstack import DevStack
 from fabric.context_managers import settings, cd
 from fabric.contrib.files import append, exists
@@ -146,7 +147,8 @@ class MultinodeTestCase(TestCase):
         ID = int(time.time())
         USER_DATA_YAML = 'files/2-role/user-data.yaml'
         LIBVIRT_IMGS = '/var/lib/libvirt/images'
-        UBUNTU_CLOUD_IMG = os.path.expanduser('~/devstack-trusty.template.openstack.org.qcow')
+        UBUNTU_CLOUD_IMG = os.path.expanduser(
+            '~/devstack-trusty.template.openstack.org.qcow')
         TITANIUM_IMG = os.path.expanduser('~/titanium.qcow')
         DISK_SIZE = 20
         ADMIN_NET = cls.get_free_subnet('192.168.0.0/16', 24)
@@ -158,7 +160,8 @@ class MultinodeTestCase(TestCase):
         cls.ADMIN_NAME = 'admin-{0}'.format(ID)
         cls.MGMT_NAME = 'mgmt-{0}'.format(ID)
 
-        VirtualMachine = namedtuple('VirtualMachine', ['ip', 'mac', 'port', 'name'])
+        VirtualMachine = namedtuple('VirtualMachine',
+                                    ['ip', 'mac', 'port', 'name'])
         cls.VMs = {
             'control': VirtualMachine(ip=str(ADMIN_NET[2]),
                                       mac=cls.rand_mac(),
@@ -169,19 +172,23 @@ class MultinodeTestCase(TestCase):
                                       port='2/2',
                                       name='compute-{0}'.format(ID))}
 
-        ubuntu_img_path = os.path.join(LIBVIRT_IMGS, 'ubuntu-cloud{0}.qcow'.format(ID))
+        ubuntu_img_path = os.path.join(LIBVIRT_IMGS,
+                                       'ubuntu-cloud{0}.qcow'.format(ID))
         local('sudo qemu-img convert -O qcow2 {source} {dest}'.format(
             source=UBUNTU_CLOUD_IMG, dest=ubuntu_img_path))
         cls.disks.append(ubuntu_img_path)
 
         # Create admin network
-        with open(os.path.join(PARENT_FOLDER_PATH, 'files/2-role/admin-net.xml')) as f:
-            tmpl = f.read().format(name=cls.ADMIN_NAME, ip=ADMIN_NET[1],
-                                   ip_start=ADMIN_NET[2], ip_end=ADMIN_NET[254],
-                                   control_servers_mac=cls.VMs['control'].mac,
-                                   control_servers_ip=cls.VMs['control'].ip,
-                                   compute_servers_mac=cls.VMs['compute'].mac,
-                                   compute_servers_ip=cls.VMs['compute'].ip)
+        admin_net_xml = os.path.join(PARENT_FOLDER_PATH,
+                                     'files/2-role/admin-net.xml')
+        with open(admin_net_xml) as f:
+            tmpl = f.read().format(
+                name=cls.ADMIN_NAME, ip=ADMIN_NET[1],
+                ip_start=ADMIN_NET[2], ip_end=ADMIN_NET[254],
+                control_servers_mac=cls.VMs['control'].mac,
+                control_servers_ip=cls.VMs['control'].ip,
+                compute_servers_mac=cls.VMs['compute'].mac,
+                compute_servers_ip=cls.VMs['compute'].ip)
             tmpl_path = '/tmp/admin-net{0}.xml'.format(ID)
             with open(tmpl_path, 'w') as o:
                 o.write(tmpl)
@@ -195,8 +202,10 @@ class MultinodeTestCase(TestCase):
             local('sudo ip link set dev {0} up'.format(br))
 
         # Create control-server
-        control_server_disk = os.path.join(LIBVIRT_IMGS, 'control{0}.qcow'.format(ID))
-        control_conf_disk = os.path.join(LIBVIRT_IMGS, 'control-config{0}.qcow'.format(ID))
+        control_server_disk = os.path.join(LIBVIRT_IMGS,
+                                           'control{0}.qcow'.format(ID))
+        control_conf_disk = os.path.join(LIBVIRT_IMGS,
+                                         'control-config{0}.qcow'.format(ID))
         local('sudo qemu-img create -f qcow2 -b {s} {d} {size}G'.format(
             s=ubuntu_img_path, d=control_server_disk, size=DISK_SIZE))
         local('sudo cloud-localds {d} {user_data}'.format(
@@ -204,7 +213,9 @@ class MultinodeTestCase(TestCase):
         cls.disks.append(control_server_disk)
         cls.disks.append(control_conf_disk)
 
-        with open(os.path.join(PARENT_FOLDER_PATH, 'files/2-role/control-server.xml')) as f:
+        cntrl_server_xml = os.path.join(PARENT_FOLDER_PATH,
+                                        'files/2-role/control-server.xml')
+        with open(cntrl_server_xml) as f:
             tmpl = f.read().format(
                 name=cls.VMs['control'].name,
                 admin_net_name=cls.ADMIN_NAME,
@@ -218,8 +229,10 @@ class MultinodeTestCase(TestCase):
             local('sudo virsh start {0}'.format(cls.VMs['control'].name))
 
         # Create compute-server
-        compute_server_disk = os.path.join(LIBVIRT_IMGS, 'compute{0}.qcow'.format(ID))
-        compute_conf_disk = os.path.join(LIBVIRT_IMGS, 'compute-config{0}.qcow'.format(ID))
+        compute_server_disk = os.path.join(LIBVIRT_IMGS,
+                                           'compute{0}.qcow'.format(ID))
+        compute_conf_disk = os.path.join(LIBVIRT_IMGS,
+                                         'compute-config{0}.qcow'.format(ID))
         local('sudo qemu-img create -f qcow2 -b {s} {d} {size}G'.format(
             s=ubuntu_img_path, d=compute_server_disk, size=DISK_SIZE))
         local('sudo cloud-localds {d} {user_data}'.format(
@@ -227,7 +240,9 @@ class MultinodeTestCase(TestCase):
         cls.disks.append(compute_server_disk)
         cls.disks.append(compute_conf_disk)
 
-        with open(os.path.join(PARENT_FOLDER_PATH, 'files/2-role/compute-server.xml')) as f:
+        compute_server_xml = os.path.join(PARENT_FOLDER_PATH,
+                                          'files/2-role/compute-server.xml')
+        with open(compute_server_xml) as f:
             tmpl = f.read().format(
                 name=cls.VMs['compute'].name,
                 admin_net_name=cls.ADMIN_NAME,
@@ -240,11 +255,14 @@ class MultinodeTestCase(TestCase):
             local('sudo virsh start {0}'.format(cls.VMs['compute'].name))
 
         # Create Titanium VM
-        titanium_disk = os.path.join(LIBVIRT_IMGS, 'titanium{0}.qcow'.format(ID))
+        titanium_disk = os.path.join(LIBVIRT_IMGS,
+                                     'titanium{0}.qcow'.format(ID))
         local('sudo cp {source} {dest}'.format(
             source=TITANIUM_IMG, dest=titanium_disk))
         cls.disks.append(titanium_disk)
-        with open(os.path.join(PARENT_FOLDER_PATH, 'files/2-role/titanium.xml')) as f:
+        titanium_xml = os.path.join(PARENT_FOLDER_PATH,
+                                    'files/2-role/titanium.xml')
+        with open(titanium_xml) as f:
             tmpl = f.read().format(
                 name=cls.TITANIUM,
                 bridge_mgmt=cls.BRIDGE_MGMT,
@@ -257,11 +275,14 @@ class MultinodeTestCase(TestCase):
             local('sudo virsh start {0}'.format(cls.TITANIUM))
 
         hosts_ptrn = '{ip} {hostname}.slave.openstack.org {hostname}\n'
-        hosts = hosts_ptrn.format(ip=cls.VMs['control'].ip, hostname='control-server')
-        hosts += hosts_ptrn.format(ip=cls.VMs['compute'].ip, hostname='compute-server')
+        hosts = hosts_ptrn.format(ip=cls.VMs['control'].ip,
+                                  hostname='control-server')
+        hosts += hosts_ptrn.format(ip=cls.VMs['compute'].ip,
+                                   hostname='compute-server')
         for vm in cls.VMs.itervalues():
             with settings(warn_only=True):
-                vm_ready = lambda: not local('ping -c 1 {ip}'.format(ip=vm.ip)).failed
+                vm_ready = lambda: \
+                    not local('ping -c 1 {ip}'.format(ip=vm.ip)).failed
                 wait_until(vm_ready, timeout=60 * 5)
                 time.sleep(5)
 
@@ -305,7 +326,8 @@ class MultinodeTestCase(TestCase):
 
             # Wait for Titanium VM
             with settings(warn_only=True):
-                nexus_ready = lambda: not run('ping -c 1 {ip}'.format(ip=NEXUS_IP)).failed
+                nexus_ready = lambda: \
+                    not run('ping -c 1 {ip}'.format(ip=NEXUS_IP)).failed
                 if not wait_until(nexus_ready, timeout=60 * 5):
                     raise Exception('Titanium VM is not online')
 

@@ -143,12 +143,14 @@ class ML2MutinodeTest(MultinodeTestCase):
             'JOB_LOG_PATH': SCREEN_LOG_PATH,
         }
 
-        cls.controller = DevStack(host_string=cls.VMs['control'].ip,
-                                  clone_path='/home/ubuntu/devstack',
-                                  local_conf=LOCALCONF_CONTROLLER.format(**parameters))
-        cls.compute = DevStack(host_string=cls.VMs['compute'].ip,
-                               clone_path='/home/ubuntu/devstack',
-                               local_conf=LOCALCONF_COMPUTE.format(**parameters))
+        cls.controller = DevStack(
+            host_string=cls.VMs['control'].ip,
+            clone_path='/home/ubuntu/devstack',
+            local_conf=LOCALCONF_CONTROLLER.format(**parameters))
+        cls.compute = DevStack(
+            host_string=cls.VMs['compute'].ip,
+            clone_path='/home/ubuntu/devstack',
+            local_conf=LOCALCONF_COMPUTE.format(**parameters))
 
     def test_tempest(self):
         self.controller.clone()
@@ -190,7 +192,8 @@ class ML2MutinodeTest(MultinodeTestCase):
                         '-exec cp "{{}}" {p} \;'.format(p=p))
                     local('mkdir {0}'.format(lp))
                     get(p, lp)
-                    get('~/devstack/local.conf', os.path.join(WORKSPACE, 'local.conf-' + key))
+                    get('~/devstack/local.conf',
+                        os.path.join(WORKSPACE, 'local.conf-' + key))
         except TypeError as te:
             logger.error(te)
         MultinodeTestCase.tearDownClass()

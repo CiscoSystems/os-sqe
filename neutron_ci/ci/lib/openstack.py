@@ -24,14 +24,16 @@ class OpenStack(object):
     @property
     def heat(self):
         if not self._heat_client:
-            endpoint = self.keystone.service_catalog.get_endpoints()['orchestration'][0]['publicURL']
+            endpoints = self.keystone.service_catalog.get_endpoints()
+            endpoint = endpoints['orchestration'][0]['publicURL']
             self._heat_client = HeatClient(endpoint, **self.credentials)
         return self._heat_client
 
     @property
     def glance(self):
         if not self._glance_client:
-            endpoint = self.keystone.service_catalog.get_endpoints()['image'][0]['publicURL']
+            endpoints = self.keystone.service_catalog.get_endpoints()
+            endpoint = endpoints['image'][0]['publicURL']
             self._glance_client = GlanceClient(endpoint, **self.credentials)
         return self._glance_client
 
@@ -39,7 +41,8 @@ class OpenStack(object):
     def keystone(self):
         if not self._keystone_client:
             self._keystone_client = KeystoneClient(**self.credentials)
-            self.credentials.update({'token': self._keystone_client.auth_token})
+            self.credentials.update(
+                {'token': self._keystone_client.auth_token})
         return self._keystone_client
 
     def launch_stack(self, name, template_path, parameters):
@@ -54,7 +57,8 @@ class OpenStack(object):
             utils.wait_until(
                 lambda: get_the_stack().status == 'CREATE_COMPLETE')
             stack = get_the_stack()
-            return (stack, {o['output_key']: o['output_value'] for o in stack.outputs})
+            return (stack, {o['output_key']: o['output_value']
+                            for o in stack.outputs})
 
     def find_image(self, name_regexp):
         pattern = re.compile(name_regexp)

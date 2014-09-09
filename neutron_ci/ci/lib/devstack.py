@@ -52,14 +52,16 @@ class DevStack(object):
         with settings(host_string=self.host_string):
             if exists(self._clone_path):
                 if force:
-                    logger.info(
-                        '{0} already exists. Remove it.'.format(self._clone_path))
+                    logger.info('{0} already exists. Remove it.'
+                                ''.format(self._clone_path))
                     run('rm -rf {0}'.format(self._clone_path))
                 else:
-                    logger.error('{0} already exists.'.format(self._clone_path))
+                    logger.error('{0} already exists.'
+                                 ''.format(self._clone_path))
                     return
             cmd = 'git clone --depth=1 -q -b {branch} {url} {dest}'.format(
-                branch=self._git_branch, url=self._git_url, dest=self._clone_path)
+                branch=self._git_branch, url=self._git_url,
+                dest=self._clone_path)
             output = run(cmd)
             logger.info(output)
 
@@ -74,8 +76,8 @@ class DevStack(object):
             put(localrc_io, self.localrc_path)
 
     def _put_local_conf(self):
-        logger.info(
-                'Writing local.conf file to {0}'.format(self.localconf_path))
+        logger.info('Writing local.conf file to {0}'
+                    ''.format(self.localconf_path))
         logger.debug(self.local_conf)
         with settings(host_string=self.host_string):
             if self.local_conf is None:
@@ -100,8 +102,9 @@ class DevStack(object):
         logger.info('Download gerrit ref {0}'.format(ref))
         with settings(host_string=self.host_string):
             with cd(self._clone_path):
-                cmd = "git fetch {g} {ref} && git cherry-pick FETCH_HEAD" \
-                  "".format(g=gerrit, ref=ref)
+                cmd = "git fetch {g} {ref} && " \
+                      "git cherry-pick FETCH_HEAD" \
+                      "".format(g=gerrit, ref=ref)
                 run(cmd, shell=True)
 
     def stack(self):
