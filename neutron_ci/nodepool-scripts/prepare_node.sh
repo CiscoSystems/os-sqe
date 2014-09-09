@@ -8,8 +8,7 @@ ssh-keygen -P '' -f /home/ubuntu/.ssh/id_rsa
 cat /home/ubuntu/.ssh/id_rsa.pub >> /home/ubuntu/.ssh/authorized_keys
 
 # Install packages
-sudo apt-get install -y python-pip libxml2-dev libxslt1-dev python-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev
-sudo pip install ecdsa junitxml
+sudo apt-get install -y libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev
 
 # Install Cisco ncclient
 sudo pip uninstall -y ncclient || :

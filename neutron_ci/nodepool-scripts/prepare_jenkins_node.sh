@@ -10,4 +10,5 @@ echo "apt_preserve_sources_list: true" | sudo tee /etc/cloud/cloud.cfg.d/99-loca
 sudo cp sources.list /etc/apt/
 sudo apt-get update
 
-sudo apt-get install -y openjdk-6-jre git
+sudo apt-get install -y openjdk-6-jre git python-pip python-dev
+sudo pip install ecdsa junitxml
