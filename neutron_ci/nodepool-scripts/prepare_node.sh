@@ -7,9 +7,6 @@ bash ./prepare_jenkins_node.sh
 ssh-keygen -P '' -f /home/ubuntu/.ssh/id_rsa
 cat /home/ubuntu/.ssh/id_rsa.pub >> /home/ubuntu/.ssh/authorized_keys
 
-# Install packages
-sudo apt-get install -y libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev
-
 # Install Cisco ncclient
 sudo pip uninstall -y ncclient || :
 NCCLIENT_DIR=/opt/git/ncclient
