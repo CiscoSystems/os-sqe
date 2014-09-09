@@ -287,6 +287,8 @@ class MultinodeTestCase(TestCase):
                     use_sudo=True)
                 run('sudo ifup eth1')
 
+                run('sudo ip link set dev eth0 mtu 1450')
+
         with settings(host_string=cls.VMs['control'].ip):
             # Configure eth2. Used to connect to Titanium mgmt interface
             eth2_cfg = StringIO.StringIO()
