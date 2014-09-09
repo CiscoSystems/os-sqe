@@ -280,13 +280,12 @@ class MultinodeTestCase(TestCase):
         hosts += hosts_ptrn.format(ip=cls.VMs['compute'].ip,
                                    hostname='compute-server')
         for vm in cls.VMs.itervalues():
-            with settings(warn_only=True):
-                vm_ready = lambda: \
-                    not local('ping -c 1 {ip}'.format(ip=vm.ip)).failed
-                wait_until(vm_ready, timeout=60 * 5)
-                time.sleep(5)
-
             with settings(host_string=vm.ip):
+                with settings(warn_only=True):
+                    vm_ready = lambda: not run('ls').failed
+                    if wait_until(vm_ready, timeout=60 * 5):
+                        raise Exception('VM {0} failed'.format(vm.name))
+
                 # hostname
                 hostname = StringIO.StringIO()
                 hostname.write(vm.name)
@@ -307,9 +306,9 @@ class MultinodeTestCase(TestCase):
                     '\tdown ifconfig $IFACE 0.0.0.0 down'])
                 put(eth1_cfg, '/etc/network/interfaces.d/eth1.cfg',
                     use_sudo=True)
-                run('sudo ifup eth1')
+                sudo('ifup eth1')
 
-                run('sudo ip link set dev eth0 mtu 1450')
+                sudo('ip link set dev eth0 mtu 1450')
 
         with settings(host_string=cls.VMs['control'].ip):
             # Configure eth2. Used to connect to Titanium mgmt interface
@@ -322,7 +321,7 @@ class MultinodeTestCase(TestCase):
                 '\tgateway {0}'.format(MGMT_NET[1])])
             put(eth2_cfg, '/etc/network/interfaces.d/eth2.cfg',
                 use_sudo=True)
-            run('sudo ifup eth2')
+            sudo('ifup eth2')
 
             # Wait for Titanium VM
             with settings(warn_only=True):
