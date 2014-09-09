@@ -138,7 +138,7 @@ class MultinodeTestCase(TestCase):
         # Fabric's environment variables
         env.disable_known_hosts = True
         env.abort_exception = Exception
-        env.key_filename = os.path.expanduser('~/id_rsa')
+        env.key_filename = os.path.join(WORKSPACE, 'id_rsa')
         env.user = 'ubuntu'
 
         cls.disks = []
@@ -147,9 +147,9 @@ class MultinodeTestCase(TestCase):
         ID = int(time.time())
         USER_DATA_YAML = 'files/2-role/user-data.yaml'
         LIBVIRT_IMGS = '/var/lib/libvirt/images'
-        UBUNTU_CLOUD_IMG = os.path.expanduser(
-            '~/devstack-trusty.template.openstack.org.qcow')
-        TITANIUM_IMG = os.path.expanduser('~/titanium.qcow')
+        UBUNTU_CLOUD_IMG = os.path.join(
+            WORKSPACE, 'devstack-trusty.template.openstack.org.qcow')
+        TITANIUM_IMG = os.path.join(WORKSPACE, 'titanium.qcow')
         DISK_SIZE = 20
         ADMIN_NET = cls.get_free_subnet('192.168.0.0/16', 24)
         MGMT_NET = IPNetwork('192.168.254.0/24')
