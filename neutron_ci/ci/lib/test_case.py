@@ -263,6 +263,7 @@ class MultinodeTestCase(TestCase):
             with settings(warn_only=True):
                 vm_ready = lambda: not local('ping -c 1 {ip}'.format(ip=vm.ip)).failed
                 wait_until(vm_ready, timeout=60 * 5)
+                time.sleep(5)
 
             with settings(host_string=vm.ip):
                 # hostname
