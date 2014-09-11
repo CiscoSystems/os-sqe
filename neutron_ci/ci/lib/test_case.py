@@ -141,8 +141,6 @@ class MultinodeTestCase(TestCase):
         env.key_filename = os.path.join(WORKSPACE, 'id_rsa')
         env.user = 'ubuntu'
 
-        cls.disks = []
-
         # Parameters
         ID = int(time.time())
         USER_DATA_YAML = 'files/2-role/user-data.yaml'
@@ -176,7 +174,6 @@ class MultinodeTestCase(TestCase):
                                        'ubuntu-cloud{0}.qcow'.format(ID))
         local('sudo qemu-img convert -O qcow2 {source} {dest}'.format(
             source=UBUNTU_CLOUD_IMG, dest=ubuntu_img_path))
-        cls.disks.append(ubuntu_img_path)
 
         # Create admin network
         admin_net_xml = os.path.join(PARENT_FOLDER_PATH,
@@ -210,8 +207,6 @@ class MultinodeTestCase(TestCase):
             s=ubuntu_img_path, d=control_server_disk, size=DISK_SIZE))
         local('sudo cloud-localds {d} {user_data}'.format(
             d=control_conf_disk, user_data=USER_DATA_YAML))
-        cls.disks.append(control_server_disk)
-        cls.disks.append(control_conf_disk)
 
         cntrl_server_xml = os.path.join(PARENT_FOLDER_PATH,
                                         'files/2-role/control-server.xml')
@@ -237,8 +232,6 @@ class MultinodeTestCase(TestCase):
             s=ubuntu_img_path, d=compute_server_disk, size=DISK_SIZE))
         local('sudo cloud-localds {d} {user_data}'.format(
             d=compute_conf_disk, user_data=USER_DATA_YAML))
-        cls.disks.append(compute_server_disk)
-        cls.disks.append(compute_conf_disk)
 
         compute_server_xml = os.path.join(PARENT_FOLDER_PATH,
                                           'files/2-role/compute-server.xml')
@@ -259,7 +252,6 @@ class MultinodeTestCase(TestCase):
                                      'titanium{0}.qcow'.format(ID))
         local('sudo cp {source} {dest}'.format(
             source=TITANIUM_IMG, dest=titanium_disk))
-        cls.disks.append(titanium_disk)
         titanium_xml = os.path.join(PARENT_FOLDER_PATH,
                                     'files/2-role/titanium.xml')
         with open(titanium_xml) as f:
@@ -333,28 +325,3 @@ class MultinodeTestCase(TestCase):
             # Add titanium public key to known_hosts
             run('ssh-keyscan -t rsa {ip} >> '
                 '~/.ssh/known_hosts'.format(ip=NEXUS_IP))
-
-    @classmethod
-    def tearDownClass(cls):
-        with settings(warn_only=True):
-            # Undefine virtual machines
-            for key, vm in cls.VMs.iteritems():
-                local('sudo virsh destroy {0}'.format(vm.name))
-                local('sudo virsh undefine {0}'.format(vm.name))
-
-            # Undefine titanium VM
-            local('sudo virsh destroy {0}'.format(cls.TITANIUM))
-            local('sudo virsh undefine {0}'.format(cls.TITANIUM))
-
-            # Undefine networks
-            local('sudo virsh net-destroy {0}'.format(cls.ADMIN_NAME))
-            local('sudo virsh net-undefine {0}'.format(cls.ADMIN_NAME))
-
-            # Delete bridges
-            for name in (cls.BRIDGE1, cls.BRIDGE2, cls.BRIDGE_MGMT):
-                local('sudo ip link set dev {0} down'.format(name))
-                local('sudo brctl delbr {0}'.format(name))
-
-            # Delete disks
-            for d in cls.disks:
-                local('sudo rm {0}'.format(d))
