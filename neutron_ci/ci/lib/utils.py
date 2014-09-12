@@ -17,6 +17,7 @@
 import logging
 import subprocess
 import os
+import time
 from ci import PARENT_FOLDER_PATH
 
 
@@ -41,7 +42,8 @@ def run_cmd_line(cmd_str, stderr=None, shell=False, check_result=True):
 
 def clear_nexus_config(ip, user, password, intf_num, vlan_start, vlan_end):
     logger.info('Clearing nexus config')
-    script_path = os.path.join(PARENT_FOLDER_PATH, 'tools/clear_nexus_config.py')
+    script_path = os.path.join(PARENT_FOLDER_PATH,
+                               'tools/clear_nexus_config.py')
     cmd = 'python {script} {ip} {user} {password} {intf_num} {vlan_start} ' \
           '{vlan_end}' \
           ''.format(script=script_path,
@@ -55,3 +57,15 @@ def get_public_key(host):
     cmd = 'ssh-keyscan -t rsa {host}'.format(host=host)
     output, code = run_cmd_line(cmd)
     return output
+
+
+def wait_until(predicate, timeout=60, period=5):
+    end = time.time() + timeout
+    while time.time() < end:
+        try:
+            if predicate():
+                return True
+        except Exception as e:
+            logger.warning(e)
+        time.sleep(period)
+    return False

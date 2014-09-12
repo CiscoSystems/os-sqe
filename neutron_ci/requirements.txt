@@ -5,3 +5,6 @@ testtools
 netifaces
 nose
 fabric
+python-heatclient
+python-keystoneclient
+python-glanceclient
