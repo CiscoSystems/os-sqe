@@ -66,22 +66,22 @@ class DevStack(object):
             logger.info(output)
 
     def _put_localrc(self):
+        if self.localrc is None:
+            return
         logger.info('Writing localrc file to {0}'.format(self.localrc_path))
         logger.debug(self.localrc)
         with settings(host_string=self.host_string):
-            if self.localrc is None:
-                return
             localrc_io = StringIO.StringIO()
             localrc_io.write(self.localrc)
             put(localrc_io, self.localrc_path)
 
     def _put_local_conf(self):
+        if self.local_conf is None:
+            return
         logger.info('Writing local.conf file to {0}'
                     ''.format(self.localconf_path))
         logger.debug(self.local_conf)
         with settings(host_string=self.host_string):
-            if self.local_conf is None:
-                return
             local_conf_io = StringIO.StringIO()
             local_conf_io.write(self.local_conf)
             put(local_conf_io, self.localconf_path)
