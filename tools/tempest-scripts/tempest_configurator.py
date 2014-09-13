@@ -10,6 +10,7 @@ import re
 import os
 import sys
 import urllib
+import urlparse
 import ConfigParser
 
 __author__ = 'sshnaidm'
@@ -34,9 +35,11 @@ ALT_TENANT = "alt_demo"
 DEFAULT_IPV4_INT = "192.168.1"
 DEFAULT_IPV6_INT = "fd00::"
 
-CIRROS_URL = "http://172.29.173.233/cirros-0.3.2-x86_64-disk.img"
-CIRROS_UEC_URL = "http://download.cirros-cloud.net/0.3.2/cirros-0.3.2-x86_64-uec.tar.gz"
-UBUNTU_URL = "http://172.29.173.233/cirros-0.3.2-x86_64-disk.img"
+
+CIRROS_UEC_URL = "http://download.cirros-cloud.net/0.3.2/cirros-0.3.3-x86_64-uec.tar.gz"
+
+IMAGES = [('cirros', 'http://172.29.173.233/cirros-0.3.3-x86_64-disk.img'),
+          ('ubuntu', 'http://172.29.173.233/trusty-server-cloudimg-amd64-disk1.img')]
 
 class OS:
 
@@ -81,12 +84,14 @@ class OSWebCreds:
             "password": self.password,
         }
         s = requests.Session()
-        add_url = "/horizon"
-        url = "http://" + self.ip
-        login_page = s.get(url + add_url)
-        if login_page.status_code != requests.codes.ok:
-            add_url = ""
-            login_page = s.get(url)
+        add_urls = ["/horizon", "", "/dashboard"]
+        for add_url in add_urls:
+            url = "http://" + self.ip
+            login_page = s.get(url + add_url)
+            if login_page.status_code == requests.codes.ok:
+                break
+        else:
+            raise NameError("Can not download login page!")
         token = token_re.search(login_page.content).group(1)
         region = region_re.search(login_page.content).group(1)
         local_params.update({"csrfmiddlewaretoken": token})
@@ -180,21 +185,19 @@ class Tempest:
             os.makedirs(img_dir)
         if not os.path.exists(self.locks_dir):
             os.makedirs(self.locks_dir)
-        print "Downloading cirros-0.3.2-x86_64-disk.img ...."
-        img_path = os.path.join(img_dir, "cirros-0.3.2-x86_64-disk.img")
-        urllib.urlretrieve(CIRROS_URL, img_path)
-        img1 = self.glance.images.create(
-            data=open(img_path, 'rb'),
-            name="cirros-0.3.2",
-            disk_format="qcow2",
-            container_format="bare",
-            is_public=True)
-        img2 = self.glance.images.create(
-            data=open(img_path, 'rb'),
-            name="ubuntu",
-            disk_format="qcow2",
-            container_format="bare",
-            is_public=True)
+
+        registered_images = []
+        for image_name, image_url in IMAGES:
+            img_path = os.path.join(img_dir + urlparse.urlparse(image_url).path)
+            print 'Downloading {0} to {1}....'.format(image_url, img_path)
+            urllib.urlretrieve(image_url, img_path)
+            registered_images.append(self.glance.images.create(
+                data=open(img_path, 'rb'),
+                name=image_name,
+                disk_format="qcow2",
+                container_format="bare",
+                is_public=True))
+
         demo_tenant = self.keystone.tenants.create(DEMO_TENANT)
         demo_user = self.keystone.users.create(
             name=DEMO_USER,
@@ -305,8 +308,8 @@ class Tempest:
         if not os.path.exists(self.tmp_dir + "cirros-0.3.2-x86_64-uec.tar.gz"):
             urllib.urlretrieve(CIRROS_UEC_URL, self.tmp_dir + "cirros-0.3.2-x86_64-uec.tar.gz")
         return {
-            "image_ref1": img1.id,
-            "image_ref2": img2.id,
+            "image_ref1": registered_images[0].id,
+            "image_ref2": registered_images[1].id,
             "admin_tenant": admin_tenant,
             "admin": admin,
             "ip": ip_re.search(self.creds["OS_AUTH_URL"]).group(1),

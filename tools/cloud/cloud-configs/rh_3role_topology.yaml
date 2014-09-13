@@ -1,0 +1,48 @@
+servers:
+  build-server:
+    params:
+      hostname: control
+      count: 1
+      storage: 60
+      add_disks:
+      ram: 8
+      cpu: 1
+      networks:
+        - admin
+        - external
+  control-server:
+    params:
+      hostname: network
+      count: 1
+      storage: 30
+      add_disks:
+      ram: 4
+      cpu: 1
+      networks:
+        - admin
+        - external
+  compute-server:
+    params:
+      hostname: compute
+      count: 1
+      storage: 60
+      add_disks:
+      ram: 8
+      cpu: 1
+      networks:
+        - admin
+        - external
+networks:
+  - admin:
+      dhcp: true
+      external: false
+      nat: true
+      dns:
+        control: 2
+        network: 3
+        compute: 4
+  - external:
+      dhcp: false
+      external: true
+      nat: true
+      dns:

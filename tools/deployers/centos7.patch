@@ -1,0 +1,156 @@
+reverted:
+--- newdir/modules/apache/manifests/version.pp	2014-09-11 23:32:46.237343525 +0000
++++ olddir/modules/apache/manifests/version.pp	2014-09-11 23:34:22.496343525 +0000
+@@ -5,14 +5,14 @@
+ class apache::version {
+   case $::osfamily {
+     'RedHat': {
++      if ($::operatingsystem == 'Fedora' and $::operatingsystemmajrelease >= 18) or ($::operatingsystem != 'Fedora' and $::operatingsystemmajrelease >= 7) {
+-      if ($::operatingsystem == 'Fedora' and $::operatingsystemrelease >= 18) or ($::operatingsystem != 'Fedora' and $::operatingsystemrelease >= 7) {
+         $default = 2.4
+       } else {
+         $default = 2.2
+       }
+     }
+     'Debian': {
++      if $::operatingsystem == 'Ubuntu' and $::operatingsystemmajrelease >= 13.10 {
+-      if $::operatingsystem == 'Ubuntu' and $::operatingsystemrelease >= 13.10 {
+         $default = 2.4
+       } else {
+         $default = 2.2
+reverted:
+--- newdir/modules/horizon/spec/classes/horizon_init_spec.rb	2014-09-11 23:32:46.289343525 +0000
++++ olddir/modules/horizon/spec/classes/horizon_init_spec.rb	2014-09-11 23:33:56.729343525 +0000
+@@ -231,7 +231,7 @@
+     before do
+       facts.merge!({
+         :osfamily               => 'RedHat',
++        :operatingsystemmajrelease => '6.0'
+-        :operatingsystemrelease => '6.0'
+       })
+     end
+ 
+@@ -248,7 +248,7 @@
+     before do
+       facts.merge!({
+         :osfamily               => 'Debian',
++        :operatingsystemmajrelease => '6.0'
+-        :operatingsystemrelease => '6.0'
+       })
+     end
+ 
+reverted:
+--- newdir/modules/horizon/spec/classes/horizon_wsgi_apache_spec.rb	2014-09-11 23:32:46.289343525 +0000
++++ olddir/modules/horizon/spec/classes/horizon_wsgi_apache_spec.rb	2014-09-11 23:34:08.065343525 +0000
+@@ -175,7 +175,7 @@
+     before do
+       facts.merge!({
+         :osfamily               => 'RedHat',
++        :operatingsystemmajrelease => '6.0'
+-        :operatingsystemrelease => '6.0'
+       })
+     end
+ 
+@@ -198,7 +198,7 @@
+     before do
+       facts.merge!({
+         :osfamily               => 'Debian',
++        :operatingsystemmajrelease => '6.0'
+-        :operatingsystemrelease => '6.0'
+       })
+     end
+ 
+reverted:
+--- newdir/modules/mysql/manifests/params.pp	2014-09-11 23:32:46.306343525 +0000
++++ olddir/modules/mysql/manifests/params.pp	2014-09-11 23:33:28.293343525 +0000
+@@ -59,13 +59,18 @@
+         $includedir          = undef
+         $pidfile             = '/var/run/mariadb/mariadb.pid'
+       } else {
++#        $client_package_name = 'mysql'
++#        $server_package_name = 'mysql-server'
++        $client_package_name = 'mariadb'
++        $server_package_name = 'mariadb-server'
++#        $service_name = 'mysqld'
++        $service_name = 'mariadb'
++#        $log_error           = '/var/log/mysqld.log'
++        $log_error = '/var/log/mariadb/mariadb.log'
+-        $client_package_name = 'mysql'
+-        $server_package_name = 'mysql-server'
+-        $service_name = 'mysqld'
+-        $log_error           = '/var/log/mysqld.log'
+         $config_file         = '/etc/my.cnf'
+         $includedir          = '/etc/my.cnf.d'
++        $pidfile = '/var/run/mariadb/mariadb.pid'
++#        $pidfile             = '/var/run/mysqld/mysqld.pid'
+-        $pidfile             = '/var/run/mysqld/mysqld.pid'
+       }
+ 
+       $basedir               = '/usr'
+@@ -76,9 +81,12 @@
+       $python_package_name   = 'MySQL-python'
+       $java_package_name     = 'mysql-connector-java'
+       $root_group            = 'root'
++#      $ssl_ca                = '/etc/mysql/cacert.pem'
++#      $ssl_cert              = '/etc/mysql/server-cert.pem'
++#      $ssl_key               = '/etc/mysql/server-key.pem'
++     $ssl_ca = '/etc/pki/mariadb/cacert.pem'
++     $ssl_cert = '/etc/pki/mariadb/server-cert.pem'
++     $ssl_key = '/etc/pki/mariadb/server-key.pem'
+-      $ssl_ca                = '/etc/mysql/cacert.pem'
+-      $ssl_cert              = '/etc/mysql/server-cert.pem'
+-      $ssl_key               = '/etc/mysql/server-key.pem'
+     }
+ 
+     'Debian': {
+reverted:
+--- newdir/modules/mysql/templates/my.cnf.erb	2014-09-11 23:32:46.308343525 +0000
++++ olddir/modules/mysql/templates/my.cnf.erb	2014-09-11 23:33:44.559343525 +0000
+@@ -3,6 +3,7 @@
+ socket    = <%= socket %>
+ [mysqld_safe]
+ socket    = <%= socket %>
++pid-file = <%= pidfile %>
+ nice    = 0
+ [mysqld]
+ user    = mysql
+reverted:
+--- newdir/modules/nova/manifests/compute/libvirt.pp	2014-09-11 23:32:46.323343525 +0000
++++ olddir/modules/nova/manifests/compute/libvirt.pp	2014-09-11 23:33:08.364343525 +0000
+@@ -109,16 +109,16 @@
+     }
+   }
+ 
++#  if($::osfamily == 'RedHat' and $::operatingsystem != 'Fedora') {
++#    service { 'messagebus':
++#      ensure   => running,
++#      enable   => true,
++#      provider => $::nova::params::special_service_provider,
++#    }
++#    Package['libvirt'] -> Service['messagebus'] -> Service['libvirt']
++#
++#  }
++#
+-  if($::osfamily == 'RedHat' and $::operatingsystem != 'Fedora') {
+-    service { 'messagebus':
+-      ensure   => running,
+-      enable   => true,
+-      provider => $::nova::params::special_service_provider,
+-    }
+-    Package['libvirt'] -> Service['messagebus'] -> Service['libvirt']
+-
+-  }
+-
+   if $migration_support {
+     if $vncserver_listen != '0.0.0.0' {
+       fail('For migration support to work, you MUST set vncserver_listen to \'0.0.0.0\'')
+@@ -136,7 +136,8 @@
+     ensure   => running,
+     enable   => true,
+     name     => $::nova::params::libvirt_service_name,
++#    provider => $::nova::params::special_service_provider,
++    provider => undef,
+-    provider => $::nova::params::special_service_provider,
+     require  => Package['libvirt'],
+   }
+ 

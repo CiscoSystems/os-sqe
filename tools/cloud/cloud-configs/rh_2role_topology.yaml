@@ -1,0 +1,36 @@
+servers:
+  control-server:
+    params:
+      hostname: control
+      count: 1
+      storage: 60
+      add_disks:
+      ram: 8
+      cpu: 1
+      networks:
+        - admin
+        - external
+  compute-server:
+    params:
+      hostname: compute
+      count: 1
+      storage: 60
+      add_disks:
+      ram: 8
+      cpu: 1
+      networks:
+        - admin
+        - external
+networks:
+  - admin:
+      dhcp: true
+      external: false
+      nat: true
+      dns:
+        control: 2
+        compute: 3
+  - external:
+      dhcp: false
+      external: true
+      nat: true
+      dns:
