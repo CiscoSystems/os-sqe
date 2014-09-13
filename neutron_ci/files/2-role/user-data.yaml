@@ -1,0 +1,14 @@
+#cloud-config
+users:
+   - default
+   - name: multinode
+     lock-passwd: false
+     sudo: ALL=(ALL) NOPASSWD:ALL
+     # ubuntu
+     passwd: $6$rounds=4096$A0eKrix5oH$4F70Syi4jfhMCRygdOUC.d.qItQ57KsmW8CHhs42r/bPm7ySXdYLoHCdpg3SLlWZlv9FnRAUhgp8C23DiVZr9.
+     ssh-authorized-keys:
+       - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCnuQX9rjWJcKPtTbnh4LVTFaFupJ0lVeB64AdtztG23aTgFCJwzv1mN6ZLhoY6Ky7pGi/uhiYXzh9p2ZZNKNZ7HNvqPNUf/9KNbJTwFXdcSPyUGaDULauqHsCCxSkJPNrhsM8/PCo+KExgTLwWXmPbX5YUVnYbtm55G9VafwXiYL94Rv8YzuU7Uftj2qGNq6rJ6Tzkz56Jm2BsLb4H4ntEzPBmbIDhI18ezuBdO0Z4IpHeCi6fTJd1fDKNHbVnyxS/OD71WFyTFzB678fWJmApu9W7sQx2SSnKERm80zUGezH+F6QzXWB0RKY8qycfOr1Iz4F8vgZxWzmmhZ9Z9AwR user@vm.localdomain
+
+packages:
+   - git
+   - python-pip
