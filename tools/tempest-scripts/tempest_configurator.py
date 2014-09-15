@@ -187,7 +187,6 @@ class Tempest:
         registered_images = []
         for image_name, image_url in IMAGES:
             img_path = os.path.join(img_dir + urlparse.urlparse(image_url).path)
-            print img_dir, urlparse.urlparse(image_url).path
             print 'Downloading {0} to {1}....'.format(image_url, img_path)
             urllib.urlretrieve(image_url, img_path)
             registered_images.append(self.glance.images.create(
