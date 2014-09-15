@@ -12,7 +12,7 @@ CENTOS7_DISK=centos-7.x86_64.qcow2
 FEDORA20_DISK=fedora-20.x86_64.qcow2
 
 ifndef REDHAT_DISK
-    REDHAT_DISK=$(CENTOS7_DISK)
+	REDHAT_DISK=$(CENTOS7_DISK)
 endif
 REDHAT_URL="http://172.29.173.233/"$(REDHAT_DISK)
 ifndef LAB
@@ -93,19 +93,19 @@ prepare-fullha-cobbler:
 	time $(PYTHON) ./tools/cloud/create.py -b net -l ${LAB} -s /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img -t fullha > config_file
 
 prepare-aio-rh:
-        @echo "$(CYAN)>>>> Preparing AIO for CentOS...$(RESET)"
-        test -e centos-7.x86_64.qcow2 || wget -nv ${REDHAT_URL}
-        time $(PYTHON) ./tools/cloud/create.py -l ${LAB} -s /opt/imgs -z ./${REDHAT_DISK} -r redhat -c ./tools/cloud/cloud-configs/aio_rh_topology.yaml > config_file
+	@echo "$(CYAN)>>>> Preparing AIO for CentOS...$(RESET)"
+	test -e centos-7.x86_64.qcow2 || wget -nv ${REDHAT_URL}
+	time $(PYTHON) ./tools/cloud/create.py -l ${LAB} -s /opt/imgs -z ./${REDHAT_DISK} -r redhat -c ./tools/cloud/cloud-configs/aio_rh_topology.yaml > config_file
 
 prepare-2role-rh:
-        @echo "$(CYAN)>>>> Preparing AIO for CentOS...$(RESET)"
-        test -e centos-7.x86_64.qcow2 || wget -nv ${REDHAT_URL}
-        time $(PYTHON) ./tools/cloud/create.py -l ${LAB} -s /opt/imgs -z ./${REDHAT_DISK} -r redhat -c ./tools/cloud/cloud-configs/rh_2role_topology.yaml > config_file
+	@echo "$(CYAN)>>>> Preparing AIO for CentOS...$(RESET)"
+	test -e centos-7.x86_64.qcow2 || wget -nv ${REDHAT_URL}
+	time $(PYTHON) ./tools/cloud/create.py -l ${LAB} -s /opt/imgs -z ./${REDHAT_DISK} -r redhat -c ./tools/cloud/cloud-configs/rh_2role_topology.yaml > config_file
 
 prepare-3role-rh:
-        @echo "$(CYAN)>>>> Preparing AIO for CentOS...$(RESET)"
-        test -e centos-7.x86_64.qcow2 || wget -nv ${REDHAT_URL}
-        time $(PYTHON) ./tools/cloud/create.py -l ${LAB} -s /opt/imgs -z ./${REDHAT_DISK} -r redhat -c ./tools/cloud/cloud-configs/rh_3role_topology.yaml > config_file
+	@echo "$(CYAN)>>>> Preparing AIO for CentOS...$(RESET)"
+	test -e centos-7.x86_64.qcow2 || wget -nv ${REDHAT_URL}
+	time $(PYTHON) ./tools/cloud/create.py -l ${LAB} -s /opt/imgs -z ./${REDHAT_DISK} -r redhat -c ./tools/cloud/cloud-configs/rh_3role_topology.yaml > config_file
 
 give-a-time:
 	sleep 180
@@ -143,16 +143,16 @@ install-devstack:
 	#time $(PYTHON) ./tools/deployers/install_coi.py -c config_file  -u localadmin -p ubuntu -s devstack
 
 install-aio-rh:
-        @echo "$(CYAN)>>>> Installing AIO with CentOS ...$(RESET)"
-        time $(PYTHON) ./tools/deployers/install_aio_rh.py -c config_file -u root -p ubuntu
+	@echo "$(CYAN)>>>> Installing AIO with CentOS ...$(RESET)"
+	time $(PYTHON) ./tools/deployers/install_aio_rh.py -c config_file -u root -p ubuntu
 
 install-rh-2role:
-        @echo "$(CYAN)>>>> Installing AIO with CentOS ...$(RESET)"
-        time $(PYTHON) ./tools/deployers/install_aio_rh.py -c config_file -u root -p ubuntu -t 2role
+	@echo "$(CYAN)>>>> Installing AIO with CentOS ...$(RESET)"
+	time $(PYTHON) ./tools/deployers/install_aio_rh.py -c config_file -u root -p ubuntu -t 2role
 
 install-rh-3role:
-        @echo "$(CYAN)>>>> Installing AIO with CentOS ...$(RESET)"
-        time $(PYTHON) ./tools/deployers/install_aio_rh.py -c config_file -u root -p ubuntu -t 3role
+	@echo "$(CYAN)>>>> Installing AIO with CentOS ...$(RESET)"
+	time $(PYTHON) ./tools/deployers/install_aio_rh.py -c config_file -u root -p ubuntu -t 3role
 
 
 prepare-devstack-tempest:
@@ -173,12 +173,12 @@ prepare-tempest:
 	mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
 
 prepare-tempest-rh:
-        echo "$(CYAN)>>>> Running devstack on tempest...$(RESET)"
-        time python ${WORKSPACE}/tempest/tools/install_venv.py
-        ${WORKSPACE}/tempest/.venv/bin/pip install junitxml python-ceilometerclient nose testresources testtools
-        . ${WORKSPACE}/tempest/.venv/bin/activate
-        time $(TPATH)/python ./tools/tempest-scripts/tempest_configurator.py -i $$(cat ${WORKSPACE}/openstack-sqe/config_file  | grep -Eo  "ip: ([0-9\.]+)" | sort | head -1 | sed "s/ip: //g")
-        mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
+	echo "$(CYAN)>>>> Running devstack on tempest...$(RESET)"
+	time python ${WORKSPACE}/tempest/tools/install_venv.py
+	${WORKSPACE}/tempest/.venv/bin/pip install junitxml python-ceilometerclient nose testresources testtools
+	. ${WORKSPACE}/tempest/.venv/bin/activate
+	time $(TPATH)/python ./tools/tempest-scripts/tempest_configurator.py -i $$(cat ${WORKSPACE}/openstack-sqe/config_file  | grep -Eo  "ip: ([0-9\.]+)" | sort | head -1 | sed "s/ip: //g")
+	mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
 
 run-tests:
 	@echo "$(CYAN)>>>> Run tempest tests ...$(RESET)"
@@ -276,12 +276,10 @@ snap-devstack-tempest: snapshot-revert devstack-snap-prepare prepare-devstack-te
 snap-devstack-tempest-remote: init snapshot-revert devstack-snap-prepare
 snap-tempest: snapshot-revert snap-tempest-prepare
 
-
 rh-aio: init prepare-aio-rh give-a-time install-aio-rh
 rh-2role: init prepare-2role-rh give-a-time install-rh-2role
 rh-3role: init prepare-3role-rh give-a-time install-rh-3role
 rh-test: prepare-tempest-rh run-tests
-
 
 test-me:
 	@echo "$(CYAN)>>>> test your commands :) ...$(RESET)"
