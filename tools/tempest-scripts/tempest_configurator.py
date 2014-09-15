@@ -36,10 +36,10 @@ DEFAULT_IPV4_INT = "192.168.1"
 DEFAULT_IPV6_INT = "fd00::"
 
 
-CIRROS_UEC_URL = "http://download.cirros-cloud.net/0.3.2/cirros-0.3.2-x86_64-uec.tar.gz"
+CIRROS_UEC_URL = "http://download.cirros-cloud.net/0.3.2/cirros-0.3.3-x86_64-uec.tar.gz"
 
-IMAGES = {'cirros': 'http://172.29.173.233/cirros-0.3.2-x86_64-disk.img',
-          'ubuntu': 'http://172.29.173.233/trusty-server-cloudimg-amd64-disk1.img'}
+IMAGES = [('cirros', 'http://172.29.173.233/cirros-0.3.3-x86_64-disk.img'),
+          ('ubuntu', 'http://172.29.173.233/trusty-server-cloudimg-amd64-disk1.img')]
 
 class OS:
 
@@ -185,7 +185,7 @@ class Tempest:
             os.makedirs(self.locks_dir)
 
         registered_images = []
-        for image_name, image_url in IMAGES.iteritems():
+        for image_name, image_url in IMAGES:
             img_path = os.path.join(img_dir + urlparse.urlparse(image_url).path)
             print img_dir, urlparse.urlparse(image_url).path
             print 'Downloading {0} to {1}....'.format(image_url, img_path)
