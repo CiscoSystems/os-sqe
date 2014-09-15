@@ -84,12 +84,14 @@ class OSWebCreds:
             "password": self.password,
         }
         s = requests.Session()
-        add_url = "/horizon"
-        url = "http://" + self.ip
-        login_page = s.get(url + add_url)
-        if login_page.status_code != requests.codes.ok:
-            add_url = ""
-            login_page = s.get(url)
+        add_urls = ["/horizon", "", "/dashboard"]
+        for add_url in add_urls:
+            url = "http://" + self.ip
+            login_page = s.get(url + add_url)
+            if login_page.status_code == requests.codes.ok:
+                break
+        else:
+            raise NameError("Can not download login page!")
         token = token_re.search(login_page.content).group(1)
         region = region_re.search(login_page.content).group(1)
         local_params.update({"csrfmiddlewaretoken": token})
