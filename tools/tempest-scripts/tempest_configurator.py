@@ -331,6 +331,9 @@ class Tempest:
             tempest_dir = os.path.abspath(
                 os.path.join(
                     os.path.dirname(__file__), "..", "..", "..","tempest/.venv/bin"))
+        if not os.path.exists(tempest_dir):
+            tempest_dir = os.path.join(os.path.expanduser("~"), ".venv", "bin")
+        tempest_dir = os.path.normpath(tempest_dir)
         parser = ConfigParser.SafeConfigParser(defaults={
             "debug": "True",
             "log_file": "tempest.log",
