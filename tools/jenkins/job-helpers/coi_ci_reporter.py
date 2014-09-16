@@ -266,7 +266,7 @@ def pretty_report(data):
                 name=TOPOS[topo]["name"],
                 **data[topo])
     main_template = """
-<h2>COI CI report</h3>
+<h2>{report_name} report</h3>
 <h3>build #{build_number} of {date}</h4>
     <table>
 <tr>
@@ -282,6 +282,7 @@ def pretty_report(data):
 {topos}
 </table>
 """.format(
+        report_name=os.environ.get("REPORT_NAME", ""),
         topos=topos_template,
         build_number=os.environ["BUILD_NUMBER"],
         date=os.environ["BUILD_ID"].split("_")[0])
