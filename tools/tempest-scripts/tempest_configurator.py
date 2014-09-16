@@ -19,6 +19,7 @@ env_re = re.compile("export (OS_[A-Z0-9_]+=.*$)")
 token_re = re.compile("name='csrfmiddlewaretoken' value='([^']+)'")
 ip_re = re.compile("((?:\d+\.){3}\d+)")
 region_re = re.compile('name="region" type="hidden" value="([^"]+)"')
+action_re = re.compile('action="([^"]+)"')
 
 NOVACLIENT_VERSION = '2'
 CINDERCLIENT_VERSION = '1'
@@ -88,7 +89,9 @@ class OSWebCreds:
         for add_url in add_urls:
             url = "http://" + self.ip
             login_page = s.get(url + add_url)
-            if login_page.status_code == requests.codes.ok:
+            if (login_page.status_code == requests.codes.ok
+                and "csrfmiddlewaretoken" in login_page.content):
+                real_url = login_page.url
                 break
         else:
             raise NameError("Can not download login page!")
@@ -96,9 +99,10 @@ class OSWebCreds:
         region = region_re.search(login_page.content).group(1)
         local_params.update({"csrfmiddlewaretoken": token})
         local_params.update({"region": region})
-        login_url = "http://" + self.ip + add_url + "/auth/login/"
+        login_action = action_re.search(login_page.content).group(1)
+        login_url = "http://" + self.ip + login_action
         s.post(login_url, data=local_params)
-        rc_url = "http://" + self.ip + add_url + "/project/access_and_security/api_access/openrc/"
+        rc_url = real_url + "/project/access_and_security/api_access/openrc/"
         rc_file = s.get(rc_url)
         return rc_file
 
