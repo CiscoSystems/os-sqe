@@ -54,7 +54,7 @@ def setup(topology='devstack', user='localadmin', password='ubuntu'):
     log.info("Full install of devstack Openstack")
     prepare(topology=topology)
     time.sleep(GLOBAL_TIMEOUT)
-    install(topology=topology, user=user, password=password)
+    install(user=user, password=password)
 
 
 @task(alias='orig')
