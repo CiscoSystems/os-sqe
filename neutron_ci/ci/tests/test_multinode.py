@@ -6,11 +6,12 @@ from fabric.operations import put, run, get, local
 
 import urlparse
 from ci import ZUUL_URL, ZUUL_PROJECT, ZUUL_REF, \
-    NEXUS_VLAN_START, NEXUS_VLAN_END, SCREEN_LOG_PATH, \
+    NEXUS_VLAN_START, NEXUS_VLAN_END, BUILD_LOG_PATH, \
     NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD, \
     PARENT_FOLDER_PATH, WORKSPACE
 from ci.lib.devstack import DevStack
 from ci.lib.test_case import MultinodeTestCase
+from ci.lib.utils import makedirs
 
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_plugin_tests.txt')
@@ -139,8 +140,7 @@ class ML2MutinodeTest(MultinodeTestCase):
             'Q_PLUGIN_EXTRA_CONF_PATH': '/home/ubuntu/devstack',
             'Q_PLUGIN_EXTRA_CONF_FILES': Q_PLUGIN_EXTRA_CONF_FILES,
             'vlan_start': NEXUS_VLAN_START,
-            'vlan_end': NEXUS_VLAN_END,
-            'JOB_LOG_PATH': SCREEN_LOG_PATH,
+            'vlan_end': NEXUS_VLAN_END
         }
 
         cls.controller = DevStack(
@@ -182,14 +182,14 @@ class ML2MutinodeTest(MultinodeTestCase):
     @classmethod
     def tearDownClass(cls):
         # download devstack logs
-        for key, vm in cls.VMs.iteritems():
-            with settings(host_string=vm.ip, warn_only=True):
-                p = '~/screen-logs'
-                lp = os.path.join(WORKSPACE, 'logs-' + key)
-                run('mkdir {p}'.format(p=p))
-                run('find /opt/stack/screen-logs -type l '
-                    '-exec cp "{{}}" {p} \;'.format(p=p))
-                local('mkdir {0}'.format(lp))
-                get(p, lp)
-                get('~/devstack/local.conf',
-                    os.path.join(WORKSPACE, 'local.conf-' + key))
+        control_path = os.path.join(BUILD_LOG_PATH, 'logs-control')
+        makedirs(control_path)
+        cls.controller.get_locals(control_path)
+        cls.controller.get_screen_logs(control_path)
+        cls.controller.get_tempest_unitxml(BUILD_LOG_PATH)
+        cls.controller.get_tempest_html(BUILD_LOG_PATH)
+
+        compute_path = os.path.join(BUILD_LOG_PATH, 'logs-compute')
+        makedirs(compute_path)
+        cls.compute.get_locals(compute_path)
+        cls.compute.get_screen_logs(compute_path)

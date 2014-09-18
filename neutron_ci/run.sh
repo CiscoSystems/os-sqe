@@ -6,7 +6,6 @@ publish_to=$2
 publish_path=$3
 publish_login=$4
 publish_pass=$5
-workspace=$6
 
 sudo pip install -r requirements.txt
 
@@ -29,15 +28,12 @@ fi
 
 if [[ -n "${publish_to}" ]]; then
     echo "Publish test results..."
-    files='console.txt* local.conf*'
-    logspath=${publish_path}/${JOB_NAME}/${BUILD_NUMBER}/
-    cd $workspace
+    cd ${WORKSPACE}
+    logspath=${publish_path}/${JOB_NAME}/
+    find logs -exec gzip -9 {} \;
+    cp -vr logs ${BUILD_NUMBER}
     sshpass -p ${publish_pass} ssh -o StrictHostKeyChecking=no ${publish_login}@${publish_to} mkdir -p ${logspath}
-    sshpass -p ${publish_pass} rsync -ave "ssh -o StrictHostKeyChecking=no" ${files} ${publish_login}@${publish_to}:${logspath}
-    find . -maxdepth 1 -type d -name 'logs*' -exec sshpass -p ${publish_pass} rsync -ave "ssh -o StrictHostKeyChecking=no" {} ${publish_login}@${publish_to}:${logspath} \;
-
-    sshpass -p ${publish_pass} ssh -o StrictHostKeyChecking=no ${publish_login}@${publish_to} gzip -9 "${logspath}*"
-    sshpass -p ${publish_pass} ssh -o StrictHostKeyChecking=no ${publish_login}@${publish_to} gzip -9 "${logspath}/logs/*"
+    sshpass -p ${publish_pass} rsync -ave "ssh -o StrictHostKeyChecking=no" ${BUILD_NUMBER} ${publish_login}@${publish_to}:${logspath}
 fi
 
 if [[ $rc != 0 ]]

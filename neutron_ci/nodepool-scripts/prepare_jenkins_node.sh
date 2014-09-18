@@ -13,5 +13,5 @@ sudo cp sources.list /etc/apt/
 sudo apt-get update
 
 # Install packages
-sudo apt-get install -y openjdk-6-jre git python-pip python-dev libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev
+sudo apt-get install -y openjdk-6-jre git python-pip python-dev libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev gzip
 sudo pip install ecdsa junitxml

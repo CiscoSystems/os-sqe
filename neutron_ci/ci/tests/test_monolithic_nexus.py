@@ -18,7 +18,7 @@ import urlparse
 import os
 from ci import ZUUL_URL, ZUUL_PROJECT, ZUUL_REF, NEXUS_IP, \
     NEXUS_PASSWORD, NEXUS_USER, NEXUS_INTF_NUM, NEXUS_VLAN_END, \
-    NEXUS_VLAN_START, SCREEN_LOG_PATH, PARENT_FOLDER_PATH
+    NEXUS_VLAN_START, BUILD_LOG_PATH, PARENT_FOLDER_PATH
 from ci.lib.test_case import NexusTestCase
 
 
@@ -78,8 +78,7 @@ class MonolithicNexusTest(NexusTestCase):
             nexus_pass=NEXUS_PASSWORD,
             hostname=cls.node.hostname,
             nexus_intf_num=NEXUS_INTF_NUM,
-            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
-            JOB_LOG_PATH=SCREEN_LOG_PATH)
+            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END)
 
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()

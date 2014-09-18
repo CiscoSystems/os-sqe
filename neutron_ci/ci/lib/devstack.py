@@ -20,8 +20,8 @@ import StringIO
 from fabric.api import cd, run, put
 from fabric.contrib.files import exists
 from fabric.context_managers import settings
-from fabric.operations import get
-from ci import WORKSPACE, SCREEN_LOG_PATH
+from fabric.operations import get, local
+from ci import WORKSPACE, BUILD_LOG_PATH
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class DevStack(object):
     def __init__(self, host_string='localhost', localrc=None, local_conf=None,
                  git_url='https://github.com/openstack-dev/devstack.git',
                  git_branch='master',
-                 clone_path=os.path.join(WORKSPACE, 'devstack')):
+                 clone_path='~/devstack'):
         # host_string value of fabric env dictionary
         self.host_string = host_string
 
@@ -136,29 +136,23 @@ class DevStack(object):
                 cmd = 'testr run --load-list="{tests_list}"' \
                       ''.format(tests_list=temp_path)
                 failed = run(cmd).failed
-
-            self.tempest_last2junitxml()
-            self.tempest_last2html()
         return failed
 
-    def tempest_last2junitxml(self):
-        junitxml_path = os.path.join(SCREEN_LOG_PATH, 'tempest.xml')
-
+    def get_tempest_unitxml(self, path):
         with settings(host_string=self.host_string,
                       warn_only=True), cd(self._tempest_path):
             # Export tempest results to junit xml file
-            junitxml_rem = 'tempest.xml'
+            junitxml_rem = '/tmp/tempest.xml'
             cmd = 'testr last --subunit | subunit-1to2 | subunit2junitxml ' \
                   '--output-to="{xml}"'.format(xml=junitxml_rem)
             run(cmd)
-            get(junitxml_rem, junitxml_path)
+            get(junitxml_rem, path)
 
-    def tempest_last2html(self):
-        html_path = os.path.join(SCREEN_LOG_PATH, 'testr_results.html')
-
-        with settings(host_string=self.host_string), cd(self._tempest_path):
-            subunit_rem = 'testr_results.subunit'
-            html_rem = 'testr_results.html'
+    def get_tempest_html(self, path):
+        with settings(host_string=self.host_string,
+                      warn_only=True), cd(self._tempest_path):
+            subunit_rem = '/tmp/testr_results.subunit'
+            html_rem = '/tmp/testr_results.html'
             # Export tempest results to subunit file
             run('testr last --subunit > "{s}"'.format(s=subunit_rem))
 
@@ -169,4 +163,19 @@ class DevStack(object):
             run('wget {0}'.format(url))
             run('python subunit2html.py {s} {h}'.format(
                 s=subunit_rem, h=html_rem))
-            get(html_rem, html_path)
+            get(html_rem, path)
+
+    def get_locals(self, path):
+        with settings(host_string=self.host_string, warn_only=True):
+            for v, p in ((self.localrc, self.localrc_path),
+                         (self.local_conf, self.localconf_path)):
+                if v is not None:
+                    get(p, path)
+
+    def get_screen_logs(self, path, SCREEN_LOGDIR='/opt/stack/screen-logs'):
+        with settings(host_string=self.host_string, warn_only=True):
+            p = '/tmp/logs'
+            run('mkdir -p {p}'.format(p=p))
+            run('find {sl} -type l -exec cp "{{}}" {p} '
+                '\;'.format(sl=SCREEN_LOGDIR, p=p))
+            get(p, path)
