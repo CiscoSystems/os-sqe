@@ -1,0 +1,24 @@
+servers:
+  aio-server:
+    params:
+      hostname: all-in-one
+      count: 1
+      storage: 60
+      add_disks:
+      ram: 8
+      cpu: 1
+      networks:
+        - admin
+        - external
+networks:
+  - admin:
+      dhcp: true
+      external: false
+      nat: true
+      dns:
+        all-in-one: 2
+  - external:
+      dhcp: false
+      external: true
+      nat: true
+      dns:

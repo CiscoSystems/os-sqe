@@ -68,14 +68,16 @@ enable_service q-l3
 enable_service q-dhcp
 enable_service q-meta
 enable_service q-lbaas
+enable_service q-vpn
+enable_service q-fwaas
+enable_service q-metering
 enable_service neutron
 {tempest}
 NOVA_USE_NEUTRON_API=v2
-VOLUME_BACKING_FILE_SIZE=2052M
 API_RATE_LIMIT=False
 VERBOSE=True
 DEBUG=True
-LOGFILE=/tmp/stack.sh.log
+LOGFILE=~/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/logs
 IP_VERSION={ipversion}

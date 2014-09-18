@@ -5,6 +5,7 @@ import requests
 import json
 import xml.etree.ElementTree as Et
 import time
+import yaml
 
 __author__ = 'sshnaidm'
 
@@ -98,11 +99,7 @@ table tr:hover td {
 </style>
 """
 
-TOPOS = {
-    "2role": {"name": "2 Role", "job": "2role_tempest_cisco"},
-    "aio": {"name": "All In One", "job": "AIOa_tempest_cisco"},
-    "fullha": {"name": "Full HA", "job": "full_ha"}
-}
+TOPOS = None
 
 
 def str_time(t):
@@ -189,7 +186,7 @@ def process_current(xmls):
     return data
 
 
-def process_current2(xmls):
+def process_current_builds():
     data = {}
     if "TRIGGERED_JOB_NAMES" in os.environ:
         jobs = os.environ["TRIGGERED_JOB_NAMES"].split(",")
@@ -269,7 +266,7 @@ def pretty_report(data):
                 name=TOPOS[topo]["name"],
                 **data[topo])
     main_template = """
-<h2>COI CI report</h3>
+<h2>{report_name} report</h3>
 <h3>build #{build_number} of {date}</h4>
     <table>
 <tr>
@@ -285,6 +282,7 @@ def pretty_report(data):
 {topos}
 </table>
 """.format(
+        report_name=os.environ.get("REPORT_NAME", ""),
         topos=topos_template,
         build_number=os.environ["BUILD_NUMBER"],
         date=os.environ["BUILD_ID"].split("_")[0])
@@ -292,8 +290,17 @@ def pretty_report(data):
 
 
 def main():
-    files = sys.argv[1:]
-    xml_report = process_current2(files)
+    try:
+        config_file = sys.argv[1]
+        with open(config_file) as f:
+            config = yaml.load(f)
+            global TOPOS
+            TOPOS = config
+    except Exception as e:
+        print "Provide configuration file as argument!"
+        raise e
+
+    xml_report = process_current_builds()
     links_report = make_links(xml_report)
     regression_report = check_regression(links_report)
     print pretty_report(regression_report)
