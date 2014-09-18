@@ -27,7 +27,7 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
         with api.cd(tempest_dir):
             random_name = ''.join(random.choice(string.lowercase) for _ in range(5))
             api.run('git remote add {name} {repo}'.format(name=random_name, repo=tempest_repo))
-            api.run('git fetch {name} {branch} && git checkout -b {branch} {name}/{branch}'.format(
+            api.run('git fetch {name} {branch} && git checkout -b {name}_{branch} {name}/{branch}'.format(
                 name=random_name,
                 branch=tempest_branch))
             if tempest_list_file:
