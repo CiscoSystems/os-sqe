@@ -1,5 +1,7 @@
 #!/bin/bash
 
+sleep 1m
+
 WORK_DIR=`pwd`
 
 cat >>/home/ubuntu/.ssh/authorized_keys <<EOF
