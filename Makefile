@@ -7,6 +7,14 @@ RESET=$(shell echo `tput sgr0`)
 #WORKSPACE=$(shell echo ${WORKSPACE})
 UBUNTU_DISK=http://172.29.173.233/trusty-server-cloudimg-amd64-disk1.img
 #UBUNTU_DISK=http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img
+CENTOS65_DISK=centos-6.5.x86_64.qcow2
+CENTOS7_DISK=centos-7.x86_64.qcow2
+FEDORA20_DISK=fedora-20.x86_64.qcow2
+
+ifndef REDHAT_DISK
+	REDHAT_DISK=$(CENTOS7_DISK)
+endif
+REDHAT_URL="http://172.29.173.233/"$(REDHAT_DISK)
 ifndef LAB
 	LAB="lab1"
 endif
@@ -84,6 +92,20 @@ prepare-fullha-cobbler:
 	test -e trusty-server-cloudimg-amd64-disk1.img || wget -nv $(UBUNTU_DISK)
 	time $(PYTHON) ./tools/cloud/create.py -b net -l ${LAB} -s /opt/imgs -z ./trusty-server-cloudimg-amd64-disk1.img -t fullha > config_file
 
+prepare-aio-rh:
+	@echo "$(CYAN)>>>> Preparing AIO for CentOS...$(RESET)"
+	test -e centos-7.x86_64.qcow2 || wget -nv ${REDHAT_URL}
+	time $(PYTHON) ./tools/cloud/create.py -l ${LAB} -s /opt/imgs -z ./${REDHAT_DISK} -r redhat -c ./tools/cloud/cloud-configs/aio_rh_topology.yaml > config_file
+
+prepare-2role-rh:
+	@echo "$(CYAN)>>>> Preparing AIO for CentOS...$(RESET)"
+	test -e centos-7.x86_64.qcow2 || wget -nv ${REDHAT_URL}
+	time $(PYTHON) ./tools/cloud/create.py -l ${LAB} -s /opt/imgs -z ./${REDHAT_DISK} -r redhat -c ./tools/cloud/cloud-configs/rh_2role_topology.yaml > config_file
+
+prepare-3role-rh:
+	@echo "$(CYAN)>>>> Preparing AIO for CentOS...$(RESET)"
+	test -e centos-7.x86_64.qcow2 || wget -nv ${REDHAT_URL}
+	time $(PYTHON) ./tools/cloud/create.py -l ${LAB} -s /opt/imgs -z ./${REDHAT_DISK} -r redhat -c ./tools/cloud/cloud-configs/rh_3role_topology.yaml > config_file
 
 give-a-time:
 	sleep 180
@@ -120,6 +142,19 @@ install-devstack:
 	time $(PYTHON) ./tools/deployers/install_devstack.py -c config_file  -u localadmin -p ubuntu -r ${TEMPEST_REPO} -b ${TEMPEST_BRANCH}
 	#time $(PYTHON) ./tools/deployers/install_coi.py -c config_file  -u localadmin -p ubuntu -s devstack
 
+install-aio-rh:
+	@echo "$(CYAN)>>>> Installing AIO with CentOS ...$(RESET)"
+	time $(PYTHON) ./tools/deployers/install_aio_rh.py -c config_file -u root -p ubuntu
+
+install-rh-2role:
+	@echo "$(CYAN)>>>> Installing AIO with CentOS ...$(RESET)"
+	time $(PYTHON) ./tools/deployers/install_aio_rh.py -c config_file -u root -p ubuntu -t 2role
+
+install-rh-3role:
+	@echo "$(CYAN)>>>> Installing AIO with CentOS ...$(RESET)"
+	time $(PYTHON) ./tools/deployers/install_aio_rh.py -c config_file -u root -p ubuntu -t 3role
+
+
 prepare-devstack-tempest:
 	echo "$(CYAN)>>>> Running devstack on tempest...$(RESET)"
 	time python ${WORKSPACE}/tempest/tools/install_venv.py
@@ -135,6 +170,14 @@ prepare-tempest:
 	. ${WORKSPACE}/tempest/.venv/bin/activate
 	time $(TPATH)/python ./tools/tempest-scripts/tempest_configurator.py -o ./openrc
 	test -e 2role && sed -i "s/.*[sS]wift.*\=.*[Tt]rue.*/swift=false/g" ./tempest.conf.jenkins || :
+	mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
+
+prepare-tempest-rh:
+	echo "$(CYAN)>>>> Running devstack on tempest...$(RESET)"
+	time python ${WORKSPACE}/tempest/tools/install_venv.py
+	${WORKSPACE}/tempest/.venv/bin/pip install junitxml python-ceilometerclient nose testresources testtools
+	. ${WORKSPACE}/tempest/.venv/bin/activate
+	time $(TPATH)/python ./tools/tempest-scripts/tempest_configurator.py -i $$(cat ${WORKSPACE}/openstack-sqe/config_file  | grep -Eo  "ip: ([0-9\.]+)" | sort | head -1 | sed "s/ip: //g")
 	mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
 
 run-tests:
@@ -232,6 +275,11 @@ snap-devstack-create: snapshot-destroy devstack snapshot-create
 snap-devstack-tempest: snapshot-revert devstack-snap-prepare prepare-devstack-tempest
 snap-devstack-tempest-remote: init snapshot-revert devstack-snap-prepare
 snap-tempest: snapshot-revert snap-tempest-prepare
+
+rh-aio: init prepare-aio-rh give-a-time install-aio-rh
+rh-2role: init prepare-2role-rh give-a-time install-rh-2role
+rh-3role: init prepare-3role-rh give-a-time install-rh-3role
+rh-test: prepare-tempest-rh run-tests
 
 test-me:
 	@echo "$(CYAN)>>>> test your commands :) ...$(RESET)"

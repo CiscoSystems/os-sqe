@@ -10,6 +10,7 @@ import re
 import os
 import sys
 import urllib
+import urlparse
 import ConfigParser
 
 __author__ = 'sshnaidm'
@@ -18,6 +19,7 @@ env_re = re.compile("export (OS_[A-Z0-9_]+=.*$)")
 token_re = re.compile("name='csrfmiddlewaretoken' value='([^']+)'")
 ip_re = re.compile("((?:\d+\.){3}\d+)")
 region_re = re.compile('name="region" type="hidden" value="([^"]+)"')
+action_re = re.compile('action="([^"]+)"')
 
 NOVACLIENT_VERSION = '2'
 CINDERCLIENT_VERSION = '1'
@@ -34,9 +36,18 @@ ALT_TENANT = "alt_demo"
 DEFAULT_IPV4_INT = "192.168.1"
 DEFAULT_IPV6_INT = "fd00::"
 
-CIRROS_URL = "http://172.29.173.233/cirros-0.3.2-x86_64-disk.img"
-CIRROS_UEC_URL = "http://download.cirros-cloud.net/0.3.2/cirros-0.3.2-x86_64-uec.tar.gz"
-UBUNTU_URL = "http://172.29.173.233/cirros-0.3.2-x86_64-disk.img"
+
+CIRROS_UEC_URL = "http://download.cirros-cloud.net/0.3.2/cirros-0.3.3-x86_64-uec.tar.gz"
+
+IMAGES = {'image_ref': {'user': 'cirros',
+                        'url': 'http://172.29.173.233/cirros-0.3.3-x86_64-disk.img',
+                        'password': 'cubswin:)',
+                        'flavor': '1'},
+          'image_ref_alt': {'user': 'ubuntu',
+                            'url': 'http://172.29.173.233/trusty-server-cloudimg-amd64-disk1.img',
+                            'password': 'ssh-key-only',
+                            'flavor': '2'},
+          'alt_image_key': 'image_ref'}
 
 class OS:
 
@@ -81,19 +92,24 @@ class OSWebCreds:
             "password": self.password,
         }
         s = requests.Session()
-        add_url = "/horizon"
-        url = "http://" + self.ip
-        login_page = s.get(url + add_url)
-        if login_page.status_code != requests.codes.ok:
-            add_url = ""
-            login_page = s.get(url)
+        add_urls = ["/horizon", "", "/dashboard"]
+        for add_url in add_urls:
+            url = "http://" + self.ip
+            login_page = s.get(url + add_url)
+            if (login_page.status_code == requests.codes.ok
+                and "csrfmiddlewaretoken" in login_page.content):
+                real_url = login_page.url
+                break
+        else:
+            raise NameError("Can not download login page!")
         token = token_re.search(login_page.content).group(1)
         region = region_re.search(login_page.content).group(1)
         local_params.update({"csrfmiddlewaretoken": token})
         local_params.update({"region": region})
-        login_url = "http://" + self.ip + add_url + "/auth/login/"
+        login_action = action_re.search(login_page.content).group(1)
+        login_url = "http://" + self.ip + login_action
         s.post(login_url, data=local_params)
-        rc_url = "http://" + self.ip + add_url + "/project/access_and_security/api_access/openrc/"
+        rc_url = real_url + "/project/access_and_security/api_access/openrc/"
         rc_file = s.get(rc_url)
         return rc_file
 
@@ -180,21 +196,24 @@ class Tempest:
             os.makedirs(img_dir)
         if not os.path.exists(self.locks_dir):
             os.makedirs(self.locks_dir)
-        print "Downloading cirros-0.3.2-x86_64-disk.img ...."
-        img_path = os.path.join(img_dir, "cirros-0.3.2-x86_64-disk.img")
-        urllib.urlretrieve(CIRROS_URL, img_path)
-        img1 = self.glance.images.create(
-            data=open(img_path, 'rb'),
-            name="cirros-0.3.2",
-            disk_format="qcow2",
-            container_format="bare",
-            is_public=True)
-        img2 = self.glance.images.create(
-            data=open(img_path, 'rb'),
-            name="ubuntu",
-            disk_format="qcow2",
-            container_format="bare",
-            is_public=True)
+
+        def register_image(image_key):
+            url = IMAGES[image_key]['url']
+            img_path = os.path.join(img_dir + urlparse.urlparse(url).path)
+            print 'Downloading {0} to {1}....'.format(url, img_path)
+            urllib.urlretrieve(url, img_path)
+            img = self.glance.images.create(
+                data=open(img_path, 'rb'),
+                name=IMAGES[image_key]['user'],
+                disk_format="qcow2",
+                container_format="bare",
+                is_public=True)
+            IMAGES[image_key]['id'] = img.id
+
+        register_image('image_ref')
+        if IMAGES['alt_image_key'] == 'image_ref_alt':
+            register_image('image_ref_alt')
+
         demo_tenant = self.keystone.tenants.create(DEMO_TENANT)
         demo_user = self.keystone.users.create(
             name=DEMO_USER,
@@ -304,9 +323,8 @@ class Tempest:
             {"network_id": public_net['network']['id']})
         if not os.path.exists(self.tmp_dir + "cirros-0.3.2-x86_64-uec.tar.gz"):
             urllib.urlretrieve(CIRROS_UEC_URL, self.tmp_dir + "cirros-0.3.2-x86_64-uec.tar.gz")
+
         return {
-            "image_ref1": img1.id,
-            "image_ref2": img2.id,
             "admin_tenant": admin_tenant,
             "admin": admin,
             "ip": ip_re.search(self.creds["OS_AUTH_URL"]).group(1),
@@ -324,6 +342,9 @@ class Tempest:
             tempest_dir = os.path.abspath(
                 os.path.join(
                     os.path.dirname(__file__), "..", "..", "..","tempest/.venv/bin"))
+        if not os.path.exists(tempest_dir):
+            tempest_dir = os.path.join(os.path.expanduser("~"), ".venv", "bin")
+        tempest_dir = os.path.normpath(tempest_dir)
         parser = ConfigParser.SafeConfigParser(defaults={
             "debug": "True",
             "log_file": "tempest.log",
@@ -337,27 +358,33 @@ class Tempest:
         parser.add_section("compute")
         parser.set("compute", "catalog_type", "compute")
         #parser.set("compute", "ssh_connect_method", "floating")
-        parser.set("compute", "flavor_ref", "1")
-        parser.set("compute", "flavor_ref_alt", "2")
-        parser.set("compute", "image_alt_ssh_user", "cirros")
-        parser.set("compute", "image_ssh_user", "cirros")
-        parser.set("compute", "image_ref", data["image_ref1"])
-        parser.set("compute", "image_ref_alt", data["image_ref2"])
+
+        main_image_dict = IMAGES['image_ref']
+        parser.set("compute", "image_ref", main_image_dict['id'])
+        parser.set("compute", "flavor_ref", main_image_dict['flavor'])
+        parser.set("compute", "image_ssh_user", main_image_dict['user'])
+        parser.set("compute", "image_ssh_password", main_image_dict['password'])
+
+        alt_image_dict = IMAGES[IMAGES['alt_image_key']]
+        parser.set("compute", "image_ref_alt", alt_image_dict['id'])
+        parser.set("compute", "flavor_ref_alt", alt_image_dict['flavor'])
+        parser.set("compute", "image_alt_ssh_user", alt_image_dict['user'])
+        parser.set("compute", "image_alt_ssh_password", alt_image_dict['password'])
+
+        parser.set("compute", "ssh_user", main_image_dict['user'])
+        parser.set("compute", "run_ssh", "False")
+        parser.set("compute", "ssh_timeout", "90")
+        parser.set("compute", "use_floatingip_for_ssh", "True")
         parser.set("compute", "ssh_timeout", "196")
         parser.set("compute", "ip_version_for_ssh", str(self.ipv))
+
         #parser.set("compute", "network_for_ssh", "net10")
         parser.set("compute", "fixed_network_name", "net10")
-        parser.set("compute", "ssh_user", "cirros")
         parser.set("compute", "allow_tenant_isolation", "False")
         parser.set("compute", "build_timeout", "300")
         parser.set("compute", "build_interval", "10")
-        parser.set("compute", "run_ssh", "False")
         #parser.set("compute", "run_ssh", "True")
         #parser.set("compute", "ssh_connect_method", "fixed")
-        parser.set("compute", "ssh_timeout", "90")
-        parser.set("compute", "use_floatingip_for_ssh", "True")
-        parser.set("compute", "image_ssh_password", "cubswin:)")
-        parser.set("compute", "image_alt_ssh_password", "cubswin:)")
         parser.set("compute", "volume_device_name", "vdb")
         parser.add_section("compute-admin")
         parser.set("compute-admin", "tenant_name", data["admin_tenant"][0])
@@ -522,6 +549,8 @@ def main():
                     help="Remove tempest configuration from Openstack only, don't configure")
     parser.add_argument('--output-file', action='store', dest='output', default="./tempest.conf.jenkins",
                     help="Name of output file to write configuration to")
+    parser.add_argument('-l', '--alt-image', dest='is_alt_image', type=bool, default=False,
+                    help="Do we need to register the ubuntu image in addition to cirros")
     parser.add_argument('--version', action='version', version='%(prog)s 1.0')
 
     opts = parser.parse_args()
@@ -529,6 +558,8 @@ def main():
     tempest = Tempest(options)
     tempest.unconfig()
     if not opts.unconfig:
+        if opts.is_alt_image:
+            IMAGES['alt_image_key'] = 'image_ref_alt'
         file = tempest.config()
         with open(opts.output, "w") as f:
             file.write(f)

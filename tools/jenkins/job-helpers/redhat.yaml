@@ -1,0 +1,3 @@
+aio: {name: "RedHat AIO", job: "rh_aio"}
+2role: {name: "RedHat 2 role", job: "rh_2role"}
+3role: {name: "RedHat 3 role", job: "rh_3role"}

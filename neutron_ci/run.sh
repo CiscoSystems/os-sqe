@@ -29,12 +29,12 @@ fi
 
 if [[ -n "${publish_to}" ]]; then
     echo "Publish test results..."
-    files='console.txt local.conf'
+    files='console.txt* local.conf*'
     logspath=${publish_path}/${JOB_NAME}/${BUILD_NUMBER}/
     cd $workspace
     sshpass -p ${publish_pass} ssh -o StrictHostKeyChecking=no ${publish_login}@${publish_to} mkdir -p ${logspath}
     sshpass -p ${publish_pass} rsync -ave "ssh -o StrictHostKeyChecking=no" ${files} ${publish_login}@${publish_to}:${logspath}
-    sshpass -p ${publish_pass} rsync -ave "ssh -o StrictHostKeyChecking=no" logs ${publish_login}@${publish_to}:${logspath}
+    find . -maxdepth 1 -type d -name 'logs*' -exec sshpass -p ${publish_pass} rsync -ave "ssh -o StrictHostKeyChecking=no" {} ${publish_login}@${publish_to}:${logspath} \;
 
     sshpass -p ${publish_pass} ssh -o StrictHostKeyChecking=no ${publish_login}@${publish_to} gzip -9 "${logspath}*"
     sshpass -p ${publish_pass} ssh -o StrictHostKeyChecking=no ${publish_login}@${publish_to} gzip -9 "${logspath}/logs/*"
