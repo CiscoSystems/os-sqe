@@ -69,3 +69,8 @@ def wait_until(predicate, timeout=60, period=5):
             logger.warning(e)
         time.sleep(period)
     return False
+
+
+def makedirs(path):
+    if not os.path.exists(path):
+        os.makedirs(path)

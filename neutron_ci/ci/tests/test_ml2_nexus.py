@@ -18,7 +18,7 @@ import socket
 import urlparse
 import os
 from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, WORKSPACE, \
-    NEXUS_VLAN_START, NEXUS_VLAN_END, SCREEN_LOG_PATH, \
+    NEXUS_VLAN_START, NEXUS_VLAN_END, BUILD_LOG_PATH, \
     NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD, ZUUL_REF
 from ci.lib.test_case import NexusTestCase
 
@@ -104,8 +104,7 @@ class ML2NexusTest(NexusTestCase):
             neutron_branch=ZUUL_REF,
             Q_PLUGIN_EXTRA_CONF_PATH=WORKSPACE,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
-            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
-            JOB_LOG_PATH=SCREEN_LOG_PATH)
+            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END)
 
         cls.create_ml2_conf_ini(host=socket.gethostname(),
                                 host_port=NEXUS_INTF_NUM,

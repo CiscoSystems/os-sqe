@@ -21,7 +21,7 @@ import logging.handlers
 
 # Jenkins variables
 WORKSPACE = os.environ.get('WORKSPACE')
-SCREEN_LOG_PATH = os.path.join(WORKSPACE, 'logs')
+BUILD_LOG_PATH = os.path.join(WORKSPACE, 'logs')
 PARENT_FOLDER_PATH = os.path.dirname(os.path.dirname(__file__))
 
 # Zuul variables
@@ -59,6 +59,10 @@ OS_IMAGE_NAME = \
 OS_FLAVOR_NAME = os.environ.get('OS_FLAVOR_NAME', 'devstack.medium')
 OS_DNS = os.environ.get('OS_DNS')
 
+# Create log path
+if not os.path.exists(BUILD_LOG_PATH):
+    os.mkdir(BUILD_LOG_PATH)
+
 # Configure handlers for the root logger
 logger = logging.getLogger('ci')
 formatter = logging.Formatter('%(asctime)s %(name)s: %(lineno)d, '
@@ -73,7 +77,7 @@ logger.addHandler(console_handler)
 
 # Handler for console.txt
 info_file_handler = logging.FileHandler(
-    os.path.join(WORKSPACE, 'console.txt'))
+    os.path.join(BUILD_LOG_PATH, 'console.txt'))
 info_file_handler.setLevel(logging.INFO)
 info_file_handler.setFormatter(formatter)
 logger.addHandler(info_file_handler)
@@ -94,7 +98,3 @@ defined = [values[key] is not None for key in dir()
            if key[0].isupper() and key not in nullable]
 if not all(defined):
     raise Exception('There are undefined environment variables.')
-
-# Create log path
-if not os.path.exists(SCREEN_LOG_PATH):
-    os.mkdir(SCREEN_LOG_PATH)

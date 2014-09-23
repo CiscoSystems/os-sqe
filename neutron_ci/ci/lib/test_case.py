@@ -23,7 +23,7 @@ import time
 import StringIO
 from testtools import TestCase
 from netaddr import IPNetwork
-from ci import WORKSPACE, SCREEN_LOG_PATH, NEXUS_IP, NEXUS_USER, \
+from ci import WORKSPACE, BUILD_LOG_PATH, NEXUS_IP, NEXUS_USER, \
     NEXUS_PASSWORD, NEXUS_INTF_NUM, NEXUS_VLAN_START, \
     NEXUS_VLAN_END, PARENT_FOLDER_PATH
 from ci.lib.lab.node import Node
@@ -83,15 +83,12 @@ class BaseTestCase(TestCase):
     @classmethod
     def tearDownClass(cls):
         # Copy local* files to workspace folder
-        if cls.devstack.localrc is not None:
-            shutil.copy(cls.devstack.localrc_path, WORKSPACE)
-        if cls.devstack.local_conf is not None:
-            shutil.copy(cls.devstack.localconf_path, WORKSPACE)
+        cls.devstack.get_locals(BUILD_LOG_PATH)
+        cls.devstack.get_screen_logs(BUILD_LOG_PATH)
 
-        # Copy screen logs to workspace
-        run_cmd_line('find {p} -type l -exec cp "{{}}" {d} \;'
-                     ''.format(p='/opt/stack/screen-logs', d=SCREEN_LOG_PATH),
-                     shell=True)
+        p = os.path.join(BUILD_LOG_PATH, 'logs')
+        cls.devstack.get_tempest_unitxml(p)
+        cls.devstack.get_tempest_html(p)
 
 
 class NexusTestCase(BaseTestCase):
