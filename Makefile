@@ -168,7 +168,7 @@ prepare-tempest:
 	time python ${WORKSPACE}/tempest/tools/install_venv.py
 	${WORKSPACE}/tempest/.venv/bin/pip install junitxml python-ceilometerclient nose testresources testtools
 	. ${WORKSPACE}/tempest/.venv/bin/activate
-	time $(TPATH)/python ./tools/tempest-scripts/tempest_configurator.py -o ./openrc
+	time $(TPATH)/python ./tools/tempest_configurator.py -o ./openrc
 	test -e 2role && sed -i "s/.*[sS]wift.*\=.*[Tt]rue.*/swift=false/g" ./tempest.conf.jenkins || :
 	mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
 
@@ -177,7 +177,7 @@ prepare-tempest-rh:
 	time python ${WORKSPACE}/tempest/tools/install_venv.py
 	${WORKSPACE}/tempest/.venv/bin/pip install junitxml python-ceilometerclient nose testresources testtools
 	. ${WORKSPACE}/tempest/.venv/bin/activate
-	time $(TPATH)/python ./tools/tempest-scripts/tempest_configurator.py -i $$(cat ${WORKSPACE}/openstack-sqe/config_file  | grep -Eo  "ip: ([0-9\.]+)" | sort | head -1 | sed "s/ip: //g")
+	time $(TPATH)/python ./tools/tempest_configurator.py -i $$(cat ${WORKSPACE}/openstack-sqe/config_file  | grep -Eo  "ip: ([0-9\.]+)" | sort | head -1 | sed "s/ip: //g")
 	mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
 
 run-tests:
@@ -232,7 +232,7 @@ snap-tempest-prepare:
 	time python ${WORKSPACE}/tempest/tools/install_venv.py
 	${WORKSPACE}/tempest/.venv/bin/pip install junitxml python-ceilometerclient nose testresources testtools
 	. ${WORKSPACE}/tempest/.venv/bin/activate
-	time $(TPATH)/python ./tools/tempest-scripts/tempest_configurator.py -o ./openrc
+	time $(TPATH)/python ./tools/tempest_configurator.py -o ./openrc
 	test -e 2role && sed -i "s/.*[sS]wift.*\=.*[Tt]rue.*/swift=false/g" ./tempest.conf.jenkins || :
 	mv ./tempest.conf.jenkins ${WORKSPACE}/tempest/etc/tempest.conf
 

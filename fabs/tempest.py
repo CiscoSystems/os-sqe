@@ -64,7 +64,7 @@ def prepare(openrc=None, ip=None, ipv=None, add=None):
         args += " -a " + ipv
     if add:
         args += " " + add
-    local("python ./tools/tempest-scripts/tempest_configurator.py %s" % args)
+    local("python ./tools/tempest_configurator.py %s" % args)
 
 
 @task
