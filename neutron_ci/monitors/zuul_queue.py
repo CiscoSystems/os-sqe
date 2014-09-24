@@ -32,7 +32,7 @@ def check(zuul_url, queue, jenkins_url, jobs, off_time=60*60):
             data = requests.get(job_url).json()
             timestamp = datetime.datetime.fromtimestamp(data['timestamp'] / 1000)
             job_flags.append(now - timestamp < off_time)
-        flag = flag and not any(job_flags)
+        flag = not any(job_flags)
     return flag
 
 

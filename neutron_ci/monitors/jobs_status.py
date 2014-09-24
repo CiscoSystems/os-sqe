@@ -1,19 +1,15 @@
 import argparse
 import requests
 import urlparse
-import urllib
 import sys
 
 
 def check(jenkins_url, jobs, status, depth=10):
-    jobs_url = map(
-        lambda name: urlparse.urljoin(
-            jenkins_url,
-            'job/{0}/api/json'.format(urllib.quote(name))),
-        jobs.split(','))
-
     # Get jobs data
-    jobs = [requests.get(url).json() for url in jobs_url]
+    jobs = [
+        requests.get(urlparse.urljoin(
+            jenkins_url,
+            'job/{0}/api/json'.format(j))).json() for j in jobs.split(',')]
     flags = list()
     for job in jobs:
         print('Job {j} {l}'.format(j=job['displayName'], l='='*50))
