@@ -26,11 +26,13 @@ if [[ -n "${PARAMS_BASE}" ]]; then
     python tools/parameters.py release --connection=${PARAMS_BASE} --id=${PARAM_ID}
 fi
 
+echo "gzip logs folder"
+cd ${WORKSPACE}
+find logs -exec gzip -9 {} \;
+
 if [[ -n "${publish_to}" ]]; then
     echo "Publish test results..."
-    cd ${WORKSPACE}
     logspath=${publish_path}/${JOB_NAME}/
-    find logs -exec gzip -9 {} \;
     cp -vr logs ${BUILD_NUMBER}
     sshpass -p ${publish_pass} ssh -o StrictHostKeyChecking=no ${publish_login}@${publish_to} mkdir -p ${logspath}
     sshpass -p ${publish_pass} rsync -ave "ssh -o StrictHostKeyChecking=no" ${BUILD_NUMBER} ${publish_login}@${publish_to}:${logspath}
