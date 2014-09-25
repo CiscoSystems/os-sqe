@@ -530,38 +530,41 @@ def parse_config(o):
             config["external_net"] = "2002::"
     return config
 
-
-def main():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('-o', action='store', dest='openrc', type=argparse.FileType('r'), default=None,
+DESCRIPTION = 'reconfigure devstack to be used for tempest'
+def define_cli(p):
+    p.add_argument('-o', action='store', dest='openrc', type=argparse.FileType('r'), default=None,
                     help='Openrc configuration file')
-    parser.add_argument('-i', action='store', dest='ip',
+    p.add_argument('-i', action='store', dest='ip',
                     help='IP address of Openstack instalaltion for downloading credentials')
-    parser.add_argument('-u', action='store', dest='user', default="admin",
+    p.add_argument('-u', action='store', dest='user', default="admin",
                     help='Admin username of Openstack instalaltion for downloading credentials')
-    parser.add_argument('-p', action='store', dest='password', default="Cisco123",
+    p.add_argument('-p', action='store', dest='password', default="Cisco123",
                     help='Admin password of Openstack instalaltion for downloading credentials')
-    parser.add_argument('-a', action='store', dest='ipv', type=int, default=4, choices=[4, 6],
+    p.add_argument('-a', action='store', dest='ipv', type=int, default=4, choices=[4, 6],
                     help='IP version for configuration: 4 or 6')
-    parser.add_argument('-n', action='store_true', dest='unconfig', default=False,
+    p.add_argument('-n', action='store_true', dest='unconfig', default=False,
                     help="Remove tempest configuration from Openstack only, don't configure")
-    parser.add_argument('--output-file', action='store', dest='output', default="./tempest.conf.jenkins",
+    p.add_argument('--output-file', action='store', dest='output', default="./tempest.conf.jenkins",
                     help="Name of output file to write configuration to")
-    parser.add_argument('-l', '--alt-image', dest='is_alt_image', type=bool, default=False,
+    p.add_argument('-l', '--alt-image', dest='is_alt_image', type=bool, default=False,
                     help="Do we need to register the ubuntu image in addition to cirros")
-    parser.add_argument('--version', action='version', version='%(prog)s 1.0')
+    p.add_argument('--version', action='version', version='%(prog)s 1.0')
+    p.set_defaults(func=main)
 
-    opts = parser.parse_args()
-    options = parse_config(opts)
+
+def main(args):
+    options = parse_config(args)
     tempest = Tempest(options)
     tempest.unconfig()
-    if not opts.unconfig:
-        if opts.is_alt_image:
+    if not args.unconfig:
+        if args.is_alt_image:
             IMAGES['alt_image_key'] = 'image_ref_alt'
         file = tempest.config()
-        with open(opts.output, "w") as f:
+        with open(args.output, "w") as f:
             file.write(f)
 
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    args = parser.parse_args()
+    args.func(args)

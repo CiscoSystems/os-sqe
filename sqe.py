@@ -2,7 +2,7 @@
 
 
 def import_modules():
-    from tools import run_tempest
+    from tools import run_tempest, tempest_configurator
 
     d_imported_modules = dict()
     for name, item in locals().items():
