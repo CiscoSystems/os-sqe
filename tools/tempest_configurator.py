@@ -566,5 +566,6 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=DESCRIPTION)
+    define_cli(parser)
     args = parser.parse_args()
     args.func(args)
