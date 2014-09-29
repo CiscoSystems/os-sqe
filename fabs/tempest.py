@@ -104,8 +104,15 @@ def prepare_devstack(web=True, copy=False, remote=False, private=True):
     else:
         ip = get_lab_vm_ip()
         log.info("Preparing tempest for devstack with IP: %s" % ip)
-        prepare(ip=ip)
-        local("mv ./tempest.conf.jenkins %s/tempest.conf" % conf_dir)
+        RETRY = 3
+        for _ in xrange(RETRY):
+            prepare(ip=ip)
+            cmd = local("mv ./tempest.conf.jenkins %s/tempest.conf" % conf_dir)
+            if cmd.failed:
+                time.sleep(10)
+            else:
+                break
+
 
 
 @task(alias='ip')
@@ -178,7 +185,7 @@ def run_remote_tests():
         args = " -f \"%s\" " % test_regex
     else:
         log.info("Run all tests for devstack")
-    local('python {wrk}/openstack-sqe/sqe.py run_tempest -r {ip} '
+    local('python {wrk}/openstack-sqe/tools/run_tempest.py -r {ip} '
           '{args} --repo {repo} --branch {br}'.format(
         wrk=WORKSPACE, ip=ip, args=args,
         repo=tempest_repo, br=tempest_br
