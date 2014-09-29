@@ -21,7 +21,7 @@ from fabric.api import cd, run, put
 from fabric.contrib.files import exists
 from fabric.context_managers import settings
 from fabric.operations import get, local
-from ci import WORKSPACE, BUILD_LOG_PATH
+from ci import WORKSPACE, BUILD_LOG_PATH, PARENT_FOLDER_PATH
 
 
 logger = logging.getLogger(__name__)
@@ -152,18 +152,16 @@ class DevStack(object):
         with settings(host_string=self.host_string,
                       warn_only=True), cd(self._tempest_path):
             subunit_rem = '/tmp/testr_results.subunit'
-            html_rem = '/tmp/testr_results.html'
+            html_path = os.path.join(path, 'testr_results.html')
             # Export tempest results to subunit file
             run('testr last --subunit > "{s}"'.format(s=subunit_rem))
+            # download subunit file to temp folder
+            get(subunit_rem, subunit_rem)
 
             # Convert subunit to html
-            url = 'https://raw.githubusercontent.com/' \
-                  'openstack-infra/config/master/modules/' \
-                  'openstack_project/files/slave_scripts/subunit2html.py'
-            run('wget {0}'.format(url))
-            run('python subunit2html.py {s} {h}'.format(
-                s=subunit_rem, h=html_rem))
-            get(html_rem, path)
+            s2h = os.path.join(PARENT_FOLDER_PATH, 'tools/subunit2html.py')
+            local('python {s2h} {s} {h}'.format(s2h=s2h, s=subunit_rem,
+                                                h=html_path))
 
     def get_locals(self, path):
         with settings(host_string=self.host_string, warn_only=True):
