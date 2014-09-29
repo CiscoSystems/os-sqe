@@ -53,6 +53,8 @@ OS_USERNAME = os.environ.get('OS_USERNAME')
 OS_PASSWORD = os.environ.get('OS_PASSWORD')
 OS_TENANT_NAME = os.environ.get('OS_TENANT_NAME')
 
+NODE_DEFAULT_ETH = os.environ.get('NODE_DEFAULT_ETH', 'eth0')
+
 OS_IMAGE_NAME = \
     os.environ.get('OS_IMAGE_NAME',
                    'devstack-trusty-\d+.template.openstack.org')
