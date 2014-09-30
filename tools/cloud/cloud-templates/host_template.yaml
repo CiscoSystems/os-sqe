@@ -17,9 +17,11 @@ ubuntu_static_interface_template: |
       netmask 255.255.255.0
       network {net_ip}.0
       broadcast {net_ip}.255
-      gateway {net_ip}.1
+      {gateway}
       dns-nameservers {net_ip}.1 {dns}
       dns-search cisco.com
+ubuntu_gateway_template: |
+      gateway {net_ip}.1
 ubuntu_static_interface_template6: |
   auto {int_name}
   iface {int_name} inet6 static
@@ -49,13 +51,15 @@ redhat_static_interface_template: |
   DEVICE={int_name}
   BOOTPROTO=none
   ONBOOT=yes
-  GATEWAY={net_ip}.1
+  {gateway}
   NETWORK={net_ip}.0
   NETMASK=255.255.255.0
   IPADDR={int_ip}
   DNS1={net_ip}.1
   DNS2={dns}
   USERCTL=no
+redhat_gateway_template: |
+  GATEWAY={net_ip}.1
 redhat_manual_interface_template: |
   DEVICE={int_name}
   ONBOOT=yes
