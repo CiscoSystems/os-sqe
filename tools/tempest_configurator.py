@@ -267,7 +267,7 @@ class Tempest:
         if self.ipv == 4:
             sub_public = self.neutron.create_subnet({
                 'subnet':
-                    {'name':"public_sub",
+                    {'name':"public_subnet",
                      'network_id': public_net['network']['id'],
                      'ip_version': 4,
                      'cidr': self.external_net + '.0/24',
@@ -279,7 +279,7 @@ class Tempest:
         else:
             sub_public = self.neutron.create_subnet({
                 'subnet':
-                    {'name':"public_sub",
+                    {'name':"public_subnet",
                      'network_id': public_net['network']['id'],
                      'ip_version': 6,
                      'cidr': self.external_net + '/64',
@@ -290,14 +290,15 @@ class Tempest:
                     }})
         private_net = self.neutron.create_network({
             'network':
-                {'name': "net10",
+                {'name': "private",
                  'admin_state_up': True,
-                 "shared": True
+                 "shared": True,
+                 "tenant_id": demo_tenant.id,
                 }})
         if self.ipv == 4:
             sub_private = self.neutron.create_subnet({
                 'subnet':
-                    {'name':"private_sub",
+                    {'name':"private_subnet",
                      'network_id': private_net['network']['id'],
                      'ip_version': 4,
                      'cidr': DEFAULT_IPV4_INT + '.0/24',
@@ -306,13 +307,14 @@ class Tempest:
         else:
             sub_private = self.neutron.create_subnet({
                 'subnet':
-                    {'name':"private_sub",
+                    {'name':"private_subnet",
                      'network_id': private_net['network']['id'],
                      'ip_version': 6,
                      'cidr': DEFAULT_IPV6_INT + '/64',
                      'dns_nameservers': [self.external_net + "1"]
                     }})
-        router = self.neutron.create_router({"router": {"name": "router1" }})
+        router = self.neutron.create_router({"router": {"name": "router1",
+                                                        "tenant_id": demo_tenant.id}})
         self.neutron.add_interface_router(
             router['router']['id'],
             {"subnet_id": sub_private['subnet']['id']})
@@ -378,8 +380,8 @@ class Tempest:
         parser.set("compute", "ssh_timeout", "196")
         parser.set("compute", "ip_version_for_ssh", str(self.ipv))
 
-        #parser.set("compute", "network_for_ssh", "net10")
-        parser.set("compute", "fixed_network_name", "net10")
+        #parser.set("compute", "network_for_ssh", "private")
+        parser.set("compute", "fixed_network_name", "private")
         parser.set("compute", "allow_tenant_isolation", "False")
         parser.set("compute", "build_timeout", "300")
         parser.set("compute", "build_interval", "10")
