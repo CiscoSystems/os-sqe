@@ -17,7 +17,6 @@ from collections import namedtuple
 
 import logging
 import random
-import shutil
 import os
 import time
 import StringIO
@@ -25,13 +24,13 @@ from testtools import TestCase
 from netaddr import IPNetwork
 from ci import WORKSPACE, BUILD_LOG_PATH, NEXUS_IP, NEXUS_USER, \
     NEXUS_PASSWORD, NEXUS_INTF_NUM, NEXUS_VLAN_START, \
-    NEXUS_VLAN_END, PARENT_FOLDER_PATH
+    NEXUS_VLAN_END, PARENT_FOLDER_PATH, NODE_DEFAULT_ETH
 from ci.lib.lab.node import Node
 from ci.lib.utils import run_cmd_line, get_public_key, \
     clear_nexus_config, wait_until
 from ci.lib.devstack import DevStack
-from fabric.context_managers import settings, cd
-from fabric.contrib.files import append, exists
+from fabric.context_managers import settings
+from fabric.contrib.files import append
 from fabric.operations import put, run, local, sudo
 from fabric.state import env
 
@@ -44,7 +43,7 @@ class BaseTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devstack = DevStack()
-        cls.node = Node()
+        cls.node = Node(NODE_DEFAULT_ETH)
 
         # Add fqdn to /etc/hosts
         run_cmd_line(
