@@ -100,6 +100,7 @@ class OSWebCreds:
                 break
         else:
             raise NameError("Can not download login page!")
+        print "Getting credentials from Horizon: %s" % real_url
         token = token_re.search(login_page.content).group(1)
         region = region_re.search(login_page.content).group(1)
         local_params.update({"csrfmiddlewaretoken": token})
@@ -493,7 +494,8 @@ class Tempest:
 
 def parse_config(o):
     config = {}
-    if 'OS_AUTH_URL' in os.environ:
+    # IP or openrc in arguments have high priority
+    if 'OS_AUTH_URL' in os.environ and not (o.ip or o.openrc):
         config["OS_AUTH_URL"] = os.environ['OS_AUTH_URL']
         config["OS_TENANT_NAME"] = os.environ['OS_TENANT_NAME']
         config["OS_USERNAME"] = os.environ['OS_USERNAME']
@@ -528,6 +530,7 @@ def parse_config(o):
             config["external_net"] = "10.10.10"
         else:
             config["external_net"] = "2002::"
+    print "Configuring Openstack tempest with options below:\n%s" % str(config)
     return config
 
 DESCRIPTION = 'reconfigure devstack to be used for tempest'
