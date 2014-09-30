@@ -152,15 +152,16 @@ class DevStack(object):
         with settings(host_string=self.host_string,
                       warn_only=True), cd(self._tempest_path):
             subunit_rem = '/tmp/testr_results.subunit'
+            subunit_loc = '/tmp/testr.subunit'
             html_path = os.path.join(path, 'testr_results.html')
             # Export tempest results to subunit file
             run('testr last --subunit > "{s}"'.format(s=subunit_rem))
             # download subunit file to temp folder
-            get(subunit_rem, subunit_rem)
+            get(subunit_rem, subunit_loc)
 
             # Convert subunit to html
             s2h = os.path.join(PARENT_FOLDER_PATH, 'tools/subunit2html.py')
-            local('python {s2h} {s} {h}'.format(s2h=s2h, s=subunit_rem,
+            local('python {s2h} {s} {h}'.format(s2h=s2h, s=subunit_loc,
                                                 h=html_path))
 
     def get_locals(self, path):
