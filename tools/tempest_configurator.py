@@ -524,8 +524,8 @@ def parse_config(o):
         sys.exit(1)
     config["ipv"] = 4 if o.ipv == 4 else 6
     cur_dir = os.path.join(os.path.dirname(__file__))
-    if os.path.exists(os.path.join(cur_dir, "..", "..", "external_net")):
-        with open(os.path.join(cur_dir, "..", "..", "external_net")) as f:
+    if os.path.exists(os.path.join(cur_dir, "..", "external_net")):
+        with open(os.path.join(cur_dir, "..", "external_net")) as f:
             config["external_net"] = f.read()
     else:
         if o.ipv == 4:

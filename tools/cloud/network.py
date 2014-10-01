@@ -88,9 +88,9 @@ class Network(object):
         )
 
     def define(self):
-        dhcp_text = self.dhcp_definition() if self.dhcp else ""
-        dns_text = self.dns_definition() if self.dns else ""
-        nat_text = netconf["template"]["nat"] if self.nat else ""
+        dhcp_text = self.dhcp_definition() if getattr(self, "dhcp", None) else ""
+        dns_text = self.dns_definition() if getattr(self, "dns", None) else ""
+        nat_text = netconf["template"]["nat"] if getattr(self, "nat", None) else ""
         if self.ipv == 64:
             template = netconf["template"]["xml64"]
         else:
@@ -108,17 +108,21 @@ class Network(object):
 
     def define_interface(self):
         distr_prefix = opts.distro + "_"
-        if self.external:
+        if getattr(self, "external", None):
             self.interface = hostconf[distr_prefix + 'manual_interface_template'].format(
                 int_name="{int_name}")
-        elif self.dhcp:
+        elif getattr(self, "dhcp", None):
             self.interface = hostconf[distr_prefix + 'dhcp_interface'].format(
                 int_name="{int_name}")
         else:
+            gateway = ""
+            if getattr(self, "nat", None):
+                gateway = hostconf[distr_prefix + 'gateway_template'].format(net_ip=self.net_ip_base)
             self.interface = hostconf[distr_prefix + 'static_interface_template'].format(
                 int_name="{int_name}",
                 int_ip="{int_ip}",
                 net_ip=self.net_ip_base,
+                gateway=gateway,
                 dns=DNS)
 
     @staticmethod
@@ -145,7 +149,7 @@ class Network6(Network):
         self.prefix = "64"
         self.gw = self.net_ip + "1"
         self.dns_host_template = netconf["template"]["dns6_host"]
-        if self.dhcp:
+        if getattr(self, "dhcp", None):
             raise NotImplementedError("IPv6 DHCP is not implemented yet!")
 
     def define_hosts(self):
@@ -175,8 +179,8 @@ class Network6(Network):
 
     def define(self):
         dhcp_text = ""
-        dns_text = self.dns_definition() if self.dns else ""
-        nat_text = netconf["template"]["nat"] if self.nat else ""
+        dns_text = self.dns_definition() if getattr(self, "dns", None) else ""
+        nat_text = netconf["template"]["nat"] if getattr(self, "nat", None) else ""
         self.define_hosts()
 
         return netconf["template"]["xml6"].format(
@@ -191,7 +195,7 @@ class Network6(Network):
 
     def define_interface(self):
         distr_prefix = opts.distro + "_"
-        if self.external:
+        if getattr(self, "external", None):
             self.interface = hostconf[distr_prefix + 'manual_interface_template6'].format(
                 int_name="{int_name}")
         else:
