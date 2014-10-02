@@ -186,7 +186,7 @@ def run_remote_tests():
     else:
         log.info("Run all tests for devstack")
     local('python {wrk}/openstack-sqe/tools/run_tempest.py -r {ip} '
-          '{args} --repo {repo} --branch {br}'.format(
+          '{args} --repo {repo} --branch {br} --kill_time {kill_time} --wait_time {wait_time}'.format(
         wrk=WORKSPACE, ip=ip, args=args,
-        repo=tempest_repo, br=tempest_br
-    ))
+        repo=tempest_repo, br=tempest_br,
+        kill_time=QA_KILLTIME, wait_time=QA_WAITTIME))
