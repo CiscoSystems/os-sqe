@@ -32,14 +32,13 @@ API_RATE_LIMIT=False
 FIXED_RANGE_V6=2001:dead:beef:deed::/64
 IPV6_NETWORK_GATEWAY=2001:dead:beef:deed::1
 REMOVE_PUBLIC_BRIDGE=False
-IMAGE_URLS='http://172.29.173.233/cirros-0.3.3-x86_64-disk.img, http://172.29.173.233/trusty-server-cloudimg-amd64-disk1.img, http://172.29.173.233/rhel-7.x86_64.qcow2'
 '''
 CONTROLLER = '''
 MULTI_HOST=True
 HOST_IP={control_node_ip}
-enable_service g-api g-reg key n-crt n-obj n-cond cinder c-sch
+enable_service g-api g-reg key n-api n-crt n-obj n-cpu n-cond cinder c-sch
 enable_service c-api c-vol n-sch n-novnc n-xvnc n-cauth horizon rabbit
-enable_service mysql q-svc q-l3 q-dhcp q-meta q-lbaas q-vpn q-fwaas q-metering
+enable_service mysql q-svc q-agt q-l3 q-dhcp q-meta q-lbaas q-vpn q-fwaas q-metering neutron
 disable_service n-net
 {tempest}
 IP_VERSION={ipversion}
