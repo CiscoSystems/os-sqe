@@ -51,7 +51,7 @@ SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
 
 TEMPEST_REPO=https://github.com/CiscoSystems/tempest.git
-TEMPEST_BRANCH=ipv6
+TEMPEST_BRANCH=production
 IP_VERSION=4+6
 IPV6_PRIVATE_RANGE=2001:dead:beef:deed::/64
 IPV6_NETWORK_GATEWAY=2001:dead:beef:deed::1
