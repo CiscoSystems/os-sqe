@@ -1,2 +1,2 @@
-single: {name: "Devstack single node", job: "devstack_nightly"}
+single: {name: "Devstack single node", job: "devstack_single_node_nightly"}
 multi: {name: "Devstack multinode", job: "devstack_multinode"}
