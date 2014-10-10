@@ -15,12 +15,14 @@ TEMPEST_XML_CMD = 'testr last --subunit | subunit-1to2 | subunit2junitxml --outp
 
 
 def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
-         tempest_repo, tempest_branch, is_venv, wait_time=0, kill_time=0):
+         tempest_repo, tempest_branch, is_venv, wait_time=0, kill_time=0, test_time=''):
     cmd = './run_tempest.sh {venv} -- {filter_or_list}'.format(
         venv='-V' if is_venv else '-N',
         filter_or_list='--load-list=list.txt' if tempest_list_file else tempest_filter)
     if wait_time and kill_time:
         cmd = "timeout --preserve-status -s 2 -k {kill_time} {wait_time} ".format(kill_time=kill_time, wait_time=wait_time) + cmd
+    if test_time:
+        cmd = 'export OS_TEST_TIMEOUT={test_time}; '.format(test_time=test_time) + cmd
     settings = {'host_string': host,
                 'user': user,
                 'password': password,
@@ -55,7 +57,7 @@ DESCRIPTION = 'run tempest on the given remote host'
 
 def define_cli(p):
     repo = 'https://github.com/CiscoSystems/tempest.git'
-    branch = 'master-in-use'
+    branch = 'ipv6'
     p.add_argument('-r', '--remote', required=True,
                    help='ip address of DNS name of the host where tempest is deployed')
     p.add_argument('-u', '--user', default='localadmin',
@@ -76,13 +78,15 @@ def define_cli(p):
                    help='Wait time for script execution timeout')
     p.add_argument('--kill_time', default=0,
                    help='Kill time for script execution timeout')
+    p.add_argument('--test_time', nargs='?', const='', default='',
+                   help='Maximal time for test execution')
 
     def main_with_args(args):
         main(host=args.remote, user=args.user, password=args.password,
              tempest_filter=args.filter, tempest_list_file=args.list,
              tempest_dir=args.dir, is_venv=args.venv,
              tempest_repo=args.repo, tempest_branch=args.branch,
-             wait_time=args.wait_time, kill_time=args.kill_time)
+             wait_time=args.wait_time, kill_time=args.kill_time, test_time=args.test_time)
 
     p.set_defaults(func=main_with_args)
 

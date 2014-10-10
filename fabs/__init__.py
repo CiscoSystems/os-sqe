@@ -36,6 +36,7 @@ def _get_tempest_dir():
 LAB = os.environ.get("LAB", "lab1")
 QA_WAITTIME = os.environ.get("QA_WAITTIME", "18000")
 QA_KILLTIME = os.environ.get("QA_KILLTIME", str(int(QA_WAITTIME) + 60))
+OS_TEST_TIMEOUT = os.environ.get("OS_TEST_TIMEOUT", '')
 WORKSPACE = _get_workspace()
 
 REDHAT_DISK = os.environ.get("REDHAT_DISK", None)

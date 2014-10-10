@@ -3,7 +3,7 @@ import time
 from fabric.api import task, local, env, lcd, get, settings
 from common import timed, intempest, virtual, get_lab_vm_ip
 from common import logger as log
-from fabs import TEMPEST_DIR, QA_WAITTIME, QA_KILLTIME, WORKSPACE, DEFAULT_SETTINGS, TCVENV
+from fabs import TEMPEST_DIR, QA_WAITTIME, QA_KILLTIME, WORKSPACE, DEFAULT_SETTINGS, TCVENV, OS_TEST_TIMEOUT
 
 __all__ = ['test', 'init', 'prepare_coi', 'prepare', 'prepare_devstack',
            'prepare_with_ip', 'run_tests', 'run_remote_tests']
@@ -186,7 +186,8 @@ def run_remote_tests():
     else:
         log.info("Run all tests for devstack")
     local('python {wrk}/openstack-sqe/tools/run_tempest.py -r {ip} '
-          '{args} --repo {repo} --branch {br} --kill_time {kill_time} --wait_time {wait_time}'.format(
+          '{args} --repo {repo} --branch {br} --kill_time {kill_time} --wait_time {wait_time}'
+          ' --test_time {test_time}'.format(
         wrk=WORKSPACE, ip=ip, args=args,
         repo=tempest_repo, br=tempest_br,
-        kill_time=QA_KILLTIME, wait_time=QA_WAITTIME))
+        kill_time=QA_KILLTIME, wait_time=QA_WAITTIME, test_time=OS_TEST_TIMEOUT))
