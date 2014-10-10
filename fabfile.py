@@ -3,7 +3,7 @@ import os
 from fabric.api import task, local
 from fabs.common import timed, virtual
 from fabs.common import logger as log
-from fabs import LVENV, CVENV
+from fabs import LVENV, CVENV, LAB
 from fabs import coi, tempest, snap, devstack, redhat
 
 
@@ -50,3 +50,11 @@ def init(private=False):
     ''' Prepare virtualenv and install all requirements '''
     venv(private=private)
     requirements()
+
+@task
+@timed
+@virtual
+def destroy():
+    ''' Destroying all lab machines and networks '''
+    log.info("Destroying lab {lab}".format(lab=LAB))
+    local("python ./tools/cloud/create.py -l {lab} -x".format(lab=LAB))
