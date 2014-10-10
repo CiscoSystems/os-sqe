@@ -22,8 +22,7 @@ def collect_logs(run_func=None, hostname=None, clean=False):
     if "WORKSPACE" in os.environ:
         path = os.path.join(os.environ["WORKSPACE"], dirname)
     else:
-        cur_dir = os.path.dirname(__file__)
-        path = os.path.join(cur_dir, dirname)
+        path = os.path.join(os.getcwd(), dirname)
     if not os.path.exists(path):
         os.mkdir(path)
     if clean:
