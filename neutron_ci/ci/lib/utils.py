@@ -53,6 +53,16 @@ def clear_nexus_config(ip, user, password, intf_num, vlan_start, vlan_end):
     output, rc = run_cmd_line(cmd, check_result=False)
 
 
+def clear_apic_config(ip, port, user, password, ssl=False):
+    logger.info('Clearing apic config')
+    script_path = os.path.join(PARENT_FOLDER_PATH,
+                               'tools/apic_cleanup_script.py')
+    cmd = 'python {script} {ip} {port} {user} {password} {ssl}'.format(
+        script=script_path, ip=ip, port=port, user=user, password=password,
+        ssl='--ssl=' + str(ssl))
+    output, rc = run_cmd_line(cmd, check_result=False)
+
+
 def get_public_key(host):
     cmd = 'ssh-keyscan -t rsa {host}'.format(host=host)
     output, code = run_cmd_line(cmd)
