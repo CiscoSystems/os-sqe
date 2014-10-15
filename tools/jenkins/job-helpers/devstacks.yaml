@@ -1,2 +1,5 @@
 single: {name: "Devstack single node", job: "devstack_single_node_nightly"}
 multi: {name: "Devstack multinode", job: "devstack_multinode"}
+ml2-single: {name: "ML2 Single node", job: "ml2_nexus_nightly"}
+ml2-multi: {name: "ML2 Multi node", job: "ml2_multinode_nexus_nightly"}
+vpnaas: {name: "VPNaaS node", job: "vpnaas_nexus_nightly"}
