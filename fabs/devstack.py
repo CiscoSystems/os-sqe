@@ -38,13 +38,18 @@ def install(user='localadmin', password='ubuntu'):
     log.info("Installing devstack Openstack")
     tempest_repo = os.environ.get("TEMPEST_REPO", "")
     tempest_br = os.environ.get("TEMPEST_BRANCH", "")
+    devstack_repo = os.environ.get("DEVSTACK_REPO", "")
+    devstack_br = os.environ.get("DEVSTACK_BRANCH", "")
     local("python ./tools/deployers/install_devstack.py "
-          "-c config_file  -u {user} -p {password} -r {repo} -b {br}".format(
+          "-c config_file  -u {user} -p {password} -r {repo} -b {br} "
+          "-e {devstack_repo} -l {devstack_br}".format(
         user=user,
         password=password,
         repo=tempest_repo,
-        br=tempest_br
-    ))
+        br=tempest_br,
+        devstack_repo=devstack_repo,
+        devstack_br=devstack_br,
+        ))
 
 
 @task
