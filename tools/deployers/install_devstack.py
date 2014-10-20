@@ -10,6 +10,8 @@ from utils import collect_logs, warn_if_fail, quit_if_fail, update_time
 
 DESCRIPTION = 'Installer for Devstack.'
 CISCO_TEMPEST_REPO = 'https://github.com/CiscoSystems/tempest.git'
+DEVSTACK_REPO = 'https://github.com/openstack-dev/devstack.git'
+DEVSTACK_BRANCH = 'master'
 DOMAIN_NAME = 'domain.name'
 LOGS_COPY = {"/etc": "etc_configs", "/var/log": "all_logs", "/opt/stack/stack.sh.log": "stack.sh.log"}
 DEVSTACK_TEMPLATE = '''
@@ -71,7 +73,7 @@ TEMPEST_BRANCH={branch}"""
 
 
 def install_devstack(fab_settings, string_descriptor, hostname, download_conf=False,
-                     ipversion="4", patch="", proxy="", quiet=False):
+                     ipversion="4", patch="", proxy="", devstack_repo="", devstack_br="", quiet=False):
     verbose = []
     if quiet:
         verbose = ['output', 'running', 'warnings']
@@ -91,11 +93,16 @@ def install_devstack(fab_settings, string_descriptor, hostname, download_conf=Fa
         warn_if_fail(sudo("apt-get install -y git python-pip"))
         warn_if_fail(run("git config --global user.email 'test.node@example.com';"
                          "git config --global user.name 'Test Node'"))
+        if exists("devstack"):
+            with cd("devstack"):
+                warn_if_fail(run("./unstack.sh"))
         run("rm -rf ~/devstack")
-        quit_if_fail(run("git clone https://github.com/openstack-dev/devstack.git"))
+        quit_if_fail(run("git clone -b {branch} {devstack}".format(devstack=devstack_repo,
+                                                                   branch=devstack_br)))
         if patch:
-            warn_if_fail(run("git fetch https://review.openstack.org/openstack-dev/devstack {patch} "
-                             "&& git cherry-pick FETCH_HEAD".format(patch)))
+            with cd("devstack"):
+                warn_if_fail(run("git fetch https://review.openstack.org/openstack-dev/devstack {patch} "
+                                 "&& git cherry-pick FETCH_HEAD".format(patch)))
         warn_if_fail(put(string_descriptor, "devstack/local.conf", use_sudo=False))
         with cd("devstack"):
             warn_if_fail(run("./stack.sh"))
@@ -106,7 +113,7 @@ def install_devstack(fab_settings, string_descriptor, hostname, download_conf=Fa
 
 
 def install(fab_settings, branch, quiet, proxy, patch, local_conf,
-            ipversion, tempest_disable, repo, hostname, nodes=None):
+            ipversion, tempest_disable, repo, hostname, devstack_repo, devstack_br, nodes=None):
     ipversion = "4+6" if ipversion == 64 else str(ipversion)
     tempest = "" if tempest_disable else TEMPEST_CONF.format(repo=repo,
                                                              branch=branch)
@@ -118,22 +125,25 @@ def install(fab_settings, branch, quiet, proxy, patch, local_conf,
             install_devstack(fab_settings=fab_settings, string_descriptor=string_descriptor,
                              hostname=hostname,
                              download_conf=True, ipversion=ipversion, patch=patch,
-                             proxy=proxy, quiet=quiet)
+                             proxy=proxy, devstack_repo=devstack_repo, devstack_br=devstack_br, quiet=quiet)
         else:
             install_devstack(fab_settings=fab_settings, string_descriptor=string_descriptor,
                              hostname=hostname,
                              download_conf=False, ipversion=ipversion, patch=patch,
-                             proxy=proxy, quiet=quiet)
+                             proxy=proxy, devstack_repo=devstack_repo, devstack_br=devstack_br,
+                             quiet=quiet)
     else:
         string_descriptor = StringIO(local_conf.format(ipversion=ipversion, tempest=tempest))
         install_devstack(fab_settings=fab_settings, string_descriptor=string_descriptor,
                          hostname=hostname,
                          download_conf=True, ipversion=ipversion,
-                         patch=patch, proxy=proxy, quiet=quiet)
+                         patch=patch, proxy=proxy, devstack_repo=devstack_repo, devstack_br=devstack_br,
+                         quiet=quiet)
 
 
 def install_multinode(host, branch, config_file, gateway, quiet, ssh_key_file,
-                      proxy, user, password, patch, ipversion, tempest_disable, repo):
+                      proxy, user, password, patch, ipversion, tempest_disable, repo,
+                      devstack_repo, devstack_br):
     local_conf = [DEVSTACK_TEMPLATE.format(services_specific=ALLINONE)]
     fab_settings = {"host_string": None, "abort_on_prompts": True, "gateway": gateway,
                     "user": user, "password": password, "warn_only": True}
@@ -156,7 +166,8 @@ def install_multinode(host, branch, config_file, gateway, quiet, ssh_key_file,
             fab_settings.update({"host_string": node['ip']})
             install(fab_settings=fab_settings, branch=branch, quiet=quiet, proxy=proxy,
                     patch=patch, local_conf=conf, ipversion=ipversion, tempest_disable=tempest_disable,
-                    repo=repo, hostname=node['hostname'], nodes=nodes)
+                    repo=repo, hostname=node['hostname'], nodes=nodes, devstack_repo=devstack_repo,
+                    devstack_br=devstack_br)
     else:
         return
 
@@ -175,6 +186,12 @@ def define_cli(p):
     p.add_argument('-u', dest='user', help='User to run the script with', required=True)
     p.add_argument('-p', dest='password', help='Password for user and sudo', required=True)
     p.add_argument('-m', dest='patch', help='If apply patches to Devstack e.g. refs/changes/87/87987/22')
+    p.add_argument('-e', dest='devstack_repo', nargs="?",
+                   const=DEVSTACK_REPO, default=DEVSTACK_REPO,
+                   help='Devstack repository.')
+    p.add_argument('-l', dest='devstack_br', nargs="?",
+                   const=DEVSTACK_BRANCH, default=DEVSTACK_BRANCH,
+                   help='Devstack branch')
     p.add_argument('--ip-version', dest='ipversion', type=int, default=4,
                    choices=[4, 6, 64], help='IP version in local.conf, default is 4')
     p.add_argument('--disable-tempest', action='store_true', default=False, dest='tempest_disable',
@@ -189,7 +206,7 @@ def define_cli(p):
                           gateway=args.gateway, quiet=args.quiet, ssh_key_file=args.ssh_key_file,
                           proxy=args.proxy, user=args.user, password=args.password, patch=args.patch,
                           ipversion=args.ipversion, tempest_disable=args.tempest_disable,
-                          repo=args.repo)
+                          repo=args.repo, devstack_repo=args.devstack_repo, devstack_br=args.devstack_br)
 
     p.set_defaults(func=main_with_args)
 
