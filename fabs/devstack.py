@@ -1,7 +1,7 @@
 import os
 import time
-from fabric.api import task, local, env
-from common import timed, virtual
+from fabric.api import task, local, env, settings, run, cd
+from common import timed, virtual, get_lab_vm_ip
 from common import logger as log
 from tempest import prepare_devstack, run_tests, run_remote_tests
 from fabs import LAB, IMAGES_REPO, DEVSTACK_DISK, GLOBAL_TIMEOUT, DEFAULT_SETTINGS
@@ -12,7 +12,7 @@ env.update(DEFAULT_SETTINGS)
 __all__ = ['prepare', 'install', 'setup',
            'run_test_original_file', 'run_test_custom_file',
            'run_test_ready_file', 'run_test_remote',
-           'snapshot_create']
+           'snapshot_create', 'set_branch', 'patchset']
 
 
 @task
@@ -97,3 +97,34 @@ def snapshot_create():
     destroy()
     setup()
     create()
+
+@task
+@timed
+def set_branch(component="neutron", branch="master"):
+    ''' Set Openstack component for particular branch or commit '''
+    ip = get_lab_vm_ip()
+    with settings(host_string=ip, abort_on_prompts=True, warn_only=True):
+        stack_file = '~/devstack/stack-screenrc'
+        run("screen -S stack -X quit")
+        path = os.path.join("/opt", "stack", component)
+        with cd(path):
+            run("git fetch --all; git checkout {br}".format(br=branch))
+        run("screen -c {0} -d -m && sleep 1".format(stack_file))
+
+@task
+@timed
+def patchset(component="neutron", patchset=None):
+    ''' Set Openstack component for particular patchset of Gerrit '''
+    ip = get_lab_vm_ip()
+    if not patchset:
+        raise Exception("Please provide patchset as 'refs/changes/44/129144/1'")
+    with settings(host_string=ip, abort_on_prompts=True, warn_only=True):
+        stack_file = '~/devstack/stack-screenrc'
+        run("screen -S stack -X quit")
+        path = os.path.join("/opt", "stack", component)
+        with cd(path):
+            run("git fetch https://review.openstack.org/openstack/{project}"
+                " {patchset} && git checkout FETCH_HEAD".format(
+                project=component,
+                patchset=patchset))
+        run("screen -c {0} -d -m && sleep 1".format(stack_file))
