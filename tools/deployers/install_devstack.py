@@ -4,7 +4,7 @@ import argparse
 import os
 import yaml
 
-from fabric.api import sudo, settings, run, hide, put, cd, get
+from fabric.api import sudo, settings, run, hide, put, cd, get, local
 from fabric.contrib.files import append, exists
 from utils import collect_logs, warn_if_fail, quit_if_fail, update_time
 
@@ -109,6 +109,15 @@ def install_devstack(fab_settings, string_descriptor, hostname, download_conf=Fa
         if download_conf:
             get('~/devstack/openrc', "./openrc")
             get('/opt/stack/tempest/etc/tempest.conf', "./tempest.conf")
+        path = os.environ.get("WORKSPACE", os.getcwd())
+        if os.path.exists("{path}/id_rsa_{key}".format(path=path, key=hostname)):
+            path = os.environ.get("WORKSPACE", os.getcwd())
+            put("{path}/id_rsa_{key}".format(path=path, key=hostname), "~/.ssh/id_rsa")
+            put("{path}/id_rsa_{key}.pub".format(path=path, key=hostname), "~/.ssh/id_rsa.pub")
+            put("{0}/id_rsa_all.pub".format(path), "/tmp/all_authorized")
+            warn_if_fail(run("chmod 500 ~/.ssh/id_rsa"))
+            warn_if_fail(run("cat /tmp/all_authorized >> ~/.ssh/authorized_keys"))
+            append("/etc/ssh/ssh_config", "\nStrictHostKeyChecking no\nUserKnownHostsFile=/dev/null", use_sudo=True)
         collect_logs(run, hostname)
 
 
@@ -153,7 +162,7 @@ def install_multinode(host, branch, config_file, gateway, quiet, ssh_key_file,
         fab_settings.update({"host_string": host})
         install(fab_settings=fab_settings, branch=branch, quiet=quiet, proxy=proxy,
                 patch=patch, local_conf=local_conf[0], ipversion=ipversion, tempest_disable=tempest_disable,
-                repo=repo, hostname=host, nodes=None)
+                repo=repo, hostname=host, devstack_repo=devstack_repo, devstack_br=devstack_br, nodes=None)
     elif config_file:
         config = yaml.load(config_file)
         nodes = {}
@@ -162,6 +171,13 @@ def install_multinode(host, branch, config_file, gateway, quiet, ssh_key_file,
                           DEVSTACK_TEMPLATE.format(services_specific=COMPUTE)]
             nodes = {"control_node_ip": config['servers']['devstack-server'][0]['ip'],
                      "compute_node_ip": config['servers']['devstack-server'][1]['ip']}
+        with settings(warn_only=True, abort_on_prompts=True):
+            path = os.environ.get("WORKSPACE", os.getcwd())
+            warn_if_fail(local("rm {0}/id_rsa_*".format(path)))
+            keys = len(nodes) or 1
+            for i in range(keys):
+                local("ssh-keygen -f {path}/id_rsa_{i} -t rsa -N ''".format(path=path, i=config['servers']['devstack-server'][i]['hostname']))
+                local("cat  {path}/id_rsa_{i}.pub >> {path}/id_rsa_all.pub".format(path=path, i=config['servers']['devstack-server'][i]['hostname']))
         for node, conf in zip(config['servers']['devstack-server'], local_conf):
             fab_settings.update({"host_string": node['ip']})
             install(fab_settings=fab_settings, branch=branch, quiet=quiet, proxy=proxy,
