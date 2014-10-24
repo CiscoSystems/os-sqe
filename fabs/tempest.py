@@ -174,6 +174,7 @@ def run_remote_tests():
     log.info("Run Tempest tests remotely")
     tempest_repo = os.environ.get("TEMPEST_REPO", "")
     tempest_br = os.environ.get("TEMPEST_BRANCH", "")
+    tempest_patch_set = os.environ.get("TEMPEST_PATCHSET", "")
     ip = get_lab_vm_ip()
     test_regex = os.environ.get('REG', "")
     args = ""
@@ -186,8 +187,8 @@ def run_remote_tests():
     else:
         log.info("Run all tests for devstack")
     local('python {wrk}/openstack-sqe/tools/run_tempest.py -r {ip} '
-          '{args} --repo {repo} --branch {br} --kill_time {kill_time} --wait_time {wait_time}'
-          ' --test_time {test_time}'.format(
-        wrk=WORKSPACE, ip=ip, args=args,
-        repo=tempest_repo, br=tempest_br,
-        kill_time=QA_KILLTIME, wait_time=QA_WAITTIME, test_time=OS_TEST_TIMEOUT))
+          '{args} --repo {repo} --branch {br} --kill_time {kill_time} '
+          '--wait_time {wait_time} --test_time {test_time} --patchset {ps}'.format(
+        wrk=WORKSPACE, ip=ip, args=args, repo=tempest_repo,
+        br=tempest_br, kill_time=QA_KILLTIME, wait_time=QA_WAITTIME,
+        test_time=OS_TEST_TIMEOUT, ps=tempest_patch_set))

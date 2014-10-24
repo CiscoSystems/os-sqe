@@ -15,7 +15,8 @@ TEMPEST_XML_CMD = 'testr last --subunit | subunit-1to2 | subunit2junitxml --outp
 
 
 def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
-         tempest_repo, tempest_branch, is_venv, wait_time=0, kill_time=0, test_time=''):
+         tempest_repo, tempest_branch, is_venv, wait_time=0, kill_time=0,
+         test_time='', patch_set=None):
     cmd = './run_tempest.sh {venv} -- {filter_or_list}'.format(
         venv='-V' if is_venv else '-N',
         filter_or_list='--load-list=list.txt' if tempest_list_file else tempest_filter)
@@ -37,6 +38,9 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
             if tempest_list_file:
                 api.put(local_path=tempest_list_file, remote_path='list.txt')
             api.sudo(command='pip install junitxml')
+            if patch_set:
+                api.run('git fetch https://review.openstack.org/openstack/tempest'
+                        ' {0} && git checkout FETCH_HEAD'.format(patch_set))
             api.run(command='testr init')
             api.run(command=cmd)
             api.run(command=TEMPEST_SUBUNIT_CMD)
@@ -53,6 +57,15 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
                 print(TEMPEST_FILE_SUBUNIT + ' is not created on remote', file=sys.stderr)
 
 DESCRIPTION = 'run tempest on the given remote host'
+
+
+def patch_set_validator(patch_set):
+    import re
+
+    if not patch_set or re.match('^refs/changes/\d+/\d+/\d+$', patch_set):
+        return patch_set
+    else:
+        raise argparse.ArgumentTypeError('expect something like refs/changes/44/129144/1')
 
 
 def define_cli(p):
@@ -80,13 +93,16 @@ def define_cli(p):
                    help='Kill time for script execution timeout')
     p.add_argument('--test_time', nargs='?', const='', default='',
                    help='Maximal time for test execution')
+    p.add_argument('--patchset', nargs='?', const='', type=patch_set_validator,
+                   default='', help='Custom patch set in form refs/changes/44/129144/1')
 
     def main_with_args(args):
         main(host=args.remote, user=args.user, password=args.password,
              tempest_filter=args.filter, tempest_list_file=args.list,
              tempest_dir=args.dir, is_venv=args.venv,
              tempest_repo=args.repo, tempest_branch=args.branch,
-             wait_time=args.wait_time, kill_time=args.kill_time, test_time=args.test_time)
+             wait_time=args.wait_time, kill_time=args.kill_time,
+             test_time=args.test_time, patch_set=args.patchset)
 
     p.set_defaults(func=main_with_args)
 
