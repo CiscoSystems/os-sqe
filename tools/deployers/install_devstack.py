@@ -38,6 +38,7 @@ IMAGE_URLS='http://172.29.173.233/cirros-0.3.3-x86_64-uec.tar.gz,http://172.29.1
 CIRROS_VERSION=0.3.3
 SWIFT_REPLICAS=1
 SWIFT_HASH=011688b44136573e209e
+{extras}
 '''
 CONTROLLER = '''
 MULTI_HOST=True
@@ -153,7 +154,8 @@ def install(fab_settings, branch, quiet, proxy, patch, local_conf,
 def install_multinode(host, branch, config_file, gateway, quiet, ssh_key_file,
                       proxy, user, password, patch, ipversion, tempest_disable, repo,
                       devstack_repo, devstack_br):
-    local_conf = [DEVSTACK_TEMPLATE.format(services_specific=ALLINONE)]
+    extras = os.environ.get("QA_DEVSTACK_EXTRAS", "")
+    local_conf = [DEVSTACK_TEMPLATE.format(services_specific=ALLINONE, extras=extras)]
     fab_settings = {"host_string": None, "abort_on_prompts": True, "gateway": gateway,
                     "user": user, "password": password, "warn_only": True}
     local_ssh_key_file = os.path.join(os.path.dirname(__file__), "..", "libvirt-scripts", "id_rsa")
@@ -167,8 +169,8 @@ def install_multinode(host, branch, config_file, gateway, quiet, ssh_key_file,
         config = yaml.load(config_file)
         nodes = {}
         if len(config['servers']['devstack-server']) > 1:
-            local_conf = [DEVSTACK_TEMPLATE.format(services_specific=CONTROLLER),
-                          DEVSTACK_TEMPLATE.format(services_specific=COMPUTE)]
+            local_conf = [DEVSTACK_TEMPLATE.format(services_specific=CONTROLLER, extras=extras),
+                          DEVSTACK_TEMPLATE.format(services_specific=COMPUTE, extras=extras)]
             nodes = {"control_node_ip": config['servers']['devstack-server'][0]['ip'],
                      "compute_node_ip": config['servers']['devstack-server'][1]['ip']}
         with settings(warn_only=True, abort_on_prompts=True):
