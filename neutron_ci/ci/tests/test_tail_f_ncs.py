@@ -15,6 +15,7 @@
 # @author: Nikolay Fedotov, Cisco Systems, Inc.
 
 import urlparse
+from fabric.operations import sudo
 import os
 from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, \
     ZUUL_REF, WORKSPACE
@@ -88,6 +89,14 @@ class TailFNCSTest(BaseTestCase):
     def setUpClass(cls):
         BaseTestCase.setUpClass()
 
+        # Install NGINX
+        nginx_conf = os.path.join(PARENT_FOLDER_PATH,
+                                  'files/ncs/nginx-ncs.conf')
+        sudo('apt-get install -y nginx')
+        sudo('cp {0} /etc/nginx/sites-available/default'.format(nginx_conf))
+        sudo('service nginx restart')
+
+        # Create ml2 config for NCS
         path = os.path.join(WORKSPACE, Q_PLUGIN_EXTRA_CONF_FILES)
         with open(path, 'w') as f:
             f.write(ML2_CONF_NCS_INI)
