@@ -103,7 +103,7 @@ def install_devstack(fab_settings, string_descriptor, hostname, download_conf=Fa
         if patch:
             with cd("devstack"):
                 warn_if_fail(run("git fetch https://review.openstack.org/openstack-dev/devstack {patch} "
-                                 "&& git cherry-pick FETCH_HEAD".format(patch)))
+                                 "&& git cherry-pick FETCH_HEAD".format(patch=patch)))
         warn_if_fail(put(string_descriptor, "devstack/local.conf", use_sudo=False))
         with cd("devstack"):
             warn_if_fail(run("./stack.sh"))
@@ -203,7 +203,8 @@ def define_cli(p):
                    help='Use Cisco proxy if installing from Cisco local network')
     p.add_argument('-u', dest='user', help='User to run the script with', required=True)
     p.add_argument('-p', dest='password', help='Password for user and sudo', required=True)
-    p.add_argument('-m', dest='patch', help='If apply patches to Devstack e.g. refs/changes/87/87987/22')
+    p.add_argument('-m', dest='patch', nargs="?", const=None, default=None,
+                   help='If apply patches to Devstack e.g. refs/changes/87/87987/22')
     p.add_argument('-e', dest='devstack_repo', nargs="?",
                    const=DEVSTACK_REPO, default=DEVSTACK_REPO,
                    help='Devstack repository.')
