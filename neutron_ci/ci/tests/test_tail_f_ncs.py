@@ -15,7 +15,7 @@
 # @author: Nikolay Fedotov, Cisco Systems, Inc.
 
 import urlparse
-from fabric.operations import sudo
+from fabric.operations import local
 import os
 from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, \
     ZUUL_REF, WORKSPACE
@@ -92,9 +92,9 @@ class TailFNCSTest(BaseTestCase):
         # Install NGINX
         nginx_conf = os.path.join(PARENT_FOLDER_PATH,
                                   'files/ncs/nginx-ncs.conf')
-        sudo('apt-get install -y nginx')
-        sudo('cp {0} /etc/nginx/sites-available/default'.format(nginx_conf))
-        sudo('service nginx restart')
+        local('sudo apt-get install -y nginx')
+        local('sudo cp {0} /etc/nginx/sites-available/default'.format(nginx_conf))
+        local('sudo service nginx restart')
 
         # Create ml2 config for NCS
         path = os.path.join(WORKSPACE, Q_PLUGIN_EXTRA_CONF_FILES)
