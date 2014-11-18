@@ -31,8 +31,6 @@ DEBUG=True
 USE_SCREEN=True
 SCREEN_LOGDIR=$DEST/logs
 API_RATE_LIMIT=False
-FIXED_RANGE_V6=2001:dead:beef:deed::/64
-IPV6_NETWORK_GATEWAY=2001:dead:beef:deed::1
 REMOVE_PUBLIC_BRIDGE=False
 IMAGE_URLS='http://172.29.173.233/cirros-0.3.3-x86_64-uec.tar.gz,http://172.29.173.233/trusty-server-cloudimg-amd64-disk1.img'
 CIRROS_VERSION=0.3.3
@@ -49,7 +47,6 @@ enable_service mysql q-svc q-agt q-l3 q-dhcp q-meta q-lbaas q-vpn q-fwaas q-mete
 disable_service n-net
 enable_service s-proxy s-object s-container s-account
 {tempest}
-IP_VERSION={ipversion}
 '''
 COMPUTE = '''
 HOST_IP={compute_node_ip}
@@ -58,7 +55,6 @@ MYSQL_HOST={control_node_ip}
 RABBIT_HOST={control_node_ip}
 GLANCE_HOSTPORT={control_node_ip}:9292
 ENABLED_SERVICES=n-cpu,neutron,n-api,q-agt
-IP_VERSION={ipversion}
 '''
 ALLINONE = """
 enable_service g-api g-reg key n-api n-crt n-obj n-cpu n-cond cinder c-sch
@@ -124,7 +120,8 @@ def install_devstack(fab_settings, string_descriptor, hostname, download_conf=Fa
 
 def install(fab_settings, branch, quiet, proxy, patch, local_conf,
             ipversion, tempest_disable, repo, hostname, devstack_repo, devstack_br, nodes=None):
-    ipversion = "4+6" if ipversion == 64 else str(ipversion)
+    if ipversion:
+        ipversion = "IP_VERSION=4+6" if ipversion == 64 else "IP_VERSION=" + str(ipversion)
     tempest = "" if tempest_disable else TEMPEST_CONF.format(repo=repo,
                                                              branch=branch)
     if nodes:
@@ -211,8 +208,8 @@ def define_cli(p):
     p.add_argument('-l', dest='devstack_br', nargs="?",
                    const=DEVSTACK_BRANCH, default=DEVSTACK_BRANCH,
                    help='Devstack branch')
-    p.add_argument('--ip-version', dest='ipversion', type=int, default=4,
-                   choices=[4, 6, 64], help='IP version in local.conf, default is 4')
+    p.add_argument('--ip-version', dest='ipversion', default="",
+                   choices=[4, 6, 64], help='Explicit IP version in local.conf')
     p.add_argument('--disable-tempest', action='store_true', default=False, dest='tempest_disable',
                    help="Don't install tempest on devstack")
     p.add_argument('-r', dest='repo', nargs="?",
