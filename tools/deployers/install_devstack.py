@@ -192,8 +192,8 @@ def install_multinode(host, branch, config_file, gateway, quiet, ssh_key_file,
 
 def define_cli(p):
     p.add_argument('-a', dest='host', help='IP of host in to install Devstack on')
-    p.add_argument('-b', dest='branch', nargs="?", default="master-in-use", const="master-in-use",
-                   help='Tempest repository branch, default is master-in-use')
+    p.add_argument('-b', dest='branch', nargs="?", default="ipv6", const="ipv6",
+                   help='Tempest repository branch, default is ipv6')
     p.add_argument('-c', dest='config_file',
                    help='Configuration file, default is None', type=argparse.FileType('r'))
     p.add_argument('-g', dest='gateway', help='Gateway to connect to host')
