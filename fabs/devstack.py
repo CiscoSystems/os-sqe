@@ -40,15 +40,17 @@ def install(user='localadmin', password='ubuntu'):
     tempest_br = os.environ.get("TEMPEST_BRANCH", "")
     devstack_repo = os.environ.get("DEVSTACK_REPO", "")
     devstack_br = os.environ.get("DEVSTACK_BRANCH", "")
+    devstack_patch = os.environ.get("DEVSTACK_PATCH", "")
     local("python ./tools/deployers/install_devstack.py "
           "-c config_file  -u {user} -p {password} -r {repo} -b {br} "
-          "-e {devstack_repo} -l {devstack_br}".format(
+          "-e {devstack_repo} -l {devstack_br} -m {patch}".format(
         user=user,
         password=password,
         repo=tempest_repo,
         br=tempest_br,
         devstack_repo=devstack_repo,
         devstack_br=devstack_br,
+        patch=devstack_patch
         ))
 
 
