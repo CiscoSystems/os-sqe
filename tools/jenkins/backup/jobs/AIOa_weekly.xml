@@ -40,7 +40,7 @@
       <hudson.plugins.git.extensions.impl.WipeWorkspace/>
     </extensions>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.173.229</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>

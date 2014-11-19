@@ -27,12 +27,12 @@
     <configVersion>2</configVersion>
     <userRemoteConfigs>
       <hudson.plugins.git.UserRemoteConfig>
-        <url>http://172.29.173.134/nfedotov/nexus_ci.git</url>
+        <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
       </hudson.plugins.git.UserRemoteConfig>
     </userRemoteConfigs>
     <branches>
       <hudson.plugins.git.BranchSpec>
-        <name>*/refactoring</name>
+        <name>*/neutron_ci</name>
       </hudson.plugins.git.BranchSpec>
     </branches>
     <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -45,30 +45,70 @@
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
-  <concurrentBuild>false</concurrentBuild>
+  <concurrentBuild>true</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>export ZUUL_MERGER_GIT=http://172.29.173.135/p/
-
-export NEXUS_IP=172.29.172.140
+      <command>export NEXUS_IP=172.29.172.140
 export NEXUS_USER=admin
 export NEXUS_PASSWORD=c3l12345
-export NEXUS_INTF_NUM=1/44
-export NEXUS_VLAN_START=3060
-export NEXUS_VLAN_END=3069
-
 export CONSOLE_LOG_LEVEL=10
 
+cd neutron_ci
 sudo pip install -r requirements.txt
-nosetests nexus_ci/tests/test_ml2_nexus.py</command>
+
+# Get parameters
+CONNECTION=&quot;mysql://jenkins:Cisco123@192.168.0.177/neutron&quot;
+python tools/parameters.py allocate --connection=${CONNECTION} --wait &gt; params.sh
+source params.sh
+
+nosetests ci/tests/test_ml2_nexus.py || :
+
+# Release parameters
+python tools/parameters.py release --connection=${CONNECTION} --id=${PARAM_ID}</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>cat &gt;&gt;/home/ubuntu/.ssh/known_hosts&lt;&lt;EOF
+|1|ejnKhkRrj96mJj9pv6WJtTDdpN4=|nq2bLYfJOD7AD+rO4SHwFysf9Ow= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBK++7Bpvy60tgFtzc02N9K91N7+DXo+Cr6xuxLZv9nsqx4LXVrrh2pge5OwljtChnYNJyz3lc81rvmwmE7OU4TA=
+EOF
+
+files=&apos;console.txt local.conf&apos;
+
+pass=&apos;N3u+r0N&apos;
+logpass=/home/cisco_neutron_ci/jlogs/${JOB_NAME}/${BUILD_NUMBER}/
+sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 mkdir -p ${logpass} || :
+sshpass -p ${pass} rsync -ave ssh ${files} cisco_neutron_ci@128.107.233.28:${logpass} || :
+sshpass -p ${pass} rsync -ave ssh logs cisco_neutron_ci@128.107.233.28:${logpass} || :
+
+sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 gzip -9 &quot;${logpass}*&quot; || :
+sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 gzip -9 &quot;${logpass}/logs/*&quot;  || :</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>localrc, local.conf, console.txt, logs/*</artifacts>
+      <latestOnly>false</latestOnly>
+      <allowEmptyArchive>false</allowEmptyArchive>
+    </hudson.tasks.ArtifactArchiver>
     <hudson.tasks.junit.JUnitResultArchiver>
       <testResults>logs/tempest.xml</testResults>
       <keepLongStdio>false</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.25">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>jenkins_build_url=http://172.29.173.133:8080/job/${JOB_NAME}/${BUILD_NUMBER}/
+upload_path=/home/localadmin/logs/${JOB_NAME}/${BUILD_NUMBER}/</properties>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>upload_build_artifacts</projects>
+          <condition>ALWAYS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
   </publishers>
   <buildWrappers>
     <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.21">

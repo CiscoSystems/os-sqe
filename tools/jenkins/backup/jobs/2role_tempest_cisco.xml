@@ -49,7 +49,7 @@
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/cloud</name>
+            <name>*/feature</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -84,7 +84,7 @@
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.173.230</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -95,8 +95,12 @@
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
 make full-2role
-mv ${WORKSPACE}/nosetests.xml ${WORKSPACE}/nosetests_cisco.xml
-cp ${WORKSPACE}/nosetests_cisco.xml ${WORKSPACE}/nosetests_2role.xml</command>
+if grep -q tempest $WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set; then
+make full-2role
+fi
+python $WORKSPACE/openstack-sqe/tools/tempest-scripts/junit_merge.py $(ls $WORKSPACE/openstack-sqe/nosetests*xml) &gt; $WORKSPACE/result.xml
+cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_cisco.xml
+cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_2role.xml</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
@@ -104,7 +108,7 @@ cp ${WORKSPACE}/nosetests_cisco.xml ${WORKSPACE}/nosetests_2role.xml</command>
       <factGenerator/>
     </hudson.plugins.chucknorris.CordellWalkerRecorder>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>*.xml</artifacts>
+      <artifacts>openstack-sqe/*.xml</artifacts>
       <latestOnly>false</latestOnly>
       <allowEmptyArchive>false</allowEmptyArchive>
     </hudson.tasks.ArtifactArchiver>
@@ -118,7 +122,7 @@ cp ${WORKSPACE}/nosetests_cisco.xml ${WORKSPACE}/nosetests_2role.xml</command>
             <transfers>
               <jenkins.plugins.publish__over__ssh.BapSshTransfer>
                 <remoteDirectory>workspace/2role_regular</remoteDirectory>
-                <sourceFiles>*.xml</sourceFiles>
+                <sourceFiles>result.xml</sourceFiles>
                 <excludes></excludes>
                 <removePrefix></removePrefix>
                 <remoteDirectorySDF>false</remoteDirectorySDF>
@@ -166,7 +170,7 @@ cp ${WORKSPACE}/nosetests_cisco.xml ${WORKSPACE}/nosetests_2role.xml</command>
       </delegate>
     </jenkins.plugins.publish__over__ssh.BapSshPublisherPlugin>
     <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>nosetests_cisco.xml</testResults>
+      <testResults>result.xml</testResults>
       <keepLongStdio>false</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>
@@ -176,7 +180,7 @@ cp ${WORKSPACE}/nosetests_cisco.xml ${WORKSPACE}/nosetests_2role.xml</command>
       <colorMapName>xterm</colorMapName>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo LAB=lab2
+      <script>echo LAB=lab4
 echo REG=&apos;(?!.*tempest.api.object_storage|.*swift.*|.*hint_group.*)tempest&apos; </script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>

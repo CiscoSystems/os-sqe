@@ -27,12 +27,12 @@
     <configVersion>2</configVersion>
     <userRemoteConfigs>
       <hudson.plugins.git.UserRemoteConfig>
-        <url>http://172.29.173.134/nfedotov/nexus_ci.git</url>
+        <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
       </hudson.plugins.git.UserRemoteConfig>
     </userRemoteConfigs>
     <branches>
       <hudson.plugins.git.BranchSpec>
-        <name>*/refactoring</name>
+        <name>*/neutron-ci-devstack-commit</name>
       </hudson.plugins.git.BranchSpec>
     </branches>
     <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -41,34 +41,60 @@
   </scm>
   <assignedNode>nexus-ci_devstack</assignedNode>
   <canRoam>false</canRoam>
-  <disabled>false</disabled>
+  <disabled>true</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
-  <concurrentBuild>false</concurrentBuild>
+  <concurrentBuild>true</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>export ZUUL_MERGER_GIT=http://172.29.173.135/p/
-
-export NEXUS_IP=172.29.172.140
+      <command>export NEXUS_IP=172.29.172.140
 export NEXUS_USER=admin
 export NEXUS_PASSWORD=c3l12345
-export NEXUS_INTF_NUM=1/43
-export NEXUS_VLAN_START=3050
-export NEXUS_VLAN_END=3059
-
 export CONSOLE_LOG_LEVEL=10
 
+cd neutron_ci
 sudo pip install -r requirements.txt
-nosetests nexus_ci/tests/test_monolithic_nexus.py</command>
+
+# Get parameters
+CONNECTION=&quot;mysql://jenkins:Cisco123@192.168.0.177/neutron&quot;
+python tools/parameters.py allocate --connection=${CONNECTION} --wait &gt; params.sh
+source params.sh
+
+export DEVSTACK_COMMIT=d127ce38a6e9fd6ec3787ad42e2984a0fd1b6d82
+
+nosetests ci/tests/test_monolithic_nexus.py || :
+
+# Release parameters
+python tools/parameters.py release --connection=${CONNECTION} --id=${PARAM_ID}</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>localrc, local.conf, console.txt, logs/*</artifacts>
+      <latestOnly>false</latestOnly>
+      <allowEmptyArchive>false</allowEmptyArchive>
+    </hudson.tasks.ArtifactArchiver>
     <hudson.tasks.junit.JUnitResultArchiver>
       <testResults>logs/tempest.xml</testResults>
       <keepLongStdio>false</keepLongStdio>
       <testDataPublishers/>
     </hudson.tasks.junit.JUnitResultArchiver>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.25">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>jenkins_build_url=http://172.29.173.133:8080/job/${JOB_NAME}/${BUILD_NUMBER}/
+upload_path=/home/localadmin/logs/${JOB_NAME}/${BUILD_NUMBER}/</properties>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>upload_build_artifacts</projects>
+          <condition>ALWAYS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
   </publishers>
   <buildWrappers>
     <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.21">

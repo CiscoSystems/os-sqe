@@ -86,7 +86,7 @@ Original tempest on node</description>
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.173.230</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -97,7 +97,11 @@ Original tempest on node</description>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe
 make full-aio
-cp $WORKSPACE/nosetests.xml ${WORKSPACE}/nosetests_orig.xml</command>
+if grep -q tempest $WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set; then
+make full-aio
+fi
+python $WORKSPACE/openstack-sqe/tools/tempest-scripts/junit_merge.py $(ls $WORKSPACE/openstack-sqe/nosetests*xml) &gt; $WORKSPACE/result.xml
+cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_orig.xml</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>

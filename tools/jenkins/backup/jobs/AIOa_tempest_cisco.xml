@@ -4,7 +4,7 @@
   <description>&quot;All in one&quot; standalone openstack installation and running our version of tempest on it.&#xd;
 AIO on VM&#xd;
 Fixed custom tempest on node&#xd;
-229 lab2</description>
+230 lab2</description>
   <keepDependencies>false</keepDependencies>
   <properties>
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
@@ -26,12 +26,12 @@ Fixed custom tempest on node&#xd;
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/terrrakot/tempest.git</url>
+            <url>https://github.com/CiscoSystems/tempest.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/upd</name>
+            <name>*/master-in-use</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -87,7 +87,7 @@ Fixed custom tempest on node&#xd;
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.173.230</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -98,7 +98,11 @@ Fixed custom tempest on node&#xd;
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe
 make full-aio
-cp $WORKSPACE/nosetests.xml ${WORKSPACE}/nosetests_cisco.xml</command>
+if grep -q tempest $WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set; then
+make full-aio
+fi
+python $WORKSPACE/openstack-sqe/tools/tempest-scripts/junit_merge.py $(ls $WORKSPACE/openstack-sqe/nosetests*xml) &gt; $WORKSPACE/result.xml
+cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_cisco.xml</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
