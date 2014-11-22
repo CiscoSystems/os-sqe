@@ -32,6 +32,7 @@ def start(ip=None, user="localadmin", password="ubuntu"):
     with settings(**JOB):
         sudo("apt-get install -y python-coverage")
         run("screen -S stack -X quit")
+        time.sleep(8)
         run("rm -rf coverage.* .coverage*")
         stack_file = '~/devstack/stack-screenrc'
         stack_cov = '~/devstack/stackcov-screenrc'
