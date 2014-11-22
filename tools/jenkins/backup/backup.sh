@@ -233,7 +233,7 @@ prepare_dir $DATE
 copy_jenkins_home
 copy_jenkins_jobs
 backup_jenkins
-backup_zuul
+#backup_zuul
 checkif_allright
 if [ "$?" == 255 ]; then
     echo "Fail with backups!"
@@ -241,5 +241,5 @@ if [ "$?" == 255 ]; then
 fi
 
 snapshot_jenkins
-snapshot_zuul
+#snapshot_zuul
 clear_old
