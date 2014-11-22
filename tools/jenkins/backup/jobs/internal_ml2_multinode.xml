@@ -1,0 +1,118 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>30</daysToKeep>
+    <numToKeep>-1</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
+      <enabled>true</enabled>
+    </org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.22">
+      <autoRebuild>false</autoRebuild>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@1.8.3">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.2.6">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <browser class="hudson.plugins.git.browser.AssemblaWeb">
+      <url></url>
+    </browser>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <assignedNode>nexus-virthost-ci_devstack</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>export BASE_LOG_PATH=&quot;&quot;
+export CONSOLE_LOG_LEVEL=10
+export LOG_PATH=&quot;&quot;
+export NEXUS_INTF_NUM=&quot;&quot;
+export NEXUS_IP=192.168.254.10
+export NEXUS_PASSWORD=Cisco12345
+export NEXUS_USER=admin
+export NEXUS_VLAN_END=3100
+export NEXUS_VLAN_START=3000
+export NODE_DEFAULT_ETH=eth0
+export OFFLINE_NODE_WHEN_COMPLETE=&quot;&quot;
+export OS_AUTH_URL=&quot;&quot;
+export OS_DNS=&quot;&quot;
+export OS_FLAVOR_NAME=devstack.medium
+export OS_IMAGE_NAME=devstack-trusty-\d+.template.openstack.org
+export OS_PASSWORD=&quot;&quot;
+export OS_TENANT_NAME=&quot;&quot;
+export OS_USERNAME=&quot;&quot;
+export WORKSPACE=~/workspace/internal_ml2_multinode
+export ZUUL_BRANCH=&quot;&quot;
+export ZUUL_CHANGE=&quot;&quot;
+export ZUUL_CHANGES=&quot;&quot;
+export ZUUL_CHANGE_IDS=&quot;&quot;
+export ZUUL_COMMIT=&quot;&quot;
+export ZUUL_PATCHSET=&quot;&quot;
+export ZUUL_PIPELINE=&quot;&quot;
+export ZUUL_PROJECT=&quot;&quot;
+export ZUUL_REF=&quot;staging&quot;
+export ZUUL_URL=&quot;https://github.com/cisco-openstack/neutron.git&quot;
+export ZUUL_UUID=No
+
+wget http://172.29.173.233/devstack.multinode/devstack-trusty.template.openstack.org.qcow
+wget http://172.29.173.233/devstack.multinode/id_rsa
+wget http://172.29.173.233/devstack.multinode/titanium.qcow
+
+cd neutron_ci
+
+# Update specific Nova repo.
+sed -i &apos;72 i NOVA_REPO=https://github.com/cisco-openstack/nova.git&apos; ci/tests/test_multinode.py
+sed -i &apos;72 i NOVA_BRANCH=staging&apos; ci/tests/test_multinode.py
+sed -i &apos;21 i NOVA_REPO=https://github.com/cisco-openstack/nova.git&apos; ci/tests/test_multinode.py
+sed -i &apos;21 i NOVA_BRANCH=staging&apos; ci/tests/test_multinode.py
+
+sudo apt-get install -y libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev python-subunit
+# FIXME: Avoid using run.sh, cause creation of archive with logs are starting today  ./run.sh ci/tests/test_multinode.py
+sudo pip install -r requirements.txt
+timeout --preserve-status --signal=2 3600 nosetests ci/tests/test_multinode.py</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.1">
+      <testResults>logs/*.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <testDataPublishers/>
+      <healthScaleFactor>1.0</healthScaleFactor>
+    </hudson.tasks.junit.JUnitResultArchiver>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.24">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter></cleanupParameter>
+      <externalDelete></externalDelete>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+  </buildWrappers>
+</project>

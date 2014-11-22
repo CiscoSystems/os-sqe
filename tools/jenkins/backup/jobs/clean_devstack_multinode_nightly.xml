@@ -1,0 +1,144 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Clean Devstack in multi-node mode + tempest</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>30</daysToKeep>
+    <numToKeep>30</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
+      <enabled>false</enabled>
+    </org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.22">
+      <autoRebuild>false</autoRebuild>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@1.8.3">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
+    <scms>
+      <hudson.plugins.git.GitSCM plugin="git@2.2.6">
+        <configVersion>2</configVersion>
+        <userRemoteConfigs>
+          <hudson.plugins.git.UserRemoteConfig>
+            <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
+          </hudson.plugins.git.UserRemoteConfig>
+        </userRemoteConfigs>
+        <branches>
+          <hudson.plugins.git.BranchSpec>
+            <name>*/master</name>
+          </hudson.plugins.git.BranchSpec>
+        </branches>
+        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+        <submoduleCfg class="list"/>
+        <extensions/>
+      </hudson.plugins.git.GitSCM>
+    </scms>
+  </scm>
+  <assignedNode>172.29.172.165</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H 16 * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>export LAB=&quot;lab310&quot;
+fab init
+sed -i &apos;s/cpu: 1/cpu: 4/g&apos; tools/cloud/cloud-configs/devstack_multinode_topology.yaml
+fab devstack.prepare:topology=devstack_multinode
+sleep 200
+
+
+echo &quot;Start to configure and install Master node&quot;
+ssh 10.30.60.2 &quot;sudo apt-get install -y git&quot;
+ssh 10.30.60.2 &quot;git clone https://github.com/openstack-dev/devstack.git&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;[[local|localrc]]&apos; &gt; local.conf&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;MULTI_HOST=True&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;ADMIN_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;SERVICE_TOKEN=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;DATABASE_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;RABBIT_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;SERVICE_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;MYSQL_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+# Enable Neutron
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;enable_service mysql q-svc q-agt q-l3 q-dhcp q-meta q-lbaas q-vpn q-fwaas q-metering neutron&apos; &gt;&gt; local.conf&quot;
+# Enable Trove
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;enable_service tr-api tr-tmgr tr-cond trove&apos; &gt;&gt; local.conf&quot;
+# Enable logging to file
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;USE_SCREEN=True&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;SCREEN_LOGDIR=\$DEST/logs&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.2 &quot;cd devstack; echo &apos;VOLUME_BACKING_FILE_SIZE=20500M&apos; &gt;&gt; local.conf&quot;
+
+ssh 10.30.60.2 &quot;cd devstack; cat local.conf&quot;
+ssh -t 10.30.60.2 &quot;cd devstack &amp;&amp; ./stack.sh; echo $?; exit&quot;
+
+echo &quot;Start to configure Slave node&quot;
+ssh 10.30.60.3 &quot;sudo apt-get install -y git&quot;
+ssh 10.30.60.3 &quot;git clone https://github.com/openstack-dev/devstack.git&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;[[local|localrc]]&apos; &gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;MULTI_HOST=True&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;MYSQL_HOST=10.30.60.2&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;RABBIT_HOST=10.30.60.2&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;GLANCE_HOSTPORT=10.30.60.2:9292&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;ENABLED_SERVICES=n-vol,n-cpu,n-net,n-api,c-sch,c-api,c-vol&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;ADMIN_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;SERVICE_TOKEN=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;DATABASE_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;RABBIT_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;SERVICE_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;MYSQL_PASSWORD=Cisco123&apos; &gt;&gt; local.conf&quot;
+ssh 10.30.60.3 &quot;cd devstack; echo &apos;VOLUME_BACKING_FILE_SIZE=20500M&apos; &gt;&gt; local.conf&quot;
+ssh -t 10.30.60.3 &quot;cd devstack &amp;&amp; ./stack.sh; echo $?; exit&quot;
+
+#Add master node key to slave node
+ssh 10.30.60.2 &quot;ssh-keygen -q -t rsa -N &apos;&apos; -f ~/.ssh/id_rsa&quot;
+scp 10.30.60.2:~/.ssh/id_rsa.pub id_rsa.pub 
+scp id_rsa.pub 10.30.60.3:~/id_rsa.pub
+ssh 10.30.60.3 &quot;cat ~/id_rsa.pub &gt;&gt; ~/.ssh/authorized_keys&quot;
+ssh 10.30.60.2 &quot;echo &apos;Host *&apos; &gt; ~/.ssh/config&quot;
+ssh 10.30.60.2 &quot;echo &apos;StrictHostKeyChecking no&apos; &gt;&gt; ~/.ssh/config&quot;
+ssh 10.30.60.2 &quot;echo &apos;UserKnownHostsFile=/dev/null&apos; &gt;&gt; ~/.ssh/config&quot;
+
+#Add slave node to master node
+ssh 10.30.60.3 &quot;ssh-keygen -q -t rsa -N &apos;&apos; -f ~/.ssh/id_rsa&quot;
+scp 10.30.60.3:~/.ssh/id_rsa.pub id_rsa.pub 
+scp id_rsa.pub 10.30.60.2:~/id_rsa.pub
+ssh 10.30.60.2 &quot;cat ~/id_rsa.pub &gt;&gt; ~/.ssh/authorized_keys&quot;
+ssh 10.30.60.3 &quot;echo &apos;Host *&apos; &gt; ~/.ssh/config&quot;
+ssh 10.30.60.3 &quot;echo &apos;StrictHostKeyChecking no&apos; &gt;&gt; ~/.ssh/config&quot;
+ssh 10.30.60.3 &quot;echo &apos;UserKnownHostsFile=/dev/null&apos; &gt;&gt; ~/.ssh/config&quot;
+
+echo &quot;@SKIP Run all default tempest tests.&quot;
+#~/.env/bin/python ./tools/run_tempest.py -r 10.30.60.2 -f &quot;&apos;&apos;&quot; --repo https://github.com/openstack/tempest.git --branch master --kill_time 15120 --wait_time 15000</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.1">
+      <testResults>tempest_results.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <testDataPublishers/>
+      <healthScaleFactor>1.0</healthScaleFactor>
+    </hudson.tasks.junit.JUnitResultArchiver>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.24">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter></cleanupParameter>
+      <externalDelete></externalDelete>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+  </buildWrappers>
+</project>
