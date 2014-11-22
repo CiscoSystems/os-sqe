@@ -160,12 +160,12 @@ function checkif_allright {
         mailall "Jenkins XML fail"
         return 255
     fi
-    if [ -e $curdir/${ZUUL_VM_NAME}.xml ] && [ -s $curdir/${ZUUL_VM_NAME}.xml ]; then
-        echo "Zuul XML OK!"
-    else
-        mailall "Zuul XML fail"
-        return 255
-    fi
+    #if [ -e $curdir/${ZUUL_VM_NAME}.xml ] && [ -s $curdir/${ZUUL_VM_NAME}.xml ]; then
+    #    echo "Zuul XML OK!"
+    #else
+    #    mailall "Zuul XML fail"
+    #    return 255
+    #fi
     if [ -e $filepath ] && [ -s $filepath ]; then
         echo "Jenkins home directory OK!"
     else
@@ -228,6 +228,7 @@ function clear_old {
     fi
 }
 
+clear_old
 update_time
 prepare_dir $DATE
 copy_jenkins_home
@@ -242,4 +243,3 @@ fi
 
 snapshot_jenkins
 #snapshot_zuul
-clear_old
