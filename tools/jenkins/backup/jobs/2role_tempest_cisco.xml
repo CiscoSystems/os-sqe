@@ -2,12 +2,18 @@
 <project>
   <actions/>
   <description>2role scenario without cobbler, on VMs, with running Cisco modified tempest tests on it.</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>21</daysToKeep>
+    <numToKeep>30</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
   <keepDependencies>false</keepDependencies>
   <properties>
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
       <enabled>false</enabled>
     </org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty>
-    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.21">
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.22">
       <autoRebuild>false</autoRebuild>
     </com.sonyericsson.rebuild.RebuildSettings>
     <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@1.8.3">
@@ -19,7 +25,7 @@
   </properties>
   <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
     <scms>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.6">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
@@ -40,16 +46,16 @@
           <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.6">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/terrrakot/openstack-sqe.git</url>
+            <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/feature</name>
+            <name>*/master</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -61,7 +67,7 @@
           <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.2">
+      <hudson.plugins.git.GitSCM plugin="git@2.2.6">
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
@@ -94,9 +100,12 @@
   <builders>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
-make full-2role
+fab init
+fab coi.full:2role
+#make full-2role
 if grep -q tempest $WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set; then
-make full-2role
+fab coi.full:2role
+#make full-2role
 fi
 python $WORKSPACE/openstack-sqe/tools/tempest-scripts/junit_merge.py $(ls $WORKSPACE/openstack-sqe/nosetests*xml) &gt; $WORKSPACE/result.xml
 cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_cisco.xml
@@ -107,73 +116,157 @@ cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_2role.xml</command>
     <hudson.plugins.chucknorris.CordellWalkerRecorder plugin="chucknorris@0.5">
       <factGenerator/>
     </hudson.plugins.chucknorris.CordellWalkerRecorder>
+    <hudson.plugins.postbuildtask.PostbuildTask plugin="postbuild-task@1.8">
+      <tasks>
+        <hudson.plugins.postbuildtask.TaskProperties>
+          <logTexts>
+            <hudson.plugins.postbuildtask.LogProperties>
+              <logText></logText>
+              <operator>AND</operator>
+            </hudson.plugins.postbuildtask.LogProperties>
+          </logTexts>
+          <EscalateStatus>false</EscalateStatus>
+          <RunIfJobSuccessful>false</RunIfJobSuccessful>
+          <script>ssh localadmin@172.29.173.228 &quot;mkdir -p /opt/www/${JOB_NAME}/${BUILD_NUMBER}&quot; || :&#xd;
+scp localadmin@172.29.173.133:/var/lib/jenkins/jobs/$JOB_NAME/builds/$BUILD_NUMBER/log $WORKSPACE/openstack-sqe/build.log || :&#xd;
+scp localadmin@172.29.173.133:/var/lib/jenkins/jobs/$JOB_NAME/builds/$BUILD_NUMBER/changelog.xml $WORKSPACE/openstack-sqe/changelog.xml || :&#xd;
+gzip $WORKSPACE/openstack-sqe/build.log || :&#xd;
+&#xd;
+scp -r test_data/* localadmin@172.29.173.228:/opt/www/${JOB_NAME}/${BUILD_NUMBER}/&#xd;
+&#xd;
+scp openstack-sqe/config_file result.xml openstack-sqe/build* openstack-sqe/*.xml openstack-sqe/openrc openstack-sqe/testr_results.subunit tempest/etc/tempest.conf localadmin@172.29.173.228:/opt/www/${JOB_NAME}/${BUILD_NUMBER}/&#xd;
+&#xd;
+scp result.xml localadmin@172.29.173.229:~/workspace/2role_regular/&#xd;
+scp nosetests_2role.xml localadmin@172.29.173.229:~/workspace/COI_nightly/&#xd;
+scp nosetests_2role.xml localadmin@172.29.173.229:~/workspace/AIO_2role_tempest_compare/</script>
+        </hudson.plugins.postbuildtask.TaskProperties>
+      </tasks>
+    </hudson.plugins.postbuildtask.PostbuildTask>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>openstack-sqe/*.xml</artifacts>
-      <latestOnly>false</latestOnly>
+      <artifacts>openstack-sqe/*.xml,openstack-sqe/build.log*</artifacts>
       <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
     </hudson.tasks.ArtifactArchiver>
-    <jenkins.plugins.publish__over__ssh.BapSshPublisherPlugin plugin="publish-over-ssh@1.11">
-      <consolePrefix>SSH: </consolePrefix>
-      <delegate>
-        <publishers>
-          <jenkins.plugins.publish__over__ssh.BapSshPublisher>
-            <configName>172.29.173.229</configName>
-            <verbose>false</verbose>
-            <transfers>
-              <jenkins.plugins.publish__over__ssh.BapSshTransfer>
-                <remoteDirectory>workspace/2role_regular</remoteDirectory>
-                <sourceFiles>result.xml</sourceFiles>
-                <excludes></excludes>
-                <removePrefix></removePrefix>
-                <remoteDirectorySDF>false</remoteDirectorySDF>
-                <flatten>false</flatten>
-                <cleanRemote>false</cleanRemote>
-                <noDefaultExcludes>false</noDefaultExcludes>
-                <makeEmptyDirs>false</makeEmptyDirs>
-                <patternSeparator>[, ]+</patternSeparator>
-                <execCommand></execCommand>
-                <execTimeout>120000</execTimeout>
-                <usePty>false</usePty>
-              </jenkins.plugins.publish__over__ssh.BapSshTransfer>
-            </transfers>
-            <useWorkspaceInPromotion>false</useWorkspaceInPromotion>
-            <usePromotionTimestamp>false</usePromotionTimestamp>
-          </jenkins.plugins.publish__over__ssh.BapSshPublisher>
-          <jenkins.plugins.publish__over__ssh.BapSshPublisher>
-            <configName>172.29.173.229</configName>
-            <verbose>false</verbose>
-            <transfers>
-              <jenkins.plugins.publish__over__ssh.BapSshTransfer>
-                <remoteDirectory>workspace/AIO_2role_tempest_compare</remoteDirectory>
-                <sourceFiles>nosetests_2role.xml</sourceFiles>
-                <excludes></excludes>
-                <removePrefix></removePrefix>
-                <remoteDirectorySDF>false</remoteDirectorySDF>
-                <flatten>false</flatten>
-                <cleanRemote>false</cleanRemote>
-                <noDefaultExcludes>false</noDefaultExcludes>
-                <makeEmptyDirs>false</makeEmptyDirs>
-                <patternSeparator>[, ]+</patternSeparator>
-                <execCommand></execCommand>
-                <execTimeout>120000</execTimeout>
-                <usePty>false</usePty>
-              </jenkins.plugins.publish__over__ssh.BapSshTransfer>
-            </transfers>
-            <useWorkspaceInPromotion>false</useWorkspaceInPromotion>
-            <usePromotionTimestamp>false</usePromotionTimestamp>
-          </jenkins.plugins.publish__over__ssh.BapSshPublisher>
-        </publishers>
-        <continueOnError>false</continueOnError>
-        <failOnError>false</failOnError>
-        <alwaysPublishFromMaster>false</alwaysPublishFromMaster>
-        <hostConfigurationAccess class="jenkins.plugins.publish_over_ssh.BapSshPublisherPlugin" reference="../.."/>
-      </delegate>
-    </jenkins.plugins.publish__over__ssh.BapSshPublisherPlugin>
-    <hudson.tasks.junit.JUnitResultArchiver>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.1">
       <testResults>result.xml</testResults>
       <keepLongStdio>false</keepLongStdio>
-      <testDataPublishers/>
+      <testDataPublishers>
+        <de.esailors.jenkins.teststability.StabilityTestDataPublisher plugin="test-stability@1.0"/>
+      </testDataPublishers>
+      <healthScaleFactor>1.0</healthScaleFactor>
     </hudson.tasks.junit.JUnitResultArchiver>
+    <org.jenkins__ci.plugins.flexible__publish.FlexiblePublisher plugin="flexible-publish@0.12">
+      <publishers>
+        <org.jenkins__ci.plugins.flexible__publish.ConditionalPublisher>
+          <condition class="org.jenkins_ci.plugins.run_condition.core.AlwaysRun" plugin="run-condition@1.0"/>
+          <publisher class="jenkins.plugins.publish_over_ssh.BapSshPublisherPlugin" plugin="publish-over-ssh@1.11">
+            <consolePrefix>SSH: </consolePrefix>
+            <delegate>
+              <publishers>
+                <jenkins.plugins.publish__over__ssh.BapSshPublisher>
+                  <configName>172.29.173.229</configName>
+                  <verbose>false</verbose>
+                  <transfers>
+                    <jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                      <remoteDirectory>workspace/2role_regular</remoteDirectory>
+                      <sourceFiles>result.xml</sourceFiles>
+                      <excludes></excludes>
+                      <removePrefix></removePrefix>
+                      <remoteDirectorySDF>false</remoteDirectorySDF>
+                      <flatten>false</flatten>
+                      <cleanRemote>false</cleanRemote>
+                      <noDefaultExcludes>false</noDefaultExcludes>
+                      <makeEmptyDirs>false</makeEmptyDirs>
+                      <patternSeparator>[, ]+</patternSeparator>
+                      <execCommand></execCommand>
+                      <execTimeout>120000</execTimeout>
+                      <usePty>false</usePty>
+                    </jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                    <jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                      <remoteDirectory>workspace/COI_nightly</remoteDirectory>
+                      <sourceFiles>nosetests_2role.xml</sourceFiles>
+                      <excludes></excludes>
+                      <removePrefix></removePrefix>
+                      <remoteDirectorySDF>false</remoteDirectorySDF>
+                      <flatten>false</flatten>
+                      <cleanRemote>false</cleanRemote>
+                      <noDefaultExcludes>false</noDefaultExcludes>
+                      <makeEmptyDirs>false</makeEmptyDirs>
+                      <patternSeparator>[, ]+</patternSeparator>
+                      <execCommand></execCommand>
+                      <execTimeout>120000</execTimeout>
+                      <usePty>false</usePty>
+                    </jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                    <jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                      <remoteDirectory>workspace/AIO_2role_tempest_compare</remoteDirectory>
+                      <sourceFiles>nosetests_2role.xml</sourceFiles>
+                      <excludes></excludes>
+                      <removePrefix></removePrefix>
+                      <remoteDirectorySDF>false</remoteDirectorySDF>
+                      <flatten>false</flatten>
+                      <cleanRemote>false</cleanRemote>
+                      <noDefaultExcludes>false</noDefaultExcludes>
+                      <makeEmptyDirs>false</makeEmptyDirs>
+                      <patternSeparator>[, ]+</patternSeparator>
+                      <execCommand></execCommand>
+                      <execTimeout>120000</execTimeout>
+                      <usePty>false</usePty>
+                    </jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                  </transfers>
+                  <useWorkspaceInPromotion>false</useWorkspaceInPromotion>
+                  <usePromotionTimestamp>false</usePromotionTimestamp>
+                </jenkins.plugins.publish__over__ssh.BapSshPublisher>
+                <jenkins.plugins.publish__over__ssh.BapSshPublisher>
+                  <configName>172.29.173.228</configName>
+                  <verbose>false</verbose>
+                  <transfers>
+                    <jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                      <remoteDirectory>/opt/www/${JOB_NAME}/${BUILD_NUMBER}</remoteDirectory>
+                      <sourceFiles>test_data/*</sourceFiles>
+                      <excludes></excludes>
+                      <removePrefix></removePrefix>
+                      <remoteDirectorySDF>false</remoteDirectorySDF>
+                      <flatten>false</flatten>
+                      <cleanRemote>false</cleanRemote>
+                      <noDefaultExcludes>false</noDefaultExcludes>
+                      <makeEmptyDirs>false</makeEmptyDirs>
+                      <patternSeparator>[, ]+</patternSeparator>
+                      <execCommand></execCommand>
+                      <execTimeout>120000</execTimeout>
+                      <usePty>false</usePty>
+                    </jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                    <jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                      <remoteDirectory>/opt/www/${JOB_NAME}/${BUILD_NUMBER}</remoteDirectory>
+                      <sourceFiles>openstack-sqe/config_file,result.xml,openstack-sqe/build*,openstack-sqe/*.xml,openstack-sqe/openrc,openstack-sqe/testr_results.subunit,tempest/etc/tempest.conf</sourceFiles>
+                      <excludes></excludes>
+                      <removePrefix></removePrefix>
+                      <remoteDirectorySDF>false</remoteDirectorySDF>
+                      <flatten>true</flatten>
+                      <cleanRemote>false</cleanRemote>
+                      <noDefaultExcludes>false</noDefaultExcludes>
+                      <makeEmptyDirs>false</makeEmptyDirs>
+                      <patternSeparator>[, ]+</patternSeparator>
+                      <execCommand></execCommand>
+                      <execTimeout>120000</execTimeout>
+                      <usePty>false</usePty>
+                    </jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                  </transfers>
+                  <useWorkspaceInPromotion>false</useWorkspaceInPromotion>
+                  <usePromotionTimestamp>false</usePromotionTimestamp>
+                </jenkins.plugins.publish__over__ssh.BapSshPublisher>
+              </publishers>
+              <continueOnError>false</continueOnError>
+              <failOnError>false</failOnError>
+              <alwaysPublishFromMaster>false</alwaysPublishFromMaster>
+              <hostConfigurationAccess class="jenkins.plugins.publish_over_ssh.BapSshPublisherPlugin" reference="../.."/>
+            </delegate>
+          </publisher>
+          <runner class="org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail" plugin="run-condition@1.0"/>
+        </org.jenkins__ci.plugins.flexible__publish.ConditionalPublisher>
+      </publishers>
+    </org.jenkins__ci.plugins.flexible__publish.FlexiblePublisher>
   </publishers>
   <buildWrappers>
     <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.4.0">
@@ -181,7 +274,11 @@ cp $WORKSPACE/result.xml ${WORKSPACE}/nosetests_2role.xml</command>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
       <script>echo LAB=lab4
-echo REG=&apos;(?!.*tempest.api.object_storage|.*swift.*|.*hint_group.*)tempest&apos; </script>
+echo REG=&apos;(?!.*tempest.api.object_storage|.*swift.*|.*hint_group.*)tempest&apos; 
+echo OS_TEST_TIMEOUT=300
+echo QA_WAITTIME=11000
+echo QA_KILLTIME=11120
+echo QA_STARTED=$(date +%s)</script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

@@ -13,7 +13,7 @@
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
       <enabled>true</enabled>
     </org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty>
-    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.21">
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.22">
       <autoRebuild>false</autoRebuild>
     </com.sonyericsson.rebuild.RebuildSettings>
     <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@1.8.3">
@@ -23,7 +23,7 @@
       <throttleOption>project</throttleOption>
     </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
   </properties>
-  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.2.2">
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.2.6">
     <configVersion>2</configVersion>
     <userRemoteConfigs>
       <hudson.plugins.git.UserRemoteConfig>
@@ -32,7 +32,7 @@
     </userRemoteConfigs>
     <branches>
       <hudson.plugins.git.BranchSpec>
-        <name>*/neutron_ci</name>
+        <name>*/master</name>
       </hudson.plugins.git.BranchSpec>
     </branches>
     <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -48,70 +48,28 @@
   <concurrentBuild>true</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>export NEXUS_IP=172.29.172.140
+      <command>cd neutron_ci
+
+export NEXUS_IP=172.29.172.140
 export NEXUS_USER=admin
 export NEXUS_PASSWORD=c3l12345
 export CONSOLE_LOG_LEVEL=10
+export PARAMS_BASE=&quot;mysql://jenkins:Cisco123@192.168.0.177/neutron&quot;
 
-cd neutron_ci
-sudo pip install -r requirements.txt
-
-# Get parameters
-CONNECTION=&quot;mysql://jenkins:Cisco123@192.168.0.177/neutron&quot;
-python tools/parameters.py allocate --connection=${CONNECTION} --wait &gt; params.sh
-source params.sh
-
-nosetests ci/tests/test_ml2_nexus.py || :
-
-# Release parameters
-python tools/parameters.py release --connection=${CONNECTION} --id=${PARAM_ID}</command>
-    </hudson.tasks.Shell>
-    <hudson.tasks.Shell>
-      <command>cat &gt;&gt;/home/ubuntu/.ssh/known_hosts&lt;&lt;EOF
-|1|ejnKhkRrj96mJj9pv6WJtTDdpN4=|nq2bLYfJOD7AD+rO4SHwFysf9Ow= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBK++7Bpvy60tgFtzc02N9K91N7+DXo+Cr6xuxLZv9nsqx4LXVrrh2pge5OwljtChnYNJyz3lc81rvmwmE7OU4TA=
-EOF
-
-files=&apos;console.txt local.conf&apos;
-
-pass=&apos;N3u+r0N&apos;
-logpass=/home/cisco_neutron_ci/jlogs/${JOB_NAME}/${BUILD_NUMBER}/
-sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 mkdir -p ${logpass} || :
-sshpass -p ${pass} rsync -ave ssh ${files} cisco_neutron_ci@128.107.233.28:${logpass} || :
-sshpass -p ${pass} rsync -ave ssh logs cisco_neutron_ci@128.107.233.28:${logpass} || :
-
-sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 gzip -9 &quot;${logpass}*&quot; || :
-sshpass -p ${pass} ssh cisco_neutron_ci@128.107.233.28 gzip -9 &quot;${logpass}/logs/*&quot;  || :</command>
+./run.sh ci/tests/test_ml2_nexus.py</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>localrc, local.conf, console.txt, logs/*</artifacts>
-      <latestOnly>false</latestOnly>
+      <artifacts>logs/*, logs/*/*</artifacts>
       <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
     </hudson.tasks.ArtifactArchiver>
-    <hudson.tasks.junit.JUnitResultArchiver>
-      <testResults>logs/tempest.xml</testResults>
-      <keepLongStdio>false</keepLongStdio>
-      <testDataPublishers/>
-    </hudson.tasks.junit.JUnitResultArchiver>
-    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.25">
-      <configs>
-        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
-          <configs>
-            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
-              <properties>jenkins_build_url=http://172.29.173.133:8080/job/${JOB_NAME}/${BUILD_NUMBER}/
-upload_path=/home/localadmin/logs/${JOB_NAME}/${BUILD_NUMBER}/</properties>
-            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
-          </configs>
-          <projects>upload_build_artifacts</projects>
-          <condition>ALWAYS</condition>
-          <triggerWithNoParameters>false</triggerWithNoParameters>
-        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
-      </configs>
-    </hudson.plugins.parameterizedtrigger.BuildTrigger>
   </publishers>
   <buildWrappers>
-    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.21">
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.24">
       <deleteDirs>false</deleteDirs>
       <cleanupParameter></cleanupParameter>
       <externalDelete></externalDelete>
