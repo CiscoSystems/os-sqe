@@ -102,6 +102,7 @@
           <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
             <relativeTargetDir>tempest</relativeTargetDir>
           </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
       <hudson.plugins.git.GitSCM plugin="git@2.2.6">
@@ -122,6 +123,28 @@
           <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
             <relativeTargetDir>openstack-sqe</relativeTargetDir>
           </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
+        </extensions>
+      </hudson.plugins.git.GitSCM>
+      <hudson.plugins.git.GitSCM plugin="git@2.2.6">
+        <configVersion>2</configVersion>
+        <userRemoteConfigs>
+          <hudson.plugins.git.UserRemoteConfig>
+            <url>https://github.com/openstack/neutron.git</url>
+          </hudson.plugins.git.UserRemoteConfig>
+        </userRemoteConfigs>
+        <branches>
+          <hudson.plugins.git.BranchSpec>
+            <name>*/master</name>
+          </hudson.plugins.git.BranchSpec>
+        </branches>
+        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+        <submoduleCfg class="list"/>
+        <extensions>
+          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+            <relativeTargetDir>neutron</relativeTargetDir>
+          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+          <hudson.plugins.git.extensions.impl.WipeWorkspace/>
         </extensions>
       </hudson.plugins.git.GitSCM>
     </scms>

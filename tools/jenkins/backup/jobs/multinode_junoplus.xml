@@ -1,10 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <project>
   <actions/>
-  <description></description>
+  <description>Multi node deploy of devstack + tempest run.&#xd;
+lab17</description>
   <logRotator class="hudson.tasks.LogRotator">
-    <daysToKeep>5</daysToKeep>
-    <numToKeep>10</numToKeep>
+    <daysToKeep>14</daysToKeep>
+    <numToKeep>20</numToKeep>
     <artifactDaysToKeep>-1</artifactDaysToKeep>
     <artifactNumToKeep>-1</artifactNumToKeep>
   </logRotator>
@@ -13,32 +14,102 @@
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
       <enabled>false</enabled>
     </org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>REG</name>
+          <description></description>
+          <defaultValue>&apos;&apos;</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TEMPEST_REPO</name>
+          <description></description>
+          <defaultValue>https://github.com/CiscoSystems/tempest.git</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TEMPEST_BRANCH</name>
+          <description></description>
+          <defaultValue>production</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>QA_DEVSTACK_EXTRAS</name>
+          <description></description>
+          <defaultValue>NOVA_REPO=https://github.com/cisco-openstack/nova.git
+NOVA_BRANCH=staging
+NEUTRON_REPO=https://github.com/cisco-openstack/neutron.git
+NEUTRON_BRANCH=staging/junoplus
+VOLUME_BACKING_FILE_SIZE=20520M</defaultValue>
+        </hudson.model.TextParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
     <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.22">
       <autoRebuild>false</autoRebuild>
     </com.sonyericsson.rebuild.RebuildSettings>
     <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@1.8.3">
       <maxConcurrentPerNode>0</maxConcurrentPerNode>
       <maxConcurrentTotal>0</maxConcurrentTotal>
-      <categories/>
       <throttleEnabled>false</throttleEnabled>
       <throttleOption>project</throttleOption>
-      <configVersion>1</configVersion>
     </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
   </properties>
-  <scm class="hudson.scm.NullSCM"/>
-  <assignedNode>UCS172.29.173.235</assignedNode>
+  <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
+    <scms>
+      <hudson.plugins.git.GitSCM plugin="git@2.2.6">
+        <configVersion>2</configVersion>
+        <userRemoteConfigs>
+          <hudson.plugins.git.UserRemoteConfig>
+            <url>$TEMPEST_REPO</url>
+          </hudson.plugins.git.UserRemoteConfig>
+        </userRemoteConfigs>
+        <branches>
+          <hudson.plugins.git.BranchSpec>
+            <name>*/$TEMPEST_BRANCH</name>
+          </hudson.plugins.git.BranchSpec>
+        </branches>
+        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+        <submoduleCfg class="list"/>
+        <extensions>
+          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+            <relativeTargetDir>tempest</relativeTargetDir>
+          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+        </extensions>
+      </hudson.plugins.git.GitSCM>
+      <hudson.plugins.git.GitSCM plugin="git@2.2.6">
+        <configVersion>2</configVersion>
+        <userRemoteConfigs>
+          <hudson.plugins.git.UserRemoteConfig>
+            <url>https://github.com/CiscoSystems/openstack-sqe.git</url>
+          </hudson.plugins.git.UserRemoteConfig>
+        </userRemoteConfigs>
+        <branches>
+          <hudson.plugins.git.BranchSpec>
+            <name>*/master</name>
+          </hudson.plugins.git.BranchSpec>
+        </branches>
+        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+        <submoduleCfg class="list"/>
+        <extensions>
+          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+            <relativeTargetDir>openstack-sqe</relativeTargetDir>
+          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
+        </extensions>
+      </hudson.plugins.git.GitSCM>
+    </scms>
+  </scm>
+  <assignedNode>172.29.173.231</assignedNode>
   <canRoam>false</canRoam>
-  <disabled>true</disabled>
+  <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>#!/bin/bash
-
-timeout --preserve-status -s 2 3600 /home/localadmin/csr1kv/run_csr1kv_routing_smoke_zuul.sh
-</command>
+      <command>cd $WORKSPACE/openstack-sqe/
+sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_multinode_topology.yaml
+fab init
+fab devstack.setup:topology=devstack_multinode
+fab devstack.run_test_remote</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
@@ -60,17 +131,11 @@ gzip $WORKSPACE/openstack-sqe/build.log || :&#xd;
 &#xd;
 scp -r test_data/* localadmin@172.29.173.228:/opt/www/${JOB_NAME}/${BUILD_NUMBER}/&#xd;
 &#xd;
-scp  openstack-sqe/config_file *.xml openstack-sqe/build* openstack-sqe/*.xml openstack-sqe/openrc openstack-sqe/testr_results.subunit tempest/etc/tempest.conf localadmin@172.29.173.228:/opt/www/${JOB_NAME}/${BUILD_NUMBER}/</script>
+scp  openstack-sqe/config_file *.xml openstack-sqe/build* openstack-sqe/*.xml openstack-sqe/openrc openstack-sqe/testr_results.subunit tempest/etc/tempest.conf localadmin@172.29.173.228:/opt/www/${JOB_NAME}/${BUILD_NUMBER}/&#xd;
+cp openstack-sqe/tempest_results.xml $WORKSPACE/../devs_nightly_report/multinode_results.xml ||:</script>
         </hudson.plugins.postbuildtask.TaskProperties>
       </tasks>
     </hudson.plugins.postbuildtask.PostbuildTask>
-    <hudson.tasks.ArtifactArchiver>
-      <artifacts>console.txt</artifacts>
-      <allowEmptyArchive>false</allowEmptyArchive>
-      <onlyIfSuccessful>false</onlyIfSuccessful>
-      <fingerprint>false</fingerprint>
-      <defaultExcludes>true</defaultExcludes>
-    </hudson.tasks.ArtifactArchiver>
     <org.jenkins__ci.plugins.flexible__publish.FlexiblePublisher plugin="flexible-publish@0.12">
       <publishers>
         <org.jenkins__ci.plugins.flexible__publish.ConditionalPublisher>
@@ -84,7 +149,7 @@ scp  openstack-sqe/config_file *.xml openstack-sqe/build* openstack-sqe/*.xml op
                   <verbose>false</verbose>
                   <transfers>
                     <jenkins.plugins.publish__over__ssh.BapSshTransfer>
-                      <remoteDirectory>workspace/csr1kv_nightly</remoteDirectory>
+                      <remoteDirectory>workspace/${JOB_NAME}</remoteDirectory>
                       <sourceFiles>*.xml</sourceFiles>
                       <excludes></excludes>
                       <removePrefix></removePrefix>
@@ -121,6 +186,21 @@ scp  openstack-sqe/config_file *.xml openstack-sqe/build* openstack-sqe/*.xml op
                       <execTimeout>120000</execTimeout>
                       <usePty>false</usePty>
                     </jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                    <jenkins.plugins.publish__over__ssh.BapSshTransfer>
+                      <remoteDirectory>/opt/www/${JOB_NAME}/${BUILD_NUMBER}</remoteDirectory>
+                      <sourceFiles>openstack-sqe/config_file,result.xml,openstack-sqe/build*,openstack-sqe/*.xml,openstack-sqe/openrc,openstack-sqe/testr_results.subunit,tempest/etc/tempest.conf</sourceFiles>
+                      <excludes></excludes>
+                      <removePrefix></removePrefix>
+                      <remoteDirectorySDF>false</remoteDirectorySDF>
+                      <flatten>false</flatten>
+                      <cleanRemote>false</cleanRemote>
+                      <noDefaultExcludes>false</noDefaultExcludes>
+                      <makeEmptyDirs>false</makeEmptyDirs>
+                      <patternSeparator>[, ]+</patternSeparator>
+                      <execCommand></execCommand>
+                      <execTimeout>120000</execTimeout>
+                      <usePty>false</usePty>
+                    </jenkins.plugins.publish__over__ssh.BapSshTransfer>
                   </transfers>
                   <useWorkspaceInPromotion>false</useWorkspaceInPromotion>
                   <usePromotionTimestamp>false</usePromotionTimestamp>
@@ -136,28 +216,40 @@ scp  openstack-sqe/config_file *.xml openstack-sqe/build* openstack-sqe/*.xml op
         </org.jenkins__ci.plugins.flexible__publish.ConditionalPublisher>
       </publishers>
     </org.jenkins__ci.plugins.flexible__publish.FlexiblePublisher>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>openstack-sqe/*.xml,openstack-sqe/build.log*</artifacts>
+      <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+    </hudson.tasks.ArtifactArchiver>
     <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.1">
-      <testResults>logs/testr_results.xml</testResults>
+      <testResults>openstack-sqe/tempest_results.xml</testResults>
       <keepLongStdio>false</keepLongStdio>
-      <testDataPublishers/>
+      <testDataPublishers>
+        <de.esailors.jenkins.teststability.StabilityTestDataPublisher plugin="test-stability@1.0"/>
+      </testDataPublishers>
       <healthScaleFactor>1.0</healthScaleFactor>
     </hudson.tasks.junit.JUnitResultArchiver>
   </publishers>
   <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.24">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter></cleanupParameter>
+      <externalDelete></externalDelete>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.4.0">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo ZUUL_CHANGES=openstack/neutron:master:
-echo ZUUL_PROJECT=openstack/neutron
-#echo ZUUL_CHANGE=121000
-echo ZUUL_URL=https://github.com
-#echo ZUUL_COMMIT=25d745021b343ef8194bfb2f9e6d149618323d5b
-echo ZUUL_REF=master
-echo ZUUL_BRANCH=master
-#echo ZUUL_PATCHSET=6
-#echo ZUUL_CHANGE_IDS=121000,6
-#echo LOG_PATH=00/121000/6/check/csr1kv/de6c544878544e6fa0bb9d8dc519dd0e
-#echo ZUUL_UUID=de6c544878544e6fa0bb9d8dc519dd0e
-#echo ZUUL_PIPELINE=check
-#echo ZUUL_PIPELINE=00/121000/6</script>
+      <script>echo LAB=&quot;lab17&quot;
+echo OS_TEST_TIMEOUT=800
+echo QA_WAITTIME=25000
+echo QA_KILLTIME=25200
+echo QA_STARTED=$(date +%s)
+echo $LAB
+echo $REG
+echo $QA_DEVSTACK_EXTRAS</script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

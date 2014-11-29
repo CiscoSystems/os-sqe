@@ -33,7 +33,7 @@
         <hudson.model.StringParameterDefinition>
           <name>OPENCTACK_BRANCH</name>
           <description></description>
-          <defaultValue>master</defaultValue>
+          <defaultValue>ml2</defaultValue>
         </hudson.model.StringParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
@@ -93,7 +93,7 @@
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.173.230</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -106,7 +106,7 @@
 sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
 fab init
 fab devstack.setup
-fab devstack.run_test_remote
+#fab devstack.run_test_remote
 </command>
     </hudson.tasks.Shell>
   </builders>
@@ -119,6 +119,12 @@ fab devstack.run_test_remote
       <failBuildOnError>false</failBuildOnError>
       <parsingRulesPath>/var/lib/jenkins/custom_configs/parsing_rules2</parsingRulesPath>
     </hudson.plugins.logparser.LogParserPublisher>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.1">
+      <testResults>openstack-sqe/tempest_results.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <testDataPublishers/>
+      <healthScaleFactor>1.0</healthScaleFactor>
+    </hudson.tasks.junit.JUnitResultArchiver>
   </publishers>
   <buildWrappers>
     <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.24">

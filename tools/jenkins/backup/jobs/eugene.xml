@@ -53,7 +53,7 @@
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/ssh2</name>
+            <name>*/ml2</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -98,7 +98,7 @@
       <command>cd $WORKSPACE/openstack-sqe/
 sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_multinode_topology.yaml
 fab init
-fab devstack.setup:topology=devstack_multinode
+fab devstack.setup:topology=devstack_multinode,devstack_config=devstack_multi_node
 fab devstack.run_test_remote</command>
     </hudson.tasks.Shell>
   </builders>
