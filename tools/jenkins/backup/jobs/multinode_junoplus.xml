@@ -35,7 +35,7 @@ lab17</description>
           <name>QA_DEVSTACK_EXTRAS</name>
           <description></description>
           <defaultValue>NOVA_REPO=https://github.com/cisco-openstack/nova.git
-NOVA_BRANCH=staging
+NOVA_BRANCH=staging/junoplus
 NEUTRON_REPO=https://github.com/cisco-openstack/neutron.git
 NEUTRON_BRANCH=staging/junoplus
 VOLUME_BACKING_FILE_SIZE=20520M</defaultValue>

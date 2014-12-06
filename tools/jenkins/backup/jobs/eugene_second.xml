@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <project>
   <actions/>
-  <description>lab435</description>
+  <description>lab434</description>
   <logRotator class="hudson.tasks.LogRotator">
     <daysToKeep>10</daysToKeep>
     <numToKeep>10</numToKeep>
@@ -103,8 +103,8 @@
   <builders>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
+cat neutron_ci/cisco_plugin_tests.txt &gt; tools/tempest-scripts/tests_set
 sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
-cat neutron_ci/plugin_new.txt &gt; tools/tempest-scripts/tests_set
 fab init
 fab devstack.setup:topology=devstack,devstack_config=devstack_ml2_single_node
 fab devstack.run_test_remote
@@ -137,8 +137,7 @@ fab devstack.run_test_remote
       <colorMapName>xterm</colorMapName>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo LAB=&quot;lab435&quot;
-echo OS_TEST_TIMEOUT=800
+      <script>echo LAB=&quot;lab434&quot;
 echo QA_WAITTIME=25000
 echo QA_KILLTIME=25200
 echo QA_STARTED=$(date +%s)

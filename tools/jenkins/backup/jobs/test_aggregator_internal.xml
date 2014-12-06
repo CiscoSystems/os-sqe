@@ -47,7 +47,7 @@
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers>
     <hudson.triggers.TimerTrigger>
-      <spec>H 18 * * *</spec>
+      <spec>H 15 * * 7</spec>
     </hudson.triggers.TimerTrigger>
   </triggers>
   <concurrentBuild>false</concurrentBuild>
@@ -58,10 +58,10 @@ echo &quot;Starting build!&quot;
 rm -rf *.xml ||:</command>
     </hudson.tasks.Shell>
     <com.tikal.jenkins.plugins.multijob.MultiJobBuilder>
-      <phaseName>IPv6 Phase</phaseName>
+      <phaseName>Juno Phase</phaseName>
       <phaseJobs>
         <com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
-          <jobName>devstack_single_node_nightly</jobName>
+          <jobName>single_node_junoplus</jobName>
           <currParams>true</currParams>
           <exposedSCM>false</exposedSCM>
           <disableJob>false</disableJob>
@@ -76,22 +76,7 @@ rm -rf *.xml ||:</command>
           <buildOnlyIfSCMChanges>false</buildOnlyIfSCMChanges>
         </com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
         <com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
-          <jobName>devstack_multinode</jobName>
-          <currParams>true</currParams>
-          <exposedSCM>false</exposedSCM>
-          <disableJob>false</disableJob>
-          <parsingRulesPath></parsingRulesPath>
-          <maxRetries>0</maxRetries>
-          <enableRetryStrategy>false</enableRetryStrategy>
-          <enableCondition>false</enableCondition>
-          <abortAllJob>false</abortAllJob>
-          <condition></condition>
-          <configs class="empty-list"/>
-          <killPhaseOnJobResultCondition>NEVER</killPhaseOnJobResultCondition>
-          <buildOnlyIfSCMChanges>false</buildOnlyIfSCMChanges>
-        </com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
-        <com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
-          <jobName>ml2_nexus_nightly</jobName>
+          <jobName>multinode_junoplus</jobName>
           <currParams>true</currParams>
           <exposedSCM>false</exposedSCM>
           <disableJob>false</disableJob>
@@ -109,10 +94,10 @@ rm -rf *.xml ||:</command>
       <continuationCondition>COMPLETED</continuationCondition>
     </com.tikal.jenkins.plugins.multijob.MultiJobBuilder>
     <com.tikal.jenkins.plugins.multijob.MultiJobBuilder>
-      <phaseName>Plugins phase 1</phaseName>
+      <phaseName>Kilo Phase</phaseName>
       <phaseJobs>
         <com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
-          <jobName>n1kv_neutron</jobName>
+          <jobName>single_node_kiloplus</jobName>
           <currParams>true</currParams>
           <exposedSCM>false</exposedSCM>
           <disableJob>false</disableJob>
@@ -127,22 +112,7 @@ rm -rf *.xml ||:</command>
           <buildOnlyIfSCMChanges>false</buildOnlyIfSCMChanges>
         </com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
         <com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
-          <jobName>vpnaas_nexus_nightly</jobName>
-          <currParams>true</currParams>
-          <exposedSCM>false</exposedSCM>
-          <disableJob>false</disableJob>
-          <parsingRulesPath></parsingRulesPath>
-          <maxRetries>0</maxRetries>
-          <enableRetryStrategy>false</enableRetryStrategy>
-          <enableCondition>false</enableCondition>
-          <abortAllJob>false</abortAllJob>
-          <condition></condition>
-          <configs class="empty-list"/>
-          <killPhaseOnJobResultCondition>NEVER</killPhaseOnJobResultCondition>
-          <buildOnlyIfSCMChanges>false</buildOnlyIfSCMChanges>
-        </com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
-        <com.tikal.jenkins.plugins.multijob.PhaseJobsConfig>
-          <jobName>csr1kv_nightly</jobName>
+          <jobName>multinode_kiloplus</jobName>
           <currParams>true</currParams>
           <exposedSCM>false</exposedSCM>
           <disableJob>false</disableJob>
@@ -173,7 +143,7 @@ rm -rf *.xml ||:</command>
           <EscalateStatus>false</EscalateStatus>
           <RunIfJobSuccessful>false</RunIfJobSuccessful>
           <script>cpath=&quot;$WORKSPACE/openstack-sqe/tools/jenkins/job-helpers&quot;&#xd;
-python $cpath/coi_ci_reporter.py $cpath/devstacks.yaml &gt; $WORKSPACE/mail.html ||:</script>
+python $cpath/coi_ci_reporter.py $cpath/internal_devstacks.yaml &gt; $WORKSPACE/mail.html ||:</script>
         </hudson.plugins.postbuildtask.TaskProperties>
       </tasks>
     </hudson.plugins.postbuildtask.PostbuildTask>
@@ -210,7 +180,7 @@ python $cpath/coi_ci_reporter.py $cpath/devstacks.yaml &gt; $WORKSPACE/mail.html
             <replyTo>ebagdasa@cisco.com</replyTo>
             <saveOutput>false</saveOutput>
           </publisher>
-          <runner class="org.jenkins_ci.plugins.run_condition.BuildStepRunner$Run" plugin="run-condition@1.0"/>
+          <runner class="org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail" plugin="run-condition@1.0"/>
         </org.jenkins__ci.plugins.flexible__publish.ConditionalPublisher>
       </publishers>
     </org.jenkins__ci.plugins.flexible__publish.FlexiblePublisher>
