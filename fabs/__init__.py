@@ -12,6 +12,8 @@ CENTOS7_DISK = "centos-7.x86_64.qcow2"
 FEDORA20_DISK = "fedora-20.x86_64.qcow2"
 RHEL7_DISK = "rhel-7.x86_64.qcow2"
 CUR_DIR = os.path.dirname(__file__)
+REPO_DIR = os.path.abspath(os.path.join(CUR_DIR, '..'))
+HOME_DIR = os.getenv('HOME')
 SSH_KEY = os.path.normpath(os.path.join(
     CUR_DIR, "..", "tools", "libvirt-scripts", "id_rsa"))
 GLOBAL_TIMEOUT = 180
