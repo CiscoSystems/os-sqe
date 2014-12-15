@@ -27,7 +27,9 @@ devstack-server:
       {disk}
       {network}
       <input type='mouse' bus='ps2'/>
-      <graphics type='vnc' port='-1' autoport='yes'/>
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
     </devices>
     </domain>
   user-yaml: |
@@ -79,7 +81,9 @@ sa-server:
       {disk}
       {network}
       <input type='mouse' bus='ps2'/>
-      <graphics type='vnc' port='-1' autoport='yes'/>
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
     </devices>
     </domain>
   user-yaml: |
@@ -131,7 +135,9 @@ aio-server:
       {disk}
       {network}
       <input type='mouse' bus='ps2'/>
-      <graphics type='vnc' port='-1' autoport='yes'/>
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
     </devices>
     </domain>
   user-yaml: |
@@ -183,7 +189,9 @@ build-server:
         {disk}
         {network}
         <input type='mouse' bus='ps2'/>
-        <graphics type='vnc' port='-1' autoport='yes'/>
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
       </devices>
     </domain>
   user-yaml: |
@@ -236,7 +244,9 @@ control-server:
       {disk}
       {network}
       <input type='mouse' bus='ps2'/>
-      <graphics type='vnc' port='-1' autoport='yes'/>
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
     </devices>
     </domain>
   user-yaml: |
@@ -341,7 +351,9 @@ swift-storage:
       {disk}
       {network}
       <input type='mouse' bus='ps2'/>
-      <graphics type='vnc' port='-1' autoport='yes'/>
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
     </devices>
     </domain>
   user-yaml: |
@@ -394,7 +406,9 @@ swift-proxy:
       {disk}
       {network}
       <input type='mouse' bus='ps2'/>
-      <graphics type='vnc' port='-1' autoport='yes'/>
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
     </devices>
     </domain>
   user-yaml: |
