@@ -31,30 +31,31 @@ def requirements():
 @task
 @virtual
 def flake8():
-    ''' Make a PEP8 check for code '''
+    """ Make a PEP8 check for code """
     local("flake8 --max-line-length=120 --show-source --exclude=.env1 . || echo")
 
 
 @task
 @virtual
 def test():
-    ''' For testing purposes only '''
+    """ For testing purposes only """
     log.info("Testing something")
     a = local("which python")
     print a.real_command
 
 
-@task(default=True)
+@task
 @timed
 def init(private=False):
-    ''' Prepare virtualenv and install all requirements '''
+    """ Prepare virtualenv and install all requirements """
     venv(private=private)
     requirements()
+
 
 @task
 @timed
 @virtual
 def destroy():
-    ''' Destroying all lab machines and networks '''
+    """ Destroying all lab machines and networks """
     log.info("Destroying lab {lab}".format(lab=LAB))
     local("python ./tools/cloud/create.py -l {lab} -x".format(lab=LAB))
