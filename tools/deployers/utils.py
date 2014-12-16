@@ -3,7 +3,7 @@ import yaml
 import re
 from fabric.colors import yellow, red
 from fabric.contrib.files import exists
-from fabric.operations import get
+from fabric.operations import get, run
 import sys
 
 __author__ = 'sshnaidm'
@@ -33,6 +33,16 @@ def collect_logs(run_func=None, hostname=None, clean=False):
         run_func("tar -zcf /tmp/{filename}.tar.gz {dirlog} 2>/dev/null".format(filename=filename, dirlog=dirlog))
         get("/tmp/{filename}.tar.gz".format(filename=filename), path)
         run_func("rm -rf /tmp/{filename}.tar.gz".format(filename=filename))
+
+
+def collect_logs_devstack(dir_name="devstack", screen_logdir="/opt/stack/logs/"):
+    p = '/tmp/logs_{name}'.format(name=dir_name)
+    run('mkdir -p {p}'.format(p=p))
+    run('find {sl} -type l -exec cp "{{}}" {p} \;'.format(sl=screen_logdir, p=p))
+    run('gzip -9 {p}/*'.format(p=p))
+    get(p, '.')
+    get('~/devstack/openrc', "./openrc")
+    get('/opt/stack/tempest/etc/tempest.conf', "./tempest.conf")
 
 
 def change_ip_to(string, ip):

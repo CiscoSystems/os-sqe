@@ -4,7 +4,7 @@ from fabric.api import task, local, env, settings, run, cd
 from common import timed, virtual, get_lab_vm_ip
 from common import logger as log
 from tempest import prepare_devstack, run_tests, run_remote_tests
-from fabs import LAB, IMAGES_REPO, DEVSTACK_DISK, GLOBAL_TIMEOUT, DEFAULT_SETTINGS
+from fabs import LAB, IMAGES_REPO, DEVSTACK_DISK, GLOBAL_TIMEOUT, DEFAULT_SETTINGS, DEVSTACK_CONF
 from fabs.lab.lab_class import MyLab
 from snap import destroy, create
 
@@ -34,7 +34,7 @@ def prepare(topology='devstack'):
 @task
 @timed
 @virtual
-def install(user='localadmin', password='ubuntu'):
+def install(user='localadmin', password='ubuntu', devstack_config="devstack_single_node"):
     """ Install devstack Openstack on prepared environment """
     log.info("Installing devstack Openstack")
     tempest_repo = os.environ.get("TEMPEST_REPO", "")
@@ -44,23 +44,27 @@ def install(user='localadmin', password='ubuntu'):
     devstack_patch = os.environ.get("DEVSTACK_PATCH", "")
     local("python ./tools/deployers/install_devstack.py "
           "-c config_file  -u {user} -p {password} -r {repo} -b {br} "
-          "-e {devstack_repo} -l {devstack_br} -m {patch}".format(user=user,
-                                                                  password=password,
-                                                                  repo=tempest_repo,
-                                                                  br=tempest_br,
-                                                                  devstack_repo=devstack_repo,
-                                                                  devstack_br=devstack_br,
-                                                                  patch=devstack_patch))
+          "-e {devstack_repo} -l {devstack_br} -m {patch} "
+          "--devstack_config {devstack_config}".format(
+        user=user,
+        password=password,
+        repo=tempest_repo,
+        br=tempest_br,
+        devstack_repo=devstack_repo,
+        devstack_br=devstack_br,
+        devstack_config=os.path.join(DEVSTACK_CONF, devstack_config + ".yaml"),
+        patch=devstack_patch
+    ))
 
 
 @task
 @timed
-def setup(topology='devstack', user='localadmin', password='ubuntu'):
+def setup(topology='devstack', devstack_config="devstack_single_node", user='localadmin', password='ubuntu'):
     """ Prepare and install devstack Openstack """
     log.info("Full install of devstack Openstack")
     prepare(topology=topology)
     time.sleep(GLOBAL_TIMEOUT)
-    install(user=user, password=password)
+    install(user=user, password=password, devstack_config=devstack_config)
 
 
 @task(alias='orig')

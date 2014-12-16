@@ -6,13 +6,13 @@ from fabric import api
 from fabric.contrib import files
 import random
 import string
-import sys
+from deployers import utils
 
 TEMPEST_FILE_XML = 'tempest_results.xml'
 TEMPEST_FILE_SUBUNIT = 'tempest_results.subunit'
 TEMPEST_SUBUNIT_CMD = 'testr last --subunit > ' + TEMPEST_FILE_SUBUNIT
 TEMPEST_XML_CMD = 'testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=' + TEMPEST_FILE_XML
-
+SCREEN_LOGDIR = '/opt/stack/logs/'
 
 def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
          tempest_repo, tempest_branch, is_venv, wait_time=0, kill_time=0,
@@ -55,6 +55,7 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
                 api.run('rm ' + TEMPEST_FILE_SUBUNIT)
             else:
                 print(TEMPEST_FILE_SUBUNIT + ' is not created on remote', file=sys.stderr)
+            utils.collect_logs_devstack("test_run")
 
 DESCRIPTION = 'run tempest on the given remote host'
 
