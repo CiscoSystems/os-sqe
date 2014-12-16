@@ -5,6 +5,7 @@ from common import timed, virtual, get_lab_vm_ip
 from common import logger as log
 from tempest import prepare_devstack, run_tests, run_remote_tests
 from fabs import LAB, IMAGES_REPO, DEVSTACK_DISK, GLOBAL_TIMEOUT, DEFAULT_SETTINGS
+from fabs.lab.lab_class import MyLab
 from snap import destroy, create
 
 env.update(DEFAULT_SETTINGS)
@@ -12,7 +13,7 @@ env.update(DEFAULT_SETTINGS)
 __all__ = ['prepare', 'install', 'setup',
            'run_test_original_file', 'run_test_custom_file',
            'run_test_ready_file', 'run_test_remote',
-           'snapshot_create', 'set_branch', 'patchset']
+           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv']
 
 
 @task
@@ -130,3 +131,17 @@ def patchset(component="neutron", patch_set=None):
                 project=component,
                 patchset=patch_set))
         run("screen -c {0} -d -m && sleep 1".format(stack_file))
+
+
+@task
+@timed
+def plus_n1kv(lab_id, is_override=True):
+    """Run devstack in one VM + n1kv in separate VM"""
+    MyLab(lab_id=lab_id, topology_name='devstack_plus_n1kv', is_override=is_override).create_lab()
+
+
+@task
+@timed
+def plus_dhcp6(lab_id, is_override=True):
+    """Run devstack in one VM + dhcp6 server in separate VM"""
+    MyLab(lab_id=lab_id, topology_name='devstack_plus_dhcp6', is_override=is_override).create_lab()
