@@ -19,7 +19,10 @@ from fabs import REPO_DIR, HOME_DIR
 TOPOLOGIES_DIR = os.path.abspath(os.path.join(REPO_DIR, 'fabs/lab/topologies'))
 IMAGES_DIR = os.path.abspath(os.path.join(HOME_DIR, 'images'))
 DISKS_DIR = os.path.abspath(os.path.join(HOME_DIR, 'disks'))
-
+CIRROS_CONFIG = os.path.abspath(os.path.join(TOPOLOGIES_DIR, 'cirros_image.cfg'))
+CIRROS_BLD_DIR = os.path.abspath(os.path.join(HOME_DIR, 'BLD'))
+CIRROS_BUILD_ROOT_URL='http://buildroot.org/downloads/buildroot-2014.11.tar.gz'
+CIRROS_KERNEL_URL='http://kernel.ubuntu.com/~kernel-ppa/mainline/v3.17.4-vivid/linux-image-3.17.4-031704-generic_3.17.4-031704.201411211317_amd64.deb'
 
 def make_tmp_dir(local_dir):
     with settings(warn_only=False):
