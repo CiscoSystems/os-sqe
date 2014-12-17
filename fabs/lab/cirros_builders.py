@@ -13,19 +13,48 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from fabric.api import local, lcd
+from fabric.api import local, lcd, settings
 from fabs import lab
 
 
-def build_new():
-    """Build new cirros image in buildroot way"""
-    local_tar = lab.wget_file(local_dir=lab.CIRROS_BLD_DIR, file_url=lab.CIRROS_BUILD_ROOT_URL)
-    with lcd(lab.CIRROS_BLD_DIR):
-        local('tar xf ' + local_tar)
-    bld_dir = local_tar.split('.tar.gz')[0]
-    local('cp {0} {1}/.config'.format(lab.CIRROS_CONFIG, bld_dir))
-    with lcd(bld_dir):
-        local('make')
+def build_new(config_file):
+    """Build new cirros image in buildroot way. Check the resulting image by:
+    kvm -drive file=disk.img,if=virtio -curses
+    kvm file=blank.img,if=virtio -curses -kernel kernel -initrd initrd -drive -append "debug-initrd"
+    qemu-system-x86_64 -M pc -kernel output/images/bzImage -drive file=output/images/rootfs.ext2,if=ide -append root=/dev/sda -net nic,model=rtl8139 -net user
+    qemu-system-x86_64 -M pc -kernel files/images/cirros-0.3.3.max-x86_64-uec/cirros-6-x86_64-vmlinuz -drive file=files/images/cirros-0.3.3.max-x86_64-uec/cirros-6-x86_64-blank.img,if=ide -append root=/dev/sda -net nic,model=rtl8139 -net user
+    sudo ./bin/bundle -v output/$ARCH/rootfs.tar download/kernel-$ARCH.deb output/$ARCH/images
+    """
+    local_br_tar = lab.wget_file(local_dir=lab.CIRROS_BLD_DIR, file_url=lab.CIRROS_BUILD_ROOT_URL)
+    local_kernel = lab.wget_file(local_dir=lab.CIRROS_BLD_DIR, file_url=lab.CIRROS_KERNEL_URL)
+    local_br_dir = local_br_tar.split('.tar.gz')[0]
+    image_name = 'cirros-0.3.3.' + config_file.split('.')[0].split('_')[-1] + '-x86_64'
+
+    with settings(warn_only=False):
+        with lcd(lab.CIRROS_BLD_DIR):
+            local('rm -rf cirros && bzr branch lp:cirros')
+
+            local('rm -rf {0} && tar xf {1}'.format(local_br_dir, local_br_tar))
+            local('cp {0}/{1} {2}/.config'.format(lab.CIRROS_CONFIGS_DIR, config_file, local_br_dir))
+            local('cp {0}/{1} {2}'.format(lab.CIRROS_CONFIGS_DIR, 'cirros_busybox.config', local_br_dir))
+            local('echo "cirros -1 cirros -1 = /home/cirros /bin/sh - single user" >  {0}/users_table.txt'.format(local_br_dir))
+
+            local('cd {0} && make'.format(local_br_dir))
+
+            local('sudo cirros/bin/bundle -v {0}/output/images/rootfs.ext2 {1} out_dir'.format(local_br_dir, local_kernel))
+            local('cd out_dir && mv blank.img {0}-blank.img'.format(image_name))
+            local('cd out_dir && mv kernel {0}-vmlinuz'.format(image_name))
+            local('cd out_dir && mv initramfs {0}-initrd'.format(image_name))
+
+            local('cd out_dir && tar czf ../{0}-uec.tar.gz {0}-blank.img {0}-vmlinuz {0}-initrd'.format(image_name))
+
+
+def upload_to_scrapyard():
+    with settings(warn_only=False):
+        with lcd(lab.CIRROS_BLD_DIR):
+            image_name = local('find cirros*tar.gz', capture=True)
+            local('sshpass -p ubuntu scp {0} localadmin@172.29.173.233:'.format(image_name))
+            local('sshpass -p ubuntu ssh localadmin@172.29.173.233 sudo mv {0} /var/www'.format(image_name))
 
 
 def build_old():
