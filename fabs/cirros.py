@@ -15,16 +15,16 @@
 
 from fabric.api import task
 from fabs.common import timed
-from fabs.lab.cirros_builders import build_new, build_old
+from fabs.lab.cirros_builders import build_new, build_old, upload_to_scrapyard
 
-__all__ = ['build', 'build_old']
+__all__ = ['build', 'build_old', 'upload']
 
 
 @task
 @timed
-def build():
+def build(config_file='cirros_buildroot_min.config'):
     """Build cirros image using build root tool only"""
-    build_new()
+    build_new(config_file)
 
 
 @task
@@ -32,3 +32,10 @@ def build():
 def build_old():
     """Build cirros image using the way suggested by current cirros maintainer"""
     build_old()
+
+
+@task
+@timed
+def upload():
+    """Upload cirros image to the main storage"""
+    upload_to_scrapyard()
