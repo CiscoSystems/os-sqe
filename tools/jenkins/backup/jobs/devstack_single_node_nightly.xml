@@ -98,7 +98,6 @@
       <command>cd $WORKSPACE/openstack-sqe/
 sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
 sed -i &apos;19 i VOLUME_BACKING_FILE_SIZE=20500M&apos; tools/deployers/install_devstack.py
-
 fab init
 fab devstack.setup
 fab devstack.run_test_remote

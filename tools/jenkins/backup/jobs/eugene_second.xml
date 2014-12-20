@@ -106,7 +106,7 @@
 cat neutron_ci/cisco_plugin_tests.txt &gt; tools/tempest-scripts/tests_set
 sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
 fab init
-fab devstack.setup:topology=devstack,devstack_config=devstack_ml2_single_node
+fab devstack.setup:topology=devstack_multinode,devstack_config=devstack_ml2_multi_node
 fab devstack.run_test_remote
 </command>
     </hudson.tasks.Shell>
@@ -115,6 +115,13 @@ fab devstack.run_test_remote
     <hudson.plugins.chucknorris.CordellWalkerRecorder plugin="chucknorris@0.5">
       <factGenerator/>
     </hudson.plugins.chucknorris.CordellWalkerRecorder>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>openstack-sqe/*.xml,openstack-sqe/logs/*</artifacts>
+      <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+    </hudson.tasks.ArtifactArchiver>
     <hudson.plugins.logparser.LogParserPublisher plugin="log-parser@1.0.8">
       <unstableOnWarning>false</unstableOnWarning>
       <failBuildOnError>false</failBuildOnError>

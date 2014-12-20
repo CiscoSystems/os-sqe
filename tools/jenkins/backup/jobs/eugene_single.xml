@@ -33,7 +33,7 @@
         <hudson.model.StringParameterDefinition>
           <name>OPENCTACK_BRANCH</name>
           <description></description>
-          <defaultValue>ml2</defaultValue>
+          <defaultValue>mm2</defaultValue>
         </hudson.model.StringParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
@@ -104,7 +104,7 @@
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
 sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
-cat neutron_ci/plugin_new.txt &gt; tools/tempest-scripts/tests_set
+cat neutron_ci/cisco_vpn_tests.txt &gt; tools/tempest-scripts/tests_set
 fab init
 fab devstack.setup:topology=devstack,devstack_config=devstack_ml2_single_node
 fab devstack.run_test_remote
