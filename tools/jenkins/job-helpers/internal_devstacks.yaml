@@ -1,0 +1,6 @@
+1: {name: "Kiloplus Single node, ML2: Default", job: "single_node_kiloplus"}
+2: {name: "Junoplus Multi node, ML2: default", job: "multinode_kiloplus"}
+
+
+10: {name: "Junoplus Single node, ML2: Default", job: "single_node_junoplus"}
+11: {name: "Junoplus Multi node, ML2: default", job: "multinode_junoplus"}
