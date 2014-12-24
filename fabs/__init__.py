@@ -45,6 +45,8 @@ WORKSPACE = _get_workspace()
 REDHAT_DISK = os.environ.get("REDHAT_DISK", None)
 COI_DISK = os.environ.get("UBUNTU_DISK", UBUNTU_DISK)
 DEVSTACK_DISK = os.environ.get("DEVSTACK_DISK", UBUNTU_DISK)
+DEVSTACK_CONF = os.path.normpath(os.path.join(
+    CUR_DIR, "..", "tools", "deployers", "devstack-configs"))
 
 TEMPEST_DIR = _get_tempest_dir()
 TVENV = ".venv"

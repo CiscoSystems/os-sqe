@@ -1,0 +1,10 @@
+servers:
+-
+  local_conf:
+    |
+      enable_service g-api g-reg key n-api n-crt n-obj n-cpu n-cond cinder c-sch
+      enable_service c-api c-vol n-sch n-novnc n-xvnc n-cauth horizon rabbit
+      enable_service mysql q-svc q-agt q-l3 q-dhcp q-meta q-lbaas q-vpn q-fwaas q-metering neutron
+      disable_service n-net
+      enable_service s-proxy s-object s-container s-account
+      {tempest}
