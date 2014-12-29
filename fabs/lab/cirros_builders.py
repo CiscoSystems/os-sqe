@@ -13,7 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from datetime import datetime
 from fabric.api import local, lcd, settings
+import hashlib
 from fabs import lab
 
 
@@ -32,7 +34,7 @@ def build_new(config_file):
 
     with settings(warn_only=False):
         with lcd(lab.CIRROS_BLD_DIR):
-            local('rm -rf cirros && bzr branch lp:cirros')
+            local('sudo rm -rf cirros && bzr branch lp:cirros')
 
             local('rm -rf {0} && tar xf {1}'.format(local_br_dir, local_br_tar))
             local('cp {0}/{1} {2}/.config'.format(lab.CIRROS_CONFIGS_DIR, config_file, local_br_dir))
@@ -46,7 +48,10 @@ def build_new(config_file):
             local('cd out_dir && mv kernel {0}-vmlinuz'.format(image_name))
             local('cd out_dir && mv initramfs {0}-initrd'.format(image_name))
 
-            local('cd out_dir && tar czf ../{0}-uec.tar.gz {0}-blank.img {0}-vmlinuz {0}-initrd'.format(image_name))
+            local('cd out_dir && tar czf ../{0} {0}-blank.img {0}-vmlinuz {0}-initrd'.format(image_name))
+            with open('{d}/{f}'.format(d=lab.CIRROS_BLD_DIR, f=image_name)) as f:
+                md5hex = hashlib.md5(f.read()).hexdigest()
+            local('mv {name} {name}-uec.{md5}.{date}.tar.gz'.format(name=image_name, md5=md5hex, date=datetime.now().strftime('%Y-%m-%d')))
 
 
 def upload_to_scrapyard():

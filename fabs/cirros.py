@@ -17,14 +17,21 @@ from fabric.api import task
 from fabs.common import timed
 from fabs.lab.cirros_builders import build_new, build_old, upload_to_scrapyard
 
-__all__ = ['build', 'build_old', 'upload']
+__all__ = ['build_min', 'build_max', 'build_old', 'upload']
 
 
 @task
 @timed
-def build(config_file='cirros_buildroot_min.config'):
-    """Build cirros image using build root tool only"""
-    build_new(config_file)
+def build_min():
+    """Build cirros image using build root tool only, min config"""
+    build_new(config_file='cirros_buildroot_min.config')
+
+
+@task
+@timed
+def build_max():
+    """Build cirros image using build root tool only, max config"""
+    build_new(config_file='cirros_buildroot_max.config')
 
 
 @task
