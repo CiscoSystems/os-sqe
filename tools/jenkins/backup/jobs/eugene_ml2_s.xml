@@ -93,7 +93,7 @@
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.230</assignedNode>
+  <assignedNode>172.29.172.165</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -104,7 +104,8 @@
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
 sed -i &apos;s/cpu: 1/cpu: 10/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
-cat neutron_ci/cisco_plugin_tests.txt &gt; tools/tempest-scripts/tests_set
+#cat neutron_ci/cisco_plugin_tests.txt &gt; tools/tempest-scripts/tests_set
+echo &apos;tempest.scenario.test_network_basic_ops.TestNetworkBasicOps.test_network_basic_ops&apos; &gt; tools/tempest-scripts/tests_set
 fab init
 fab devstack.setup:topology=devstack,devstack_config=devstack_ml2_single_node
 fab devstack.run_test_remote

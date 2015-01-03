@@ -28,7 +28,7 @@
         <hudson.model.StringParameterDefinition>
           <name>REG</name>
           <description>Which tests to run - regular expression</description>
-          <defaultValue></defaultValue>
+          <defaultValue>test_csr_one_net</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>DEV1_LAB</name>
@@ -86,6 +86,16 @@
       <throttleEnabled>false</throttleEnabled>
       <throttleOption>project</throttleOption>
     </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <EnvInjectJobProperty plugin="envinject@1.90">
+      <info>
+        <loadFilesFromMaster>false</loadFilesFromMaster>
+      </info>
+      <on>true</on>
+      <keepJenkinsSystemVariables>true</keepJenkinsSystemVariables>
+      <keepBuildVariables>true</keepBuildVariables>
+      <overrideBuildParameters>false</overrideBuildParameters>
+      <contributors/>
+    </EnvInjectJobProperty>
   </properties>
   <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
     <scms>
@@ -164,6 +174,7 @@
   <builders>
     <hudson.tasks.Shell>
       <command>export LAB=${DEV1_LAB}
+
 cd $WORKSPACE/openstack-sqe/
 if [ -s $WORKSPACE/set_of_tests ]; then 
 cat $WORKSPACE/set_of_tests &gt; $WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set

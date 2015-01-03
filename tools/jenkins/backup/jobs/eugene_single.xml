@@ -33,7 +33,7 @@
         <hudson.model.StringParameterDefinition>
           <name>OPENCTACK_BRANCH</name>
           <description></description>
-          <defaultValue>mm2</defaultValue>
+          <defaultValue>master</defaultValue>
         </hudson.model.StringParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
@@ -93,7 +93,7 @@
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.230</assignedNode>
+  <assignedNode>172.29.172.165</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -103,10 +103,11 @@
   <builders>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
-sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
+#sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
 cat neutron_ci/cisco_vpn_tests.txt &gt; tools/tempest-scripts/tests_set
 fab init
-fab devstack.setup:topology=devstack,devstack_config=devstack_ml2_single_node
+fab devstack.setup:topology=devstack
+fab devstack.plus_n1kv:lab_id=435
 fab devstack.run_test_remote
 </command>
     </hudson.tasks.Shell>

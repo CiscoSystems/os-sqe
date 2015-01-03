@@ -24,12 +24,12 @@ lab17</description>
         <hudson.model.StringParameterDefinition>
           <name>TEMPEST_REPO</name>
           <description></description>
-          <defaultValue>https://github.com/CiscoSystems/tempest.git</defaultValue>
+          <defaultValue>https://github.com/cisco-openstack/tempest.git</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>TEMPEST_BRANCH</name>
           <description></description>
-          <defaultValue>production</defaultValue>
+          <defaultValue>proposed</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>QA_DEVSTACK_EXTRAS</name>
@@ -38,7 +38,7 @@ lab17</description>
 NOVA_BRANCH=staging/junoplus
 NEUTRON_REPO=https://github.com/cisco-openstack/neutron.git
 NEUTRON_BRANCH=staging/junoplus
-VOLUME_BACKING_FILE_SIZE=20520M</defaultValue>
+</defaultValue>
         </hudson.model.TextParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>

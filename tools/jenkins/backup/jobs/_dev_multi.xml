@@ -127,7 +127,6 @@
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
 sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_multinode_topology.yaml
-sed -i &apos;s/enable_service mysql q-svc q-agt q-l3 q-dhcp q-meta q-lbaas q-vpn q-fwaas q-metering neutron/enable_service mysql q-svc q-agt q-l3 q-dhcp q-meta q-fwaas q-metering neutron/g&apos; tools/deployers/install_devstack.py
 fab init
 fab devstack.setup:topology=devstack_multinode
 
