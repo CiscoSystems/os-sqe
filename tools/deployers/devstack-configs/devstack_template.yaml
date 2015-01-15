@@ -16,7 +16,7 @@ TEMPLATE: |
   SCREEN_LOGDIR=$DEST/logs
   API_RATE_LIMIT=False
   FIXED_RANGE_V6=2001:dead:beef:deed::/64
-  IPV6_NETWORK_GATEWAY=2001:dead:beef:deed::1
+  IPV6_PRIVATE_NETWORK_GATEWAY=2001:dead:beef:deed::1
   IMAGE_URLS='http://172.29.173.233/cirros-0.3.3-x86_64-uec.tar.gz,http://172.29.173.233/trusty-server-cloudimg-amd64-disk1.img'
   CIRROS_VERSION=0.3.3
   SWIFT_REPLICAS=1
