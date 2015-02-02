@@ -153,8 +153,8 @@ class ML2MutinodeTest(MultinodeTestCase):
             local_conf=LOCALCONF_COMPUTE.format(**parameters))
 
     def test_tempest(self):
-        self.controller.clone()
-        self.compute.clone()
+        self.controller.clone(commit='3163c17170b0b2bd7775e5e0d50040504b559ea1')
+        self.compute.clone(commit='3163c17170b0b2bd7775e5e0d50040504b559ea1')
 
         # Create ml2 config for cisco plugin. Put it to controller node
         with settings(host_string=self.VMs['control'].ip):
