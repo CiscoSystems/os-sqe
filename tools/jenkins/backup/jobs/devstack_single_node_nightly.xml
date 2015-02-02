@@ -97,8 +97,6 @@
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
 sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
-sed -i &apos;19 i VOLUME_BACKING_FILE_SIZE=20500M&apos; tools/deployers/install_devstack.py
-
 fab init
 fab devstack.setup
 fab devstack.run_test_remote
@@ -187,7 +185,7 @@ cp openstack-sqe/tempest_results.xml $WORKSPACE/../devs_nightly_report/single_re
       </publishers>
     </org.jenkins__ci.plugins.flexible__publish.FlexiblePublisher>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>openstack-sqe/*.xml,openstack-sqe/build.log*</artifacts>
+      <artifacts>openstack-sqe/*.xml,openstack-sqe/build.log*,openstack-sqe/logs*/*</artifacts>
       <allowEmptyArchive>false</allowEmptyArchive>
       <onlyIfSuccessful>false</onlyIfSuccessful>
       <fingerprint>false</fingerprint>

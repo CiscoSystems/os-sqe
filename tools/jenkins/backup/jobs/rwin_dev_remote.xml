@@ -1,14 +1,14 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <project>
   <actions/>
-  <description>single node deploy of devstack + tempest run.</description>
+  <description></description>
   <logRotator class="hudson.tasks.LogRotator">
-    <daysToKeep>5</daysToKeep>
+    <daysToKeep>10</daysToKeep>
     <numToKeep>10</numToKeep>
     <artifactDaysToKeep>-1</artifactDaysToKeep>
     <artifactNumToKeep>-1</artifactNumToKeep>
   </logRotator>
-  <keepDependencies>false</keepDependencies>
+  <keepDependencies>true</keepDependencies>
   <properties>
     <org.jenkinsci.plugins.ZMQEventPublisher.HudsonNotificationProperty plugin="zmq-event-publisher@0.0.3">
       <enabled>false</enabled>
@@ -16,30 +16,40 @@
     <hudson.model.ParametersDefinitionProperty>
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
-          <name>REG</name>
-          <description>RegExp to choose tests to run</description>
-          <defaultValue></defaultValue>
-        </hudson.model.StringParameterDefinition>
-        <hudson.model.StringParameterDefinition>
           <name>TEMPEST_REPO</name>
-          <description></description>
-          <defaultValue>https://github.com/CiscoSystems/tempest.git</defaultValue>
+          <description>Repository URL of tempest</description>
+          <defaultValue>https://github.com/riwinter-cisco/tempest.git</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>TEMPEST_BRANCH</name>
-          <description></description>
-          <defaultValue>production</defaultValue>
+          <description>Repository branch of tempest</description>
+          <defaultValue>csr_onenet_test</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
-          <name>SQE_REPO</name>
-          <description>sqe repository</description>
-          <defaultValue>https://github.com/CiscoSystems/openstack-sqe.git</defaultValue>
+          <name>REG</name>
+          <description>Which tests to run - regular expression</description>
+          <defaultValue>test_csr_one_net</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
-          <name>SQE_REPO_BRANCH</name>
-          <description>Branch of sqe repository</description>
-          <defaultValue>master</defaultValue>
+          <name>DEV1_LAB</name>
+          <description>LAB number</description>
+          <defaultValue>lab315</defaultValue>
         </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SHUTDOWN</name>
+          <description>Whether shutdown environment or not</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.FileParameterDefinition>
+          <name>set_of_tests</name>
+          <description>File with set of tests to run in tempest</description>
+        </hudson.model.FileParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>LIST</name>
+          <description>List of tests to run - MUST include FULL test name with tags like [gate], etc.
+</description>
+          <defaultValue></defaultValue>
+        </hudson.model.TextParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>PROJECT</name>
           <description>PROJECT for change - patchset or branch</description>
@@ -57,19 +67,14 @@
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>TEMPEST_PATCHSET</name>
-          <description>Change tempest to this patchset before testing</description>
+          <description>Run test form particular tempest patchset</description>
           <defaultValue></defaultValue>
         </hudson.model.StringParameterDefinition>
-        <hudson.model.TextParameterDefinition>
-          <name>QA_DEVSTACK_EXTRAS</name>
-          <description>VOLUME_BACKING_FILE_SIZE=20500M</description>
-          <defaultValue></defaultValue>
-        </hudson.model.TextParameterDefinition>
-        <hudson.model.StringParameterDefinition>
-          <name>DEVSTACK_PATCH</name>
-          <description>Devstack patch</description>
-          <defaultValue></defaultValue>
-        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>COVERAGE</name>
+          <description>Whether measure and report coverage</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
     <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.22">
@@ -81,6 +86,16 @@
       <throttleEnabled>false</throttleEnabled>
       <throttleOption>project</throttleOption>
     </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <EnvInjectJobProperty plugin="envinject@1.90">
+      <info>
+        <loadFilesFromMaster>false</loadFilesFromMaster>
+      </info>
+      <on>true</on>
+      <keepJenkinsSystemVariables>true</keepJenkinsSystemVariables>
+      <keepBuildVariables>true</keepBuildVariables>
+      <overrideBuildParameters>false</overrideBuildParameters>
+      <contributors/>
+    </EnvInjectJobProperty>
   </properties>
   <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
     <scms>
@@ -109,12 +124,12 @@
         <configVersion>2</configVersion>
         <userRemoteConfigs>
           <hudson.plugins.git.UserRemoteConfig>
-            <url>$SQE_REPO</url>
+            <url>https://github.com/riwinter-cisco/openstack-sqe.git</url>
           </hudson.plugins.git.UserRemoteConfig>
         </userRemoteConfigs>
         <branches>
           <hudson.plugins.git.BranchSpec>
-            <name>*/$SQE_REPO_BRANCH</name>
+            <name>cfg_onep</name>
           </hudson.plugins.git.BranchSpec>
         </branches>
         <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
@@ -149,7 +164,7 @@
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.172.165</assignedNode>
+  <assignedNode>172.29.173.232</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -158,13 +173,21 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>cd $WORKSPACE/openstack-sqe/
+      <command>export LAB=${DEV1_LAB}
 
-sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
-
+cd $WORKSPACE/openstack-sqe/
+if [ -s $WORKSPACE/set_of_tests ]; then 
+cat $WORKSPACE/set_of_tests &gt; $WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set
+fi
+if [ -n &quot;$LIST&quot; ]; then
+echo &quot;$LIST&quot; | tr -d &apos; &apos; &gt; $WORKSPACE/openstack-sqe/tools/tempest-scripts/tests_set
+fi
 fab init
-fab devstack.setup
+fab snap.restore
+if $COVERAGE; then
 fab coverage.start
+fi
+
 if [ -n &quot;$BRANCH&quot; ]; then
 fab devstack.set_branch:$PROJECT,$BRANCH
 fi
@@ -173,33 +196,33 @@ fab devstack.patchset:$PROJECT,$PATCHSET
 fi
 
 fab devstack.run_test_remote
+
+if $COVERAGE; then
 fab coverage.stop
-fab snap.shutdown</command>
+fi
+
+if $SHUTDOWN; then
+fab snap.shutdown
+fi
+cp tempest_results.xml dev_result.xml</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
-    <hudson.plugins.postbuildtask.PostbuildTask plugin="postbuild-task@1.8">
-      <tasks>
-        <hudson.plugins.postbuildtask.TaskProperties>
-          <logTexts>
-            <hudson.plugins.postbuildtask.LogProperties>
-              <logText></logText>
-              <operator>AND</operator>
-            </hudson.plugins.postbuildtask.LogProperties>
-          </logTexts>
-          <EscalateStatus>false</EscalateStatus>
-          <RunIfJobSuccessful>false</RunIfJobSuccessful>
-          <script>#ssh localadmin@172.29.173.228 &quot;mkdir -p /opt/www/${JOB_NAME}/${BUILD_NUMBER}&quot; || :&#xd;
-#scp localadmin@172.29.173.133:/var/lib/jenkins/jobs/$JOB_NAME/builds/$BUILD_NUMBER/log $WORKSPACE/openstack-sqe/build.log || :&#xd;
-#scp localadmin@172.29.173.133:/var/lib/jenkins/jobs/$JOB_NAME/builds/$BUILD_NUMBER/changelog.xml $WORKSPACE/openstack-sqe/changelog.xml || :&#xd;
-#gzip $WORKSPACE/openstack-sqe/build.log || :&#xd;
-&#xd;
-#scp -r test_data/* localadmin@172.29.173.228:/opt/www/${JOB_NAME}/${BUILD_NUMBER}/&#xd;
-&#xd;
-#scp  openstack-sqe/config_file *.xml openstack-sqe/build* openstack-sqe/*.xml openstack-sqe/openrc openstack-sqe/testr_results.subunit tempest/etc/tempest.conf #localadmin@172.29.173.228:/opt/www/${JOB_NAME}/${BUILD_NUMBER}/</script>
-        </hudson.plugins.postbuildtask.TaskProperties>
-      </tasks>
-    </hudson.plugins.postbuildtask.PostbuildTask>
+    <hudson.plugins.chucknorris.CordellWalkerRecorder plugin="chucknorris@0.5">
+      <factGenerator/>
+    </hudson.plugins.chucknorris.CordellWalkerRecorder>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>openstack-sqe/*.xml</artifacts>
+      <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+    </hudson.tasks.ArtifactArchiver>
+    <hudson.plugins.logparser.LogParserPublisher plugin="log-parser@1.0.8">
+      <unstableOnWarning>false</unstableOnWarning>
+      <failBuildOnError>false</failBuildOnError>
+      <parsingRulesPath>/var/lib/jenkins/custom_configs/parsing_rules2</parsingRulesPath>
+    </hudson.plugins.logparser.LogParserPublisher>
     <hudson.plugins.cobertura.CoberturaPublisher plugin="cobertura@1.9.5">
       <coberturaReportFile>openstack-sqe/coverage*.xml</coberturaReportFile>
       <onlyStable>false</onlyStable>
@@ -268,24 +291,19 @@ fab snap.shutdown</command>
       </testDataPublishers>
       <healthScaleFactor>1.0</healthScaleFactor>
     </hudson.tasks.junit.JUnitResultArchiver>
+    <hudson.tasks.Fingerprinter>
+      <targets>openstack-sqe/tempest_results.xml</targets>
+    </hudson.tasks.Fingerprinter>
   </publishers>
   <buildWrappers>
-    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.24">
-      <deleteDirs>false</deleteDirs>
-      <cleanupParameter></cleanupParameter>
-      <externalDelete></externalDelete>
-    </hudson.plugins.ws__cleanup.PreBuildCleanup>
     <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.4.0">
       <colorMapName>xterm</colorMapName>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo LAB=lab250
-echo OS_TEST_TIMEOUT=500
-echo QA_WAITTIME=25000
-echo QA_KILLTIME=25120
-echo QA_STARTED=$(date +%s)
-echo $LAB
-echo $REG</script>
+      <script>echo OS_TEST_TIMEOUT=300
+echo QA_WAITTIME=11000
+echo QA_KILLTIME=11120
+echo QA_STARTED=$(date +%s)</script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

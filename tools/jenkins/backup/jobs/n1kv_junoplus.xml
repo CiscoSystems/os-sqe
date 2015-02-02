@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <project>
   <actions/>
-  <description></description>
+  <description>N1KV Cisco plugin. Used internal repositories for Nova and Neutron.</description>
   <logRotator class="hudson.tasks.LogRotator">
     <daysToKeep>30</daysToKeep>
     <numToKeep>30</numToKeep>
@@ -42,7 +42,7 @@
     <submoduleCfg class="list"/>
     <extensions/>
   </scm>
-  <assignedNode>172.29.172.165</assignedNode>
+  <assignedNode>172.29.173.231</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -76,12 +76,12 @@ sleep 30
 ssh 10.20.21.2 &quot;sudo apt-get install -y git testrepository subunit&quot;
 #ssh 10.20.21.2 &quot;sudo pip install ecdsa junitxml requests testtools netifaces nose fabric&quot;
 ssh 10.20.21.2 &quot;wget http://172.29.173.233/n1kv/nexus_1000v_vem-12.04-5.2.1.SK1.2.1.29.S0-1.deb&quot;
-ssh 10.20.21.2 &quot;git config --global user.email &apos;you@example.com&apos;&quot;
-ssh 10.20.21.2 &quot;git config --global user.name &apos;Your Name&apos;&quot;
 ssh 10.20.21.2 &quot;git clone https://github.com/openstack-dev/devstack.git&quot;
-ssh 10.20.21.2 &quot;wget http://172.29.173.233/n1kv/0001-n1kv.patch&quot;
-ssh 10.20.21.2 &quot;cd devstack &amp;&amp; git am --signoff &lt; ../0001-n1kv.patch&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;[[local|localrc]]&apos; &gt; local.conf&quot;
+ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;NOVA_REPO=https://github.com/cisco-openstack/nova.git&apos; &gt;&gt; local.conf&quot;
+ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;NOVA_BRANCH=staging&apos; &gt;&gt; local.conf&quot;
+ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;NEUTRON_REPO=https://github.com/cisco-openstack/neutron.git&apos; &gt;&gt; local.conf&quot;
+ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;NEUTRON_BRANCH=staging/junoplus&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;MYSQL_PASSWORD=nova&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;RABBIT_PASSWORD=nova&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;SERVICE_TOKEN=nova&apos; &gt;&gt; local.conf&quot;
@@ -90,7 +90,7 @@ ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;ADMIN_PASSWORD=nova&apos;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,cinder,c-sch,c-api,c-vol,n-sch,n-novnc,n-xvnc,n-cauth,rabbit&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;disable_service horizon&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;disable_service n-net, q-agt, q-l3&apos; &gt;&gt; local.conf&quot;
-ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;enable_service mysql, q-svc, q-dhcp, q-meta, neutron, tempest&apos; &gt;&gt; local.conf&quot;
+ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;enable_service mysql, q-svc, q-dhcp, q-meta, q-lbaas, neutron, tempest&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;VOLUME_BACKING_FILE_SIZE=2052M&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;Q_PLUGIN=cisco&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;declare -a Q_CISCO_PLUGIN_SUBPLUGINS=(n1kv)&apos; &gt;&gt; local.conf&quot;
@@ -106,15 +106,11 @@ ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;LIBVIRT_FIREWALL_DRIVER=n
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;API_RATE_LIMIT=False&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;VERBOSE=True&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;DEBUG=True&apos; &gt;&gt; local.conf&quot;
-ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;[[post-config|/etc/neutron/plugins/cisco/cisco_plugins.ini]]&apos; &gt;&gt; local.conf&quot;
-ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;[cisco_n1k]&apos; &gt;&gt; local.conf&quot;
-ssh 10.20.21.2 &quot;cd devstack &amp;&amp; echo &apos;restrict_network_profiles = False&apos; &gt;&gt; local.conf&quot;
 ssh 10.20.21.2 &quot;cd devstack; cat local.conf&quot;
 ssh 10.20.21.2 &quot;sed -i &apos;s/# Create a small network/neutron cisco-network-profile-create default_network_profile vlan --segment_range 1-3000 --physical_network \$PHYSICAL_NETWORK/g&apos; ~/devstack/lib/neutron&quot;
 
 ssh 10.20.21.2 &quot;cd devstack &amp;&amp; ./stack.sh&quot;
-#~/.env/bin/python ./tools/run_tempest.py -r 10.20.21.2 -f &quot;&apos;&apos;&quot; --repo https://github.com/openstack/tempest.git --branch master --kill_time 15120 --wait_time 15000
-
+#~/.env/bin/python ./tools/run_tempest.py -r 10.20.21.2 -f &quot;&apos;&apos;&quot; --repo https://github.com/openstack/tempest.git --branch master --kill_time 3600 --wait_time 3600
 ssh 10.20.21.2 &quot;wget http://172.29.173.233/n1kv/cisco_plugin_tests.txt&quot;
 ssh 10.20.21.2 &quot;cd /opt/stack/tempest &amp;&amp; testr init&quot;
 ssh 10.20.21.2 &quot;cd /opt/stack/tempest &amp;&amp; testr run --load-list ~/cisco_plugin_tests.txt --subunit | subunit-1to2 | subunit2junitxml --output-to=result.xml&quot; || true

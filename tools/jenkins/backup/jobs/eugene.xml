@@ -16,11 +16,6 @@
     <hudson.model.ParametersDefinitionProperty>
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
-          <name>REG</name>
-          <description></description>
-          <defaultValue></defaultValue>
-        </hudson.model.StringParameterDefinition>
-        <hudson.model.StringParameterDefinition>
           <name>TEMPEST_REPO</name>
           <description></description>
           <defaultValue>https://github.com/CiscoSystems/tempest.git</defaultValue>
@@ -42,50 +37,7 @@
       <throttleOption>project</throttleOption>
     </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
   </properties>
-  <scm class="org.jenkinsci.plugins.multiplescms.MultiSCM" plugin="multiple-scms@0.3">
-    <scms>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.6">
-        <configVersion>2</configVersion>
-        <userRemoteConfigs>
-          <hudson.plugins.git.UserRemoteConfig>
-            <url>https://github.com/ebagdasa/openstack-sqe.git</url>
-          </hudson.plugins.git.UserRemoteConfig>
-        </userRemoteConfigs>
-        <branches>
-          <hudson.plugins.git.BranchSpec>
-            <name>*/ssh2</name>
-          </hudson.plugins.git.BranchSpec>
-        </branches>
-        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
-        <submoduleCfg class="list"/>
-        <extensions>
-          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-            <relativeTargetDir>openstack-sqe</relativeTargetDir>
-          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-        </extensions>
-      </hudson.plugins.git.GitSCM>
-      <hudson.plugins.git.GitSCM plugin="git@2.2.6">
-        <configVersion>2</configVersion>
-        <userRemoteConfigs>
-          <hudson.plugins.git.UserRemoteConfig>
-            <url>$TEMPEST_REPO</url>
-          </hudson.plugins.git.UserRemoteConfig>
-        </userRemoteConfigs>
-        <branches>
-          <hudson.plugins.git.BranchSpec>
-            <name>*/$TEMPEST_BRANCH</name>
-          </hudson.plugins.git.BranchSpec>
-        </branches>
-        <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
-        <submoduleCfg class="list"/>
-        <extensions>
-          <hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-            <relativeTargetDir>tempest</relativeTargetDir>
-          </hudson.plugins.git.extensions.impl.RelativeTargetDirectory>
-        </extensions>
-      </hudson.plugins.git.GitSCM>
-    </scms>
-  </scm>
+  <scm class="hudson.scm.NullSCM"/>
   <assignedNode>172.29.173.232</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
@@ -95,10 +47,12 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>cd $WORKSPACE/openstack-sqe/
-sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_multinode_topology.yaml
-fab init
-fab devstack.setup:topology=devstack_multinode
+      <command>export LAB=&quot;lab434&quot;
+cd $WORKSPACE/openstack-sqe/
+#cat neutron_ci/cisco_plugin_tests.txt &gt; tools/tempest-scripts/tests_set
+#sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_multinode_topology.yaml
+#fab init
+#fab devstack.setup:topology=devstack,devstack_config=devstack_ml2_single_node
 fab devstack.run_test_remote</command>
     </hudson.tasks.Shell>
   </builders>
@@ -120,22 +74,17 @@ fab devstack.run_test_remote</command>
     </hudson.tasks.junit.JUnitResultArchiver>
   </publishers>
   <buildWrappers>
-    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.24">
-      <deleteDirs>false</deleteDirs>
-      <cleanupParameter></cleanupParameter>
-      <externalDelete></externalDelete>
-    </hudson.plugins.ws__cleanup.PreBuildCleanup>
     <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.4.0">
       <colorMapName>xterm</colorMapName>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo LAB=&quot;lab434&quot;
-echo OS_TEST_TIMEOUT=300
-echo QA_WAITTIME=0
-echo QA_KILLTIME=0
-echo QA_STARTED=$(date +%s)
-echo $LAB
-echo $REG</script>
+      <script>#echo LAB=&quot;lab434&quot;
+#echo OS_TEST_TIMEOUT=300
+#echo QA_WAITTIME=20000
+#echo QA_KILLTIME=20100
+#echo QA_STARTED=$(date +%s)
+#echo $LAB
+#echo $REG</script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

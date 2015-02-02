@@ -2,7 +2,7 @@
 <project>
   <actions/>
   <description>Multi node deploy of devstack + tempest run.&#xd;
-lab14</description>
+lab17</description>
   <logRotator class="hudson.tasks.LogRotator">
     <daysToKeep>14</daysToKeep>
     <numToKeep>20</numToKeep>
@@ -24,13 +24,22 @@ lab14</description>
         <hudson.model.StringParameterDefinition>
           <name>TEMPEST_REPO</name>
           <description></description>
-          <defaultValue>https://github.com/CiscoSystems/tempest.git</defaultValue>
+          <defaultValue>https://github.com/cisco-openstack/tempest.git</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>TEMPEST_BRANCH</name>
           <description></description>
-          <defaultValue>production</defaultValue>
+          <defaultValue>proposed</defaultValue>
         </hudson.model.StringParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>QA_DEVSTACK_EXTRAS</name>
+          <description></description>
+          <defaultValue>NOVA_REPO=https://github.com/cisco-openstack/nova.git
+NOVA_BRANCH=staging/junoplus
+NEUTRON_REPO=https://github.com/cisco-openstack/neutron.git
+NEUTRON_BRANCH=staging/junoplus
+</defaultValue>
+        </hudson.model.TextParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
     <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.22">
@@ -87,7 +96,7 @@ lab14</description>
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.172.165</assignedNode>
+  <assignedNode>172.29.173.231</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -98,7 +107,6 @@ lab14</description>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
 sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_multinode_topology.yaml
-#sed -i &apos;19 i VOLUME_BACKING_FILE_SIZE=20500M&apos; tools/deployers/install_devstack.py
 fab init
 fab devstack.setup:topology=devstack_multinode
 fab devstack.run_test_remote</command>
@@ -209,7 +217,7 @@ cp openstack-sqe/tempest_results.xml $WORKSPACE/../devs_nightly_report/multinode
       </publishers>
     </org.jenkins__ci.plugins.flexible__publish.FlexiblePublisher>
     <hudson.tasks.ArtifactArchiver>
-      <artifacts>openstack-sqe/*.xml,openstack-sqe/build.log*,openstack-sqe/logs*/*</artifacts>
+      <artifacts>openstack-sqe/*.xml,openstack-sqe/build.log*</artifacts>
       <allowEmptyArchive>false</allowEmptyArchive>
       <onlyIfSuccessful>false</onlyIfSuccessful>
       <fingerprint>false</fingerprint>
@@ -234,13 +242,14 @@ cp openstack-sqe/tempest_results.xml $WORKSPACE/../devs_nightly_report/multinode
       <colorMapName>xterm</colorMapName>
     </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
     <com.lookout.jenkins.EnvironmentScript plugin="environment-script@1.1.2">
-      <script>echo LAB=&quot;lab14&quot;
+      <script>echo LAB=&quot;lab17&quot;
 echo OS_TEST_TIMEOUT=800
 echo QA_WAITTIME=25000
 echo QA_KILLTIME=25200
 echo QA_STARTED=$(date +%s)
 echo $LAB
-echo $REG</script>
+echo $REG
+echo $QA_DEVSTACK_EXTRAS</script>
       <onlyRunOnParent>false</onlyRunOnParent>
     </com.lookout.jenkins.EnvironmentScript>
   </buildWrappers>

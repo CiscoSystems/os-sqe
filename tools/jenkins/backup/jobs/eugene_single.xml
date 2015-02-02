@@ -93,7 +93,7 @@
       </hudson.plugins.git.GitSCM>
     </scms>
   </scm>
-  <assignedNode>172.29.173.232</assignedNode>
+  <assignedNode>172.29.172.165</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -103,9 +103,11 @@
   <builders>
     <hudson.tasks.Shell>
       <command>cd $WORKSPACE/openstack-sqe/
-sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
+#sed -i &apos;s/cpu: 1/cpu: 8/g&apos; tools/cloud/cloud-configs/devstack_topology.yaml
+cat neutron_ci/cisco_vpn_tests.txt &gt; tools/tempest-scripts/tests_set
 fab init
-fab devstack.setup
+fab devstack.setup:topology=devstack
+fab devstack.plus_n1kv:lab_id=435
 fab devstack.run_test_remote
 </command>
     </hudson.tasks.Shell>
@@ -119,6 +121,12 @@ fab devstack.run_test_remote
       <failBuildOnError>false</failBuildOnError>
       <parsingRulesPath>/var/lib/jenkins/custom_configs/parsing_rules2</parsingRulesPath>
     </hudson.plugins.logparser.LogParserPublisher>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.1">
+      <testResults>openstack-sqe/tempest_results.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <testDataPublishers/>
+      <healthScaleFactor>1.0</healthScaleFactor>
+    </hudson.tasks.junit.JUnitResultArchiver>
   </publishers>
   <buildWrappers>
     <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.24">
