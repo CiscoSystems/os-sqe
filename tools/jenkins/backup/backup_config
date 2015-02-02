@@ -12,5 +12,5 @@ DST_URL=" qemu+ssh://${JENKINS_GATE}/system"
 LOCAL_URL="qemu:///system"
 MAILTO="osqalab@cisco.com"
 mail_srv_ip="outbound.cisco.com"
-LIMIT_BU=2
+LIMIT_BU=1
 REPO_URL=https://github.com/CiscoSystems/openstack-sqe.git
