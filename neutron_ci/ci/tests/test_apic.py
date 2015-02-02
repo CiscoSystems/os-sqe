@@ -140,7 +140,10 @@ class ApicTest(BaseTestCase):
             Q_PLUGIN_EXTRA_CONF_PATH=WORKSPACE,
             Q_PLUGIN_EXTRA_CONF_FILES=APIC_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END)
-        cls.devstack.clone()
+        # Next commit '1631af891af32eaa9af609398a88252ab437b0b4' forces
+        # all openstack components to use keystone middleware but the APIC
+        # does not support it
+        cls.devstack.clone(commit='3163c17170b0b2bd7775e5e0d50040504b559ea1')
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())

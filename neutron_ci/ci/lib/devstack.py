@@ -47,7 +47,7 @@ class DevStack(object):
 
         self._tempest_path = '/opt/stack/tempest'
 
-    def clone(self, force=False):
+    def clone(self, commit=None, force=False):
         logger.info('Clone DevStack to {0}'.format(self._clone_path))
         with settings(host_string=self.host_string):
             if exists(self._clone_path):
@@ -59,11 +59,16 @@ class DevStack(object):
                     logger.error('{0} already exists.'
                                  ''.format(self._clone_path))
                     return
-            cmd = 'git clone --depth=1 -q -b {branch} {url} {dest}'.format(
+            cmd = 'git clone -q -b {branch} {url} {dest}'.format(
                 branch=self._git_branch, url=self._git_url,
                 dest=self._clone_path)
             output = run(cmd)
             logger.info(output)
+
+            if commit:
+                with cd(self._clone_path):
+                    output = run('git checkout {commit}'.format(commit=commit))
+                    logger.info(output)
 
     def _put_localrc(self):
         if self.localrc is None:
