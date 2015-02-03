@@ -1,0 +1,24 @@
+#!/usr/bin/expect --
+
+set VSM [lindex $argv 0]
+set LOGIN [lindex $argv 1]
+set PASSWORD [lindex $argv 2]
+set prompt "# "
+
+log_user 1
+set timeout -1
+
+spawn telnet $VSM
+
+expect "login:"
+send "${LOGIN}\r"
+
+expect "Password:"
+send "${PASSWORD}\r"
+
+expect $prompt
+send "term len 0\r"
+
+expect $prompt
+send "reload\r"
+expect -timeout 1 "y/n" {send "y\r"; exp_continue}
