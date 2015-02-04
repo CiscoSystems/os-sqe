@@ -4,7 +4,7 @@ DEFAULT_SETTINGS = {"host_string": "localhost",
                     "abort_on_prompts": True,
                     "warn_only": True}
 
-IMAGES_REPO = "http://172.29.173.233/"
+IMAGES_REPO = os.getenv('IMAGES_REPO', "http://172.29.173.233/")
 UBUNTU_URL_CLOUD = "http://cloud-images.ubuntu.com/trusty/current/"
 UBUNTU_DISK = "trusty-server-cloudimg-amd64-disk1.img"
 CENTOS65_DISK = "centos-6.5.x86_64.qcow2"
