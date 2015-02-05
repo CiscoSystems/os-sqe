@@ -34,8 +34,6 @@ enable_service q-dhcp
 enable_service q-l3
 enable_service q-meta
 enable_service n-cpu
-enable_service q-vpn
-enable_service q-lbaas
 
 MYSQL_PASSWORD=nova
 RABBIT_PASSWORD=nova
