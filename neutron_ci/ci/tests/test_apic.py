@@ -44,7 +44,6 @@ enable_service q-agt
 enable_service q-l3
 enable_service q-dhcp
 enable_service q-meta
-enable_service q-lbaas
 enable_service neutron
 enable_service tempest
 LIBVIRT_TYPE=qemu
