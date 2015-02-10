@@ -1,0 +1,4 @@
+# This scipt is sourced by devstack stack.sh before executing plugins section but after processing local.conf
+# Define here the default values of all SQE variables
+
+CISCO_SQE_FACILITY=${CISCO_SQE_FACILITY:-list}
