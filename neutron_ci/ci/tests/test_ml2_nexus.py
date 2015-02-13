@@ -46,6 +46,10 @@ enable_service q-meta
 enable_service q-lbaas
 enable_service neutron
 enable_service tempest
+
+enable_plugin network0ng-cisco https://github.com/nikolay-fedotov/networking-cisco.git ml2
+enable_service cisco-ml2
+
 LIBVIRT_TYPE=qemu
 NOVA_USE_QUANTUM_API=v2
 VOLUME_BACKING_FILE_SIZE=2052M
@@ -68,9 +72,8 @@ LOGFILE=/opt/stack/screen-logs/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
-'''
 
-ML2_CONF_INI = '''
+[[post-config|/etc/neutron/ml2_conf_cisco.ini]]
 [ml2_cisco]
 managed_physical_network = physnet1
 
@@ -84,17 +87,6 @@ password={password}
 
 class ML2NexusTest(NexusTestCase):
 
-    @staticmethod
-    def create_ml2_conf_ini(host, host_port, router_ip,
-                            router_user, router_pass):
-        ini = ML2_CONF_INI.format(host=host, port=host_port,
-                                  router_ip=router_ip,
-                                  username=router_user,
-                                  password=router_pass)
-        path = os.path.join(WORKSPACE, Q_PLUGIN_EXTRA_CONF_FILES)
-        with open(path, 'w') as f:
-            f.write(ini)
-
     @classmethod
     def setUpClass(cls):
         NexusTestCase.setUpClass()
@@ -104,13 +96,11 @@ class ML2NexusTest(NexusTestCase):
             neutron_branch=ZUUL_REF,
             Q_PLUGIN_EXTRA_CONF_PATH=WORKSPACE,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
-            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END)
-
-        cls.create_ml2_conf_ini(host=socket.gethostname(),
-                                host_port=NEXUS_INTF_NUM,
-                                router_ip=NEXUS_IP,
-                                router_user=NEXUS_USER,
-                                router_pass=NEXUS_PASSWORD)
+            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
+            host=socket.gethostname(), port=NEXUS_INTF_NUM,
+            router_ip=NEXUS_IP,
+            username=NEXUS_USER,
+            password=NEXUS_PASSWORD)
 
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()
