@@ -94,7 +94,7 @@ class ML2NexusTest(NexusTestCase):
         local_conf = LOCAL_CONF.format(
             neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
             neutron_branch=ZUUL_REF,
-            Q_PLUGIN_EXTRA_CONF_PATH=WORKSPACE,
+            Q_PLUGIN_EXTRA_CONF_PATH='/etc/neutron',
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
             host=socket.gethostname(), port=NEXUS_INTF_NUM,
