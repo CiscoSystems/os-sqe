@@ -47,7 +47,7 @@ enable_service q-lbaas
 enable_service neutron
 enable_service tempest
 
-enable_plugin networking-cisco https://github.com/nikolay-fedotov/networking-cisco.git ml2
+enable_plugin networking-cisco https://github.com/nikolay-fedotov/networking-cisco.git
 enable_service cisco-ml2
 
 LIBVIRT_TYPE=qemu
@@ -73,7 +73,7 @@ USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
 
-[[post-config|/etc/neutron/ml2_conf_cisco.ini]]
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_cisco]
 managed_physical_network = physnet1
 
@@ -94,7 +94,7 @@ class ML2NexusTest(NexusTestCase):
         local_conf = LOCAL_CONF.format(
             neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
             neutron_branch=ZUUL_REF,
-            Q_PLUGIN_EXTRA_CONF_PATH='/etc/neutron',
+            Q_PLUGIN_EXTRA_CONF_PATH='/usr/local/etc/neutron',
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
             host=socket.gethostname(), port=NEXUS_INTF_NUM,
