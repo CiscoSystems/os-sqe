@@ -47,7 +47,7 @@ enable_service q-lbaas
 enable_service neutron
 enable_service tempest
 
-enable_plugin network0ng-cisco https://github.com/nikolay-fedotov/networking-cisco.git ml2
+enable_plugin networking-cisco https://github.com/nikolay-fedotov/networking-cisco.git ml2
 enable_service cisco-ml2
 
 LIBVIRT_TYPE=qemu
