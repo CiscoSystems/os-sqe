@@ -35,6 +35,9 @@ enable_service q-l3
 enable_service q-meta
 enable_service n-cpu
 
+enable_plugin networking-cisco https://review.openstack.org/stackforge/networking-cisco refs/changes/49/155749/1
+enable_service cisco-ml2
+
 MYSQL_PASSWORD=nova
 RABBIT_PASSWORD=nova
 SERVICE_TOKEN=nova
@@ -63,6 +66,16 @@ DEBUG=True
 USE_SCREEN=True
 API_RATE_LIMIT=False
 RECLONE=True
+
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
+[ml2_cisco]
+managed_physical_network = physnet1
+
+[ml2_mech_cisco_nexus:{router_ip}]
+{map}
+ssh_port=22
+username={username}
+password={password}
 '''
 
 LOCALCONF_COMPUTE = '''
@@ -107,9 +120,8 @@ VERBOSE=True
 DEBUG=True
 USE_SCREEN=True
 RECLONE=True
-'''
 
-ML2_CONF_INI = '''
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_cisco]
 managed_physical_network = physnet1
 
@@ -130,15 +142,20 @@ class ML2MutinodeTest(MultinodeTestCase):
     def setUpClass(cls):
         MultinodeTestCase.setUpClass()
 
+        map = [vm.name + '=' + vm.port for vm in cls.VMs.itervalues()]
         parameters = {
             'neutron_repo': urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
             'neutron_branch': ZUUL_REF,
             'CONTROL_HOST_IP': cls.VMs['control'].ip,
             'COMPUTE_HOST_IP': cls.VMs['compute'].ip,
-            'Q_PLUGIN_EXTRA_CONF_PATH': '/home/ubuntu/devstack',
+            'Q_PLUGIN_EXTRA_CONF_PATH': '/opt/stack/networking-cisco/etc/neutron/plugins/ml2',
             'Q_PLUGIN_EXTRA_CONF_FILES': Q_PLUGIN_EXTRA_CONF_FILES,
             'vlan_start': NEXUS_VLAN_START,
-            'vlan_end': NEXUS_VLAN_END
+            'vlan_end': NEXUS_VLAN_END,
+            'map': os.linesep.join(map),
+            'router_ip': NEXUS_IP,
+            'username': NEXUS_USER,
+            'password': NEXUS_PASSWORD
         }
 
         cls.controller = DevStack(
@@ -153,19 +170,6 @@ class ML2MutinodeTest(MultinodeTestCase):
     def test_tempest(self):
         self.controller.clone(commit='3163c17170b0b2bd7775e5e0d50040504b559ea1')
         self.compute.clone(commit='3163c17170b0b2bd7775e5e0d50040504b559ea1')
-
-        # Create ml2 config for cisco plugin. Put it to controller node
-        with settings(host_string=self.VMs['control'].ip):
-            map = [vm.name + '=' + vm.port for vm in self.VMs.itervalues()]
-            ml2_conf_io = StringIO.StringIO()
-            ml2_conf_io.write(
-                ML2_CONF_INI.format(
-                    map=os.linesep.join(map),
-                    router_ip=NEXUS_IP,
-                    username=NEXUS_USER,
-                    password=NEXUS_PASSWORD))
-            put(ml2_conf_io, os.path.join(self.controller._clone_path,
-                                          Q_PLUGIN_EXTRA_CONF_FILES))
 
         self.assertFalse(self.controller.stack())
         self.assertFalse(self.compute.stack())
