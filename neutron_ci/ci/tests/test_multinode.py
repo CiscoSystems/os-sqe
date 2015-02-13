@@ -120,16 +120,6 @@ VERBOSE=True
 DEBUG=True
 USE_SCREEN=True
 RECLONE=True
-
-[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
-[ml2_cisco]
-managed_physical_network = physnet1
-
-[ml2_mech_cisco_nexus:{router_ip}]
-{map}
-ssh_port=22
-username={username}
-password={password}
 '''
 
 
