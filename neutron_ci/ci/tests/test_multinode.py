@@ -91,6 +91,9 @@ GLANCE_HOSTPORT={CONTROL_HOST_IP}:9292
 
 MULTI_HOST=1
 
+enable_plugin networking-cisco https://review.openstack.org/stackforge/networking-cisco refs/changes/49/155749/1
+enable_service cisco-ml2
+
 MYSQL_PASSWORD=nova
 RABBIT_PASSWORD=nova
 SERVICE_TOKEN=nova
@@ -120,6 +123,16 @@ VERBOSE=True
 DEBUG=True
 USE_SCREEN=True
 RECLONE=True
+
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
+[ml2_cisco]
+managed_physical_network = physnet1
+
+[ml2_mech_cisco_nexus:{router_ip}]
+{map}
+ssh_port=22
+username={username}
+password={password}
 '''
 
 
