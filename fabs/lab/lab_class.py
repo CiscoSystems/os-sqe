@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from fabric.api import local, settings, sudo
+from fabric.api import local, settings, sudo, put, run, cd
 import yaml
 import exceptions
 import re
@@ -23,7 +23,6 @@ import sys
 
 from fabs import lab
 from fabs.common import logger as log
-from fabs import decorators
 
 CONN = None
 
@@ -37,19 +36,22 @@ def _conn():
 
 
 class MyLab:
-    def __init__(self, lab_id, topology_name, is_override, is_only_xml=False):
+    def __init__(self, lab_id, topology_name, is_only_xml=False):
         topo_path = os.path.join(lab.TOPOLOGIES_DIR, topology_name + '.yaml')
-        lab.make_tmp_dir(lab.DISKS_DIR)
         try:
             with open(topo_path) as f:
                 self.topology = yaml.load(f)
             self.is_only_xml = is_only_xml
             self.lab_id = int(lab_id)
+            if self.lab_id < 0 or self.lab_id > 99:
+                raise exceptions.ValueError
             self.image_url_re = re.compile(r'source +file.+(http.+) *-->')
             self.name_re = re.compile(r'<name>(.+)</name>')
-            self.is_override = is_override
+            lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
+            lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
+            lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
         except exceptions.ValueError:
-            raise exceptions.Exception('lab_id is supposed to be integer')
+            raise exceptions.Exception('lab_id is supposed to be integer in the range [0-99], you gave {0}'.format(lab_id))
         except:
             raise exceptions.Exception('wrong topology descriptor provided: {0}'.format(topo_path))
 
@@ -84,30 +86,29 @@ class MyLab:
             image_url = self.search_for(self.image_url_re, domain_template)
             domain_name = self.search_for(self.name_re, domain_template)
 
-            image_local, kernel_local = self.wget_image(local_dir=lab.DISKS_DIR, image_url=image_url)
+            image_local, kernel_local = self.wget_image(image_url=image_url)
             disk_local, cloud_init_local = self.create_disk(image_local, domain_name)
             xml = domain_template.format(lab_id=self.lab_id, disk=disk_local, kernel=kernel_local, disk_cloud_init=cloud_init_local)
+            self.save_xml(name=domain_name, xml=xml)
             if not self.is_only_xml:
                 domain = _conn().defineXML(xml)
                 domain.create()
-            self.save_xml(name=domain_name, xml=xml)
 
     @staticmethod
     def search_for(regexp, xml):
         return regexp.search(xml).group(1).strip()
 
     def save_xml(self, name, xml):
-        with open(self.make_local_file_name(where=lab.DISKS_DIR, name=name, extension='xml'), 'w') as f:
+        with open(self.make_local_file_name(where=lab.XMLS_DIR, name=name, extension='xml'), 'w') as f:
             f.write(xml)
 
     @staticmethod
-    def wget_image(local_dir, image_url):
-        image_local = os.path.abspath(os.path.join(local_dir, image_url.split('/')[-1]))
+    def wget_image(image_url):
+        image_local = lab.wget_file(local_dir=lab.IMAGES_DIR, file_url=image_url)
         kernel_local = None
-        local('mkdir -p ' + local_dir)
-        local('test -e  {local} || wget -nv {url} -O {local}'.format(url=image_url, local=image_local))
         if image_local.endswith('.tar.gz'):
-            cmd = 'cd {image_dir} && tar xvf {image_local} --exclude=*-floppy --exclude=*-loader --exclude=README*'.format(image_dir=lab.IMAGES_DIR, image_local=image_local)
+            cmd = 'cd {image_dir} && tar xvf {image_local} --exclude=*-floppy --exclude=*-loader --exclude=README*'.format(image_dir=lab.IMAGES_DIR,
+                                                                                                                           image_local=image_local)
             ans = local(cmd, capture=True)
             for name in ans.split():
                 if '.img' in name:
@@ -118,7 +119,7 @@ class MyLab:
 
     def create_disk(self, image_local, domain_name):
         disk_local = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='qcow2')
-        local('qemu-img create -f qcow2 -b {i} {d}'.format(d=disk_local, i=image_local))
+        local('qemu-img create -f qcow2 -b {i} {d} 8G'.format(d=disk_local, i=image_local))
         disk_cloud_init = None
         if 'disk1' in image_local:
             disk_cloud_init = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='cloud_init.raw')
@@ -134,30 +135,88 @@ class MyLab:
 
     def create_paas(self):
         log.info('\n\nStarting PaaS phase')
-        if self.topology.get('paas',[]):
+        if not self.topology.get('paas', []):
             log.info('Nothing defined in PaaS section')
             return
         for net_mac_cmd in self.topology['paas']:
             net = net_mac_cmd['net'].format(lab_id=self.lab_id)
             mac = net_mac_cmd['mac'].format(lab_id=self.lab_id)
-            cmd = net_mac_cmd['cmd'].format(lab_id=self.lab_id)
+            commands = net_mac_cmd['cmd']
 
             if net == 'local':
-                local(cmd)
+                ip = 'local'
             else:
-                ip = self.ip_for_mac_by_looking_at_libvirt_leases(net=net, mac=mac)
-                with settings(host_string='ubuntu@' + ip):
-                    sudo(cmd)
+                ip = lab.ip_for_mac_by_looking_at_libvirt_leases(net=net, mac=mac)
+                if not ip:
+                    raise exceptions.UserWarning('failed to obtain IP from libvirt lease file')
+
+            for cmd in commands:
+                cmd = cmd.format(lab_id=self.lab_id)
+                if ip == 'local':
+                    local(cmd)
+                else:
+                    with settings(host_string='ubuntu@' + ip, password='ubuntu', connection_attempts=5, warn_only=False):
+                        if cmd.startswith('deploy_devstack'):
+                            self.deploy_devstack(cmd)
+                        elif cmd.startswith('deploy_dibbler'):
+                            self.deploy_dibbler(cmd)
+                        elif cmd.startswith('put_config'):
+                            self.put_config(cmd)
+                        else:
+                            sudo(cmd)
 
     @staticmethod
-    @decorators.repeat_until_not_false
-    def ip_for_mac_by_looking_at_libvirt_leases(net, mac):
-        ans = local('grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), capture=True)
-        return ans.split()[2]
+    def clone_repo(repo_url):
+        import urlparse
 
-    def create_lab(self):
-        if self.is_override:
+        local_repo_dir = urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
+        sudo('apt-get install -y git')
+
+        with settings(warn_only=True):
+            if run('test -d {0}'.format(local_repo_dir)).failed:
+                run('git clone {0}'.format(repo_url))
+        with cd(local_repo_dir):
+            run('git pull')
+        return local_repo_dir
+
+    @staticmethod
+    def deploy_devstack(cmd):
+        devstack_conf = cmd.split(' with ')[-1]
+        local_cloned_repo = MyLab.clone_repo('https://github.com/openstack-dev/devstack.git')
+        put(local_path=lab.TOPOLOGIES_DIR + '/' + devstack_conf, remote_path='{0}/local.conf'.format(local_cloned_repo))
+        run('{0}/stack.sh'.format(local_cloned_repo))
+
+    @staticmethod
+    def deploy_dibbler(cmd):
+        dibbler_conf = cmd.split(' with ')[-1]
+        local_cloned_repo = MyLab.clone_repo('https://github.com/johndavidge/dibbler.git')
+        with cd(local_cloned_repo):
+            run('git checkout cloud-dibbler')
+            run('./configure')
+            run('make')
+            sudo('make install')
+        put(local_path=lab.TOPOLOGIES_DIR + dibbler_conf, remote_path='/etc/dibbler/server.conf', use_sudo=True)
+        sudo('dibbler-server start')
+
+    @staticmethod
+    def put_config(cmd):
+        config_local = cmd.split(' ')[1]
+        config_remote = cmd.split(' ')[2]
+        if 'etc' in config_remote:
+            use_sudo = True
+        else:
+            use_sudo = False
+        put(local_path=lab.TOPOLOGIES_DIR + config_local, remote_path=config_remote, use_sudo=use_sudo)
+        sudo('dibbler-server start')
+
+    def create_lab(self, phase):
+        """Possible phases: lab net dom paas, lab does all in chain"""
+        if phase != 'paas':
             self.delete_lab()
-        self.create_networks()
-        self.create_domains()
-        self.create_paas()
+
+        if phase != 'paas':
+            self.create_networks()
+        if phase == 'lab' or phase == 'dom':
+            self.create_domains()
+        if phase == 'lab' or phase == 'paas':
+            self.create_paas()

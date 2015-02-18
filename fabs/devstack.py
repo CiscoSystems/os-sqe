@@ -13,7 +13,7 @@ env.update(DEFAULT_SETTINGS)
 __all__ = ['prepare', 'install', 'setup',
            'run_test_original_file', 'run_test_custom_file',
            'run_test_ready_file', 'run_test_remote',
-           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv']
+           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler']
 
 
 @task
@@ -139,13 +139,20 @@ def patchset(component="neutron", patch_set=None):
 
 @task
 @timed
-def plus_n1kv(lab_id, is_override=True):
+def plus_n1kv(lab_id, phase='lab'):
     """Run devstack in one VM + n1kv in separate VM"""
-    MyLab(lab_id=lab_id, topology_name='devstack_plus_n1kv', is_override=is_override).create_lab()
+    MyLab(lab_id=lab_id, topology_name='devstack_plus_n1kv').create_lab(phase=phase)
 
 
 @task
 @timed
-def plus_dhcp6(lab_id, is_override=True):
+def plus_dhcp6(lab_id, phase='lab'):
     """Run devstack in one VM + dhcp6 server in separate VM"""
-    MyLab(lab_id=lab_id, topology_name='devstack_plus_dhcp6', is_override=is_override).create_lab()
+    MyLab(lab_id=lab_id, topology_name='devstack_plus_dhcp6').create_lab(phase=phase)
+
+
+@task
+@timed
+def plus_dibbler(lab_id, phase='lab'):
+    """Run devstack in one VM + dibbler server in separate VM"""
+    MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler').create_lab(phase=phase)

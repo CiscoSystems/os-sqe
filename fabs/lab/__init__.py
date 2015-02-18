@@ -15,10 +15,12 @@
 import os
 from fabric.api import local, settings
 from fabs import REPO_DIR, HOME_DIR
+from fabs import decorators
 
 TOPOLOGIES_DIR = os.path.abspath(os.path.join(REPO_DIR, 'fabs/lab/topologies'))
 IMAGES_DIR = os.path.abspath(os.path.join(HOME_DIR, 'images'))
 DISKS_DIR = os.path.abspath(os.path.join(HOME_DIR, 'disks'))
+XMLS_DIR = os.path.abspath(os.path.join(HOME_DIR, 'xml'))
 
 CIRROS_BLD_DIR = os.path.abspath(os.path.join(HOME_DIR, 'BLD'))
 CIRROS_BUILD_ROOT_URL='http://buildroot.org/downloads/buildroot-2014.11.tar.gz'
@@ -33,6 +35,17 @@ def make_tmp_dir(local_dir):
 
 def wget_file(local_dir, file_url):
     file_local = os.path.abspath(os.path.join(local_dir, file_url.split('/')[-1]))
-    make_tmp_dir(local_dir=local_dir)
-    local('test -e  {file_local} || wget -nv {url} -O {file_local}'.format(url=file_url, file_local=file_local))
-    return file_local
+    with settings(warn_only=False):
+        make_tmp_dir(local_dir=local_dir)
+        local('test -e  {file_local} || wget -nv {url} -O {file_local}'.format(url=file_url, file_local=file_local))
+        return file_local
+
+
+@decorators.repeat_until_not_false(n_repetitions=5, time_between_repetitions=5)
+def ip_for_mac_by_looking_at_libvirt_leases(net, mac):
+    with settings(warn_only=True):
+        ans = local('sudo grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), capture=True)
+        if ans:
+            return ans.split(' ')[2]
+        else:
+            return ans

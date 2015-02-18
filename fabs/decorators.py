@@ -16,7 +16,7 @@ import functools
 import time
 
 
-def repeat_until_not_false(n_repetitions=10, time_between_repetitions=2):
+def repeat_until_not_false(n_repetitions, time_between_repetitions):
     """Repeat decorated function until function returns True or not empty object"""
     def decorator(function):
         @functools.wraps(function)
