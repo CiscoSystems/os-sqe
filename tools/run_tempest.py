@@ -80,7 +80,7 @@ def define_cli(p):
                    help='user password on the remote')
     p.add_argument('-d', '--dir', default='/opt/stack/tempest',
                    help='folder where tempeset is deployed')
-    p.add_argument('-v', '--venv', default=False, type=bool,
+    p.add_argument('-v', '--venv', action='store_true',
                    help='switch usage of python venv on/off')
     p.add_argument('--repo', nargs='?', const=repo, default=repo, help='tempest repo')
     p.add_argument('--branch', nargs='?', const=branch, default=branch, help='tempest branch')
