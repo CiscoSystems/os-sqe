@@ -42,7 +42,7 @@ class BaseTestCase(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.devstack = DevStack()
+        cls.devstack = DevStack(clone_path=os.path.join(WORKSPACE, 'devstack'))
         cls.node = Node(NODE_DEFAULT_ETH)
 
         # Add fqdn to /etc/hosts
