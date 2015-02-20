@@ -23,7 +23,7 @@ import sys
 
 from fabs import lab
 from fabs.common import logger as log
-
+from fabs import decorators
 
 CONN = None
 
@@ -133,7 +133,10 @@ class MyLab:
         return os.path.abspath(os.path.join(where, name.format(lab_id=self.lab_id) + '.' + extension))
 
     def create_paas(self):
-        log.info('\n\nStarting PAAS phase')
+        log.info('\n\nStarting PaaS phase')
+        if self.topology.get('paas',[]):
+            log.info('Nothing defined in PaaS section')
+            return
         for net_mac_cmd in self.topology['paas']:
             net = net_mac_cmd['net'].format(lab_id=self.lab_id)
             mac = net_mac_cmd['mac'].format(lab_id=self.lab_id)
@@ -142,14 +145,15 @@ class MyLab:
             if net == 'local':
                 local(cmd)
             else:
-                ip = self.ip_for_mac(net=net, mac=mac)
+                ip = self.ip_for_mac_by_looking_at_libvirt_leases(net=net, mac=mac)
                 with settings(host_string='ubuntu@' + ip):
                     sudo(cmd)
 
     @staticmethod
-    def ip_for_mac(net, mac):
-        ans = local('sudo grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), capture=True)
-        return ans
+    @decorators.repeat_until_not_false
+    def ip_for_mac_by_looking_at_libvirt_leases(net, mac):
+        ans = local('grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), capture=True)
+        return ans.split()[2]
 
     def create_lab(self):
         if self.is_override:
