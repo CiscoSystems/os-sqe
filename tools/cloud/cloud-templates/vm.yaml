@@ -34,6 +34,9 @@ devstack-server:
     </domain>
   user-yaml: |
     #cloud-config
+    password: ubuntu
+    chpasswd: { expire: False}
+    ssh_pwauth: True
     users:
      - default
      - name: localadmin
@@ -88,6 +91,9 @@ sa-server:
     </domain>
   user-yaml: |
     #cloud-config
+    password: ubuntu
+    chpasswd: { expire: False}
+    ssh_pwauth: True
     users:
      - default
      - name: localadmin
@@ -142,6 +148,9 @@ aio-server:
     </domain>
   user-yaml: |
     #cloud-config
+    password: ubuntu
+    chpasswd: { expire: False}
+    ssh_pwauth: True
     users:
      - default
      - name: localadmin
@@ -196,6 +205,9 @@ build-server:
     </domain>
   user-yaml: |
     #cloud-config
+    password: ubuntu
+    chpasswd: { expire: False}
+    ssh_pwauth: True
     users:
      - default
      - name: localadmin
@@ -251,6 +263,9 @@ control-server:
     </domain>
   user-yaml: |
     #cloud-config
+    password: ubuntu
+    chpasswd: { expire: False}
+    ssh_pwauth: True
     users:
      - default
      - name: localadmin
@@ -303,6 +318,9 @@ compute-server:
     </domain>
   user-yaml: |
     #cloud-config
+    password: ubuntu
+    chpasswd: { expire: False}
+    ssh_pwauth: True
     users:
      - default
      - name: localadmin
@@ -358,6 +376,9 @@ swift-storage:
     </domain>
   user-yaml: |
     #cloud-config
+    password: ubuntu
+    chpasswd: { expire: False}
+    ssh_pwauth: True
     users:
      - default
      - name: localadmin
@@ -413,6 +434,9 @@ swift-proxy:
     </domain>
   user-yaml: |
     #cloud-config
+    password: ubuntu
+    chpasswd: { expire: False}
+    ssh_pwauth: True
     users:
      - default
      - name: localadmin
@@ -466,6 +490,9 @@ load-balancer:
     </domain>
   user-yaml: |
     #cloud-config
+    password: ubuntu
+    chpasswd: { expire: False}
+    ssh_pwauth: True
     users:
      - default
      - name: localadmin
