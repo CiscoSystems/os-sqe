@@ -15,15 +15,16 @@
 # @author: Dane LeBlanc, Nikolay Fedotov, Cisco Systems, Inc.
 
 import socket
-import urlparse
 import os
-from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, WORKSPACE, \
-    NEXUS_VLAN_START, NEXUS_VLAN_END, BUILD_LOG_PATH, \
-    NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD, ZUUL_REF
+from ci import PARENT_FOLDER_PATH, \
+    NEXUS_VLAN_START, NEXUS_VLAN_END, \
+    NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD
 from ci.lib.test_case import NexusTestCase
 
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_plugin_tests.txt')
+Q_PLUGIN_EXTRA_CONF_PATH = \
+    '/opt/stack/networking-cisco/etc/neutron/plugins/ml2'
 Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_cisco.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
@@ -47,8 +48,8 @@ enable_service q-lbaas
 enable_service neutron
 enable_service tempest
 
-enable_plugin networking-cisco https://review.openstack.org/stackforge/networking-cisco refs/changes/49/155749/1
-enable_service cisco-ml2
+enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
+enable_service net-cisco
 
 LIBVIRT_TYPE=qemu
 NOVA_USE_QUANTUM_API=v2
@@ -87,14 +88,22 @@ password={password}
 
 class ML2NexusTest(NexusTestCase):
 
+    neutron_repo = os.environ.get('NEUTRON_REPO')
+    neutron_ref = os.environ.get('NEUTRON_REF')
+
+    net_cisco_repo = os.environ.get('NET_CISCO_REPO')
+    net_cisco_ref = os.environ.get('NET_CISCO_REF')
+
     @classmethod
     def setUpClass(cls):
         NexusTestCase.setUpClass()
 
         local_conf = LOCAL_CONF.format(
-            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
-            neutron_branch=ZUUL_REF,
-            Q_PLUGIN_EXTRA_CONF_PATH='/opt/stack/networking-cisco/etc/neutron/plugins/ml2',
+            neutron_repo=cls.neutron_repo,
+            neutron_branch=cls.net_cisco_ref,
+            net_cisco_repo=cls.net_cisco_repo,
+            net_cisco_ref=cls.net_cisco_ref,
+            Q_PLUGIN_EXTRA_CONF_PATH=Q_PLUGIN_EXTRA_CONF_PATH,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
             host=socket.gethostname(), port=NEXUS_INTF_NUM,
