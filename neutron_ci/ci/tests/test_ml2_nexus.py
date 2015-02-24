@@ -15,15 +15,16 @@
 # @author: Dane LeBlanc, Nikolay Fedotov, Cisco Systems, Inc.
 
 import socket
-import urlparse
 import os
-from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, WORKSPACE, \
-    NEXUS_VLAN_START, NEXUS_VLAN_END, BUILD_LOG_PATH, \
-    NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD, ZUUL_REF
+from ci import PARENT_FOLDER_PATH, \
+    NEXUS_VLAN_START, NEXUS_VLAN_END, \
+    NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD
 from ci.lib.test_case import NexusTestCase
 
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_plugin_tests.txt')
+Q_PLUGIN_EXTRA_CONF_PATH = \
+    '/opt/stack/networking-cisco/etc/neutron/plugins/ml2'
 Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_cisco.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
@@ -46,6 +47,10 @@ enable_service q-meta
 enable_service q-lbaas
 enable_service neutron
 enable_service tempest
+
+enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
+enable_service net-cisco
+
 LIBVIRT_TYPE=qemu
 NOVA_USE_QUANTUM_API=v2
 VOLUME_BACKING_FILE_SIZE=2052M
@@ -68,9 +73,8 @@ LOGFILE=/opt/stack/screen-logs/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
-'''
 
-ML2_CONF_INI = '''
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_cisco]
 managed_physical_network = physnet1
 
@@ -84,33 +88,28 @@ password={password}
 
 class ML2NexusTest(NexusTestCase):
 
-    @staticmethod
-    def create_ml2_conf_ini(host, host_port, router_ip,
-                            router_user, router_pass):
-        ini = ML2_CONF_INI.format(host=host, port=host_port,
-                                  router_ip=router_ip,
-                                  username=router_user,
-                                  password=router_pass)
-        path = os.path.join(WORKSPACE, Q_PLUGIN_EXTRA_CONF_FILES)
-        with open(path, 'w') as f:
-            f.write(ini)
+    neutron_repo = os.environ.get('NEUTRON_REPO')
+    neutron_ref = os.environ.get('NEUTRON_REF')
+
+    net_cisco_repo = os.environ.get('NET_CISCO_REPO')
+    net_cisco_ref = os.environ.get('NET_CISCO_REF')
 
     @classmethod
     def setUpClass(cls):
         NexusTestCase.setUpClass()
 
         local_conf = LOCAL_CONF.format(
-            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
-            neutron_branch=ZUUL_REF,
-            Q_PLUGIN_EXTRA_CONF_PATH=WORKSPACE,
+            neutron_repo=cls.neutron_repo,
+            neutron_branch=cls.neutron_ref,
+            net_cisco_repo=cls.net_cisco_repo,
+            net_cisco_ref=cls.net_cisco_ref,
+            Q_PLUGIN_EXTRA_CONF_PATH=Q_PLUGIN_EXTRA_CONF_PATH,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
-            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END)
-
-        cls.create_ml2_conf_ini(host=socket.gethostname(),
-                                host_port=NEXUS_INTF_NUM,
-                                router_ip=NEXUS_IP,
-                                router_user=NEXUS_USER,
-                                router_pass=NEXUS_PASSWORD)
+            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
+            host=socket.gethostname(), port=NEXUS_INTF_NUM,
+            router_ip=NEXUS_IP,
+            username=NEXUS_USER,
+            password=NEXUS_PASSWORD)
 
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()
