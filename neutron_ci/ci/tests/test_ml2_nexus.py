@@ -100,7 +100,7 @@ class ML2NexusTest(NexusTestCase):
 
         local_conf = LOCAL_CONF.format(
             neutron_repo=cls.neutron_repo,
-            neutron_branch=cls.net_cisco_ref,
+            neutron_branch=cls.neutron_ref,
             net_cisco_repo=cls.net_cisco_repo,
             net_cisco_ref=cls.net_cisco_ref,
             Q_PLUGIN_EXTRA_CONF_PATH=Q_PLUGIN_EXTRA_CONF_PATH,
