@@ -164,6 +164,7 @@ class Csr1kvTest(BaseTestCase):
             net_cisco_ref=cls.net_cisco_ref)
 
         cls.devstack.localrc = localrc
+        cls.devstack._git_url = 'https://github.com/CiscoSystems/devstack.git'
         cls.devstack._git_branch = 'csr1kv-ci'
         cls.devstack.clone()
 
