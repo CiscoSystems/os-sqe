@@ -174,7 +174,7 @@ class Csr1kvTest(BaseTestCase):
         self.devstack.clear()
         self.devstack.restart_ovs()
         with settings(host_string=self.devstack.host_string, warn_only=True):
-            run('sudo apt-get purge python-six')
+            run('sudo apt-get purge -y python-six')
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
