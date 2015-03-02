@@ -16,6 +16,7 @@
 
 import socket
 import os
+from fabric.context_managers import settings
 from fabric.operations import run
 from ci import PARENT_FOLDER_PATH, \
     NEXUS_VLAN_START, NEXUS_VLAN_END, \
@@ -172,6 +173,8 @@ class Csr1kvTest(BaseTestCase):
         super(Csr1kvTest, self).setUp()
         self.devstack.clear()
         self.devstack.restart_ovs()
+        with settings(host_string=self.devstack.host_string, warn_only=True):
+            run('sudo apt-get purge python-six')
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
