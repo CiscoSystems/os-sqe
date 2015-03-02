@@ -16,6 +16,7 @@
 
 import socket
 import os
+from fabric.operations import run
 from ci import PARENT_FOLDER_PATH, \
     NEXUS_VLAN_START, NEXUS_VLAN_END, \
     NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD
@@ -188,6 +189,7 @@ class Csr1kvTest(BaseTestCase):
 
     def setUp(self):
         self.devstack.clear()
+        self.devstack.restart_ovs()
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
