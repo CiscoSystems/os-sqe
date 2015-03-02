@@ -169,6 +169,7 @@ class Csr1kvTest(BaseTestCase):
         cls.devstack.clone()
 
     def setUp(self):
+        super(Csr1kvTest, self).setUp()
         self.devstack.clear()
         self.devstack.restart_ovs()
 
@@ -177,4 +178,5 @@ class Csr1kvTest(BaseTestCase):
         self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
 
     def tearDown(self):
+        super(Csr1kvTest, self).tearDown()
         self.devstack.unstack()
