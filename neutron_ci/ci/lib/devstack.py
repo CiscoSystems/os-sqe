@@ -189,3 +189,7 @@ class DevStack(object):
             run('find {sl} -type l -exec cp "{{}}" {p} '
                 '\;'.format(sl=SCREEN_LOGDIR, p=p))
             get(p, path)
+
+    def clear(self):
+        with settings(host_string=self.host_string, warn_only=True):
+            run('sudo rm -rf /opt/stack')

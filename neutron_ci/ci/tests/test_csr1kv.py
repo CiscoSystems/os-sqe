@@ -186,6 +186,9 @@ class Csr1kvTest(BaseTestCase):
         cls.devstack._git_branch = 'csr1kv-ci'
         cls.devstack.clone()
 
+    def setUp(self):
+        self.devstack.clear()
+
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
         self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
