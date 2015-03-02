@@ -133,29 +133,9 @@ GIT_BASE=https://github.com
 
 # Until ncclient pipy packages contains the latest change for CSR1kv we fetch the needed version like this.
 NCCLIENT_VERSION=0.4.1
-NCCLIENT_REPO=${GIT_BASE}/leopoul/ncclient.git
+NCCLIENT_REPO=https://github.com/leopoul/ncclient.git
 NCCLIENT_COMMIT_ID=bafd9b22e2fb423a577ed9c91d28272adbff30d3
 
-# Global Openstack requirements
-# Cisco doesn't currently have a requirements fork so use bob's fork
-#REQUIREMENTS_REPO=${GIT_BASE}/bobmel/requirements.git
-#REQUIREMENTS_REPO=${GIT_BASE}/CiscoSystems/requirements.git
-#REQUIREMENTS_BRANCH=csr1kv_for_routing_juno
-
-# Neutron service
-#NEUTRON_REPO=${GIT_BASE}/cisco-openstack/neutron.git
-#NEUTRON_BRANCH=staging/junoplus
-
-# Neutron client
-#NCCLIENT_VERSION=0.4.1
-#NCCLIENT_REPO=${GIT_BASE}/leopoul/ncclient.git
-#NCCLIENT_COMMIT_ID=bafd9b22e2fb423a577ed9c91d28272adbff30d3
-#NEUTRONCLIENT_REPO=${GIT_BASE}/CiscoSystems/python-neutronclient.git
-#NEUTRONCLIENT_BRANCH=
-
-# Horizon
-#HORIZON_REPO=${GIT_BASE}/CiscoSystems/horizon.git
-#HORIZON_BRANCH=
 
 VERBOSE=True
 DEBUG=True
