@@ -19,7 +19,7 @@ import os
 from ci import PARENT_FOLDER_PATH, \
     NEXUS_VLAN_START, NEXUS_VLAN_END, \
     NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD
-from ci.lib.test_case import NexusTestCase
+from ci.lib.test_case import BaseTestCase
 
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_csr1kv_tests.txt')
@@ -164,7 +164,7 @@ SCREEN_LOGDIR=/opt/stack/screen-logs
 '''
 
 
-class ML2NexusTest(NexusTestCase):
+class Csr1kvTest(BaseTestCase):
 
     neutron_repo = os.environ.get('NEUTRON_REPO')
     neutron_ref = os.environ.get('NEUTRON_REF')
@@ -174,7 +174,7 @@ class ML2NexusTest(NexusTestCase):
 
     @classmethod
     def setUpClass(cls):
-        NexusTestCase.setUpClass()
+        BaseTestCase.setUpClass()
 
         localrc = LOCALRC.format(
             neutron_repo=cls.neutron_repo,
@@ -189,3 +189,6 @@ class ML2NexusTest(NexusTestCase):
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
         self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
+
+    def tearDown(self):
+        self.devstack.unstack()

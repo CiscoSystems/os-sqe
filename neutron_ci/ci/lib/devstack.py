@@ -123,6 +123,12 @@ class DevStack(object):
             failed = run('./stack.sh').failed
         return failed
 
+    def unstack(self):
+        logger.info('Unstack')
+        with cd(self._clone_path), settings(warn_only=True,
+                                            host_string=self.host_string):
+            run('if screen -ls | grep stack; then  ./unstack.sh; fi')
+
     def run_tempest(self, test_list_path):
         logger.info('Run tempest tests')
         logger.info('Tests to be run: {0}'.format(test_list_path))
