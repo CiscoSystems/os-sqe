@@ -176,7 +176,3 @@ class Csr1kvTest(BaseTestCase):
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
         self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
-
-    def tearDown(self):
-        super(Csr1kvTest, self).tearDown()
-        self.devstack.unstack()
