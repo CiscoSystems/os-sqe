@@ -206,7 +206,7 @@ class DevStack(object):
     def clone_repositories(self, dest):
         with settings(host_string=self.host_string, warn_only=True):
             logger.info('Clone openstack repositories to {0}'.format(dest))
-            if not exists(self._cloned_repos_path):
+            if not exists(dest):
                 cmd = "{0} {1}".format(
                     os.path.join(PARENT_FOLDER_PATH,
                                  'nodepool-scripts/clone_repositories.sh'),
