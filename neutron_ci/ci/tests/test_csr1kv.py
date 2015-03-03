@@ -104,7 +104,7 @@ case "$LIBVIRT_TYPE" in
     lxc) # the cirros root disk in the uec tarball is empty, so it will not work for lxc
         IMAGE_URLS="http://cloud-images.ubuntu.com/releases/oneiric/release/ubuntu-11.10-server-cloudimg-amd64.tar.gz,http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-rootfs.img.gz";;
     *)  # otherwise, use the uec style image (with kernel, ramdisk, disk)
-        IMAGE_URLS="http://cloud-images.ubuntu.com/releases/oneiric/release/ubuntu-11.10-server-cloudimg-amd64.tar.gz,http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-uec.tar.gz";;
+        IMAGE_URLS="http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-uec.tar.gz";;
 esac
 
 Q_PLUGIN=cisco
@@ -173,6 +173,7 @@ class Csr1kvTest(BaseTestCase):
         super(Csr1kvTest, self).setUp()
         self.devstack.unstack()
         self.devstack.clear()
+        self.devstack.rsync_repositories(os.path.expanduser('~/os_repos'))
         self.devstack.restart_ovs()
 
     def test_tempest(self):

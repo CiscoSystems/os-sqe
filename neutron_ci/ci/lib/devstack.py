@@ -201,3 +201,7 @@ class DevStack(object):
         with settings(host_string=self.host_string, warn_only=True):
             logger.info('Restart "openvswitch-switch"')
             run('sudo /etc/init.d/openvswitch-switch restart')
+
+    def rsync_repositories(self, source_path):
+        with settings(host_string=self.host_string, warn_only=True):
+            run('rsync -arv {0} {1}'.format(source_path, '/opt/stack'))
