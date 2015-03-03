@@ -171,6 +171,7 @@ class Csr1kvTest(BaseTestCase):
 
     def setUp(self):
         super(Csr1kvTest, self).setUp()
+        self.devstack.unstack()
         self.devstack.clear()
         self.devstack.restart_ovs()
 
