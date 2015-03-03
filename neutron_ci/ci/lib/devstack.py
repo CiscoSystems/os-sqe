@@ -220,5 +220,6 @@ class DevStack(object):
         with settings(host_string=self.host_string, warn_only=True):
             if not exists(dest):
                 run('sudo mkdir {0}'.format(dest))
-                run('sudo chown -R $(whoami) {0}'.format(dest))
+                run('sudo chown $(whoami) {0}'.format(dest))
                 run('rsync -arv {0} {1}'.format(source_path, dest))
+                run('sudo chown -R $(whoami) {0}'.format(dest))
