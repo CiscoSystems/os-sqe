@@ -162,8 +162,6 @@ class Csr1kvTest(BaseTestCase):
 
         cls.devstack.localrc = localrc
         cls.devstack._git_url = 'https://github.com/CiscoSystems/devstack.git'
-        cls.devstack._git_branch = 'csr1kv-ci'
-        cls.devstack.clone()
 
     def setUp(self):
         super(Csr1kvTest, self).setUp()
@@ -172,6 +170,16 @@ class Csr1kvTest(BaseTestCase):
         self.devstack.clone_repositories(self.devstack._cloned_repos_path)
         self.devstack.rsync_repositories(self.devstack._cloned_repos_path)
         self.devstack.restart_ovs()
+
+
+class Csr1kvRouterTest(Csr1kvTest):
+
+    @classmethod
+    def setUpClass(cls):
+        Csr1kvTest.setUpClass()
+
+        cls.devstack._git_branch = 'csr1kv-ci'
+        cls.devstack.clone()
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
