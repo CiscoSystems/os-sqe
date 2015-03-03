@@ -173,7 +173,8 @@ class Csr1kvTest(BaseTestCase):
         super(Csr1kvTest, self).setUp()
         self.devstack.unstack()
         self.devstack.clear()
-        self.devstack.rsync_repositories(os.path.expanduser('~/os_repos'))
+        self.devstack.clone_repositories(self.devstack._cloned_repos_path)
+        self.devstack.rsync_repositories(self.devstack._cloned_repos_path)
         self.devstack.restart_ovs()
 
     def test_tempest(self):
