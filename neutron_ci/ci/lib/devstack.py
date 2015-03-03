@@ -193,6 +193,7 @@ class DevStack(object):
     def clear(self):
         with settings(host_string=self.host_string, warn_only=True):
             run('sudo rm -rf /opt/stack')
+            run('sudo apt-get autoremove')
 
     def restart_ovs(self):
         with settings(host_string=self.host_string, warn_only=True):
