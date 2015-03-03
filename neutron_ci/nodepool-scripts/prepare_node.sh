@@ -27,6 +27,6 @@ python ./cache_devstack.py ${DISTRIB_CODENAME}
 wget http://launchpadlibrarian.net/135683014/bash_4.2-5ubuntu3_amd64.deb
 sudo dpkg -i ./bash_4.2-5ubuntu3_amd64.deb
 
-./clone_repositories.sh
+./clone_repositories.sh /opt/stack/
 
 cd ${WORK_DIR}
