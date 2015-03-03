@@ -14,13 +14,8 @@
 #
 # @author: Nikolay Fedotov, Cisco Systems, Inc.
 
-import socket
 import os
-from fabric.context_managers import settings
-from fabric.operations import run
-from ci import PARENT_FOLDER_PATH, \
-    NEXUS_VLAN_START, NEXUS_VLAN_END, \
-    NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD
+from ci import PARENT_FOLDER_PATH
 from ci.lib.test_case import BaseTestCase
 
 
@@ -143,6 +138,7 @@ DEBUG=True
 LOGFILE=/opt/stack/screen-logs/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
+RECLONE=True
 '''
 
 

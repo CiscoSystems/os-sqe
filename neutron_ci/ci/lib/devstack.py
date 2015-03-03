@@ -219,6 +219,7 @@ class DevStack(object):
         dest = '/opt/stack'
         with settings(host_string=self.host_string, warn_only=True):
             if not exists(dest):
+                logger.info('rsync openstack repositories')
                 run('sudo mkdir {0}'.format(dest))
                 run('sudo chown $(whoami) {0}'.format(dest))
                 run('rsync -arv {0} {1}'.format(source_path, dest))
