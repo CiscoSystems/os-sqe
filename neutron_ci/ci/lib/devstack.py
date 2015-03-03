@@ -39,7 +39,7 @@ class DevStack(object):
         self._git_url = git_url
         self._git_branch = git_branch
         self._clone_path = os.path.expanduser(clone_path)
-        self._cloned_repos_path = os.path.expanduser('~/os_repos')
+        self._cloned_repos_path = os.path.expanduser('~/os_repos/')
 
         self.localrc = localrc
         self.local_conf = local_conf
@@ -216,5 +216,9 @@ class DevStack(object):
                 logger.warn('Folder already exists {0}'.format(dest))
 
     def rsync_repositories(self, source_path):
+        dest = '/opt/stack'
         with settings(host_string=self.host_string, warn_only=True):
-            run('rsync -arv {0} {1}'.format(source_path, '/opt/stack'))
+            if not exists(dest):
+                run('sudo mkdir {0}'.format(dest))
+                run('sudo chown -R $(whoami) {0}'.format(dest))
+                run('rsync -arv {0} {1}'.format(source_path, dest))
