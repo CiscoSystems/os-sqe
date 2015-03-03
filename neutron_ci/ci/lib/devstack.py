@@ -224,3 +224,5 @@ class DevStack(object):
                 run('sudo chown $(whoami) {0}'.format(dest))
                 run('rsync -arv {0} {1}'.format(source_path, dest))
                 run('sudo chown -R $(whoami) {0}'.format(dest))
+            else:
+                logger.warn('Folder already exists {0}'.format(dest))
