@@ -177,3 +177,18 @@ class Csr1kvRouterTest(Csr1kvTest):
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
         self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
+
+
+class Csr1kvFWaaSTest(Csr1kvTest):
+
+    @classmethod
+    def setUpClass(cls):
+        Csr1kvTest.setUpClass()
+
+        cls.devstack.localrc += '\nenable_service q-fwaas'
+        cls.devstack._git_branch = 'csr1kv-fwaas-ci'
+        cls.devstack.clone()
+
+    def test_tempest(self):
+        self.assertFalse(self.devstack.stack())
+        self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
