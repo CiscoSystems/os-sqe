@@ -181,11 +181,18 @@ class Csr1kvRouterTest(Csr1kvTest):
 
 class Csr1kvFWaaSTest(Csr1kvTest):
 
+    neutron_fwaas_repo = os.environ.get('NEUTRON_FWAAS_REPO')
+    neutron_fwaas_ref = os.environ.get('NEUTRON_FWAAS_REF')
+
     @classmethod
     def setUpClass(cls):
         Csr1kvTest.setUpClass()
 
         cls.devstack.localrc += '\nenable_service q-fwaas'
+        cls.devstack.localrc += \
+            '\nNEUTRON_FWAAS_REPO={0}'.format(cls.neutron_fwaas_repo)
+        cls.devstack.localrc += \
+            '\nNEUTRON_FWAAS_BRANCH={0}'.format(cls.neutron_fwaas_ref)
         cls.devstack._git_branch = 'csr1kv-fwaas-ci'
         cls.devstack.clone()
 
