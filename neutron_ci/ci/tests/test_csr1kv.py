@@ -18,8 +18,6 @@ import os
 from ci import PARENT_FOLDER_PATH
 from ci.lib.test_case import BaseTestCase
 
-
-TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_csr1kv_tests.txt')
 LOCALRC = '''
 # +------------------------------------------------------------------------------------------------+
 # |                                                                                                |
@@ -176,7 +174,10 @@ class Csr1kvRouterTest(Csr1kvTest):
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
-        self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
+
+        tempest_tests = os.path.join(PARENT_FOLDER_PATH,
+                                     'cisco_csr1kv_tests.txt')
+        self.assertFalse(self.devstack.run_tempest(tempest_tests))
 
 
 class Csr1kvFWaaSTest(Csr1kvTest):
@@ -198,4 +199,7 @@ class Csr1kvFWaaSTest(Csr1kvTest):
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
-        self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
+
+        tempest_tests = os.path.join(PARENT_FOLDER_PATH,
+                                     'cisco_csr1kv_fwaas_tests.txt')
+        self.assertFalse(self.devstack.run_tempest(tempest_tests))
