@@ -39,6 +39,7 @@ class DevStack(object):
         self._git_url = git_url
         self._git_branch = git_branch
         self._clone_path = os.path.expanduser(clone_path)
+        self._cloned_repos_path = os.path.expanduser('~/os_repos/')
 
         self.localrc = localrc
         self.local_conf = local_conf
@@ -123,6 +124,12 @@ class DevStack(object):
             failed = run('./stack.sh').failed
         return failed
 
+    def unstack(self):
+        logger.info('Unstack')
+        with cd(self._clone_path), settings(warn_only=True,
+                                            host_string=self.host_string):
+            run('if screen -ls | grep stack; then  ./unstack.sh; fi')
+
     def run_tempest(self, test_list_path):
         logger.info('Run tempest tests')
         logger.info('Tests to be run: {0}'.format(test_list_path))
@@ -183,3 +190,39 @@ class DevStack(object):
             run('find {sl} -type l -exec cp "{{}}" {p} '
                 '\;'.format(sl=SCREEN_LOGDIR, p=p))
             get(p, path)
+
+    def clear(self):
+        with settings(host_string=self.host_string, warn_only=True):
+            logger.info('Remove /opt/stack folder')
+            run('sudo rm -rf /opt/stack')
+            logger.info('Call "sudo apt-get autoremove"')
+            run('sudo apt-get autoremove -y')
+
+    def restart_ovs(self):
+        with settings(host_string=self.host_string, warn_only=True):
+            logger.info('Restart "openvswitch-switch"')
+            run('sudo /etc/init.d/openvswitch-switch restart')
+
+    def clone_repositories(self, dest):
+        with settings(host_string=self.host_string, warn_only=True):
+            logger.info('Clone openstack repositories to {0}'.format(dest))
+            if not exists(dest):
+                cmd = "{0} {1}".format(
+                    os.path.join(PARENT_FOLDER_PATH,
+                                 'nodepool-scripts/clone_repositories.sh'),
+                    dest)
+                run(cmd)
+            else:
+                logger.warn('Folder already exists {0}, aborting'.format(dest))
+
+    def rsync_repositories(self, source_path):
+        dest = '/opt/stack'
+        with settings(host_string=self.host_string, warn_only=True):
+            if not exists(dest):
+                logger.info('rsync openstack repositories')
+                run('sudo mkdir {0}'.format(dest))
+                run('sudo chown $(whoami) {0}'.format(dest))
+                run('rsync -arv {0} {1}'.format(source_path, dest))
+                run('sudo chown -R $(whoami) {0}'.format(dest))
+            else:
+                logger.warn('Folder already exists {0}, aborting'.format(dest))
