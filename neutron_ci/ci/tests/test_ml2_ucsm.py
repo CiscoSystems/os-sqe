@@ -76,6 +76,7 @@ RECLONE=True
 ucsm_ip=172.21.11.10
 ucsm_username=admin
 ucsm_password=Cisc0123
+ucsm_host_list=neutron1:neutron1
 '''
 
 
