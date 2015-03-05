@@ -70,7 +70,6 @@ enable_service q-dhcp
 enable_service ciscocfgagent
 enable_service q-ciscorouter
 #enable_service cisco_vpn
-#enable_service q-fwaas
 enable_service n-novnc
 
 enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
