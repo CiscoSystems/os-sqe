@@ -14,11 +14,8 @@
 #
 # @author: Nikolay Fedotov, Cisco Systems, Inc.
 
-import socket
 import os
-from ci import PARENT_FOLDER_PATH, \
-    NEXUS_VLAN_START, NEXUS_VLAN_END, \
-    NEXUS_INTF_NUM, NEXUS_IP, NEXUS_USER, NEXUS_PASSWORD
+from ci import PARENT_FOLDER_PATH
 from ci.lib.test_case import BaseTestCase
 
 
@@ -30,6 +27,7 @@ LOCAL_CONF = '''
 [[local|localrc]]
 NEUTRON_REPO={neutron_repo}
 NEUTRON_BRANCH={neutron_branch}
+
 MYSQL_PASSWORD=nova
 RABBIT_PASSWORD=nova
 SERVICE_TOKEN=nova
@@ -46,8 +44,10 @@ enable_service q-meta
 enable_service q-lbaas
 enable_service neutron
 enable_service tempest
+
 enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
 enable_service net-cisco
+
 LIBVIRT_TYPE=qemu
 NOVA_USE_QUANTUM_API=v2
 VOLUME_BACKING_FILE_SIZE=2052M
@@ -58,10 +58,10 @@ ENABLE_TENANT_TUNNELS=False
 Q_ML2_TENANT_NETWORK_TYPE=local
 Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
 Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
-ML2_VLAN_RANGES=physnet1:{vlan_start}:{vlan_end}
+ML2_VLAN_RANGES=physnet1:100:200
 PHYSICAL_NETWORK=physnet1
 OVS_PHYSICAL_BRIDGE=br-eth1
-TENANT_VLAN_RANGE={vlan_start}:{vlan_end}
+TENANT_VLAN_RANGE=100:200
 ENABLE_TENANT_VLANS=True
 API_RATE_LIMIT=False
 VERBOSE=True
@@ -70,6 +70,7 @@ LOGFILE=/opt/stack/screen-logs/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
+
 [[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_cisco_ucsm]
 ucsm_ip=172.21.11.10
@@ -96,12 +97,7 @@ class ML2UCSMTest(BaseTestCase):
             net_cisco_repo=cls.net_cisco_repo,
             net_cisco_ref=cls.net_cisco_ref,
             Q_PLUGIN_EXTRA_CONF_PATH=Q_PLUGIN_EXTRA_CONF_PATH,
-            Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
-            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END,
-            host=socket.gethostname(), port=NEXUS_INTF_NUM,
-            router_ip=NEXUS_IP,
-            username=NEXUS_USER,
-            password=NEXUS_PASSWORD)
+            Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES)
 
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()
