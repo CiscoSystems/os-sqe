@@ -213,7 +213,7 @@ class DevStack(object):
                     dest)
                 run(cmd)
             else:
-                logger.warn('Folder already exists {0}'.format(dest))
+                logger.warn('Folder already exists {0}, aborting'.format(dest))
 
     def rsync_repositories(self, source_path):
         dest = '/opt/stack'
@@ -225,4 +225,4 @@ class DevStack(object):
                 run('rsync -arv {0} {1}'.format(source_path, dest))
                 run('sudo chown -R $(whoami) {0}'.format(dest))
             else:
-                logger.warn('Folder already exists {0}'.format(dest))
+                logger.warn('Folder already exists {0}, aborting'.format(dest))

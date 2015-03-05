@@ -24,7 +24,8 @@ from testtools import TestCase
 from netaddr import IPNetwork
 from ci import WORKSPACE, BUILD_LOG_PATH, NEXUS_IP, NEXUS_USER, \
     NEXUS_PASSWORD, NEXUS_INTF_NUM, NEXUS_VLAN_START, \
-    NEXUS_VLAN_END, PARENT_FOLDER_PATH, NODE_DEFAULT_ETH
+    NEXUS_VLAN_END, PARENT_FOLDER_PATH, NODE_DEFAULT_ETH, \
+    OFFLINE_NODE_WHEN_COMPLETE
 from ci.lib.lab.node import Node
 from ci.lib.utils import run_cmd_line, get_public_key, \
     clear_nexus_config, wait_until
@@ -43,41 +44,54 @@ class BaseTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devstack = DevStack(clone_path=os.path.join(WORKSPACE, 'devstack'))
-        cls.node = Node(NODE_DEFAULT_ETH)
 
-        # Add fqdn to /etc/hosts
-        run_cmd_line(
-            'echo "{ip} {hostname}.slave.openstack.org {hostname}"'
-            ' | sudo tee -a /etc/hosts'.format(ip=cls.node.ip,
-                                               hostname=cls.node.hostname),
-            shell=True)
+        if OFFLINE_NODE_WHEN_COMPLETE:
+            cls.node = Node(NODE_DEFAULT_ETH)
 
-        # Enable kernel networking functions
-        run_cmd_line('echo "net.ipv4.ip_forward=1" '
-                     '| sudo tee -a /etc/sysctl.conf', shell=True)
-        run_cmd_line('echo "net.ipv4.conf.all.rp_filter=0" '
-                     '| sudo tee -a /etc/sysctl.conf', shell=True)
-        run_cmd_line('echo "net.ipv4.conf.default.rp_filter=0" '
-                     '| sudo tee -a /etc/sysctl.conf', shell=True)
-        run_cmd_line('sudo sysctl -p', shell=True)
+            # Add fqdn to /etc/hosts
+            run_cmd_line(
+                'echo "{ip} {hostname}.slave.openstack.org {hostname}"'
+                ' | sudo tee -a /etc/hosts'.format(ip=cls.node.ip,
+                                                   hostname=cls.node.hostname),
+                shell=True)
 
-        # Install custom ncclient
-        ncclient_dir = '/opt/git/ncclient'
-        if os.path.exists(ncclient_dir):
-            run_cmd_line('sudo rm -rf {0}'.format(ncclient_dir), shell=True)
-        run_cmd_line(
-            'sudo pip uninstall -y ncclient', shell=True, check_result=False)
-        run_cmd_line('sudo git clone --depth=1 -b master '
-                     'https://github.com/CiscoSystems/ncclient.git '
-                     '{NCCLIENT_DIR}'.format(NCCLIENT_DIR=ncclient_dir),
-                     shell=True)
-        try:
-            os.chdir(ncclient_dir)
-            run_cmd_line('sudo python setup.py install', shell=True)
-        except Exception as e:
-            logger.error(e)
-        finally:
-            os.chdir(WORKSPACE)
+            # Enable kernel networking functions
+            run_cmd_line('echo "net.ipv4.ip_forward=1" '
+                         '| sudo tee -a /etc/sysctl.conf', shell=True)
+            run_cmd_line('echo "net.ipv4.conf.all.rp_filter=0" '
+                         '| sudo tee -a /etc/sysctl.conf', shell=True)
+            run_cmd_line('echo "net.ipv4.conf.default.rp_filter=0" '
+                         '| sudo tee -a /etc/sysctl.conf', shell=True)
+            run_cmd_line('sudo sysctl -p', shell=True)
+
+            # Install custom ncclient
+            ncclient_dir = '/opt/git/ncclient'
+            if os.path.exists(ncclient_dir):
+                run_cmd_line('sudo rm -rf {0}'.format(ncclient_dir),
+                             shell=True)
+            run_cmd_line(
+                'sudo pip uninstall -y ncclient', shell=True,
+                check_result=False)
+            run_cmd_line('sudo git clone --depth=1 -b master '
+                         'https://github.com/CiscoSystems/ncclient.git '
+                         '{NCCLIENT_DIR}'.format(NCCLIENT_DIR=ncclient_dir),
+                         shell=True)
+            try:
+                os.chdir(ncclient_dir)
+                run_cmd_line('sudo python setup.py install', shell=True)
+            except Exception as e:
+                logger.error(e)
+            finally:
+                os.chdir(WORKSPACE)
+
+    def setUp(self):
+        super(BaseTestCase, self).setUp()
+        if not OFFLINE_NODE_WHEN_COMPLETE:
+            self.devstack.unstack()
+            self.devstack.clear()
+            self.devstack.clone_repositories(self.devstack._cloned_repos_path)
+            self.devstack.rsync_repositories(self.devstack._cloned_repos_path)
+            self.devstack.restart_ovs()
 
     @classmethod
     def tearDownClass(cls):

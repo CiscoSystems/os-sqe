@@ -27,7 +27,8 @@ PARENT_FOLDER_PATH = os.path.dirname(os.path.dirname(__file__))
 # Zuul variables
 BASE_LOG_PATH = os.environ.get('BASE_LOG_PATH')
 ZUUL_PIPELINE = os.environ.get('ZUUL_PIPELINE')
-OFFLINE_NODE_WHEN_COMPLETE = os.environ.get('OFFLINE_NODE_WHEN_COMPLETE')
+OFFLINE_NODE_WHEN_COMPLETE = \
+    os.environ.get('OFFLINE_NODE_WHEN_COMPLETE') == '1'
 ZUUL_UUID = os.environ.get('ZUUL_UUID')
 LOG_PATH = os.environ.get('LOG_PATH')
 ZUUL_CHANGE_IDS = os.environ.get('ZUUL_CHANGE_IDS')
