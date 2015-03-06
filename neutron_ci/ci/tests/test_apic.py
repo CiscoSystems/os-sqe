@@ -13,18 +13,18 @@
 #    under the License.
 #
 # @author: Dane LeBlanc, Nikolay Fedotov, Cisco Systems, Inc.
-import socket
 
-import urlparse
 import os
-from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, WORKSPACE, \
-    NEXUS_VLAN_START, NEXUS_VLAN_END, ZUUL_REF, NEXUS_INTF_NUM
+import socket
+from ci import PARENT_FOLDER_PATH, NEXUS_INTF_NUM
 from ci.lib.test_case import BaseTestCase
 from ci.lib.utils import clear_apic_config
 
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_apic_tests.txt')
-APIC_CONF_FILES = 'ml2_apic.ini'
+Q_PLUGIN_EXTRA_CONF_PATH = \
+    '/opt/stack/networking-cisco/etc/neutron/plugins/ml2'
+Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_cisco.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
 NEUTRON_REPO={neutron_repo}
@@ -46,6 +46,10 @@ enable_service q-dhcp
 enable_service q-meta
 enable_service neutron
 enable_service tempest
+
+enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
+enable_service net-cisco
+
 LIBVIRT_TYPE=qemu
 NOVA_USE_QUANTUM_API=v2
 VOLUME_BACKING_FILE_SIZE=2052M
@@ -55,11 +59,11 @@ Q_ML2_TENANT_NETWORK_TYPE=vlan
 Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,cisco_apic
 Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
 Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
-ML2_VLAN_RANGES=physnet1:{vlan_start}:{vlan_end}
+ML2_VLAN_RANGES=physnet1:100:200
 NCCLIENT_REPO=git://github.com/CiscoSystems/ncclient.git
 PHYSICAL_NETWORK=physnet1
 OVS_PHYSICAL_BRIDGE=br-eth1
-TENANT_VLAN_RANGE={vlan_start}:{vlan_end}
+TENANT_VLAN_RANGE=100:200
 ENABLE_TENANT_VLANS=True
 API_RATE_LIMIT=False
 VERBOSE=True
@@ -74,9 +78,8 @@ RECLONE=True
 admin_tenant_name = admin
 admin_user = admin
 admin_password = nova
-'''
 
-ML2_APIC_INI = '''
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_cisco_apic]
 
 # Hostname for the APIC controller
@@ -115,15 +118,11 @@ class ApicTest(BaseTestCase):
     APIC_USER = os.environ.get('APIC_USER')
     APIC_PASSWORD = os.environ.get('APIC_PASSWORD')
 
-    @classmethod
-    def create_ml2_conf_ini(cls):
-        ini = ML2_APIC_INI.format(
-            APIC_HOST=cls.APIC_HOST, APIC_PORT=cls.APIC_PORT,
-            APIC_USER=cls.APIC_USER, APIC_PASSWORD=cls.APIC_PASSWORD,
-            HOSTNAME=socket.gethostname(), NEXUS_INTF_NUM=NEXUS_INTF_NUM)
-        path = os.path.join(WORKSPACE, APIC_CONF_FILES)
-        with open(path, 'w') as f:
-            f.write(ini)
+    neutron_repo = os.environ.get('NEUTRON_REPO')
+    neutron_ref = os.environ.get('NEUTRON_REF')
+
+    net_cisco_repo = os.environ.get('NET_CISCO_REPO')
+    net_cisco_ref = os.environ.get('NET_CISCO_REF')
 
     @classmethod
     def setUpClass(cls):
@@ -132,13 +131,16 @@ class ApicTest(BaseTestCase):
         clear_apic_config(cls.APIC_HOST, cls.APIC_PORT, cls.APIC_USER,
                           cls.APIC_PASSWORD, ssl=True)
 
-        cls.create_ml2_conf_ini()
         cls.devstack.local_conf = LOCAL_CONF.format(
-            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
-            neutron_branch=ZUUL_REF,
-            Q_PLUGIN_EXTRA_CONF_PATH=WORKSPACE,
-            Q_PLUGIN_EXTRA_CONF_FILES=APIC_CONF_FILES,
-            vlan_start=NEXUS_VLAN_START, vlan_end=NEXUS_VLAN_END)
+            neutron_repo=cls.neutron_repo,
+            neutron_branch=cls.neutron_ref,
+            net_cisco_repo=cls.net_cisco_repo,
+            net_cisco_ref=cls.net_cisco_ref,
+            Q_PLUGIN_EXTRA_CONF_PATH=Q_PLUGIN_EXTRA_CONF_PATH,
+            Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
+            APIC_HOST=cls.APIC_HOST, APIC_PORT=cls.APIC_PORT,
+            APIC_USER=cls.APIC_USER, APIC_PASSWORD=cls.APIC_PASSWORD,
+            HOSTNAME=socket.gethostname(), NEXUS_INTF_NUM=NEXUS_INTF_NUM)
         # Next commit '1631af891af32eaa9af609398a88252ab437b0b4' forces
         # all openstack components to use keystone middleware but the APIC
         # does not support it
