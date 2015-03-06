@@ -24,6 +24,9 @@ from ci.lib.test_case import BaseTestCase
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH,
                               'cisco_n1kv_plugin_tests.txt')
 UVEM_DEB = 'nexus_1000v_vem-12.04-5.2.1.SK1.3.0.135.S0-0gdb.deb'
+Q_PLUGIN_EXTRA_CONF_PATH = \
+    '/opt/stack/networking-cisco/etc/neutron/plugins/cisco'
+Q_PLUGIN_EXTRA_CONF_FILES = 'cisco_plugins.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
 NEUTRON_REPO={neutron_repo}
@@ -49,6 +52,8 @@ Q_CISCO_PLUGIN_VSM_PASSWORD={VSM_PASSWORD}
 Q_CISCO_PLUGIN_UVEM_DEB_IMAGE={UVEM_DEB}
 Q_CISCO_PLUGIN_INTEGRATION_BRIDGE=br-int
 Q_CISCO_PLUGIN_HOST_MGMT_INTF=eth0
+Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
+Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
 PHYSICAL_NETWORK=test-physnet1
 LIBVIRT_FIREWALL_DRIVER=nova.virt.firewall.NoopFirewallDriver
 API_RATE_LIMIT=False
@@ -59,7 +64,7 @@ USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
 
-[[post-config|/opt/stack/networking-cisco/etc/neutron/plugins/cisco/cisco_plugins.ini]]
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [cisco_n1k]
 restrict_network_profiles = False
 '''
@@ -96,6 +101,8 @@ class N1kvTest(BaseTestCase):
             neutron_branch=cls.neutron_ref,
             net_cisco_repo=cls.net_cisco_repo,
             net_cisco_ref=cls.net_cisco_ref,
+            Q_PLUGIN_EXTRA_CONF_PATH=Q_PLUGIN_EXTRA_CONF_PATH,
+            Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             VSM_IP=cls.vsm_ip,
             VSM_LOGIN=cls.vsm_login,
             VSM_PASSWORD=cls.vsm_password,
