@@ -14,17 +14,19 @@
 #
 # @author: Nikolay Fedotov, Cisco Systems, Inc.
 
-import urlparse
 import os
 import time
 from fabric.operations import local
-from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, WORKSPACE, ZUUL_REF
+from ci import PARENT_FOLDER_PATH, WORKSPACE
 from ci.lib.test_case import BaseTestCase
 
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH,
                               'cisco_n1kv_plugin_tests.txt')
 UVEM_DEB = 'nexus_1000v_vem-12.04-5.2.1.SK1.3.0.135.S0-0gdb.deb'
+Q_PLUGIN_EXTRA_CONF_PATH = \
+    '/opt/stack/networking-cisco/etc/neutron/plugins/cisco'
+Q_PLUGIN_EXTRA_CONF_FILES = 'cisco_plugins.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
 NEUTRON_REPO={neutron_repo}
@@ -36,6 +38,10 @@ SERVICE_TOKEN=nova
 SERVICE_PASSWORD=nova
 ADMIN_PASSWORD=nova
 ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,cinder,c-sch,c-api,c-vol,n-sch,n-novnc,n-xvnc,n-cauth,rabbit,mysql,q-svc,q-dhcp,q-meta,neutron,tempest
+
+enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
+enable_service net-cisco
+
 VOLUME_BACKING_FILE_SIZE=2052M
 Q_PLUGIN=cisco
 declare -a Q_CISCO_PLUGIN_SUBPLUGINS=(n1kv)
@@ -46,6 +52,8 @@ Q_CISCO_PLUGIN_VSM_PASSWORD={VSM_PASSWORD}
 Q_CISCO_PLUGIN_UVEM_DEB_IMAGE={UVEM_DEB}
 Q_CISCO_PLUGIN_INTEGRATION_BRIDGE=br-int
 Q_CISCO_PLUGIN_HOST_MGMT_INTF=eth0
+Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
+Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
 PHYSICAL_NETWORK=test-physnet1
 LIBVIRT_FIREWALL_DRIVER=nova.virt.firewall.NoopFirewallDriver
 API_RATE_LIMIT=False
@@ -56,7 +64,7 @@ USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
 
-[[post-config|/etc/neutron/plugins/cisco/cisco_plugins.ini]]
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [cisco_n1k]
 restrict_network_profiles = False
 '''
@@ -67,6 +75,12 @@ class N1kvTest(BaseTestCase):
     vsm_ip = os.environ.get('VSM_IP')
     vsm_login = os.environ.get('VSM_LOGIN')
     vsm_password = os.environ.get('VSM_PASSWORD')
+
+    neutron_repo = os.environ.get('NEUTRON_REPO')
+    neutron_ref = os.environ.get('NEUTRON_REF')
+
+    net_cisco_repo = os.environ.get('NET_CISCO_REPO')
+    net_cisco_ref = os.environ.get('NET_CISCO_REF')
 
     @classmethod
     def setUpClass(cls):
@@ -83,8 +97,12 @@ class N1kvTest(BaseTestCase):
         time.sleep(60*1)
 
         local_conf = LOCAL_CONF.format(
-            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
-            neutron_branch=ZUUL_REF,
+            neutron_repo=cls.neutron_repo,
+            neutron_branch=cls.neutron_ref,
+            net_cisco_repo=cls.net_cisco_repo,
+            net_cisco_ref=cls.net_cisco_ref,
+            Q_PLUGIN_EXTRA_CONF_PATH=Q_PLUGIN_EXTRA_CONF_PATH,
+            Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES,
             VSM_IP=cls.vsm_ip,
             VSM_LOGIN=cls.vsm_login,
             VSM_PASSWORD=cls.vsm_password,
