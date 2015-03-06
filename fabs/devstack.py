@@ -139,20 +139,20 @@ def patchset(component="neutron", patch_set=None):
 
 @task
 @timed
-def plus_n1kv(lab_id, phase='lab'):
-    """Run devstack in one VM + n1kv in separate VM"""
-    MyLab(lab_id=lab_id, topology_name='devstack_plus_n1kv').create_lab(phase=phase)
-
-
-@task
-@timed
-def plus_dhcp6(lab_id, phase='lab'):
+def plus_dhcp6(lab_id, phase='lab', os_version='', tempest_version=''):
     """Run devstack in one VM + dhcp6 server in separate VM"""
-    MyLab(lab_id=lab_id, topology_name='devstack_plus_dhcp6').create_lab(phase=phase)
+    if os_version == 'juno' and tempest_version == 'cisco':
+        devstack_conf = 'devstack.local.conf.aio4.juno.tempest.cisco'
+    elif os_version == '' and tempest_version == 'cisco':
+        devstack_conf = 'devstack.local.conf.aio4.upstream.tempest.cisco'
+    else:
+        devstack_conf = 'devstack.local.conf.aio4'
+
+    MyLab(lab_id=lab_id, topology_name='devstack_plus_dhcp6', devstack_conf_name=devstack_conf).create_lab(phase=phase)
 
 
 @task
 @timed
 def plus_dibbler(lab_id, phase='lab'):
     """Run devstack in one VM + dibbler server in separate VM"""
-    MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler').create_lab(phase=phase)
+    MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler', devstack_conf_name='devstack.local.conf.aio4').create_lab(phase=phase)

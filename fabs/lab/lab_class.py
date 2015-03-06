@@ -12,13 +12,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from fabric.api import local, settings, sudo, put, run, cd
+from fabric.api import local, settings, sudo, put, get, run, cd
 import yaml
 import exceptions
 import re
 import os
 import libvirt
 import sys
+from StringIO import StringIO
 
 
 from fabs import lab
@@ -36,8 +37,9 @@ def _conn():
 
 
 class MyLab:
-    def __init__(self, lab_id, topology_name, is_only_xml=False):
+    def __init__(self, lab_id, topology_name, devstack_conf_name, is_only_xml=False):
         topo_path = os.path.join(lab.TOPOLOGIES_DIR, topology_name + '.yaml')
+        self.devstack_conf_path = os.path.join(lab.TOPOLOGIES_DIR, devstack_conf_name)
         try:
             with open(topo_path) as f:
                 self.topology = yaml.load(f)
@@ -45,6 +47,8 @@ class MyLab:
             self.lab_id = int(lab_id)
             if self.lab_id < 0 or self.lab_id > 99:
                 raise exceptions.ValueError
+            with open(self.devstack_conf_path):
+                pass
             self.image_url_re = re.compile(r'source +file.+(http.+) *-->')
             self.name_re = re.compile(r'<name>(.+)</name>')
             lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
@@ -53,11 +57,11 @@ class MyLab:
         except exceptions.ValueError:
             raise exceptions.Exception('lab_id is supposed to be integer in the range [0-99], you gave {0}'.format(lab_id))
         except:
-            raise exceptions.Exception('wrong topology descriptor provided: {0}'.format(topo_path))
+            raise exceptions.Exception('wrong topology or devstack conf: {0} {1}'.format(topo_path, self.devstack_conf_path))
 
     def delete_of_something(self, list_of_something):
         for something in list_of_something():
-            if 'lab-{0}'.format(self.lab_id) in something.name():
+            if 'lab-{0}-'.format(self.lab_id) in something.name():
                 try:
                     something.destroy()
                 except libvirt.libvirtError:
@@ -157,11 +161,15 @@ class MyLab:
                 else:
                     with settings(host_string='ubuntu@' + ip, password='ubuntu', connection_attempts=5, warn_only=False):
                         if cmd.startswith('deploy_devstack'):
-                            self.deploy_devstack(cmd)
+                            self.deploy_devstack()
                         elif cmd.startswith('deploy_dibbler'):
                             self.deploy_dibbler(cmd)
                         elif cmd.startswith('put_config'):
                             self.put_config(cmd)
+                        elif cmd.startswith('get_artifact'):
+                            self.get_artifact(cmd)
+                        elif cmd.startswith('run_tempest'):
+                            self.run_tempest(cmd)
                         else:
                             sudo(cmd)
 
@@ -170,33 +178,34 @@ class MyLab:
         import urlparse
 
         local_repo_dir = urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
-        sudo('apt-get install -y git')
+        sudo('apt-get -yqq update && apt-get install -yqq git')
 
         with settings(warn_only=True):
             if run('test -d {0}'.format(local_repo_dir)).failed:
-                run('git clone {0}'.format(repo_url))
+                run('git clone -q {0}'.format(repo_url))
         with cd(local_repo_dir):
-            run('git pull')
+            run('git pull -q')
         return local_repo_dir
 
-    @staticmethod
-    def deploy_devstack(cmd):
-        devstack_conf = cmd.split(' with ')[-1]
+    def deploy_devstack(self):
         local_cloned_repo = MyLab.clone_repo('https://github.com/openstack-dev/devstack.git')
-        put(local_path=lab.TOPOLOGIES_DIR + '/' + devstack_conf, remote_path='{0}/local.conf'.format(local_cloned_repo))
+        put(local_path=self.devstack_conf_path, remote_path='{0}/local.conf'.format(local_cloned_repo))
         run('{0}/stack.sh'.format(local_cloned_repo))
 
     @staticmethod
     def deploy_dibbler(cmd):
         dibbler_conf = cmd.split(' with ')[-1]
-        local_cloned_repo = MyLab.clone_repo('https://github.com/johndavidge/dibbler.git')
+        local_cloned_repo = MyLab.clone_repo('https://github.com/tomaszmrugalski/dibbler.git')
+        sudo('apt-get -yqq update && apt-get install -yqq git g++ make')
         with cd(local_cloned_repo):
-            run('git checkout cloud-dibbler')
             run('./configure')
-            run('make')
-            sudo('make install')
-        put(local_path=lab.TOPOLOGIES_DIR + dibbler_conf, remote_path='/etc/dibbler/server.conf', use_sudo=True)
-        sudo('dibbler-server start')
+            run('make --quiet')
+            sudo('make install --quiet')
+        sudo('mkdir -p /var/lib/dibbler')
+        sudo('mkdir -p /var/log/dibbler')
+        sudo('mkdir -p /etc/dibbler')
+        put(local_path=lab.TOPOLOGIES_DIR + '/' + dibbler_conf, remote_path='/etc/dibbler/server.conf', use_sudo=True)
+        sudo('dibbler-server start', pty=False)
 
     @staticmethod
     def put_config(cmd):
@@ -206,8 +215,30 @@ class MyLab:
             use_sudo = True
         else:
             use_sudo = False
-        put(local_path=lab.TOPOLOGIES_DIR + config_local, remote_path=config_remote, use_sudo=use_sudo)
-        sudo('dibbler-server start')
+        put(local_path=lab.TOPOLOGIES_DIR + '/' + config_local, remote_path=config_remote, use_sudo=use_sudo)
+
+    @staticmethod
+    def get_artifact(cmd):
+        artifact_remote = cmd.split(' ')[-1]
+        artifact_local = os.path.basename(artifact_remote)
+        get(remote_path=artifact_remote, local_path=artifact_local)
+
+    @staticmethod
+    def run_tempest(cmd):
+        tempest_re = cmd.split(' ')[-1]
+        devstack_conf = StringIO()
+        get(remote_path='devstack/local.conf', local_path=devstack_conf)
+        match = re.search('DEST=(.+)\n', devstack_conf.getvalue())
+        if match:
+            tempest_dir = match.groups()[0].strip() + '/tempest'
+        else:
+            tempest_dir = '/opt/stack/tempest'
+        with cd(tempest_dir):
+            with settings(warn_only=True):
+                run('testr init'.format(tempest_re))
+                run('testr run {0}'.format(tempest_re))
+                run('testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=tempest_results.xml')
+                get(remote_path='tempest_results.xml', local_path='tempest_results.xml')
 
     def create_lab(self, phase):
         """Possible phases: lab net dom paas, lab does all in chain"""

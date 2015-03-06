@@ -39,15 +39,15 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-adm-10.{lab_id}.0.1'/>
+        <source network='lab-{lab_id}-10.{lab_id}.0'/>
         <mac address='ee:{lab_id:02}:00:01:00:01'/>
-        <target dev='v-{lab_id}-dev-aio-1'/>
+        <target dev='v-{lab_id}-aio-4'/>
       </interface>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-6-20{lab_id}::1'/>
+        <source network='lab-{lab_id}-20{lab_id:02}::0'/>
         <mac address='ee:{lab_id:02}:00:01:00:02'/>
-        <target dev='v-{lab_id}-adm-1'/>
+        <target dev='v-{lab_id}-aio-6'/>
       </interface>
 
       <input type='mouse' bus='ps2'/>
@@ -69,6 +69,7 @@ servers:
     </devices>
 
   </domain>
+
 - |
   <domain type='kvm'>
     <name>lab-{lab_id}-dhcp6</name>
@@ -109,15 +110,15 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-adm-10.{lab_id}.0.1'/>
+        <source network='lab-{lab_id}-10.{lab_id}.0'/>
         <mac address='ee:{lab_id:02}:00:02:00:01'/>
-        <target dev='v-{lab_id}-dhcp6-1'/>
+        <target dev='v-{lab_id}-dhcp6-4'/>
       </interface>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-6-20{lab_id}::1'/>
+        <source network='lab-{lab_id}-20{lab_id:02}::0'/>
         <mac address='ee:{lab_id:02}:00:02:00:02'/>
-        <target dev='v-{lab_id}-dhcp6-2'/>
+        <target dev='v-{lab_id}-dhcp6-6'/>
       </interface>
 
       <input type='mouse' bus='ps2'/>
@@ -139,11 +140,12 @@ servers:
     </devices>
 
   </domain>
+
 networks:
 - |
   <network>
-    <name>lab-{lab_id}-adm-10.{lab_id}.0.1</name>
-    <bridge name='br-{lab_id}-adm' />
+    <name>lab-{lab_id}-10.{lab_id}.0</name>
+    <bridge name='br-{lab_id}-10.{lab_id}' />
     <forward mode="nat"/>
     <ip address='10.{lab_id}.0.1' netmask='255.255.255.0'>
       <dhcp>
@@ -153,19 +155,21 @@ networks:
   </network>
 - |
   <network>
-    <name>lab-{lab_id}-6-20{lab_id}::1</name>
-    <bridge name='br-{lab_id}-6' />
+    <name>lab-{lab_id}-20{lab_id:02}::0</name>
+    <bridge name='br-{lab_id}-20{lab_id:02}' />
     <forward mode="nat"/>
-    <ip family="ipv6" address='20{lab_id}::1' prefix='64'>
+    <ip family="ipv6" address='20{lab_id:02}::1' prefix='64'>
     </ip>
   </network>
 paas:
-  - net: lab-{lab_id}-adm-10.{lab_id}.0.1
+  - net: lab-{lab_id}-10.{lab_id}.0
     mac: ee:{lab_id:02}:00:02:00:01
     cmd:
       - apt-get install -y dnsmasq-base
       - dnsmasq --interface=eth0 --dhcp-range=2222:{lab_id}::10,2222:{lab_id}::20 --dhcp-leasefile=/tmp/dnsmasq.leases --pid-file=/tmp/dnsmasq.pid
-  - net: lab-{lab_id}-adm-10.{lab_id}.0.1
+
+  - net: lab-{lab_id}-10.{lab_id}.0
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
       - deploy_devstack with devstack.local.conf.aio4
+      - run_tempest 'v6|V6'

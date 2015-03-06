@@ -1,7 +1,7 @@
 servers:
 - |
   <domain type='kvm'>
-    <name>lab-{lab_id}-dev-aio</name>
+    <name>lab-{lab_id}-aio</name>
     <memory unit='GiB'>8</memory>
     <currentMemory unit='GiB'>8</currentMemory>
     <vcpu placement='static'>2</vcpu>
@@ -45,7 +45,7 @@ servers:
       </interface>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-20{lab_id}::0'/>
+        <source network='lab-{lab_id}-20{lab_id:02}::0'/>
         <mac address='ee:{lab_id:02}:00:01:00:02'/>
         <target dev='v-{lab_id}-aio-6'/>
       </interface>
@@ -73,9 +73,9 @@ servers:
 - |
   <domain type='kvm'>
     <name>lab-{lab_id}-dibbler</name>
-    <memory unit='GiB'>8</memory>
-    <currentMemory unit='GiB'>8</currentMemory>
-    <vcpu placement='static'>2</vcpu>
+    <memory unit='GiB'>1</memory>
+    <currentMemory unit='GiB'>1</currentMemory>
+    <vcpu placement='static'>1</vcpu>
     <os>
       <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
       <boot dev='hd'/>
@@ -103,6 +103,12 @@ servers:
         <target dev='vda' bus='virtio'/>
       </disk>
 
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='raw'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
       <interface type='network'>
         <source network='lab-{lab_id}-10.{lab_id}.0'/>
         <mac address='ee:{lab_id:02}:00:02:00:01'/>
@@ -110,7 +116,7 @@ servers:
       </interface>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-20{lab_id}::0'/>
+        <source network='lab-{lab_id}-20{lab_id:02}::0'/>
         <mac address='ee:{lab_id:02}:00:02:00:02'/>
         <target dev='v-{lab_id}-dibbler-6'/>
       </interface>
@@ -149,10 +155,10 @@ networks:
   </network>
 - |
   <network>
-    <name>lab-{lab_id}-20{lab_id}::0</name>
-    <bridge name='br-{lab_id}-20{lab_id}' />
+    <name>lab-{lab_id}-20{lab_id:02}::0</name>
+    <bridge name='br-{lab_id}-20{lab_id:02}' />
     <forward mode="nat"/>
-    <ip family="ipv6" address='20{lab_id}::1' prefix='64'>
+    <ip family="ipv6" address='20{lab_id:02}::1' prefix='64'>
     </ip>
   </network>
 paas:
