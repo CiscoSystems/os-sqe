@@ -62,6 +62,7 @@ SERVICE_PASSWORD=$our_pw
 ADMIN_PASSWORD=$our_pw
 
 disable_service heat h-api h-api-cfn h-api-cw h-eng
+disable_service cinder c-sch c-api c-vol
 disable_service n-net
 enable_service neutron
 enable_service q-svc
