@@ -100,6 +100,9 @@ case "$LIBVIRT_TYPE" in
         IMAGE_URLS="http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-uec.tar.gz";;
 esac
 
+# Sets the maximum number of workers for most services
+API_WORKERS=4
+
 Q_PLUGIN=cisco
 declare -a Q_CISCO_PLUGIN_SUBPLUGINS=(n1kv)
 Q_CISCO_PLUGIN_RESTART_VSM=yes
