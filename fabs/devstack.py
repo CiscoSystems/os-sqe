@@ -138,7 +138,7 @@ def patchset(component="neutron", patch_set=None):
 
 
 def lab_create_delete(lab, phase, cleanup):
-    if cleanup != 'do not do it':
+    if not cleanup != 'do not cleanup':
         lab.create_lab(phase=phase)
     else:
         lab.delete_lab()
@@ -146,7 +146,7 @@ def lab_create_delete(lab, phase, cleanup):
 
 @task
 @timed
-def plus_dhcp6(lab_id, phase='lab', os_version='', tempest_version='', cleanup='do not do it'):
+def plus_dhcp6(lab_id, phase='lab', os_version='', tempest_version='', cleanup='do not cleanup'):
     """Run devstack in one VM + dhcp6 server in separate VM"""
     if os_version == 'juno' and tempest_version == 'cisco':
         devstack_conf = 'devstack.local.conf.aio4.juno.tempest.cisco'
@@ -161,7 +161,7 @@ def plus_dhcp6(lab_id, phase='lab', os_version='', tempest_version='', cleanup='
 
 @task
 @timed
-def plus_dibbler(lab_id, phase='lab', cleanup='do not do it'):
+def plus_dibbler(lab_id, phase='lab', cleanup='do not cleanup'):
     """Run devstack in one VM + dibbler server in separate VM"""
     lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler', devstack_conf_name='devstack.local.conf.aio4')
     lab_create_delete(lab, phase, cleanup)
@@ -169,7 +169,7 @@ def plus_dibbler(lab_id, phase='lab', cleanup='do not do it'):
 
 @task
 @timed
-def plus_nxos(phase='lab', cleanup='do not do it'):
+def plus_nxos(phase='lab', cleanup='do not cleanup'):
     """Run devstack in one VM + dibbler server in separate VM"""
     lab = MyLab(lab_id=77, topology_name='devstack_all_compute_plusnxos', devstack_conf_name='devstack.local.conf.all_but_compute')
     lab_create_delete(lab, phase, cleanup)
