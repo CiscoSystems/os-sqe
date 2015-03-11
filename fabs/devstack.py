@@ -13,7 +13,7 @@ env.update(DEFAULT_SETTINGS)
 __all__ = ['prepare', 'install', 'setup',
            'run_test_original_file', 'run_test_custom_file',
            'run_test_ready_file', 'run_test_remote',
-           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler']
+           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler', 'plus_nxos']
 
 
 @task
@@ -171,5 +171,5 @@ def plus_dibbler(lab_id, phase='lab', cleanup='do not cleanup'):
 @timed
 def plus_nxos(phase='lab', cleanup='do not cleanup'):
     """Run devstack in one VM + dibbler server in separate VM"""
-    lab = MyLab(lab_id=77, topology_name='devstack_all_compute_plusnxos', devstack_conf_name='devstack.local.conf.all_but_compute')
+    lab = MyLab(lab_id=77, topology_name='devstack_all_compute_plus_nxos', devstack_conf_name='devstack.local.conf.all_but_compute')
     lab_create_delete(lab, phase, cleanup)
