@@ -29,7 +29,10 @@ function sqe_extra
 
 function sqe_unstack
 {
-    fab -f ${dir}/fabfile.py ${CISCO_SQE_FACILITY}:cleanup # $dir points to newly cloned plugin repo
+    local cleanup_addon=':cleanup'
+    [[ $CISCO_SQE_FACILITY == *":"* ]] && cleanup_addon=',cleanup' # some arguments're already in, just add cleanup to the list
+
+    fab -f ${dir}/fabfile.py ${CISCO_SQE_FACILITY}${cleanup_addon} # $dir points to newly cloned plugin repo
 }
 
 if is_service_enabled cisco-sqe; then
