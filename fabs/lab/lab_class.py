@@ -37,9 +37,8 @@ def _conn():
 
 
 class MyLab:
-    def __init__(self, lab_id, topology_name, devstack_conf_name, is_only_xml=False):
+    def __init__(self, lab_id, topology_name, devstack_conf_addon='', is_only_xml=False):
         topo_path = os.path.join(lab.TOPOLOGIES_DIR, topology_name + '.yaml')
-        self.devstack_conf_path = os.path.join(lab.TOPOLOGIES_DIR, devstack_conf_name)
         try:
             with open(topo_path) as f:
                 self.topology = yaml.load(f)
@@ -47,17 +46,17 @@ class MyLab:
             self.lab_id = int(lab_id)
             if self.lab_id < 0 or self.lab_id > 99:
                 raise exceptions.ValueError
-            with open(self.devstack_conf_path):
-                pass
             self.image_url_re = re.compile(r'source +file.+(http.+) *-->')
             self.name_re = re.compile(r'<name>(.+)</name>')
             lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
             lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
             lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
+            self.control_ip = None  # will be filled in deploy_devstack if appropriate
+            self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
         except exceptions.ValueError:
             raise exceptions.Exception('lab_id is supposed to be integer in the range [0-99], you gave {0}'.format(lab_id))
         except:
-            raise exceptions.Exception('wrong topology or devstack conf: {0} {1}'.format(topo_path, self.devstack_conf_path))
+            raise exceptions.Exception('wrong topology : {0}'.format(topo_path))
 
     def delete_of_something(self, list_of_something):
         for something in list_of_something():
@@ -73,6 +72,8 @@ class MyLab:
         self.delete_of_something(_conn().listAllDomains)
         self.delete_of_something(_conn().listAllNetworks)
         local('rm -f {0}/lab-{1}*'.format(lab.DISKS_DIR, self.lab_id))
+        for bridge in local("brctl show | grep 8000 | grep {0} | awk '{{print $1}}'".format(self.lab_id), capture=True).split('\n'):
+            local('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
 
     def create_networks(self):
         log.info('\n\nStarting IaaS phase- creating nets')
@@ -161,7 +162,7 @@ class MyLab:
                 else:
                     with settings(host_string='ubuntu@' + ip, password='ubuntu', connection_attempts=5, warn_only=False):
                         if cmd.startswith('deploy_devstack'):
-                            self.deploy_devstack()
+                            self.deploy_devstack(cmd, ip)
                         elif cmd.startswith('deploy_dibbler'):
                             self.deploy_dibbler(cmd)
                         elif cmd.startswith('put_config'):
@@ -172,6 +173,16 @@ class MyLab:
                             self.run_tempest(cmd)
                         else:
                             sudo(cmd)
+
+    def create_paas_pre(self):
+        log.info('\n\nStarting pre PaaS phase')
+        list_of_commands = self.topology.get('paas_pre', [])
+        if not list_of_commands:
+            log.info('Nothing defined in paas_pre section')
+            return
+        else:
+            for cmd in list_of_commands:
+                local(cmd.format(lab_id=self.lab_id))
 
     @staticmethod
     def clone_repo(repo_url):
@@ -187,9 +198,23 @@ class MyLab:
             run('git pull -q')
         return local_repo_dir
 
-    def deploy_devstack(self):
+    def deploy_devstack(self, cmd, ip):
+        conf_local_path = os.path.join(lab.TOPOLOGIES_DIR, cmd.split(' with ')[-1])
+        if 'all_but_compute' in conf_local_path:
+            self.control_ip = ip
+        if 'all_but_neutron_compute' in conf_local_path:
+            self.control_ip = ip
+        if 'only' in conf_local_path:
+            if not self.control_ip:
+                raise Exception('Trying to deploy xxx_only node when control node ip is not known')
+
+        with open(conf_local_path) as f:
+            conf_as_string = f.read()
+            conf_as_string.replace('{control_ip}', str(self.control_ip))
+            conf_as_string += self.devstack_conf_addon
+
         local_cloned_repo = MyLab.clone_repo('https://github.com/openstack-dev/devstack.git')
-        put(local_path=self.devstack_conf_path, remote_path='{0}/local.conf'.format(local_cloned_repo))
+        put(local_path=StringIO(conf_as_string), remote_path='{0}/local.conf'.format(local_cloned_repo))
         run('{0}/stack.sh'.format(local_cloned_repo))
 
     @staticmethod
@@ -241,13 +266,15 @@ class MyLab:
                 get(remote_path='tempest_results.xml', local_path='tempest_results.xml')
 
     def create_lab(self, phase):
-        """Possible phases: lab net dom paas, lab does all in chain"""
-        if phase != 'paas':
+        """Possible phases: lab paas_pre, net, dom, paas, lab does all in chain"""
+        if phase not in ['paas', 'paas_pre']:
             self.delete_lab()
 
-        if phase != 'paas':
+        if phase in ['lab', 'paas_pre']:
+            self.create_paas_pre()
+        if phase in ['lab', 'net', 'dom']:
             self.create_networks()
-        if phase == 'lab' or phase == 'dom':
+        if phase in ['lab', 'dom']:
             self.create_domains()
-        if phase == 'lab' or phase == 'paas':
+        if phase in ['lab', 'paas']:
             self.create_paas()

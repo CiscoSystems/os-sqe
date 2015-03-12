@@ -39,15 +39,15 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-20{lab_id:02}::0'/>
+        <source network='lab-{lab_id}-v6'/>
         <mac address='ee:{lab_id:02}:00:01:00:01'/>
         <target dev='v-{lab_id}-abc-6'/>
       </interface>
 
       <interface type='bridge'>
-        <source bridge='b-{lab_id}-abc'/>
+        <source bridge='br-{lab_id}-abc'/>
         <mac address='ee:{lab_id:02}:00:01:00:02'/>
-        <target dev='v-{lab_id}-abc-bridge'/>
+        <target dev='v-{lab_id}-abc-br'/>
       </interface>
 
       <input type='mouse' bus='ps2'/>
@@ -110,15 +110,15 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-20{lab_id:02}::0'/>
-        <mac address='ee:{lab_id:02}:00:02:00:02'/>
+        <source network='lab-{lab_id}-v6'/>
+        <mac address='ee:{lab_id:02}:00:02:00:01'/>
         <target dev='v-{lab_id}-compute-6'/>
       </interface>
 
       <interface type='bridge'>
-        <source bridge='b-{lab_id}-compute'/>
+        <source bridge='br-{lab_id}-compute'/>
         <mac address='ee:{lab_id:02}:00:02:00:02'/>
-        <target dev='v-{lab_id}-compute-bridge'/>
+        <target dev='v-{lab_id}-comp-br'/>
       </interface>
 
       <input type='mouse' bus='ps2'/>
@@ -144,30 +144,27 @@ servers:
 networks:
 - |
   <network>
-    <name>lab-{lab_id}-20{lab_id:02}::0</name>
-    <bridge name='br-{lab_id}-20{lab_id:02}' />
+    <name>lab-{lab_id}-v6</name>
+    <bridge name='br-{lab_id}-v6' />
     <forward mode="nat"/>
-    <ip family="ipv6" address='20{lab_id:02}::1' prefix='64'>
+    <ip family="ipv6" address='2001:db8:{lab_id}::1' prefix='48'>
     </ip>
   </network>
 
 paas:
-  - net: lab-{lab_id}-10.{lab_id}.0
+  - net: lab-{lab_id}-v6
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
-      - deploy_devstack with local.conf.all_but_compute
-  - net: lab-{lab_id}-10.{lab_id}.0
+      - deploy_devstack with local.conf.all_but_compute.cisco_nexus
+  - net: lab-{lab_id}-v6
     mac: ee:{lab_id:02}:00:02:00:01
     cmd:
-      - deploy_devstack with local.conf.compute
+      - deploy_devstack with local.conf.compute on lab-{lab_id}-v6 mac ee:{lab_id:02}:00:01:00:01
 
 paas_pre:
-  - net: local
-    mac: local
-    cmd:
-      - sudo brctl addbr b-{lab_id}-abc
-      - sudo brctl addif b-{lab_id}-abc eth1
-      - sudo ip l s b-{lab_id}-abc up
-      - sudo brctl addbr b-{lab_id}-compute
-      - sudo brctl addif b-{lab_id}-compute eth2
-      - sudo ip l s b-{lab_id}-compute up
+    - sudo brctl addbr br-{lab_id}-abc
+    - sudo brctl addif br-{lab_id}-abc eth0
+    - sudo ip l s br-{lab_id}-abc up
+    - sudo brctl addbr br-{lab_id}-compute
+    - sudo brctl addif br-{lab_id}-compute eth1
+    - sudo ip l s br-{lab_id}-compute up

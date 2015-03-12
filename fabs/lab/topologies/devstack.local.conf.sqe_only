@@ -2,8 +2,11 @@
 DEST=${HOME}/os
 DATA_DIR=${DEST}/data
 SERVICE_DIR=${DEST}/status
-
+LOGFILE=$DEST/logs/stack.sh.log
+SCREEN_LOGDIR=$DEST/logs
 GIT_BASE=https://git.openstack.org
+VERBOSE=True
+DEBUG=True
 
 MYSQL_PASSWORD=nova
 
@@ -13,9 +16,4 @@ enable_plugin cisco-sqe https://github.com/cisco-openstack/openstack-sqe.git
 enable_service  cisco-sqe
 #CISCO_SQE_FACILITY=????
 
-VERBOSE=True
-DEBUG=True
 
-LOGFILE=$DEST/logs/stack.sh.log
-USE_SCREEN=True
-SCREEN_LOGDIR=$DEST/logs

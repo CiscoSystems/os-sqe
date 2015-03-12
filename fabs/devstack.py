@@ -146,30 +146,23 @@ def lab_create_delete(lab, phase, cleanup):
 
 @task
 @timed
-def plus_dhcp6(lab_id, phase='lab', os_version='', tempest_version='', cleanup='do not cleanup'):
-    """Run devstack in one VM + dhcp6 server in separate VM"""
-    if os_version == 'juno' and tempest_version == 'cisco':
-        devstack_conf = 'devstack.local.conf.aio4.juno.tempest.cisco'
-    elif os_version == '' and tempest_version == 'cisco':
-        devstack_conf = 'devstack.local.conf.aio4.upstream.tempest.cisco'
-    else:
-        devstack_conf = 'devstack.local.conf.aio4'
-
-    lab = MyLab(lab_id=lab_id, topology_name='devstack_plus_dhcp6', devstack_conf_name=devstack_conf)
+def plus_dhcp6(lab_id, phase='lab', devstack_conf_addon='', cleanup='do not cleanup'):
+    """aio + dhcp6 server in separate VMs"""
+    lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dhcp6', devstack_conf_addon=devstack_conf_addon)
     lab_create_delete(lab, phase, cleanup)
 
 
 @task
 @timed
 def plus_dibbler(lab_id, phase='lab', cleanup='do not cleanup'):
-    """Run devstack in one VM + dibbler server in separate VM"""
-    lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler', devstack_conf_name='devstack.local.conf.aio4')
+    """aio + dibbler server in separate VMs"""
+    lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler')
     lab_create_delete(lab, phase, cleanup)
 
 
 @task
 @timed
 def plus_nxos(phase='lab', cleanup='do not cleanup'):
-    """Run devstack in one VM + dibbler server in separate VM"""
-    lab = MyLab(lab_id=77, topology_name='devstack_all_compute_plus_nxos', devstack_conf_name='devstack.local.conf.all_but_compute')
+    """abc + compute, Cisco ML2 with external nxos switch"""
+    lab = MyLab(lab_id=77, topology_name='devstack_abc_compute_plus_nxos')
     lab_create_delete(lab, phase, cleanup)
