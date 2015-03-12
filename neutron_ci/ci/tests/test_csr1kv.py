@@ -39,7 +39,7 @@ VERBOSE=True
 # when setting ``OS_AUTH_URL``.
 # ``HOST_IP`` is not set by default.
 #MULTI_HOST=True
-HOST_IP=10.0.197.12
+HOST_IP=$(ip addr | grep inet | grep eth1 | awk -F" " '{{print $2}}'| sed -e 's/\/.*$//')
 FIXED_RANGE=10.11.12.0/24
 FIXED_NETWORK_SIZE=256
 FLAT_INTERFACE=eth0
