@@ -18,8 +18,6 @@ import os
 from ci import PARENT_FOLDER_PATH
 from ci.lib.test_case import BaseTestCase
 
-
-TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_csr1kv_tests.txt')
 LOCALRC = '''
 # +------------------------------------------------------------------------------------------------+
 # |                                                                                                |
@@ -41,7 +39,7 @@ VERBOSE=True
 # when setting ``OS_AUTH_URL``.
 # ``HOST_IP`` is not set by default.
 #MULTI_HOST=True
-HOST_IP=10.0.197.12
+HOST_IP=$(ip addr | grep inet | grep eth1 | awk -F" " '{{print $2}}'| sed -e 's/\/.*$//')
 FIXED_RANGE=10.11.12.0/24
 FIXED_NETWORK_SIZE=256
 FLAT_INTERFACE=eth0
@@ -72,7 +70,6 @@ enable_service q-dhcp
 enable_service ciscocfgagent
 enable_service q-ciscorouter
 #enable_service cisco_vpn
-#enable_service q-fwaas
 enable_service n-novnc
 
 enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
@@ -102,6 +99,9 @@ case "$LIBVIRT_TYPE" in
     *)  # otherwise, use the uec style image (with kernel, ramdisk, disk)
         IMAGE_URLS="http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-uec.tar.gz";;
 esac
+
+# Sets the maximum number of workers for most services
+API_WORKERS=4
 
 Q_PLUGIN=cisco
 declare -a Q_CISCO_PLUGIN_SUBPLUGINS=(n1kv)
@@ -176,4 +176,32 @@ class Csr1kvRouterTest(Csr1kvTest):
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
-        self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
+
+        tempest_tests = os.path.join(PARENT_FOLDER_PATH,
+                                     'cisco_csr1kv_tests.txt')
+        self.assertFalse(self.devstack.run_tempest(tempest_tests))
+
+
+class Csr1kvFWaaSTest(Csr1kvTest):
+
+    neutron_fwaas_repo = os.environ.get('NEUTRON_FWAAS_REPO')
+    neutron_fwaas_ref = os.environ.get('NEUTRON_FWAAS_REF')
+
+    @classmethod
+    def setUpClass(cls):
+        Csr1kvTest.setUpClass()
+
+        cls.devstack.localrc += '\nenable_service q-fwaas'
+        cls.devstack.localrc += \
+            '\nNEUTRON_FWAAS_REPO={0}'.format(cls.neutron_fwaas_repo)
+        cls.devstack.localrc += \
+            '\nNEUTRON_FWAAS_BRANCH={0}'.format(cls.neutron_fwaas_ref)
+        cls.devstack._git_branch = 'csr1kv-fwaas-ci'
+        cls.devstack.clone()
+
+    def test_tempest(self):
+        self.assertFalse(self.devstack.stack())
+
+        tempest_tests = os.path.join(PARENT_FOLDER_PATH,
+                                     'cisco_csr1kv_fwaas_tests.txt')
+        self.assertFalse(self.devstack.run_tempest(tempest_tests))
