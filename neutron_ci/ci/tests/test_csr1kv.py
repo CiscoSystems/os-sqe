@@ -17,6 +17,8 @@
 import os
 from ci import PARENT_FOLDER_PATH
 from ci.lib.test_case import BaseTestCase
+from fabric.api import run
+from fabric.context_managers import settings
 
 LOCALRC = '''
 # +------------------------------------------------------------------------------------------------+
@@ -201,6 +203,11 @@ class Csr1kvFWaaSTest(Csr1kvTest):
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
+        # Copy templates file
+        with settings(host_string=self.devstack.host_string, warn_only=True):
+            run('cp /opt/stack/networking-cisco/networking_cisco/plugins/cisco'
+                '/l3/configdrive_templates/csr1kv_cfg_template '
+                '/opt/stack/data/neutron/cisco/templates')
 
         tempest_tests = os.path.join(PARENT_FOLDER_PATH,
                                      'cisco_csr1kv_fwaas_tests.txt')
