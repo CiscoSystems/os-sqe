@@ -1,6 +1,6 @@
 import os
 import time
-from fabric.api import task, local, env, settings, run, cd
+from fabric.api import task, local, env, settings, run, cd, put
 from common import timed, virtual, get_lab_vm_ip
 from common import logger as log
 from tempest import prepare_devstack, run_tests, run_remote_tests
@@ -135,6 +135,41 @@ def patchset(component="neutron", patch_set=None):
                 project=component,
                 patchset=patch_set))
         run("screen -c {0} -d -m && sleep 1".format(stack_file))
+
+
+def determine_configuration(ip='localhost'):
+    with settings(host_string=ip):
+        folder = os.path.dirname(run('find ~ -name stack.sh'))
+        dest = run('grep -E "^DEST=(.+)$" {0}/local.conf {0}/stackrc | cut -d = -f2'.format(folder))
+
+    d = {'folder': folder, 'DEST': dest.split()[0], 'screen': folder + '/stack-screenrc'}
+    log.info(d)
+    return d
+
+
+@task
+@timed
+def apply_patches(component='neutron', from_folder='~/patches', ip='localhost'):
+    """ Apply all patches found in the given directory to the given component """
+    cfg = determine_configuration(ip=ip)
+    uploaded_folder = '~/uploaded_patches'
+    with settings(host_string=ip):
+        run('mkdir -p ' + uploaded_folder)
+        put(local_path=from_folder + '/*.patch', remote_path=uploaded_folder)
+        with cd(cfg['DEST'] + '/' + component):
+            run('git checkout -- .')
+            run('git checkout master')
+            for name in run('ls {0}/*.patch'.format(uploaded_folder)).split():
+                run('patch -p1 < ' + name)
+    restart_screen(ip=ip)
+
+
+def restart_screen(ip='localhost', screen_cfg=None):
+    """ (Re)start screen with all OS processes attached to it """
+    screen_cfg = screen_cfg or determine_configuration(ip=ip)['screen']
+    with settings(host_string=ip, abort_on_prompts=True, warn_only=True):
+        run('screen -S stack -X quit && sleep 5')
+        run('screen -c {0} -d -m && sleep 1'.format(screen_cfg))
 
 
 def lab_create_delete(lab, phase, cleanup):
