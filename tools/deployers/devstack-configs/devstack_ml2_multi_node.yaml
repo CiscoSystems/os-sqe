@@ -31,16 +31,15 @@ servers:
       ENABLE_TENANT_TUNNELS=False
       Q_ML2_TENANT_NETWORK_TYPE=vlan
       RECLONE=True
-  files:
-    '~/devstack/plugin_conf.ini':
-      |
-        [ml2_cisco]
-        managed_physical_network = physnet1
-        [ml2_mech_cisco_nexus:172.29.172.140]
-        nexus-ci-devstack-openstack-236-124037=1/35
-        ssh_port=22
-        username=admin
-        password=c3l12345
+      [[post-config|/opt/stack/networking-cisco/etc/neutron/plugins/ml2/ml2_conf_cisco.ini]]
+      [ml2_cisco]
+      managed_physical_network = physnet1
+      [ml2_mech_cisco_nexus:172.22.191.18]
+      devstack-server00=1/31
+      devstack-server01=1/32
+      ssh_port=22
+      username=admin
+      password=cisco123
   commands_after:
     |
       sudo ovs-vsctl add-port br-eth1 eth1
@@ -62,6 +61,7 @@ servers:
       Q_PLUGIN=ml2
       Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,cisco_nexus
       Q_ML2_PLUGIN_TYPE_DRIVERS=vlan
+      DATABASE_TYPE=mysql
       Q_PLUGIN_EXTRA_CONF_PATH=(~/devstack)
       Q_PLUGIN_EXTRA_CONF_FILES=(plugin_conf.ini)
       ML2_VLAN_RANGES=physnet1:3160:3199
@@ -72,6 +72,15 @@ servers:
       ENABLE_TENANT_TUNNELS=False
       Q_ML2_TENANT_NETWORK_TYPE=vlan
       RECLONE=True
+      [[post-config|/opt/stack/networking-cisco/etc/neutron/plugins/ml2/ml2_conf_cisco.ini]]
+      [ml2_cisco]
+      managed_physical_network = physnet1
+      [ml2_mech_cisco_nexus:172.22.191.18]
+      devstack-server00=1/31
+      devstack-server01=1/32
+      ssh_port=22
+      username=admin
+      password=cisco123
   commands_after:
     |
       sudo ovs-vsctl add-port br-eth1 eth1
