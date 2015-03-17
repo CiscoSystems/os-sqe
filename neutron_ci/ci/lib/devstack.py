@@ -21,6 +21,7 @@ from fabric.api import cd, run, put
 from fabric.contrib.files import exists
 from fabric.context_managers import settings
 from fabric.operations import get, local
+import time
 from ci import WORKSPACE, BUILD_LOG_PATH, PARENT_FOLDER_PATH
 
 
@@ -226,3 +227,43 @@ class DevStack(object):
                 run('sudo chown -R $(whoami) {0}'.format(dest))
             else:
                 logger.warn('Folder already exists {0}, aborting'.format(dest))
+
+    def screen_session_name(self):
+        with settings(host_string=self.host_string, warn_only=True):
+            return run('screen -ls | grep -P -o "\d+\.stack"')
+
+    def rejoin(self, wait=30):
+        session_name = self.screen_session_name()
+        if session_name:
+            with settings(host_string=self.host_string,
+                          warn_only=True), cd(self._clone_path):
+                run('screen -X -S {0} quit'.format(session_name))
+                run('./rejoin-stack.sh')
+                time.sleep(wait)
+
+    def brew_repo(self, project, ref, merge_refs):
+        logger.info('Brewing repo {0}, ref {1}, merge {2}'.format(
+            project, ref, merge_refs))
+        path = os.path.join('/tmp/', project)
+        review_url = 'https://review.openstack.org/' + project
+        repo_url = 'https://git.openstack.org/' + project + '.git'
+        branch = 'testing'
+        with settings(host_string=self.host_string):
+            if exists(path):
+                run('rm -rf {0}'.format(path))
+            run('mkdir -p {0}'.format(path))
+            with cd(path):
+                logger.info(run('git clone {} .'.format(repo_url)))
+                logger.info(run('git fetch origin {0}'.format(ref)))
+                logger.info(run('git checkout FETCH_HEAD'))
+                logger.info(run('git checkout -b {0}'.format(branch)))
+                for merge_ref in merge_refs:
+                    logger.info(run('git fetch {0} {1}'.format(
+                        review_url, merge_ref)))
+                    logger.info(run('git merge FETCH_HEAD'))
+                logger.info(run('git log --pretty=oneline -n{}'.format(
+                    len(merge_refs) + 1)))
+
+        return path, branch
+
+

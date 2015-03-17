@@ -189,9 +189,17 @@ class Csr1kvFWaaSTest(Csr1kvTest):
     neutron_fwaas_repo = os.environ.get('NEUTRON_FWAAS_REPO')
     neutron_fwaas_ref = os.environ.get('NEUTRON_FWAAS_REF')
 
+    merge_refs = os.environ.get('MERGE_REFS')
+
     @classmethod
     def setUpClass(cls):
         Csr1kvTest.setUpClass()
+
+        if cls.merge_refs:
+            cls.neutron_fwaas_repo, cls.neutron_fwaas_ref = \
+                cls.devstack.brew_repo('openstack/neutron-fwaas',
+                                       cls.neutron_fwaas_ref,
+                                       cls.merge_refs.split(';'))
 
         cls.devstack.localrc += '\nenable_service q-fwaas'
         cls.devstack.localrc += \
@@ -205,9 +213,10 @@ class Csr1kvFWaaSTest(Csr1kvTest):
         self.assertFalse(self.devstack.stack())
         # Copy templates file
         with settings(host_string=self.devstack.host_string, warn_only=True):
-            run('cp /opt/stack/networking-cisco/networking_cisco/plugins/cisco'
-                '/l3/configdrive_templates/csr1kv_cfg_template '
-                '/opt/stack/data/neutron/cisco/templates')
+            run('sudo sudo sed -i '
+                '"s/host-mgmt-intf eth1/host-mgmt-intf eth3/" '
+                '/etc/n1kv/n1kv.conf')
+            run('sudo service n1kv restart')
 
         tempest_tests = os.path.join(PARENT_FOLDER_PATH,
                                      'cisco_csr1kv_fwaas_tests.txt')
