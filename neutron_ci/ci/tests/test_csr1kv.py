@@ -30,6 +30,9 @@ LOCALRC = '''
 NEUTRON_REPO={neutron_repo}
 NEUTRON_BRANCH={neutron_branch}
 
+TEMPEST_REPO=https://github.com/CiscoSystems/tempest.git
+TEMPEST_BRANCH=fwaas-csr1kv
+
 DEBUG=True
 VERBOSE=True
 
@@ -113,7 +116,7 @@ Q_CISCO_PLUGIN_VSM_USERNAME=admin
 Q_CISCO_PLUGIN_VSM_PASSWORD=Sfish123
 Q_CISCO_PLUGIN_VSM_ISO_IMAGE=/home/localadmin/csr1kv/images/n1kv/n1000v-dk9.5.2.1.SK3.1.0.181.iso
 Q_CISCO_PLUGIN_UVEM_DEB_IMAGE=/home/localadmin/csr1kv/images/n1kv/nexus_1000v_vem-12.04-5.2.1.SK3.1.0.181.S0-0gdb.deb
-#Q_CISCO_PLUGIN_HOST_MGMT_INTF=eth0
+Q_CISCO_PLUGIN_HOST_MGMT_INTF=eth1
 #Q_CISCO_PLUGIN_UPSTREAM_INTF=eth1
 #Q_CISCO_PLUGIN_UPLINK2_INTF=eth1
 NOVA_USE_QUANTUM_API=v2
@@ -212,11 +215,11 @@ class Csr1kvFWaaSTest(Csr1kvTest):
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
         # Copy templates file
-        with settings(host_string=self.devstack.host_string, warn_only=True):
-            run('sudo sudo sed -i '
-                '"s/host-mgmt-intf eth1/host-mgmt-intf eth3/" '
-                '/etc/n1kv/n1kv.conf')
-            run('sudo service n1kv restart')
+        # with settings(host_string=self.devstack.host_string, warn_only=True):
+        #     run('sudo sudo sed -i '
+        #         '"s/host-mgmt-intf eth0/host-mgmt-intf eth1/" '
+        #         '/etc/n1kv/n1kv.conf')
+        #     run('sudo service n1kv restart')
 
         tempest_tests = os.path.join(PARENT_FOLDER_PATH,
                                      'cisco_csr1kv_fwaas_tests.txt')
