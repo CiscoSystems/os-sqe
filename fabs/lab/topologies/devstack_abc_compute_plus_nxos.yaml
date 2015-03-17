@@ -4,7 +4,7 @@ servers:
     <name>lab-{lab_id}-abc</name>
     <memory unit='GiB'>8</memory>
     <currentMemory unit='GiB'>8</currentMemory>
-    <vcpu placement='static'>2</vcpu>
+    <vcpu placement='static'>8</vcpu>
     <os>
       <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
       <boot dev='hd'/>
@@ -163,12 +163,14 @@ paas:
       - deploy_devstack with devstack.local.conf.aio4.cisco_nexus
       - sudo pip install ncclient==0.4.2
       - sudo ovs-vsctl add-port br-eth1 eth1
+      - sudo ip l s eth1 up
   - net: lab-{lab_id}-v6
     mac: ee:{lab_id:02}:00:02:00:01
     cmd:
       - sudo hostname compute-2
       - deploy_devstack with devstack.local.conf.compute_only.cisco_nexus
       - sudo ovs-vsctl add-port br-eth1 eth1
+      - sudo ip l s eth1 up
   - net: lab-{lab_id}-v6
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
@@ -181,3 +183,5 @@ paas_pre:
     - sudo brctl addbr br-{lab_id}-compute
     - sudo brctl addif br-{lab_id}-compute eth1
     - sudo ip l s br-{lab_id}-compute up
+    - sudo ip l s eth1 up
+    - sudo ip l s eth0 up
