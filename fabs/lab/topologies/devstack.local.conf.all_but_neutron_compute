@@ -3,7 +3,7 @@ DEST=${HOME}/os
 DATA_DIR=${DEST}/data
 SERVICE_DIR=${DEST}/status
 
-IMAGE_URLS="http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64.tar.gz"
+IMAGE_URLS="http://172.29.173.233/ubuntu-14.04-server-cloudimg-amd64.tar.gz"
 
 GIT_BASE=https://git.openstack.org
 
