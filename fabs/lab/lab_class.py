@@ -124,7 +124,7 @@ class MyLab:
 
     def create_disk(self, image_local, domain_name):
         disk_local = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='qcow2')
-        local('qemu-img create -f qcow2 -b {i} {d} 8G'.format(d=disk_local, i=image_local))
+        local('qemu-img create -f qcow2 -b {i} {d} 15G'.format(d=disk_local, i=image_local))
         disk_cloud_init = None
         if 'disk1' in image_local:
             disk_cloud_init = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='cloud_init.raw')
@@ -257,7 +257,7 @@ class MyLab:
             with settings(warn_only=True):
                 run('testr init'.format(tempest_re))
                 run('source .tox/venv/bin/activate && testr run {0}'.format(tempest_re))
-                run('sudo pip install python-junitxml')
+                run('sudo pip install junitxml')
                 run('testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=tempest_results.xml')
                 get(remote_path='tempest_results.xml', local_path='tempest_results.xml')
 
