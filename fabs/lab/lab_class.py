@@ -261,7 +261,7 @@ class MyLab:
         with cd(tempest_dir):
             with settings(warn_only=True):
                 run('testr init'.format(tempest_re))
-                run('testr run {0}'.format(tempest_re))
+                run('source .tox/venv/bin/activate && testr run {0}'.format(tempest_re))
                 run('testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=tempest_results.xml')
                 get(remote_path='tempest_results.xml', local_path='tempest_results.xml')
 
