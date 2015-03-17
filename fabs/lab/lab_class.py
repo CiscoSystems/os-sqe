@@ -200,13 +200,8 @@ class MyLab:
 
     def deploy_devstack(self, cmd, ip):
         conf_local_path = os.path.join(lab.TOPOLOGIES_DIR, cmd.split(' with ')[-1])
-        if 'all_but_compute' in conf_local_path:
+        if not self.control_ip:
             self.control_ip = ip
-        if 'all_but_neutron_compute' in conf_local_path:
-            self.control_ip = ip
-        if 'only' in conf_local_path:
-            if not self.control_ip:
-                raise Exception('Trying to deploy xxx_only node when control node ip is not known')
 
         with open(conf_local_path) as f:
             conf_as_string = f.read()
