@@ -147,7 +147,10 @@ networks:
     <name>lab-{lab_id}-v6</name>
     <bridge name='br-{lab_id}-v6' />
     <forward mode="nat"/>
-    <ip family="ipv6" address='2001:db8:{lab_id}::1' prefix='48'>
+    <ip address='10.{lab_id}.0.1' netmask='255.255.255.0'>
+      <dhcp>
+        <range start='10.{lab_id}.0.2' end='10.{lab_id}.0.254' />
+      </dhcp>
     </ip>
   </network>
 
@@ -155,11 +158,21 @@ paas:
   - net: lab-{lab_id}-v6
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
-      - deploy_devstack with local.conf.all_but_compute.cisco_nexus
+      - ssh-keyscan -t rsa 172.22.191.18 >> ~/.ssh/known_hosts
+      - sudo hostname compute-1
+      - deploy_devstack with devstack.local.conf.aio4.cisco_nexus
+      - sudo pip install ncclient==0.4.2
+      - sudo ovs-vsctl add-port br-eth1 eth1
   - net: lab-{lab_id}-v6
     mac: ee:{lab_id:02}:00:02:00:01
     cmd:
-      - deploy_devstack with local.conf.compute on lab-{lab_id}-v6 mac ee:{lab_id:02}:00:01:00:01
+      - sudo hostname compute-2
+      - deploy_devstack with devstack.local.conf.compute_only.cisco_nexus
+      - sudo ovs-vsctl add-port br-eth1 eth1
+  - net: lab-{lab_id}-v6
+    mac: ee:{lab_id:02}:00:01:00:01
+    cmd:
+      - run_tempest 'TestNetworkBasicOps'
 
 paas_pre:
     - sudo brctl addbr br-{lab_id}-abc
