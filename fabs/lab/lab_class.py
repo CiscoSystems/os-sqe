@@ -259,7 +259,7 @@ class MyLab:
                 run('source .tox/venv/bin/activate && testr run {0}'.format(tempest_re))
                 run('sudo pip install junitxml')
                 run('testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=tempest_results.xml')
-                get(remote_path='tempest_results.xml', local_path='tempest_results.xml')
+        get(remote_path=tempest_dir + '/tempest_results.xml', local_path='tempest_results.xml')
 
     def create_lab(self, phase):
         """Possible phases: lab paas_pre, net, dom, paas, lab does all in chain"""
