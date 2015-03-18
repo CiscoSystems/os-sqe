@@ -150,6 +150,8 @@ class MyLab:
 
             if net == 'local':
                 ip = 'local'
+            elif net == 'EUI-64':
+                ip = lab.ip_for_mac_and_prefix(mac=mac, prefix='2001:db8:{lab_id}::/64'.format(lab_id=self.lab_id))
             else:
                 ip = lab.ip_for_mac_by_looking_at_libvirt_leases(net=net, mac=mac)
                 if not ip:
@@ -160,7 +162,7 @@ class MyLab:
                 if ip == 'local':
                     local(cmd)
                 else:
-                    with settings(host_string='ubuntu@' + ip, password='ubuntu', connection_attempts=5, warn_only=False):
+                    with settings(host_string='ubuntu@' + ip, password='ubuntu', connection_attempts=50, warn_only=False):
                         if cmd.startswith('deploy_devstack'):
                             self.deploy_devstack(cmd, ip)
                         elif cmd.startswith('deploy_dibbler'):
