@@ -30,8 +30,8 @@ LOCALRC = '''
 NEUTRON_REPO={neutron_repo}
 NEUTRON_BRANCH={neutron_branch}
 
-TEMPEST_REPO=https://github.com/CiscoSystems/tempest.git
-TEMPEST_BRANCH=fwaas-csr1kv
+TEMPEST_REPO={tempest_repo}
+TEMPEST_BRANCH={tempest_ref}
 
 DEBUG=True
 VERBOSE=True
@@ -156,6 +156,10 @@ class Csr1kvTest(BaseTestCase):
     net_cisco_repo = os.environ.get('NET_CISCO_REPO')
     net_cisco_ref = os.environ.get('NET_CISCO_REF')
 
+    tempest_repo = os.environ.get(
+        'TEMPEST_REPO', 'https://git.openstack.org/openstack/tempest.git')
+    tempest_ref = os.environ.get('TEMPEST_REF', 'master')
+
     @classmethod
     def setUpClass(cls):
         BaseTestCase.setUpClass()
@@ -164,7 +168,9 @@ class Csr1kvTest(BaseTestCase):
             neutron_repo=cls.neutron_repo,
             neutron_branch=cls.neutron_ref,
             net_cisco_repo=cls.net_cisco_repo,
-            net_cisco_ref=cls.net_cisco_ref)
+            net_cisco_ref=cls.net_cisco_ref,
+            tempest_repo=cls.tempest_repo,
+            tempest_ref=cls.tempest_ref)
 
         cls.devstack.localrc = localrc
         cls.devstack._git_url = 'https://github.com/CiscoSystems/devstack.git'
