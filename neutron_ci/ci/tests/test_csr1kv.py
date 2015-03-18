@@ -17,6 +17,8 @@
 import os
 from ci import PARENT_FOLDER_PATH
 from ci.lib.test_case import BaseTestCase
+from fabric.api import run
+from fabric.context_managers import settings
 
 LOCALRC = '''
 # +------------------------------------------------------------------------------------------------+
@@ -27,6 +29,9 @@ LOCALRC = '''
 
 NEUTRON_REPO={neutron_repo}
 NEUTRON_BRANCH={neutron_branch}
+
+TEMPEST_REPO={tempest_repo}
+TEMPEST_BRANCH={tempest_ref}
 
 DEBUG=True
 VERBOSE=True
@@ -111,7 +116,7 @@ Q_CISCO_PLUGIN_VSM_USERNAME=admin
 Q_CISCO_PLUGIN_VSM_PASSWORD=Sfish123
 Q_CISCO_PLUGIN_VSM_ISO_IMAGE=/home/localadmin/csr1kv/images/n1kv/n1000v-dk9.5.2.1.SK3.1.0.181.iso
 Q_CISCO_PLUGIN_UVEM_DEB_IMAGE=/home/localadmin/csr1kv/images/n1kv/nexus_1000v_vem-12.04-5.2.1.SK3.1.0.181.S0-0gdb.deb
-#Q_CISCO_PLUGIN_HOST_MGMT_INTF=eth0
+Q_CISCO_PLUGIN_HOST_MGMT_INTF=eth1
 #Q_CISCO_PLUGIN_UPSTREAM_INTF=eth1
 #Q_CISCO_PLUGIN_UPLINK2_INTF=eth1
 NOVA_USE_QUANTUM_API=v2
@@ -151,6 +156,10 @@ class Csr1kvTest(BaseTestCase):
     net_cisco_repo = os.environ.get('NET_CISCO_REPO')
     net_cisco_ref = os.environ.get('NET_CISCO_REF')
 
+    tempest_repo = os.environ.get(
+        'TEMPEST_REPO', 'https://git.openstack.org/openstack/tempest.git')
+    tempest_ref = os.environ.get('TEMPEST_REF', 'master')
+
     @classmethod
     def setUpClass(cls):
         BaseTestCase.setUpClass()
@@ -159,7 +168,9 @@ class Csr1kvTest(BaseTestCase):
             neutron_repo=cls.neutron_repo,
             neutron_branch=cls.neutron_ref,
             net_cisco_repo=cls.net_cisco_repo,
-            net_cisco_ref=cls.net_cisco_ref)
+            net_cisco_ref=cls.net_cisco_ref,
+            tempest_repo=cls.tempest_repo,
+            tempest_ref=cls.tempest_ref)
 
         cls.devstack.localrc = localrc
         cls.devstack._git_url = 'https://github.com/CiscoSystems/devstack.git'
@@ -187,9 +198,17 @@ class Csr1kvFWaaSTest(Csr1kvTest):
     neutron_fwaas_repo = os.environ.get('NEUTRON_FWAAS_REPO')
     neutron_fwaas_ref = os.environ.get('NEUTRON_FWAAS_REF')
 
+    merge_refs = os.environ.get('MERGE_REFS')
+
     @classmethod
     def setUpClass(cls):
         Csr1kvTest.setUpClass()
+
+        if cls.merge_refs:
+            cls.neutron_fwaas_repo, cls.neutron_fwaas_ref = \
+                cls.devstack.brew_repo('openstack/neutron-fwaas',
+                                       cls.neutron_fwaas_ref,
+                                       cls.merge_refs.split(';'))
 
         cls.devstack.localrc += '\nenable_service q-fwaas'
         cls.devstack.localrc += \
@@ -201,6 +220,12 @@ class Csr1kvFWaaSTest(Csr1kvTest):
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
+        # Copy templates file
+        # with settings(host_string=self.devstack.host_string, warn_only=True):
+        #     run('sudo sudo sed -i '
+        #         '"s/host-mgmt-intf eth0/host-mgmt-intf eth1/" '
+        #         '/etc/n1kv/n1kv.conf')
+        #     run('sudo service n1kv restart')
 
         tempest_tests = os.path.join(PARENT_FOLDER_PATH,
                                      'cisco_csr1kv_fwaas_tests.txt')
