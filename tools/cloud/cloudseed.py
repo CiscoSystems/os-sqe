@@ -37,6 +37,8 @@ class SeedStorage:
         filtered_nets = [i for i in nets if i.keys()[0] in used_nets]
         ifupdown = []
         for num, net in enumerate(filtered_nets):
+            if "bridge" in net:
+                break
             conf_net_name = net.keys()[0]
             net_name = make_network_name(self.lab_id, conf_net_name)
             network = Network.pool[net_name][1]

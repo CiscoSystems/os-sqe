@@ -22,7 +22,7 @@ parser.add_argument('-b', action='store', dest='boot', default="cloudimg",
 parser.add_argument('-t', action='store', dest='topology', default=None,
                     choices=["aio", "2role", "fullha", "devstack", "standalone",
                              "aio6", "devstack6", "devstack64", "devstack_multinode",
-                             "2role6", "fullha6"],
+                             "2role6", "fullha6", "devstack_nexus"],
                     help='Choose topology')
 parser.add_argument('-c', dest='topoconf', type=argparse.FileType('r'), default=None,
                     help='Topology configuration file')
