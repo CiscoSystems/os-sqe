@@ -80,7 +80,7 @@ password = {VSM_PASSWORD}
 [[post-config|/etc/neutron/neutron.conf]]
 [DEFAULT]
 # Configure service plugins for L3 and to fetch Cisco Policy Profiles.
-service_plugins=neutron.plugins.ml2.drivers.cisco.n1kv.policy_profile_service.PolicyProfilePlugin,router
+service_plugins=networking_cisco.plugins.ml2.drivers.cisco.n1kv.policy_profile_service.PolicyProfilePlugin,router
 '''
 
 
