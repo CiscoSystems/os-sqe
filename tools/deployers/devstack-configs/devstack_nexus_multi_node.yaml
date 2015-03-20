@@ -26,7 +26,7 @@ servers:
       Q_PLUGIN_EXTRA_CONF_FILES=(ml2_conf_cisco.ini)
       ML2_VLAN_RANGES=physnet1:3160:3199
       PHYSICAL_NETWORK=physnet1
-
+      OVS_PHYSICAL_BRIDGE=br-eth1
       TENANT_VLAN_RANGE=3160:3199
       ENABLE_TENANT_VLANS=True
       ENABLE_TENANT_TUNNELS=False
