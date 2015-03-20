@@ -6,16 +6,11 @@ servers:
       NEUTRON_BRANCH=master
       HOST_IP={control_node_ip}
       MULTI_HOST=1
-      disable_service n-net heat h-api h-api-cfn h-api-cw h-eng cinder c-api c-sch c-vol n-novnc
-      enable_service neutron
-      enable_service tempest
-      enable_service q-svc
-      enable_service q-agt
-      enable_service q-dhcp
-      enable_service q-l3
-      enable_service q-meta
-      enable_service n-cpu
-      enable_service horizon
+      enable_service g-api g-reg key n-api n-crt n-obj n-cpu n-cond cinder c-sch
+      enable_service c-api c-vol n-sch n-novnc n-xvnc n-cauth horizon rabbit
+      enable_service mysql q-svc q-agt q-l3 q-dhcp q-meta q-lbaas q-vpn q-fwaas q-metering neutron
+      disable_service n-net
+      enable_service s-proxy s-object s-container s-account
       enable_plugin networking-cisco https://git.openstack.org/stackforge/networking-cisco.git
       enable_service net-cisco
       LIBVIRT_TYPE=qemu
