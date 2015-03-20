@@ -26,10 +26,10 @@ class Lab:
 
     def create_networks(self):
         for num, net in enumerate(self.topo["networks"]):
-            if "bridge" in net:
-                self.create_bridges(net["bridge"])
-                break
             net_name = net.keys()[0]
+            if "bridge" in net_name:
+                self.create_bridges(net[net_name])
+                continue
             net_shift = num
             if "ipv" in net[net_name].keys() and net[net_name]["ipv"] == 6:
                 net_class = Network6

@@ -47,7 +47,8 @@ servers:
       sudo ovs-vsctl add-port br-eth1 eth1
       sudo pip install ncclient==0.4.2
       ssh-keyscan -t rsa 172.22.191.18 >> ~/.ssh/known_hosts
-      #sudo ovs-vsctl add-port br-ex eth2
+      sudo ip l s eth2 up
+      sudo ovs-vsctl add-port br-ex eth2
 -
   local_conf:
     |

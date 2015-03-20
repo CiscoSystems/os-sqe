@@ -9,7 +9,8 @@ servers:
       cpu: 1
       networks:
         - admin
-        - bridge
+        - intbridge
+        - extbridge
 networks:
   - admin:
       dhcp: true
@@ -17,6 +18,8 @@ networks:
       nat: true
       dns:
         devstack: 2
-  - bridge:
+  - intbridge:
       - eth1
       - eth0
+  - extbridge:
+      - p1p3
