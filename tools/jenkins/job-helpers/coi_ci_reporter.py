@@ -398,12 +398,12 @@ def pretty_report_for_mail(data, bug_lists):
     </script>
     </br> Hi </br></br>
 
-    <strong>Functional Product regression: <p style='color:green'>no regression</p></strong> </br>
+    <strong>Functional Product regression:<p style='color:green'>no regression</p></strong> </br>
     Today we had stable results. Failed tests were reran locally, all passed. </br>
     Investigated # failed tests. # bugs were created</br></br>
     Bug number ###### - affected # tests</br></br>
 
-    <strong>Open bugs for new features:</strong>
+    <strong>Open bugs for new features:</strong></br>
     """
     for bug_stat, amount in bug_stats.iteritems():
         main_template += 'Bug # <a href="https://bugs.launchpad.net/tempest/+bug/{bugNo}">{bugNo}</a>  -  affected {amount} tests</br>\n'.format(bugNo=bug_stat, amount=amount)
@@ -447,7 +447,11 @@ def pretty_report_for_mail(data, bug_lists):
             else:
                 main_template += "<p style='color:red'><strong>!!!!!FAILED TO TEST!!!!!</strong></p>"
 
-    main_template += "</br><h2>Bug List</h2></br>"
+    main_template += """</br>
+    Thanks,
+    Eugene
+    </br>
+    </br><h2>Bug List</h2></br>"""
     if bug_lists:
         for name, bug_list in bug_lists.iteritems():
             bug_table = ""
