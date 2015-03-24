@@ -6,7 +6,7 @@ servers:
       storage: 60
       add_disks:
       ram: 8
-      cpu: 1
+      cpu: 8
       networks:
         - admin
         - intbridge
@@ -19,7 +19,7 @@ networks:
       dns:
         devstack: 2
   - intbridge:
-      - eth1
       - eth0
+      - eth1
   - extbridge:
       - p1p3
