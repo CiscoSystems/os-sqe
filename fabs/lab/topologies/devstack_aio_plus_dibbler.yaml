@@ -170,7 +170,7 @@ paas:
   - net: lab-{lab_id}-10.{lab_id}.0
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
-      - deploy_devstack with local.conf.Dane
+      - deploy_devstack with devstack.local.conf.aio4
       - put_config user_data.txt ~
       - run_tempest 'v6|V6'
 #      - source devstack/openrc admin && neutron subnet-create --name public_ipv6_subnet --gateway 2001:420:2c50:2015:6aef:bdff:fef6:56ca --ip-version 6 --enable-dhcp --ipv6-ra-mode slaac --ipv6-address-mode slaac public 2001:420:2c50:2015::/64
