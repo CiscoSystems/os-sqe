@@ -172,9 +172,10 @@ paas:
     cmd:
       - deploy_devstack with local.conf.Dane
       - put_config user_data.txt ~
-      - source devstack/openrc admin && neutron subnet-create --name public_ipv6_subnet --gateway 2001:420:2c50:2015:6aef:bdff:fef6:56ca --ip-version 6 --enable-dhcp --ipv6-ra-mode slaac --ipv6-address-mode slaac public 2001:420:2c50:2015::/64
-      - source devstack/openrc demo && neutron subnet-create --name public_ipv6_subnet --gateway 2001:420:2c50:2015:6aef:bdff:fef6:56ca --ip-version 6 --enable-dhcp --ipv6-ra-mode slaac --ipv6-address-mode slaac public 2001:420:2c50:2015::/64
-      - source devstack/openrc demo && neutron router-interface-add router1 private_ipv6_subnet
-      - source devstack/openrc demo && neutron router-gateway-clear router1
-      - source devstack/openrc demo && neutron router-gateway-set router1 public
-      - source devstack/openrc demo && nova boot my_ubuntu_vm --flavor 3 --image ubuntu-14.04-server-cloudimg-amd64 --user-data ~/user_date.txt --nic net-id=`find_network_id_by_name private`
+      - run_tempest 'v6|V6'
+#      - source devstack/openrc admin && neutron subnet-create --name public_ipv6_subnet --gateway 2001:420:2c50:2015:6aef:bdff:fef6:56ca --ip-version 6 --enable-dhcp --ipv6-ra-mode slaac --ipv6-address-mode slaac public 2001:420:2c50:2015::/64
+#      - source devstack/openrc demo && neutron subnet-create --name public_ipv6_subnet --gateway 2001:420:2c50:2015:6aef:bdff:fef6:56ca --ip-version 6 --enable-dhcp --ipv6-ra-mode slaac --ipv6-address-mode slaac public 2001:420:2c50:2015::/64
+#      - source devstack/openrc demo && neutron router-interface-add router1 private_ipv6_subnet
+#      - source devstack/openrc demo && neutron router-gateway-clear router1
+#      - source devstack/openrc demo && neutron router-gateway-set router1 public
+#      - source devstack/openrc demo && nova boot my_ubuntu_vm --flavor 3 --image ubuntu-14.04-server-cloudimg-amd64 --user-data ~/user_date.txt --nic net-id=`find_network_id_by_name private`
