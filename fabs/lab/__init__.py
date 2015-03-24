@@ -49,3 +49,16 @@ def ip_for_mac_by_looking_at_libvirt_leases(net, mac):
             return ans.split(' ')[2]
         else:
             return ans
+
+
+def ip_for_mac_and_prefix(mac, prefix):
+    import netaddr
+
+    if netaddr.valid_ipv4(prefix):
+        raise TypeError('Unable to generate IP address by EUI64 for IPv4 prefix')
+    try:
+        eui64 = int(netaddr.EUI(mac).eui64())
+        prefix = netaddr.IPNetwork(prefix)
+        return str(netaddr.IPAddress(prefix.first + eui64 ^ (1 << 57)))
+    except (ValueError, netaddr.AddrFormatError):
+        raise TypeError('Bad prefix ({0}) or mac ({1}) for IPv6 '.format(prefix, mac))

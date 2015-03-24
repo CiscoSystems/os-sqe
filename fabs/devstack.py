@@ -13,7 +13,7 @@ env.update(DEFAULT_SETTINGS)
 __all__ = ['prepare', 'install', 'setup',
            'run_test_original_file', 'run_test_custom_file',
            'run_test_ready_file', 'run_test_remote',
-           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler', 'plus_nxos']
+           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler', 'plus_nxos', 'neutron']
 
 
 @task
@@ -172,11 +172,11 @@ def restart_screen(ip='localhost', screen_cfg=None):
         run('screen -c {0} -d -m && sleep 1'.format(screen_cfg))
 
 
-def lab_create_delete(lab, phase, cleanup):
+def lab_create_delete(lab_obj, phase, cleanup):
     if not cleanup != 'do not cleanup':
-        lab.create_lab(phase=phase)
+        lab_obj.create_lab(phase=phase)
     else:
-        lab.delete_lab()
+        lab_obj.delete_lab()
 
 
 @task
@@ -201,3 +201,12 @@ def plus_nxos(phase='lab', cleanup='do not cleanup'):
     """abc + compute, Cisco ML2 with external nxos switch"""
     lab = MyLab(lab_id=77, topology_name='devstack_abc_compute_plus_nxos')
     lab_create_delete(lab, phase, cleanup)
+
+
+@task
+@timed
+def neutron(lab_id,  cleanup='do not cleanup'):
+    """Run single machine with neutron only"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='neutron6',)
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
