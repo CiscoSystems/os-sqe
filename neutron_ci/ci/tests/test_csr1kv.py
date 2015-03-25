@@ -244,6 +244,7 @@ service_provider=VPN:cisco:neutron_vpnaas.services.vpn.service_drivers.cisco_ips
            NEUTRON_VPNAAS_BRANCH=cls.neutron_vpnaas_ref,
            Q_PLUGIN_EXTRA_CONF_PATH='/opt/stack/neutron-vpnaas/etc',
            Q_PLUGIN_EXTRA_CONF_FILES='neutron_vpnaas.conf')
+        cls.devstack._git_branch = 'csr1kv-ci'
         cls.devstack.clone()
 
     def test_tempest(self):
