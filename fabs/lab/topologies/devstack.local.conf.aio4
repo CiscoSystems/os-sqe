@@ -20,6 +20,6 @@ ADMIN_PASSWORD=nova
 
 ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,cinder,c-sch,c-api,c-vol,n-sch,n-novnc,n-xvnc,n-cauth,horizon,rabbit, mysql
 disable_service n-net
-enable_service q-svc q-agt q-l3 q-dhcp q-meta neutron tempest
+enable_service q-svc q-agt q-l3 q-dhcp q-meta q-metering neutron tempest
 TEMPEST_REPO=https://github.com/cisco-openstack/tempest.git
 TEMPEST_BRANCH=proposed
