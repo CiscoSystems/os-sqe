@@ -396,9 +396,9 @@ def pretty_report_for_mail(data, bug_lists):
     main_template = """
     <script>
     </script>
-    </br> Hi </br></br>
+    Hi </br></br>
 
-    <strong>Functional Product regression:<p style='color:green'>no regression</p></strong> </br>
+    <strong>Functional Product regression: <font style='color:green'>no regression</font>.</strong> </br>
     Today we had stable results. Failed tests were reran locally, all passed. </br>
     Investigated # failed tests. # bugs were created</br></br>
     Bug number ###### - affected # tests</br></br>
@@ -408,7 +408,7 @@ def pretty_report_for_mail(data, bug_lists):
     for bug_stat, amount in bug_stats.iteritems():
         main_template += 'Bug # <a href="https://bugs.launchpad.net/tempest/+bug/{bugNo}">{bugNo}</a>  -  affected {amount} tests</br>\n'.format(bugNo=bug_stat, amount=amount)
 
-    link_to_results = """<tr><a href="http://wikicentral.cisco.com/display/OPENSTACK/Nightly+testing"><strong>[Nightly Testing Details]</strong></a>
+    link_to_results = """</br><tr><a href="http://wikicentral.cisco.com/display/OPENSTACK/Nightly+testing"><strong>[Nightly Testing Details]</strong></a>
  </br> </br>"""
     main_template += link_to_results
     main_template += pretty_report(data)
@@ -448,7 +448,7 @@ def pretty_report_for_mail(data, bug_lists):
                 main_template += "<p style='color:red'><strong>!!!!!FAILED TO TEST!!!!!</strong></p>"
 
     main_template += """</br>
-    Thanks,
+    Thanks,</br>
     Eugene
     </br>
     </br><h2>Bug List</h2></br>"""
