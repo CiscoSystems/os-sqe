@@ -234,12 +234,12 @@ enable_service q-vpn
 NEUTRON_VPNAAS_REPO={NEUTRON_VPNAAS_REPO}
 NEUTRON_VPNAAS_BRANCH={NEUTRON_VPNAAS_BRANCH}
 
-Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
-Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
+#Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
+#Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
 
-[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
-[service_providers]
-service_provider=VPN:cisco:neutron_vpnaas.services.vpn.service_drivers.cisco_ipsec.CiscoCsrIPsecVPNDriver:default
+#[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
+#[service_providers]
+#service_provider=VPN:cisco:neutron_vpnaas.services.vpn.service_drivers.cisco_ipsec.CiscoCsrIPsecVPNDriver:default
 """.format(NEUTRON_VPNAAS_REPO=cls.neutron_vpnaas_repo,
            NEUTRON_VPNAAS_BRANCH=cls.neutron_vpnaas_ref,
            Q_PLUGIN_EXTRA_CONF_PATH='/opt/stack/neutron-vpnaas/etc',
