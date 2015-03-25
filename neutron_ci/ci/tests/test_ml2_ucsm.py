@@ -18,6 +18,8 @@ import os
 from ci import PARENT_FOLDER_PATH
 from ci.lib.test_case import BaseTestCase
 
+from fabric.operations import local
+
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_plugin_tests.txt')
 Q_PLUGIN_EXTRA_CONF_PATH = \
@@ -102,6 +104,10 @@ class ML2UCSMTest(BaseTestCase):
 
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()
+        script = 'python ' + os.path.join(
+            PARENT_FOLDER_PATH,
+            'files/ucsm/ucsm_delete_admin_sessions.py')
+        local(script)
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
