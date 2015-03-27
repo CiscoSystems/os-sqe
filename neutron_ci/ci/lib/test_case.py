@@ -88,7 +88,7 @@ class BaseTestCase(TestCase):
         super(BaseTestCase, self).setUp()
         if not OFFLINE_NODE_WHEN_COMPLETE:
             self.devstack.unstack()
-            self.devstack.kill_python_apps()
+            #self.devstack.kill_python_apps()
             self.devstack.clear()
             self.devstack.clone_repositories(self.devstack._cloned_repos_path)
             self.devstack.rsync_repositories(self.devstack._cloned_repos_path)
