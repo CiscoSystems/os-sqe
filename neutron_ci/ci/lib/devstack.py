@@ -266,4 +266,8 @@ class DevStack(object):
 
         return path, branch
 
-
+    def kill_python_apps(self):
+        logger.info('Kill python apps')
+        with settings(host_string=self.host_string, warn_only=True):
+            run("for pid in `ps -ef | grep python | "
+                "awk '{print $2}'`; do  sudo kill -9 $pid; done")
