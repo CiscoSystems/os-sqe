@@ -229,7 +229,7 @@ class Csr1kvVPNaaSTest(Csr1kvTest):
 
         cls.devstack.localrc += """
 
-enable_service q-vpn
+enable_service cisco_vpn
 
 NEUTRON_VPNAAS_REPO={NEUTRON_VPNAAS_REPO}
 NEUTRON_VPNAAS_BRANCH={NEUTRON_VPNAAS_BRANCH}
