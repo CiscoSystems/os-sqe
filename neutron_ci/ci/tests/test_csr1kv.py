@@ -198,17 +198,9 @@ class Csr1kvFWaaSTest(Csr1kvTest):
     neutron_fwaas_repo = os.environ.get('NEUTRON_FWAAS_REPO')
     neutron_fwaas_ref = os.environ.get('NEUTRON_FWAAS_REF')
 
-    merge_refs = os.environ.get('MERGE_REFS')
-
     @classmethod
     def setUpClass(cls):
         Csr1kvTest.setUpClass()
-
-        if cls.merge_refs:
-            cls.neutron_fwaas_repo, cls.neutron_fwaas_ref = \
-                cls.devstack.brew_repo('openstack/neutron-fwaas',
-                                       cls.neutron_fwaas_ref,
-                                       cls.merge_refs.split(';'))
 
         cls.devstack.localrc += '\nenable_service q-fwaas'
         cls.devstack.localrc += \
@@ -220,13 +212,44 @@ class Csr1kvFWaaSTest(Csr1kvTest):
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
-        # Copy templates file
-        # with settings(host_string=self.devstack.host_string, warn_only=True):
-        #     run('sudo sudo sed -i '
-        #         '"s/host-mgmt-intf eth0/host-mgmt-intf eth1/" '
-        #         '/etc/n1kv/n1kv.conf')
-        #     run('sudo service n1kv restart')
 
         tempest_tests = os.path.join(PARENT_FOLDER_PATH,
                                      'cisco_csr1kv_fwaas_tests.txt')
+        self.assertFalse(self.devstack.run_tempest(tempest_tests))
+
+
+class Csr1kvVPNaaSTest(Csr1kvTest):
+
+    neutron_vpnaas_repo = os.environ.get('NEUTRON_VPNAAS_REPO')
+    neutron_vpnaas_ref = os.environ.get('NEUTRON_VPNAAS_REF')
+
+    @classmethod
+    def setUpClass(cls):
+        Csr1kvTest.setUpClass()
+
+        cls.devstack.localrc += """
+
+enable_service cisco_vpn
+
+NEUTRON_VPNAAS_REPO={NEUTRON_VPNAAS_REPO}
+NEUTRON_VPNAAS_BRANCH={NEUTRON_VPNAAS_BRANCH}
+
+#Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
+#Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
+
+#[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
+#[service_providers]
+#service_provider=VPN:cisco:neutron_vpnaas.services.vpn.service_drivers.cisco_ipsec.CiscoCsrIPsecVPNDriver:default
+""".format(NEUTRON_VPNAAS_REPO=cls.neutron_vpnaas_repo,
+           NEUTRON_VPNAAS_BRANCH=cls.neutron_vpnaas_ref,
+           Q_PLUGIN_EXTRA_CONF_PATH='/opt/stack/neutron-vpnaas/etc',
+           Q_PLUGIN_EXTRA_CONF_FILES='neutron_vpnaas.conf')
+        cls.devstack._git_branch = 'csr1kv-ci'
+        cls.devstack.clone()
+
+    def test_tempest(self):
+        self.assertFalse(self.devstack.stack())
+
+        tempest_tests = os.path.join(PARENT_FOLDER_PATH,
+                                     'cisco_vpn_tests.txt')
         self.assertFalse(self.devstack.run_tempest(tempest_tests))
