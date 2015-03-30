@@ -13,7 +13,7 @@ env.update(DEFAULT_SETTINGS)
 __all__ = ['prepare', 'install', 'setup',
            'run_test_original_file', 'run_test_custom_file',
            'run_test_ready_file', 'run_test_remote',
-           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler', 'plus_nxos', 'neutron']
+           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler', 'plus_nxos', 'neutron', 'mercury']
 
 
 @task
@@ -209,4 +209,12 @@ def neutron(lab_id,  cleanup='do not cleanup'):
     """Run single machine with neutron only"""
 
     lab = MyLab(lab_id=lab_id, topology_name='neutron6',)
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+@task
+@timed
+def mercury(lab_id,  cleanup='do not cleanup'):
+    """Run reference topology for Mercury"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='mercury',)
     lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)

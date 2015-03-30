@@ -73,17 +73,18 @@ class MyLab:
         self.delete_of_something(_conn().listAllNetworks)
         local('rm -f {0}/lab-{1}*'.format(lab.DISKS_DIR, self.lab_id))
         for bridge in local("brctl show | grep 8000 | grep {0} | awk '{{print $1}}'".format(self.lab_id), capture=True).split('\n'):
-            local('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
+            if bridge:
+                local('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
 
     def create_networks(self):
         log.info('\n\nStarting IaaS phase- creating nets')
         for network_template in self.topology['networks']:
             xml = network_template.format(lab_id=self.lab_id)
+            self.save_xml(name='net-'+self.search_for(self.name_re, xml), xml=xml)
             if not self.is_only_xml:
                 net = _conn().networkDefineXML(xml)
                 net.create()
                 net.setAutostart(True)
-            self.save_xml(name=self.search_for(self.name_re, xml), xml=xml)
 
     def create_domains(self):
         log.info('\n\nStarting IaaS phase- creating VMs')
