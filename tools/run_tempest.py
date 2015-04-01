@@ -21,7 +21,7 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
         venv='-V' if is_venv else '-N',
         filter_or_list='--load-list=list.txt' if tempest_list_file else tempest_filter)
     if wait_time and kill_time:
-        cmd = "timeout --preserve-status -s 2 -k {kill_time} {wait_time} ".format(kill_time=kill_time, wait_time=wait_time) + cmd
+        cmd = "source .tox/venv/bin/activate && timeout --preserve-status -s 2 -k {kill_time} {wait_time} ".format(kill_time=kill_time, wait_time=wait_time) + cmd
     if test_time:
         cmd = 'export OS_TEST_TIMEOUT={test_time}; '.format(test_time=test_time) + cmd
     settings = {'host_string': host,
