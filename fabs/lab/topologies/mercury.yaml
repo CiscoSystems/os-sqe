@@ -1,0 +1,602 @@
+servers:
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-M-ctl1</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='raw'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-prov6'/>
+        <mac address='ee:{lab_id:02}:00:01:00:01'/>
+        <target dev='v-{lab_id}-ctl1-em1'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ctl6'/>
+        <mac address='ee:{lab_id:02}:00:01:00:02'/>
+        <target dev='v-{lab_id}-ctl1-em2'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-stor6'/>
+        <mac address='ee:{lab_id:02}:00:01:00:03'/>
+        <target dev='v-{lab_id}-ctl1-em3'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ten6'/>
+        <mac address='ee:{lab_id:02}:00:01:00:04'/>
+        <target dev='v-{lab_id}-ctl1-em4'/>
+      </interface>
+
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-M-ctl2</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='raw'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-prov6'/>
+        <mac address='ee:{lab_id:02}:00:02:00:01'/>
+        <target dev='v-{lab_id}-ctl2-em1'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ctl6'/>
+        <mac address='ee:{lab_id:02}:00:02:00:02'/>
+        <target dev='v-{lab_id}-ctl2-em2'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-stor6'/>
+        <mac address='ee:{lab_id:02}:00:02:00:03'/>
+        <target dev='v-{lab_id}-ctl2-em3'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ten6'/>
+        <mac address='ee:{lab_id:02}:00:02:00:04'/>
+        <target dev='v-{lab_id}-ctl2-em4'/>
+      </interface>
+
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-M-ctl3</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='raw'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-prov6'/>
+        <mac address='ee:{lab_id:02}:00:03:00:01'/>
+        <target dev='v-{lab_id}-ctl3-em1'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ctl6'/>
+        <mac address='ee:{lab_id:02}:00:03:00:02'/>
+        <target dev='v-{lab_id}-ctl3-em2'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-stor6'/>
+        <mac address='ee:{lab_id:02}:00:03:00:03'/>
+        <target dev='v-{lab_id}-ctl3-em3'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ten6'/>
+        <mac address='ee:{lab_id:02}:00:03:00:04'/>
+        <target dev='v-{lab_id}-ctl3-em4'/>
+      </interface>
+
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-M-cpu1</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='raw'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-prov6'/>
+        <mac address='ee:{lab_id:02}:00:00:01:01'/>
+        <target dev='v-{lab_id}-cpu1-em1'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ctl6'/>
+        <mac address='ee:{lab_id:02}:00:00:01:02'/>
+        <target dev='v-{lab_id}-cpu1-em2'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-stor6'/>
+        <mac address='ee:{lab_id:02}:00:00:01:03'/>
+        <target dev='v-{lab_id}-cpu1-em3'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ten6'/>
+        <mac address='ee:{lab_id:02}:00:00:01:04'/>
+        <target dev='v-{lab_id}-cpu1-em4'/>
+      </interface>
+
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-M-cpu2</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='raw'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-prov6'/>
+        <mac address='ee:{lab_id:02}:00:00:02:01'/>
+        <target dev='v-{lab_id}-cpu2-em1'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ctl6'/>
+        <mac address='ee:{lab_id:02}:00:00:02:02'/>
+        <target dev='v-{lab_id}-cpu2-em2'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-stor6'/>
+        <mac address='ee:{lab_id:02}:00:00:02:03'/>
+        <target dev='v-{lab_id}-cpu2-em3'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ten6'/>
+        <mac address='ee:{lab_id:02}:00:00:02:04'/>
+        <target dev='v-{lab_id}-cpu2-em4'/>
+      </interface>
+
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-M-asr1</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://172.29.173.233/csr/csr1000v-universalk9.03.14.01.S.155-1.S1-std.qcow2-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ctl6'/>
+        <mac address='ee:{lab_id:02}:01:00:00:02'/>
+        <target dev='v-{lab_id}-asr1-em2'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-stor6'/>
+        <mac address='ee:{lab_id:02}:01:00:00:03'/>
+        <target dev='v-{lab_id}-asr1-em3'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ten6'/>
+        <mac address='ee:{lab_id:02}:01:00:00:04'/>
+        <target dev='v-{lab_id}-asr1-em4'/>
+      </interface>
+
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-M-asr2</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://172.29.173.233/csr/csr1000v-universalk9.03.14.01.S.155-1.S1-std.qcow2-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ctl6'/>
+        <mac address='ee:{lab_id:02}:02:00:00:02'/>
+        <target dev='v-{lab_id}-asr2-em2'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-stor6'/>
+        <mac address='ee:{lab_id:02}:02:00:00:03'/>
+        <target dev='v-{lab_id}-asr2-em3'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-ten6'/>
+        <mac address='ee:{lab_id:02}:02:00:00:04'/>
+        <target dev='v-{lab_id}-asr2-em4'/>
+      </interface>
+
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+    </devices>
+
+  </domain>
+
+networks:
+- |
+  <network>
+    <name>lab-{lab_id}-prov6</name>
+    <bridge name='br-{lab_id}-prov6' />
+    <forward mode="nat"/>
+    <ip family="ipv6" address='2001:db8:{lab_id}:10::1' prefix='64'/>
+  </network>
+- |
+  <network>
+    <name>lab-{lab_id}-ctl6</name>
+    <bridge name='br-{lab_id}-ctl6' />
+    <forward mode="nat"/>
+    <ip family="ipv6" address='2001:db8:{lab_id}:20::1' prefix='64' />
+  </network>
+- |
+  <network>
+    <name>lab-{lab_id}-stor6</name>
+    <bridge name='br-{lab_id}-stor6' />
+    <forward mode="nat"/>
+    <ip family="ipv6" address='2001:db8:{lab_id}:30::1' prefix='64' />
+  </network>
+- |
+  <network>
+    <name>lab-{lab_id}-ten6</name>
+    <bridge name='br-{lab_id}-ten6' />
+    <forward mode="nat"/>
+    <ip family="ipv6" address='2001:db8:{lab_id}:40::1' prefix='64' />
+  </network>
+paas:
+  - net: EUI-64
+    mac: ee:{lab_id:02}:00:01:00:01
+    cmd:
+      - deploy_devstack with devstack.local.conf.all_but_compute
+  - net: EUI-64
+    mac: ee:{lab_id:02}:00:02:00:01
+    cmd:
+      - deploy_devstack with devstack.local.conf.all_but_compute
+  - net: EUI-64
+    mac: ee:{lab_id:02}:00:03:00:01
+    cmd:
+      - deploy_devstack with devstack.local.conf.all_but_compute
+  - net: EUI-64
+    mac: ee:{lab_id:02}:00:00:01:01
+    cmd:
+      - deploy_devstack with devstack.local.conf.compute_only
+  - net: EUI-64
+    mac: ee:{lab_id:02}:00:00:02:01
+    cmd:
+      - deploy_devstack with devstack.local.conf.compute_only
