@@ -7,13 +7,6 @@ bash ./prepare_jenkins_node.sh
 ssh-keygen -P '' -f /home/ubuntu/.ssh/id_rsa
 cat /home/ubuntu/.ssh/id_rsa.pub >> /home/ubuntu/.ssh/authorized_keys
 
-# Install Cisco ncclient
-sudo pip uninstall -y ncclient || :
-NCCLIENT_DIR=/opt/git/ncclient
-sudo mkdir -p ${NCCLIENT_DIR}
-sudo git clone --depth=1 -b master https://github.com/CiscoSystems/ncclient.git ${NCCLIENT_DIR}
-cd ${NCCLIENT_DIR} && sudo python setup.py install && cd -
-
 # Cache devstack dependencies
 DEVSTACK=/opt/git/openstack-dev/devstack
 sudo mkdir -p ${DEVSTACK}

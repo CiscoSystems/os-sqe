@@ -64,26 +64,6 @@ class BaseTestCase(TestCase):
                          '| sudo tee -a /etc/sysctl.conf', shell=True)
             run_cmd_line('sudo sysctl -p', shell=True)
 
-            # Install custom ncclient
-            ncclient_dir = '/opt/git/ncclient'
-            if os.path.exists(ncclient_dir):
-                run_cmd_line('sudo rm -rf {0}'.format(ncclient_dir),
-                             shell=True)
-            run_cmd_line(
-                'sudo pip uninstall -y ncclient', shell=True,
-                check_result=False)
-            run_cmd_line('sudo git clone --depth=1 -b master '
-                         'https://github.com/CiscoSystems/ncclient.git '
-                         '{NCCLIENT_DIR}'.format(NCCLIENT_DIR=ncclient_dir),
-                         shell=True)
-            try:
-                os.chdir(ncclient_dir)
-                run_cmd_line('sudo python setup.py install', shell=True)
-            except Exception as e:
-                logger.error(e)
-            finally:
-                os.chdir(WORKSPACE)
-
     def setUp(self):
         super(BaseTestCase, self).setUp()
         if not OFFLINE_NODE_WHEN_COMPLETE:
