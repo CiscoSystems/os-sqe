@@ -64,6 +64,10 @@ class BaseTestCase(TestCase):
                          '| sudo tee -a /etc/sysctl.conf', shell=True)
             run_cmd_line('sudo sysctl -p', shell=True)
 
+            # Install ncclient
+            run_cmd_line('sudo pip install ncclient', shell=True,
+                         check_result=False)
+
     def setUp(self):
         super(BaseTestCase, self).setUp()
         if not OFFLINE_NODE_WHEN_COMPLETE:
