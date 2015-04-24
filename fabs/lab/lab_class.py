@@ -39,13 +39,14 @@ def _conn():
 class MyLab:
     def __init__(self, lab_id, topology_name, devstack_conf_addon='', is_only_xml=False):
         topo_path = os.path.join(lab.TOPOLOGIES_DIR, topology_name + '.yaml')
+        msg = None
         try:
             with open(topo_path) as f:
                 self.topology = yaml.load(f)
             self.is_only_xml = is_only_xml
             self.lab_id = int(lab_id)
             if self.lab_id < 0 or self.lab_id > 99:
-                raise exceptions.ValueError
+                raise ValueError()
             self.image_url_re = re.compile(r'source +file.+(http.+) *-->')
             self.name_re = re.compile(r'<name>(.+)</name>')
             lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
@@ -53,10 +54,12 @@ class MyLab:
             lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
             self.control_ip = None  # will be filled in deploy_devstack if appropriate
             self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
-        except exceptions.ValueError:
-            raise exceptions.Exception('lab_id is supposed to be integer in the range [0-99], you gave {0}'.format(lab_id))
-        except:
-            raise exceptions.Exception('wrong topology : {0}'.format(topo_path))
+        except ValueError:
+            msg = 'lab_id is supposed to be integer in the range [0-99], you gave {0}'.format(str(lab_id))
+        except Exception as ex:
+            msg = ex
+        if msg:
+            sys.exit(msg)
 
     def delete_of_something(self, list_of_something):
         for something in list_of_something():
@@ -79,12 +82,22 @@ class MyLab:
     def create_networks(self):
         log.info('\n\nStarting IaaS phase- creating nets')
         for network_template in self.topology['networks']:
-            xml = network_template.format(lab_id=self.lab_id)
+            if 'ipv6_prefix' in network_template:
+                xml = network_template.format(lab_id=self.lab_id, ipv6_prefix=self.define_ipv6_prefix())
+            else:
+                xml = network_template.format(lab_id=self.lab_id)
             self.save_xml(name='net-'+self.search_for(self.name_re, xml), xml=xml)
             if not self.is_only_xml:
                 net = _conn().networkDefineXML(xml)
                 net.create()
                 net.setAutostart(True)
+
+    def define_ipv6_prefix(self):
+        try:
+            prefix = re.search('2001.*::/', local('ip -6 r', capture=True)).group(0)
+            return prefix.replace('/', str(1000+self.lab_id))
+        except AttributeError:
+            raise Exception('No globally routed v6 prefix found in routers table!')
 
     def create_domains(self):
         log.info('\n\nStarting IaaS phase- creating VMs')
@@ -151,8 +164,8 @@ class MyLab:
 
             if net == 'local':
                 ip = 'local'
-            elif net == 'EUI-64':
-                ip = lab.ip_for_mac_and_prefix(mac=mac, prefix='2001:db8:{lab_id}::/64'.format(lab_id=self.lab_id))
+            elif net.startswith('2001:'):
+                ip = lab.ip_for_mac_and_prefix(mac=mac, prefix=net)
             else:
                 ip = lab.ip_for_mac_by_looking_at_libvirt_leases(net=net, mac=mac)
                 if not ip:
@@ -211,7 +224,7 @@ class MyLab:
             conf_as_string.replace('{control_ip}', str(self.control_ip))
             conf_as_string += self.devstack_conf_addon
 
-        local_cloned_repo = MyLab.clone_repo('https://github.com/openstack-dev/devstack.git')
+        local_cloned_repo = MyLab.clone_repo('https://git.openstack.org/openstack-dev/devstack.git')
         put(local_path=StringIO(conf_as_string), remote_path='{0}/local.conf'.format(local_cloned_repo))
         run('{0}/stack.sh'.format(local_cloned_repo))
 
