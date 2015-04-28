@@ -8,14 +8,12 @@ from fabs import LAB, IMAGES_REPO, CENTOS65_DISK, CENTOS7_DISK, FEDORA20_DISK, \
 
 env.update(DEFAULT_SETTINGS)
 
-__all__ = ['prepare', 'install', 'only_test', 'full']
-
 
 @task
 @timed
 @virtual
 def prepare(topo, distro="centos7"):
-    ''' Prepare VMs for installing Openstack with Packstack: aio, 2role, 3role '''
+    """ Spin out libvirt VM(s) based on given distro """
     log.info("Preparing virtual machines for lab=%s" % LAB)
     disk = REDHAT_DISK
     if not disk:
@@ -90,3 +88,23 @@ def full(topology):
     time.sleep(GLOBAL_TIMEOUT)
     install(topology)
     only_test()
+
+
+@task
+@timed
+def aio6(lab_id=51, phase='lab', cleanup=None):
+    """Run tempest on aio OS deployed by RH packstack, IPv6 only"""
+    from fabs.lab.lab_class import MyLab
+
+    l = MyLab(lab_id=lab_id, topology_name='aio6_by_packstack')
+    l.create_lab(phase='delete' if cleanup else phase)
+
+
+@task
+@timed
+def aio46(lab_id=52, phase='lab', cleanup=None):
+    """Run tempest on aio OS deployed by RH packstack, IPv4+6 dual-stack"""
+    from fabs.lab.lab_class import MyLab
+
+    l = MyLab(lab_id=lab_id, topology_name='aio46_by_packstack')
+    l.create_lab(phase='delete' if cleanup else phase)

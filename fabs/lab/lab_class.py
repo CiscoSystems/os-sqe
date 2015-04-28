@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from fabric.api import local, settings, sudo, put, get, run, cd
+from fabric.api import local, settings, sudo, put, get, run, cd, lcd
 import yaml
 import exceptions
 import re
@@ -57,7 +57,7 @@ class MyLab:
         except ValueError:
             msg = 'lab_id is supposed to be integer in the range [0-99], you gave {0}'.format(str(lab_id))
         except Exception as ex:
-            msg = ex
+            msg = ex.message
         if msg:
             sys.exit(msg)
 
@@ -106,7 +106,8 @@ class MyLab:
             domain_name = self.search_for(self.name_re, domain_template)
 
             image_local, kernel_local = self.wget_image(image_url=image_url)
-            disk_local, cloud_init_local = self.create_disk(image_local, domain_name)
+            disk_local, cloud_init_local = self.create_disk(image_local=image_local, domain_name=domain_name,
+                                                            is_use_cloud_init_disk='{disk_cloud_init}' in domain_template)
             xml = domain_template.format(lab_id=self.lab_id, disk=disk_local, kernel=kernel_local, disk_cloud_init=cloud_init_local)
             self.save_xml(name=domain_name, xml=xml)
             if not self.is_only_xml:
@@ -136,11 +137,11 @@ class MyLab:
                     kernel_local = lab.IMAGES_DIR + '/' + name
         return image_local, kernel_local
 
-    def create_disk(self, image_local, domain_name):
+    def create_disk(self, image_local, domain_name, is_use_cloud_init_disk):
         disk_local = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='qcow2')
         local('qemu-img create -f qcow2 -b {i} {d} 15G'.format(d=disk_local, i=image_local))
         disk_cloud_init = None
-        if 'disk1' in image_local:
+        if is_use_cloud_init_disk:
             disk_cloud_init = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='cloud_init.raw')
             user_data = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='user_data')
             meta_data = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='meta_data')
@@ -157,10 +158,12 @@ class MyLab:
         if not self.topology.get('paas', []):
             log.info('Nothing defined in PaaS section')
             return
-        for net_mac_cmd in self.topology['paas']:
-            net = net_mac_cmd['net'].format(lab_id=self.lab_id)
-            mac = net_mac_cmd['mac'].format(lab_id=self.lab_id)
-            commands = net_mac_cmd['cmd']
+        for net_mac_user_password_cmds in self.topology['paas']:
+            net = net_mac_user_password_cmds['net'].format(lab_id=self.lab_id)
+            mac = net_mac_user_password_cmds['mac'].format(lab_id=self.lab_id)
+            user = net_mac_user_password_cmds.get('user', 'ubuntu')
+            password = net_mac_user_password_cmds.get('password', 'ubuntu')
+            commands = net_mac_user_password_cmds['cmd']
 
             if net == 'local':
                 ip = 'local'
@@ -176,7 +179,7 @@ class MyLab:
                 if ip == 'local':
                     local(cmd)
                 else:
-                    with settings(host_string='ubuntu@' + ip, password='ubuntu', connection_attempts=50, warn_only=False):
+                    with settings(host_string='{user}@{ip}'.format(user=user, ip=ip), password=password, connection_attempts=50, warn_only=False):
                         if cmd.startswith('deploy_devstack'):
                             self.deploy_devstack(cmd, ip)
                         elif cmd.startswith('deploy_dibbler'):
@@ -190,24 +193,29 @@ class MyLab:
                         else:
                             sudo(cmd)
 
-    def create_paas_pre(self):
-        log.info('\n\nStarting pre PaaS phase')
-        list_of_commands = self.topology.get('paas_pre', [])
+    def run_pre_or_post(self, pre_or_post):
+        log.info('\n\nStarting {0} phase'.format(pre_or_post))
+        list_of_commands = self.topology.get(pre_or_post, [])
         if not list_of_commands:
-            log.info('Nothing defined in paas_pre section')
+            log.info('Nothing defined in {0} section'.format(pre_or_post))
             return
         else:
             for cmd in list_of_commands:
-                local(cmd.format(lab_id=self.lab_id))
+                if cmd.startswith('run_tempest_local'):
+                    self.run_tempest_local(cmd)
+                else:
+                    local(cmd.format(lab_id=self.lab_id))
 
     @staticmethod
     def clone_repo(repo_url):
         import urlparse
 
         local_repo_dir = urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
-        sudo('apt-get -yqq update && apt-get install -yqq git')
 
         with settings(warn_only=True):
+            ans = local('which git', capture=True)
+            if not ans:
+                sudo('apt-get -y -q update && apt-get install -y -q git')
             if run('test -d {0}'.format(local_repo_dir)).failed:
                 run('git clone -q {0}'.format(repo_url))
         with cd(local_repo_dir):
@@ -228,6 +236,22 @@ class MyLab:
         put(local_path=StringIO(conf_as_string), remote_path='{0}/local.conf'.format(local_cloned_repo))
         run('{0}/stack.sh'.format(local_cloned_repo))
 
+    def deploy_by_packstack(self, cmd, ip):
+        conf_local_path = os.path.join(lab.TOPOLOGIES_DIR, cmd.split(' with ')[-1])
+        if not self.control_ip:
+            self.control_ip = ip
+
+        with open(conf_local_path) as f:
+            conf_as_string = f.read()
+            conf_as_string.replace('{control_ip}', str(self.control_ip))
+            conf_as_string += self.devstack_conf_addon
+
+        sudo('yum install -y -q http://rdo.fedorapeople.org/rdo-release.rpm')
+        sudo('yum install -y -q openstack-packstack')
+        put(local_path=StringIO(conf_as_string), remote_path='packstack.conf')
+        sudo('packstack --answer-file=packstack.conf')
+        get(remote_path='keystonerc_admin', local_path='OS_RC_CONFIG')
+
     @staticmethod
     def deploy_dibbler(cmd):
         dibbler_conf = cmd.split(' with ')[-1]
@@ -245,8 +269,10 @@ class MyLab:
 
     @staticmethod
     def put_config(cmd):
-        config_local = cmd.split(' ')[1]
-        config_remote = cmd.split(' ')[2]
+        """ Gets cmd in the form put_config local [remote]. Remote is optional, ~/local is used if not provided"""
+        cmd_local_remote = cmd.split()
+        config_local = cmd_local_remote[1]
+        config_remote = cmd_local_remote[2] if len(cmd_local_remote) == 3 else config_local
         if 'etc' in config_remote:
             use_sudo = True
         else:
@@ -277,16 +303,36 @@ class MyLab:
                 run('testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=tempest_results.xml')
         get(remote_path=tempest_dir + '/tempest_results.xml', local_path='tempest_results.xml')
 
+    @staticmethod
+    def run_tempest_local(cmd):
+        """Checkout tempest locally, configure tempest.conf and run versus OS declared via keystonerc_admin (RedHat packstack style)"""
+        local('git clone https://github.com/cisco-openstack/tempest.git')
+        #local('git clone https://github.com/cisco-openstack/tempest.git && git checkout proposed')
+
+        with lcd('tempest'):
+            local('testr init')
+            local('testr run')
+            local('testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=tempest_results.xml')
+            local('mv tempest_results.xml ..')
+
+    @staticmethod
+    def create_tempest_conf():
+        pass
+
     def create_lab(self, phase):
-        """Possible phases: lab paas_pre, net, dom, paas, lab does all in chain"""
-        if phase not in ['paas', 'paas_pre']:
+        """Possible phases: lab, paas_pre, net, dom, paas, delete. lab does all in chain. delete cleans up the lab"""
+        if phase not in ['paas', 'paas_pre', 'paas_post']:
             self.delete_lab()
+            if phase == 'delete':
+                return
 
         if phase in ['lab', 'paas_pre']:
-            self.create_paas_pre()
+            self.run_pre_or_post(pre_or_post='paas_pre')
         if phase in ['lab', 'net', 'dom']:
             self.create_networks()
         if phase in ['lab', 'dom']:
             self.create_domains()
         if phase in ['lab', 'paas']:
             self.create_paas()
+        if phase in ['lab', 'paas_post']:
+            self.run_pre_or_post(pre_or_post='paas_post')
