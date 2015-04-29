@@ -41,7 +41,7 @@ def wget_file(local_dir, file_url):
         return file_local
 
 
-@decorators.repeat_until_not_false(n_repetitions=5, time_between_repetitions=5)
+@decorators.repeat_until_not_false(n_repetitions=50, time_between_repetitions=5)
 def ip_for_mac_by_looking_at_libvirt_leases(net, mac):
     with settings(warn_only=True):
         ans = local('sudo grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), capture=True)
