@@ -9,7 +9,7 @@ CONFIG_SSH_KEY=
 # Set a default password everywhere. The default password will be
 # overriden by whatever password is set for each individual service or
 # user.
-CONFIG_DEFAULT_PASSWORD=
+CONFIG_DEFAULT_PASSWORD=nova
 
 # Set to 'y' if you would like Packstack to install MariaDB
 CONFIG_MARIADB_INSTALL=y
@@ -238,7 +238,7 @@ CONFIG_MARIADB_USER=root
 CONFIG_MARIADB_PW=028edf452a794a77
 
 # The password to use for the Keystone to access DB
-CONFIG_KEYSTONE_DB_PW=8d59174d645c4bbb
+CONFIG_KEYSTONE_DB_PW=nova
 
 # Region name
 CONFIG_KEYSTONE_REGION=RegionOne
@@ -247,10 +247,10 @@ CONFIG_KEYSTONE_REGION=RegionOne
 CONFIG_KEYSTONE_ADMIN_TOKEN=e71c5890d74b476f9fe2f29e4a7f511c
 
 # The password to use for the Keystone admin user
-CONFIG_KEYSTONE_ADMIN_PW=31c578d8b00844d1
+CONFIG_KEYSTONE_ADMIN_PW=nova
 
 # The password to use for the Keystone demo user
-CONFIG_KEYSTONE_DEMO_PW=3dd67016ae084b16
+CONFIG_KEYSTONE_DEMO_PW=nova
 
 # Keystone API version string
 CONFIG_KEYSTONE_API_VERSION=v2.0

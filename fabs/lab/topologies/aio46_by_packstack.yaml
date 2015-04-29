@@ -98,13 +98,13 @@ paas:
     user: cloud-user
     password: ubuntu
     cmd:
-      - deploy_packstack with redhat_packstack.conf.aio
+      - deploy_by_packstack with redhat_packstack.conf.aio
 
 paas_pre:
     - sudo brctl addbr lab-{lab_id}-abr6
-    - sudo brctl addif lab-{lab_id}-abr6 eth3
+#    - sudo brctl addif lab-{lab_id}-abr6 eth3
     - sudo ip l s lab-{lab_id}-abr6 up
-    - sudo ip l s eth3 up
+#    - sudo ip l s eth3 up
     - sudo ip r a 2001:420:293:2013::/64 dev lab-{lab_id}-abr6
 
 paas_post:

@@ -182,6 +182,8 @@ class MyLab:
                     with settings(host_string='{user}@{ip}'.format(user=user, ip=ip), password=password, connection_attempts=50, warn_only=False):
                         if cmd.startswith('deploy_devstack'):
                             self.deploy_devstack(cmd, ip)
+                        elif cmd.startswith('deploy_by_packstack'):
+                            self.deploy_by_packstack(cmd=cmd, ip=ip)
                         elif cmd.startswith('deploy_dibbler'):
                             self.deploy_dibbler(cmd)
                         elif cmd.startswith('put_config'):
@@ -202,7 +204,7 @@ class MyLab:
         else:
             for cmd in list_of_commands:
                 if cmd.startswith('run_tempest_local'):
-                    self.run_tempest_local(cmd)
+                    self.run_tempest_local()
                 else:
                     local(cmd.format(lab_id=self.lab_id))
 
@@ -243,14 +245,16 @@ class MyLab:
 
         with open(conf_local_path) as f:
             conf_as_string = f.read()
-            conf_as_string.replace('{control_ip}', str(self.control_ip))
+            conf_as_string = conf_as_string.replace('{controller_ip}', str(self.control_ip))
             conf_as_string += self.devstack_conf_addon
 
-        sudo('yum install -y -q http://rdo.fedorapeople.org/rdo-release.rpm')
-        sudo('yum install -y -q openstack-packstack')
-        put(local_path=StringIO(conf_as_string), remote_path='packstack.conf')
-        sudo('packstack --answer-file=packstack.conf')
-        get(remote_path='keystonerc_admin', local_path='OS_RC_CONFIG')
+        with settings(warn_only=True):
+            if run('rpm -q openstack-packstack').failed:
+                sudo('yum install -y -q http://rdo.fedorapeople.org/rdo-release.rpm')
+                sudo('yum install -y -q openstack-packstack')
+        put(local_path=StringIO(conf_as_string), remote_path='cisco-sqe-packstack.conf')
+        #sudo('packstack --answer-file=cisco-sqe-packstack.conf')
+        self.create_tempest_conf(controller_ip=self.control_ip)
 
     @staticmethod
     def deploy_dibbler(cmd):
@@ -281,7 +285,7 @@ class MyLab:
 
     @staticmethod
     def get_artifact(cmd):
-        artifact_remote = cmd.split(' ')[-1]
+        artifact_remote = cmd.split()[-1]
         artifact_local = os.path.basename(artifact_remote)
         get(remote_path=artifact_remote, local_path=artifact_local)
 
@@ -304,20 +308,25 @@ class MyLab:
         get(remote_path=tempest_dir + '/tempest_results.xml', local_path='tempest_results.xml')
 
     @staticmethod
-    def run_tempest_local(cmd):
+    def run_tempest_local():
         """Checkout tempest locally, configure tempest.conf and run versus OS declared via keystonerc_admin (RedHat packstack style)"""
-        local('git clone https://github.com/cisco-openstack/tempest.git')
-        #local('git clone https://github.com/cisco-openstack/tempest.git && git checkout proposed')
 
+        if local('test -d tempest').failed:
+            local('git clone https://github.com/cisco-openstack/tempest.git && git checkout proposed')
+
+        local('cp cisco-sqe-tempest.conf tempest/etc/tempest.conf')
         with lcd('tempest'):
-            local('testr init')
-            local('testr run')
+            local('tox -efull')
             local('testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=tempest_results.xml')
             local('mv tempest_results.xml ..')
 
     @staticmethod
-    def create_tempest_conf():
-        pass
+    def create_tempest_conf(controller_ip):
+        with open(os.path.join(lab.TOPOLOGIES_DIR, 'tempest.conf')) as f:
+            template = f.read()
+
+        with open('cisco-sqe-tempest.conf', 'w') as f:
+            f.write(template.format(controller_ip=controller_ip))
 
     def create_lab(self, phase):
         """Possible phases: lab, paas_pre, net, dom, paas, delete. lab does all in chain. delete cleans up the lab"""
