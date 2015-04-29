@@ -2,6 +2,7 @@
 from collections import OrderedDict
 import os
 import sys
+import datetime
 import requests
 import json
 import time
@@ -145,7 +146,6 @@ table_bug_template2 = """
 <p style='color:green'>All Passed</p>
 </table>
 """
-TOPOS = None
 bug_stats = {}
 
 
@@ -297,8 +297,9 @@ def process_current_builds(topologies):
              "total_time_str": "n/a"}
     jobs = [v['job'] for v in topologies.itervalues()]
     for job in jobs:
-        topo = next(iter([i for i in topologies if TOPOS[i]["job"] == job]),
-                    None)
+        topo = next(
+            iter([i for i in topologies if topologies[i]["job"] == job]),
+            None)
         if not topo:
             raise Exception("Running jobs are inconsistent with configuration")
         current_job = os.environ["JENKINS_URL"] + "job/" + topologies[topo][
@@ -317,7 +318,7 @@ def process_current_builds(topologies):
             build_result = json.loads(requests.get(current_build_link).content)
         except Exception as e:
             print >> sys.stderr, "No current build from Jenkins API for %s : %s!" % (
-                TOPOS[topo]["job"],
+                topologies[topo]["job"],
                 os.environ["TRIGGERED_BUILD_NUMBER_" + topologies[topo]["job"]]
             )
             continue
@@ -350,8 +351,9 @@ def process_current_builds(topologies):
             data[topo].update({"prev_build_link": current_job + str(
                 int(current_build_no) - back_iter) + "/testReport"
                                                      "/api/json?pretty=true"})
-            data[topo].update({"data_link": LOG_SERVER_LOCATION + TOPOS[topo][
-                "job"] + "/" + current_build_no})
+            data[topo].update(
+                {"data_link": LOG_SERVER_LOCATION + topologies[topo][
+                    "job"] + "/" + current_build_no})
             data[topo].update({
                 "current_build_info": current_job + current_build_no + "/api/json?pretty=true"})
             total["failures_number"] += int(result['failCount'])
@@ -364,11 +366,11 @@ def process_current_builds(topologies):
 
         except Exception as e:
             print >> sys.stderr, "No current results from Jenkins API for %s" % (
-                TOPOS[topo]["job"]
+                topologies[topo]["job"]
             )
             data[topo] = {'ok': False}
             data[topo].update({"data_link": current_job})
-            data[topo].update({"name": TOPOS[topo]["name"]})
+            data[topo].update({"name": topologies[topo]["name"]})
             data[topo].update(
                 {"total_time": int(build_result['duration']) / 1000})
             data[topo].update({
@@ -490,9 +492,11 @@ def config_exists(file_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Generate reports from Jenkins results')
-    parser.add_argument('jobs', help='YAML jobs config file',
-                        required=True, metavar="FILE", type=config_exists)
-    parser.add_argument('report', type=file, help='Out file name')
+    parser.add_argument('jobs', help='YAML jobs config file', metavar="FILE",
+                        type=config_exists)
+    parser.add_argument('--report', type=str, help='Out file name',
+                        default='jenkins_report_{}.html'.format(
+                            datetime.datetime.utcnow()))
     args = parser.parse_args()
     topologies = {}
     with open(args.jobs) as f:
@@ -501,6 +505,11 @@ if __name__ == '__main__':
     regression_report = check_regression(xml_report)
     if os.getenv("MAKE_BUG_LIST"):
         failed_tests_report = get_failed_tests(xml_report)
-        print pretty_report_for_mail(regression_report, failed_tests_report)
+        result = pretty_report_for_mail(regression_report, failed_tests_report)
     else:
-        print pretty_report(regression_report)
+        result = pretty_report(regression_report)
+
+    with open(args.report, 'w') as report:
+        report.write(result)
+
+    print result
