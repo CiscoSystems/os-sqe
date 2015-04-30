@@ -215,9 +215,7 @@ class MyLab:
         local_repo_dir = urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
 
         with settings(warn_only=True):
-            ans = local('which git', capture=True)
-            if not ans:
-                sudo('apt-get -y -q update && apt-get install -y -q git')
+            sudo('apt-get -y -q update && apt-get install -y -q git')
             if run('test -d {0}'.format(local_repo_dir)).failed:
                 run('git clone -q {0}'.format(repo_url))
         with cd(local_repo_dir):
