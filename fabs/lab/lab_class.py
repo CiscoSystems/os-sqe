@@ -253,7 +253,7 @@ class MyLab:
                 sudo('yum install -y -q http://rdo.fedorapeople.org/rdo-release.rpm')
                 sudo('yum install -y -q openstack-packstack')
         put(local_path=StringIO(conf_as_string), remote_path='cisco-sqe-packstack.conf')
-        #sudo('packstack --answer-file=cisco-sqe-packstack.conf')
+        sudo('packstack --answer-file=cisco-sqe-packstack.conf')
         self.create_tempest_conf(controller_ip=self.control_ip)
 
     @staticmethod
@@ -322,11 +322,10 @@ class MyLab:
 
     @staticmethod
     def create_tempest_conf(controller_ip):
-        with open(os.path.join(lab.TOPOLOGIES_DIR, 'tempest.conf')) as f:
-            template = f.read()
+        from os_inspector import OS
 
-        with open('cisco-sqe-tempest.conf', 'w') as f:
-            f.write(template.format(controller_ip=controller_ip))
+        os_inspector = OS(ip=controller_ip)
+        os_inspector.create_tempest_conf()
 
     def create_lab(self, phase):
         """Possible phases: lab, paas_pre, net, dom, paas, delete. lab does all in chain. delete cleans up the lab"""
