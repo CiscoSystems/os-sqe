@@ -53,6 +53,8 @@ class MyLab:
             lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
             lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
             self.control_ip = None  # will be filled in deploy_devstack if appropriate
+            self.nova_ips = []
+            self.neutron_ips = []
             self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
         except ValueError:
             msg = 'lab_id is supposed to be integer in the range [0-99], you gave {0}'.format(str(lab_id))
@@ -81,6 +83,11 @@ class MyLab:
 
     def create_networks(self):
         log.info('\n\nStarting IaaS phase- creating nets')
+        list_of_networks = self.topology.get('networks', [])
+        if not list_of_networks:
+            log.info('Nothing defined in networks section')
+            return
+
         for network_template in self.topology['networks']:
             if 'ipv6_prefix' in network_template:
                 xml = network_template.format(lab_id=self.lab_id, ipv6_prefix=self.define_ipv6_prefix())
@@ -101,6 +108,11 @@ class MyLab:
 
     def create_domains(self):
         log.info('\n\nStarting IaaS phase- creating VMs')
+        list_of_domains = self.topology.get('servers', [])
+        if not list_of_domains:
+            log.info('Nothing defined in servers section')
+            return
+
         for domain_template in self.topology['servers']:
             image_url = self.search_for(self.image_url_re, domain_template)
             domain_name = self.search_for(self.name_re, domain_template)
@@ -169,6 +181,8 @@ class MyLab:
                 ip = 'local'
             elif net.startswith('2001:'):
                 ip = lab.ip_for_mac_and_prefix(mac=mac, prefix=net)
+            elif net == 'baremetal':
+                ip = mac
             else:
                 ip = lab.ip_for_mac_by_looking_at_libvirt_leases(net=net, mac=mac)
                 if not ip:
@@ -192,6 +206,12 @@ class MyLab:
                             self.get_artifact(cmd)
                         elif cmd.startswith('run_tempest'):
                             self.run_tempest(cmd)
+                        elif cmd.startswith('register_as_control_node'):
+                            self.control_ip = ip
+                        elif cmd.startswith('register_as_nova_node'):
+                            self.nova_ips.append(ip)
+                        elif cmd.startswith('register_as_neutron_node'):
+                            self.neutron_ips.append(ip)
                         else:
                             sudo(cmd)
 
@@ -244,7 +264,8 @@ class MyLab:
         with open(conf_local_path) as f:
             conf_as_string = f.read()
             conf_as_string = conf_as_string.replace('{controller_ip}', str(self.control_ip))
-            conf_as_string += self.devstack_conf_addon
+            conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.nova_ips or [self.control_ip]))
+            conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.neutron_ips or [self.control_ip]))
 
         with settings(warn_only=True):
             if run('rpm -q openstack-packstack').failed:
@@ -313,6 +334,7 @@ class MyLab:
             local('git clone https://github.com/cisco-openstack/tempest.git && git checkout proposed')
 
         local('cp cisco-sqe-tempest.conf tempest/etc/tempest.conf')
+        local('sudo pip install tox')
         with lcd('tempest'):
             local('tox -efull')
             local('testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=tempest_results.xml')
