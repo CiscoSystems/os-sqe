@@ -297,12 +297,12 @@ def check_regression(data):
     return data
 
 
-def process_current_builds(topologies):
+def process_current_builds(topologies, jenkins_url):
     data = {}
     total = {"name": "Total Result", "failures_number": 0, "passes_number": 0,
              "skipped_number": 0, "tests_number": 0,
-             "results_link": os.environ["JENKINS_URL"],
-             "data_link": os.environ["JENKINS_URL"], "time_str": "n/a",
+             "results_link": jenkins_url,
+             "data_link": jenkins_url, "time_str": "n/a",
              "total_time_str": "n/a"}
     jobs = [v['job'] for v in topologies.itervalues()]
     for job in jobs:
@@ -311,7 +311,7 @@ def process_current_builds(topologies):
             None)
         if not topo:
             raise Exception("Running jobs are inconsistent with configuration")
-        current_job = os.environ["JENKINS_URL"] + "job/" + topologies[topo][
+        current_job = jenkins_url + "job/" + topologies[topo][
             "job"] + "/"
         current_build_no = str(
             json.loads(requests.get(current_job + "api/json").content)[
@@ -385,8 +385,9 @@ def process_current_builds(topologies):
             data[topo].update({
                 "total_time_str": str_time(
                     int(build_result['duration']) / 1000)})
-    total_json = json.loads(requests.get(os.environ[
-                                             "JENKINS_URL"] + "job/" + AGGREGATOR_JOB_NAME + "/lastCompletedBuild/api/json/").content)
+    response = requests.get(jenkins_url + "job/" + AGGREGATOR_JOB_NAME +
+                            "/lastCompletedBuild/api/json/")
+    total_json = json.loads(response.content)
     total["results_link"] = total_json["url"]
     total["total_time_str"] = str_time(int(total_json["duration"] / 1000))
     data["total"] = total
@@ -505,16 +506,17 @@ def email_report(recipients, server_name, date, attachment):
     mail['From'] = sender
     mail['To'] = ','.join(recipients)
     mail['Subject'] = "Jenkins report {}".format(date)
-    mail.attach(email.mime.text.MIMEText('Last succeeded build report {}'.format(date)))
+    mail.attach(
+        email.mime.Text.MIMEText('Last succeeded build report {}'.format(date)))
 
     with gzip.open(attachment, 'rb') as report:
-        mail.attach(email.mime.text.MIMEText(report.read(), 'html'))
+        mail.attach(email.mime.Text.MIMEText(report.read(), 'html'))
         mail.add_header('Content-Disposition', 'attachment',
                         filename=attachment)
     try:
         server.sendmail(sender, recipients, mail.as_string())
     except Exception, e:
-        logger.exception("FAILED TO SEND REPORT TO {}. REASON {}".\
+        logger.exception("FAILED TO SEND REPORT TO {}. REASON {}". \
                          format(recipients, e))
     finally:
         server.quit()
@@ -524,19 +526,22 @@ if __name__ == '__main__':
     build_date = datetime.datetime.utcnow().strftime("%A, %d. %B %Y %I:%M%p")
     parser = argparse.ArgumentParser(
         description='Generate reports from Jenkins results')
-    parser.add_argument('jobs', help='YAML jobs config file', metavar="FILE",
+    parser.add_argument('--jenkins_url', type=str)
+    parser.add_argument('--jobs', help='YAML jobs config file', metavar="FILE",
                         type=config_exists)
     parser.add_argument('--report', type=str, help='Out file name',
                         default='jenkins_report_{}.html'.format(build_date))
     parser.add_argument('--mailto', nargs='+', type=str,
                         help='Email to send report to')
+    parser.add_argument('--make_bug_list', type=bool, default=True)
     args = parser.parse_args()
     topologies = {}
     with open(args.jobs) as f:
         topologies = yaml.load(f)
-    xml_report = process_current_builds(topologies)
+
+    xml_report = process_current_builds(topologies, args.jenkins_url)
     regression_report = check_regression(xml_report)
-    if os.getenv("MAKE_BUG_LIST"):
+    if args.make_bug_list:
         failed_tests_report = get_failed_tests(xml_report)
         result = pretty_report_for_mail(regression_report, failed_tests_report)
     else:
