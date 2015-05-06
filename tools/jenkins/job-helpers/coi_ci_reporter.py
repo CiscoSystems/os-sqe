@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 from collections import OrderedDict
+import email
+import gzip
 import os
+import smtplib
 import sys
 import datetime
 import requests
@@ -8,6 +11,12 @@ import json
 import time
 import yaml
 import argparse
+import logging
+
+logger = logging.getLogger(__name__)
+stream_handler = logging.StreamHandler()
+logger.setLevel(logging.DEBUG)
+logger.addHandler(stream_handler)
 
 cachedir = "/home/localadmin/.launchpadlib/cache/"
 from launchpadlib.launchpad import Launchpad
@@ -489,14 +498,38 @@ def config_exists(file_path):
     return file_path
 
 
+def email_report(recipients, server_name, date, attachment):
+    server = smtplib.SMTP(server_name)
+    mail = email.mime.multipart.MIMEMultipart()
+    sender = "Jenkins CI Openstack QA"
+    mail['From'] = sender
+    mail['To'] = ','.join(recipients)
+    mail['Subject'] = "Jenkins report {}".format(date)
+    mail.attach(email.mime.text.MIMEText('Last succeeded build report {}'.format(date)))
+
+    with gzip.open(attachment, 'rb') as report:
+        mail.attach(email.mime.text.MIMEText(report.read(), 'html'))
+        mail.add_header('Content-Disposition', 'attachment',
+                        filename=attachment)
+    try:
+        server.sendmail(sender, recipients, mail.as_string())
+    except Exception, e:
+        logger.exception("FAILED TO SEND REPORT TO {}. REASON {}".\
+                         format(recipients, e))
+    finally:
+        server.quit()
+
+
 if __name__ == '__main__':
+    build_date = datetime.datetime.utcnow().strftime("%A, %d. %B %Y %I:%M%p")
     parser = argparse.ArgumentParser(
         description='Generate reports from Jenkins results')
     parser.add_argument('jobs', help='YAML jobs config file', metavar="FILE",
                         type=config_exists)
     parser.add_argument('--report', type=str, help='Out file name',
-                        default='jenkins_report_{}.html'.format(
-                            datetime.datetime.utcnow()))
+                        default='jenkins_report_{}.html'.format(build_date))
+    parser.add_argument('--mailto', nargs='+', type=str,
+                        help='Email to send report to')
     args = parser.parse_args()
     topologies = {}
     with open(args.jobs) as f:
@@ -509,7 +542,13 @@ if __name__ == '__main__':
     else:
         result = pretty_report(regression_report)
 
-    with open(args.report, 'w') as report:
+    report_file = '{}.gz'.format(args.report)
+
+    with gzip.open(report_file, 'wb') as report:
         report.write(result)
+
+    if args.mailto:
+        email_report(args.mailto, 'outbound.cisco.com',
+                     build_date, report_file)
 
     print result
