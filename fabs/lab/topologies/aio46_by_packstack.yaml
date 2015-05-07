@@ -62,12 +62,6 @@ servers:
         <model type='virtio'/>
       </interface>
 
-      <interface type='network'>
-        <source network='lab-{lab_id}-v6'/>
-        <mac address='ee:{lab_id:02}:00:01:00:06'/>
-        <target dev='v-{lab_id}-if6'/>
-      </interface>
-
     </devices>
 
   </domain>
@@ -85,12 +79,6 @@ networks:
       </dhcp>
     </ip>
   </network>
-- |
-  <network>
-    <name>lab-{lab_id}-v6</name>
-    <forward mode="bridge"/>
-    <bridge name="lab-{lab_id}-abr6"/>
-  </network>
 
 paas:
   - net: lab-{lab_id}-10.{lab_id}.0
@@ -99,13 +87,6 @@ paas:
     password: ubuntu
     cmd:
       - deploy_by_packstack with redhat_packstack.conf.aio
-
-paas_pre:
-    - sudo brctl addbr lab-{lab_id}-abr6
-#    - sudo brctl addif lab-{lab_id}-abr6 eth3
-    - sudo ip l s lab-{lab_id}-abr6 up
-#    - sudo ip l s eth3 up
-    - sudo ip r a 2001:420:293:2013::/64 dev lab-{lab_id}-abr6
 
 paas_post:
     - run_tempest_local

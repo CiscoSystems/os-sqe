@@ -108,3 +108,23 @@ def aio46(lab_id=52, phase='lab', cleanup=None):
 
     l = MyLab(lab_id=lab_id, topology_name='aio46_by_packstack')
     l.create_lab(phase='delete' if cleanup else phase)
+
+
+@task
+@timed
+def mercury(lab_id=55, phase='lab', cleanup=None):
+    """Run tempest on mercury topo deployed by RH packstack"""
+    from fabs.lab.lab_class import MyLab
+
+    l = MyLab(lab_id=lab_id, topology_name='mercury_by_packstack')
+    l.create_lab(phase='delete' if cleanup else phase)
+
+
+@task
+@timed
+def baremetal(lab_id=77, phase='lab', cleanup=None):
+    """Run tempest on mercury topo deployed by RH packstack"""
+    from fabs.lab.lab_class import MyLab
+
+    l = MyLab(lab_id=lab_id, topology_name='baremetal_by_packstack')
+    l.create_lab(phase='delete' if cleanup else phase)

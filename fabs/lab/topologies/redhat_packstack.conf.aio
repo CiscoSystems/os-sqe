@@ -86,11 +86,11 @@ CONFIG_CONTROLLER_HOST={controller_ip}
 
 # The list of IP addresses of the server on which to install the Nova
 # compute service
-CONFIG_COMPUTE_HOSTS={controller_ip}
+CONFIG_COMPUTE_HOSTS={nova_ips}
 
 # The list of IP addresses of the server on which to install the
 # network service such as Nova network or Neutron
-CONFIG_NETWORK_HOSTS={controller_ip}
+CONFIG_NETWORK_HOSTS={neutron_ips}
 
 # Set to 'y' if you want to use VMware vCenter as hypervisor and
 # storage. Otherwise set to 'n'.

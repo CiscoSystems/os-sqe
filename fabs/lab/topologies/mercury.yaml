@@ -39,7 +39,7 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-prov6'/>
+        <source network='lab-{lab_id}-net4-prov'/>
         <mac address='ee:{lab_id:02}:00:01:00:01'/>
         <target dev='v-{lab_id}-ctl1-em1'/>
       </interface>
@@ -121,7 +121,7 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-prov6'/>
+        <source network='lab-{lab_id}-net4-prov'/>
         <mac address='ee:{lab_id:02}:00:02:00:01'/>
         <target dev='v-{lab_id}-ctl2-em1'/>
       </interface>
@@ -203,7 +203,7 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-prov6'/>
+        <source network='lab-{lab_id}-net4-prov'/>
         <mac address='ee:{lab_id:02}:00:03:00:01'/>
         <target dev='v-{lab_id}-ctl3-em1'/>
       </interface>
@@ -285,7 +285,7 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-prov6'/>
+        <source network='lab-{lab_id}-net4-prov'/>
         <mac address='ee:{lab_id:02}:00:00:01:01'/>
         <target dev='v-{lab_id}-cpu1-em1'/>
       </interface>
@@ -367,7 +367,7 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-prov6'/>
+        <source network='lab-{lab_id}-net4-prov'/>
         <mac address='ee:{lab_id:02}:00:00:02:01'/>
         <target dev='v-{lab_id}-cpu2-em1'/>
       </interface>
@@ -553,10 +553,15 @@ servers:
 networks:
 - |
   <network>
-    <name>lab-{lab_id}-prov6</name>
+    <name>lab-{lab_id}-net4-prov</name>
     <bridge name='br-{lab_id}-prov6' />
     <forward mode="nat"/>
-    <ip family="ipv6" address='2001:db8:{lab_id}:10::1' prefix='64'/>
+    <mac address='ee:{lab_id:02}:00:00:00:bb'/>
+    <ip address='10.{lab_id}.0.1' netmask='255.255.255.0'>
+      <dhcp>
+        <range start='10.{lab_id}.0.2' end='10.{lab_id}.0.254' />
+      </dhcp>
+    </ip>
   </network>
 - |
   <network>
@@ -580,23 +585,23 @@ networks:
     <ip family="ipv6" address='2001:db8:{lab_id}:40::1' prefix='64' />
   </network>
 paas:
-  - net: EUI-64
+  - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
       - deploy_devstack with devstack.local.conf.all_but_compute
-  - net: EUI-64
+  - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:02:00:01
     cmd:
       - deploy_devstack with devstack.local.conf.all_but_compute
-  - net: EUI-64
+  - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:03:00:01
     cmd:
       - deploy_devstack with devstack.local.conf.all_but_compute
-  - net: EUI-64
+  - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:00:01:01
     cmd:
       - deploy_devstack with devstack.local.conf.compute_only
-  - net: EUI-64
+  - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:00:02:01
     cmd:
       - deploy_devstack with devstack.local.conf.compute_only
