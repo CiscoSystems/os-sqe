@@ -235,7 +235,7 @@ class MyLab:
         local_repo_dir = urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
         # This is workaround for ubuntu update fails with
         # Hash Sum mismatch on some packages
-        sudo('rm /var/lib/apt/lists/* -vf')
+        sudo('rm /var/lib/apt/lists/* -vrf')
 
         sudo('apt-get -yqq update && apt-get install -yqq git')
 
