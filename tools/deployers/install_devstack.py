@@ -67,7 +67,7 @@ def install(aggregated_configs, apt_cacher_proxy=None,
                 warn_if_fail(
                     run(
                         "git fetch https://review.openstack.org/openstack-dev/devstack {patch} "
-                        "&& git cherry-pick FETCH_HEAD".format(patch)))
+                        "&& git cherry-pick FETCH_HEAD".format(patch=patch)))
         warn_if_fail(put(StringIO(local_conf), "devstack/local.conf"))
         if exec_command_before:
             run(exec_command_before)
