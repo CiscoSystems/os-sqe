@@ -340,8 +340,9 @@ class MyLab:
         local('sudo pip install tox')
         with lcd('tempest'):
             local('tox -efull')
-            local('source .tox/full/bin/activate && pip install junitxml')
-            local('source .tox/full/bin/activate && testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=cisco-sqe-tempest-results.xml')
+            with settings(warn_only=True):
+                local('. .tox/full/bin/activate && pip install junitxml')
+                local('. .tox/full/bin/activate && testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=cisco-sqe-tempest-results.xml')
             local('mv cisco-sqe-tempest-results.xml ..')
 
     @staticmethod
