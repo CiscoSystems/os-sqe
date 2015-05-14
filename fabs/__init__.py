@@ -1,5 +1,18 @@
 import os
 
+
+class LabIds(object):
+    # default lab IDs to be used by fabric tasks
+
+    devstack_aio6 = 52
+    devstack_neutron = 55
+    devstack_mercury = 59
+
+    redhat_aio6 = 61
+    redhat_aio46 = 62
+    redhat_mercury = 63
+    redhat_baremetal_g8 = 64
+
 DEFAULT_SETTINGS = {"host_string": "localhost",
                     "abort_on_prompts": True,
                     "warn_only": True}

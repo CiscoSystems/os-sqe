@@ -20,13 +20,9 @@ paas:
     cmd:
       - register_as_nova_node
   - net: baremetal
-    mac: 172.29.172.101
-    cmd:
-      - register_as_nova_node
-  - net: baremetal
-    mac: 172.29.172.97
-    user: localadmin
-    password: ubuntu
+    mac: 172.29.172.96
+    user: root
+    password: cisco123
     cmd:
       - deploy_by_packstack with redhat_packstack.conf.aio
 
