@@ -1,6 +1,6 @@
 import os
 import yaml
-
+from fabric.api import settings, local, hide
 from network import Network, Network6
 from storage import Storage
 from domain import VM
@@ -27,6 +27,9 @@ class Lab:
     def create_networks(self):
         for num, net in enumerate(self.topo["networks"]):
             net_name = net.keys()[0]
+            if "bridge" in net_name:
+                self.create_bridges(net[net_name])
+                continue
             net_shift = num
             if "ipv" in net[net_name].keys() and net[net_name]["ipv"] == 6:
                 net_class = Network6
@@ -91,3 +94,25 @@ class Lab:
 
     def shutdown(self):
         shutdown_vm(lab=self.id)
+
+    def create_bridges(self, interfaces):
+        with hide('output', 'running', 'warnings'), settings(warn_only=True, abort_on_prompts=True):
+            for int in interfaces:
+                cmd = 'sudo ifconfig br-' + int + ' down'
+                local(cmd)
+                cmd = 'sudo ifconfig ' + int + ' down'
+                local(cmd)
+                cmd = 'sudo brctl delif br-' + int + ' ' + int
+                local(cmd)
+                cmd = 'sudo brctl delbr br-' + int
+                local(cmd)
+                cmd = 'sudo brctl addbr br-' + int
+                local(cmd)
+                cmd = 'sudo brctl addif br-' + int + ' ' + int
+                local(cmd)
+                cmd = 'sudo ifconfig ' + int + ' up'
+                local(cmd)
+                cmd = 'sudo ifconfig ' + int + ' promisc'
+                local(cmd)
+                cmd = 'sudo ifconfig br-' + int + ' up'
+                local(cmd)

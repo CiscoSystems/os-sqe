@@ -1,0 +1,25 @@
+servers:
+  devstack-server:
+    params:
+      hostname:
+      count: 2
+      storage: 60
+      add_disks:
+      ram: 8
+      cpu: 8
+      networks:
+        - admin
+        - intbridge
+        - extbridge
+networks:
+  - admin:
+      dhcp: true
+      external: false
+      nat: true
+      dns:
+        devstack: 2
+  - intbridge:
+      - eth0
+      - eth1
+  - extbridge:
+      - p1p3

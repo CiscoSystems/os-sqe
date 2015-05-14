@@ -1,0 +1,19 @@
+[[local|localrc]]
+DEST=${HOME}/os
+DATA_DIR=${DEST}/data
+SERVICE_DIR=${DEST}/status
+LOGFILE=$DEST/logs/stack.sh.log
+SCREEN_LOGDIR=$DEST/logs
+GIT_BASE=https://git.openstack.org
+VERBOSE=True
+DEBUG=True
+
+MYSQL_PASSWORD=nova
+
+ENABLED_SERVICES=mysql
+
+enable_plugin cisco-sqe https://github.com/cisco-openstack/openstack-sqe.git
+enable_service  cisco-sqe
+#CISCO_SQE_FACILITY=????
+
+

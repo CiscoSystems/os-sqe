@@ -1,0 +1,34 @@
+paas:
+  - net: baremetal
+    mac: 172.29.172.96
+    cmd:
+      - register_as_control_node
+  - net: baremetal
+    mac: 172.29.172.97
+    cmd:
+      - register_as_neutron_node
+  - net: baremetal
+    mac: 172.29.172.98
+    cmd:
+      - register_as_neutron_node
+  - net: baremetal
+    mac: 172.29.172.99
+    cmd:
+      - register_as_nova_node
+  - net: baremetal
+    mac: 172.29.172.100
+    cmd:
+      - register_as_nova_node
+  - net: baremetal
+    mac: 172.29.172.101
+    cmd:
+      - register_as_nova_node
+  - net: baremetal
+    mac: 172.29.172.97
+    user: localadmin
+    password: ubuntu
+    cmd:
+      - deploy_by_packstack with redhat_packstack.conf.aio
+
+paas_post:
+    - run_tempest_local test_network_multi_node

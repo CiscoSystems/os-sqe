@@ -1,4 +1,3 @@
-argparse>=1.2.1
 ecdsa>=0.11
 Fabric>=1.10.0
 junitxml>=0.7

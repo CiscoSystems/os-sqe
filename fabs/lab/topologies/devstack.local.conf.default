@@ -1,0 +1,21 @@
+# Run All In One with default monolithic OpenVS networking
+[[local|localrc]]
+DEST=${HOME}/os
+DATA_DIR=${DEST}/data
+SERVICE_DIR=${DEST}/status
+LOGFILE=$DEST/logs/stack.sh.log
+SCREEN_LOGDIR=$DEST/logs
+VERBOSE=True
+DEBUG=True
+
+GIT_BASE=https://git.openstack.org
+IMAGE_URLS="http://172.29.173.233/ubuntu-14.04-server-cloudimg-amd64.tar.gz"
+
+MYSQL_PASSWORD=nova
+RABBIT_PASSWORD=nova
+SERVICE_TOKEN=nova
+SERVICE_PASSWORD=nova
+ADMIN_PASSWORD=nova
+
+disable_service n-net
+enable_service q-svc q-agt q-l3 q-dhcp q-meta q-metering neutron tempest

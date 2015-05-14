@@ -1,6 +1,6 @@
 1: {name: "Single node, ML2: default", job: "devstack_single_node_nightly"}
 2: {name: "Multi node, ML2: default", job: "devstack_multinode"}
-3: {name: "Single node, ML2: Nexus", job: "ml2_nexus_nightly"}
-5: {name: "Plugin VPNaaS", job: "vpnaas_nexus_nightly"}
-6: {name: "Plugin CSR1KV", job: "csr1kv_nightly"}
-7: {name: "Plugin N1KV", job: "n1kv_neutron"}
+3: {name: "Multi node with Nexus", job: "topo_2node_nexus"}
+4: {name: "Single node with DHCP6", job: "topo_aio_dhcp6"}
+5: {name: "Single node with Dibbler", job: "topo_aio_dibbler"}
+6: {name: "Plugin N1KV", job: "n1kv_neutron"}

@@ -1,0 +1,27 @@
+# Run compute only
+[[local|localrc]]
+DEST=${HOME}/os
+DATA_DIR=${DEST}/data
+SERVICE_DIR=${DEST}/status
+LOGFILE=$DEST/logs/stack.sh.log
+SCREEN_LOGDIR=$DEST/logs
+VERBOSE=True
+DEBUG=True
+
+GIT_BASE=https://git.openstack.org
+IMAGE_URLS="http://172.29.173.233/ubuntu-14.04-server-cloudimg-amd64.tar.gz"
+
+MYSQL_PASSWORD=nova
+RABBIT_PASSWORD=nova
+SERVICE_TOKEN=nova
+SERVICE_PASSWORD=nova
+ADMIN_PASSWORD=nova
+
+
+ENABLED_SERVICES=n-cpu,n-api,c-sch,c-api,c-vol,q-agt,q-l3,q-dhcp
+disable_service n-net
+
+SERVICE_HOST={control_ip}
+MYSQL_HOST={control_ip}
+RABBIT_HOST={control_ip}
+GLANCE_HOST={control_ip}

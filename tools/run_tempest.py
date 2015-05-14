@@ -21,7 +21,7 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
         venv='-V' if is_venv else '-N',
         filter_or_list='--load-list=list.txt' if tempest_list_file else tempest_filter)
     if wait_time and kill_time:
-        cmd = "timeout --preserve-status -s 2 -k {kill_time} {wait_time} ".format(kill_time=kill_time, wait_time=wait_time) + cmd
+        cmd = "source .tox/venv/bin/activate && timeout --preserve-status -s 2 -k {kill_time} {wait_time} ".format(kill_time=kill_time, wait_time=wait_time) + cmd
     if test_time:
         cmd = 'export OS_TEST_TIMEOUT={test_time}; '.format(test_time=test_time) + cmd
     settings = {'host_string': host,
@@ -39,7 +39,7 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
                 api.put(local_path=tempest_list_file, remote_path='list.txt')
             api.sudo(command='pip install junitxml')
             if patch_set:
-                api.run('git fetch https://review.openstack.org/openstack/tempest'
+                api.run('git fetch https://review.gerrithub.io/cisco-openstack/tempest'
                         ' {0} && git checkout FETCH_HEAD'.format(patch_set))
             api.run(command='testr init')
             api.run(command=cmd)
@@ -80,7 +80,7 @@ def define_cli(p):
                    help='user password on the remote')
     p.add_argument('-d', '--dir', default='/opt/stack/tempest',
                    help='folder where tempeset is deployed')
-    p.add_argument('-v', '--venv', default=False, type=bool,
+    p.add_argument('-v', '--venv', action='store_true',
                    help='switch usage of python venv on/off')
     p.add_argument('--repo', nargs='?', const=repo, default=repo, help='tempest repo')
     p.add_argument('--branch', nargs='?', const=branch, default=branch, help='tempest branch')

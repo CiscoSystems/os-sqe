@@ -43,6 +43,12 @@ class VM:
         for key, net in enumerate(self.conf['params']['networks']):
             net_params = [i for i in self.full_conf['networks'] if net in i][0]
             box_net = Network.hosts[0][self.box][index]
+            if "bridge" in net:
+                a = netconf['template']["interface_bridge"]
+                if net_params[net]:
+                    xml += a.format(interface=net_params[net][0])
+                    del net_params[net][0]
+                continue
             if net_params[net]["dhcp"] or len(self.conf['params']['networks']) == 1:  # True or False
                 mac = box_net["mac"]
                 xml += netconf['template']["interface_dhcp"].format(

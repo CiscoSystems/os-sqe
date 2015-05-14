@@ -1,0 +1,6 @@
+export OS_USERNAME=admin
+export OS_TENANT_NAME=admin
+export OS_PASSWORD=nova
+export OS_AUTH_URL=http://{controller_ip}:5000/v2.0/
+export OS_REGION_NAME=RegionOne
+export PS1="adm $PS1"

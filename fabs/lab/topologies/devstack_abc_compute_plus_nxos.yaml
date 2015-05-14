@@ -1,7 +1,78 @@
 servers:
 - |
   <domain type='kvm'>
-    <name>lab-{lab_id}-dev-aio</name>
+    <name>lab-{lab_id}-abc</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>8</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='raw'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-v6'/>
+        <mac address='ee:{lab_id:02}:00:01:00:01'/>
+        <target dev='v-{lab_id}-abc-6'/>
+      </interface>
+
+      <interface type='bridge'>
+        <source bridge='br-{lab_id}-abc'/>
+        <mac address='ee:{lab_id:02}:00:01:00:02'/>
+        <target dev='v-{lab_id}-abc-br'/>
+      </interface>
+
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+    </devices>
+
+  </domain>
+
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-compute</name>
     <memory unit='GiB'>8</memory>
     <currentMemory unit='GiB'>8</currentMemory>
     <vcpu placement='static'>2</vcpu>
@@ -39,85 +110,15 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-adm-10.{lab_id}.0.1'/>
-        <mac address='ee:{lab_id:02X}:00:01:00:01'/>
-        <target dev='v-{lab_id}-dev-aio-1'/>
+        <source network='lab-{lab_id}-v6'/>
+        <mac address='ee:{lab_id:02}:00:02:00:01'/>
+        <target dev='v-{lab_id}-compute-6'/>
       </interface>
 
-      <interface type='network'>
-        <source network='lab-{lab_id}-6-20{lab_id}::1'/>
-        <mac address='ee:{lab_id:02X}:00:01:00:02'/>
-        <target dev='v-{lab_id}-adm-1'/>
-      </interface>
-
-      <input type='mouse' bus='ps2'/>
-
-      <serial type='pty'>
-        <source path='/dev/pts/3'/>
-        <target port='1'/>
-        <alias name='serial0'/>
-      </serial>
-      <console type='pty'>
-        <source path='/dev/pts/3'/>
-        <target type='serial' port='1'/>
-        <alias name='serial0'/>
-      </console>
-
-      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
-        <listen type='address' address='0.0.0.0'/>
-      </graphics>
-    </devices>
-
-  </domain>
-- |
-  <domain type='kvm'>
-    <name>lab-{lab_id}-dhcp6</name>
-    <memory unit='GiB'>1</memory>
-    <currentMemory unit='GiB'>1</currentMemory>
-    <vcpu placement='static'>1</vcpu>
-    <os>
-      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
-      <boot dev='hd'/>
-      <boot dev='network'/>
-    </os>
-    <features>
-      <acpi/>
-      <apic/>
-      <pae/>
-    </features>
-    <on_poweroff>destroy</on_poweroff>
-    <on_reboot>restart</on_reboot>
-    <on_crash>restart</on_crash>
-    <pm>
-      <suspend-to-mem enabled='no'/>
-      <suspend-to-disk enabled='no'/>
-    </pm>
-
-    <devices>
-      <emulator>/usr/bin/kvm</emulator>
-
-      <disk type='file' device='disk'>
-        <driver name='qemu' type='qcow2'/>
-        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
-        <target dev='vda' bus='virtio'/>
-      </disk>
-
-      <disk type='file' device='disk'>
-        <driver name='qemu' type='raw'/>
-        <source file='{disk_cloud_init}'/>
-        <target dev='hdb' bus='ide'/>
-      </disk>
-
-      <interface type='network'>
-        <source network='lab-{lab_id}-adm-10.{lab_id}.0.1'/>
-        <mac address='ee:{lab_id:02X}:00:02:00:01'/>
-        <target dev='v-{lab_id}-dhcp6-1'/>
-      </interface>
-
-      <interface type='network'>
-        <source network='lab-{lab_id}-6-20{lab_id}::1'/>
-        <mac address='ee:{lab_id:02X}:00:02:00:02'/>
-        <target dev='v-{lab_id}-dhcp6-2'/>
+      <interface type='bridge'>
+        <source bridge='br-{lab_id}-compute'/>
+        <mac address='ee:{lab_id:02}:00:02:00:02'/>
+        <target dev='v-{lab_id}-comp-br'/>
       </interface>
 
       <input type='mouse' bus='ps2'/>
@@ -139,11 +140,12 @@ servers:
     </devices>
 
   </domain>
+
 networks:
 - |
   <network>
-    <name>lab-{lab_id}-adm-10.{lab_id}.0.1</name>
-    <bridge name='br-{lab_id}-adm' />
+    <name>lab-{lab_id}-v6</name>
+    <bridge name='br-{lab_id}-v6' />
     <forward mode="nat"/>
     <ip address='10.{lab_id}.0.1' netmask='255.255.255.0'>
       <dhcp>
@@ -151,16 +153,35 @@ networks:
       </dhcp>
     </ip>
   </network>
-- |
-  <network>
-    <name>lab-{lab_id}-6-20{lab_id}::1</name>
-    <bridge name='br-{lab_id}-6' />
-    <forward mode="nat"/>
-    <ip family="ipv6" address='20{lab_id}::1' prefix='64'>
-    </ip>
-  </network>
+
 paas:
-  - net: lab-{lab_id}-adm-10.{lab_id}.0.1
-    mac: ee:{lab_id:02X}:00:02:00:01
-    cmd: |
-      dnsmasq --interface=eth0 --dhcp-range=20{lab_id}::10,20{lab_id}::20 --dhcp-leasefile=/tmp/dnsmasq.leases --pid-file=/tmp/dnsmasq.pid
+  - net: lab-{lab_id}-v6
+    mac: ee:{lab_id:02}:00:01:00:01
+    cmd:
+      - ssh-keyscan -t rsa 172.22.191.18 >> ~/.ssh/known_hosts
+      - sudo hostname compute-1
+      - deploy_devstack with devstack.local.conf.aio4.cisco_nexus
+      - sudo pip install ncclient==0.4.2
+      - sudo ovs-vsctl add-port br-eth1 eth1
+      - sudo ip l s eth1 up
+  - net: lab-{lab_id}-v6
+    mac: ee:{lab_id:02}:00:02:00:01
+    cmd:
+      - sudo hostname compute-2
+      - deploy_devstack with devstack.local.conf.compute_only.cisco_nexus
+      - sudo ovs-vsctl add-port br-eth1 eth1
+      - sudo ip l s eth1 up
+  - net: lab-{lab_id}-v6
+    mac: ee:{lab_id:02}:00:01:00:01
+    cmd:
+      - run_tempest 'TestNetworkBasicOps'
+
+paas_pre:
+    - sudo brctl addbr br-{lab_id}-abc
+    - sudo brctl addif br-{lab_id}-abc eth0
+    - sudo ip l s br-{lab_id}-abc up
+    - sudo brctl addbr br-{lab_id}-compute
+    - sudo brctl addif br-{lab_id}-compute eth1
+    - sudo ip l s br-{lab_id}-compute up
+    - sudo ip l s eth1 up
+    - sudo ip l s eth0 up

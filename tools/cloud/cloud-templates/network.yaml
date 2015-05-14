@@ -67,9 +67,17 @@ template:
   interface: |
         <interface type='network'>
           <source network='{net_name}'/>
+          <model type='virtio'/>
         </interface>
   interface_dhcp: |
         <interface type='network'>
           <source network='{net_name}'/>
+          <model type='virtio'/>
           <mac address='{mac}'/>
         </interface>
+  interface_bridge: |
+        <interface type='bridge'>
+          <source bridge='br-{interface}'/>
+          <model type='virtio'/>
+        </interface>
+

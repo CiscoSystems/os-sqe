@@ -1,0 +1,4 @@
+#cloud-config
+password: nova
+chpasswd: { expire: false}
+ssh_pwauth: true

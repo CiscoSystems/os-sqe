@@ -1,6 +1,6 @@
 import os
 import time
-from fabric.api import task, local, env, settings, run, cd
+from fabric.api import task, local, env, settings, run, cd, put
 from common import timed, virtual, get_lab_vm_ip
 from common import logger as log
 from tempest import prepare_devstack, run_tests, run_remote_tests
@@ -13,7 +13,7 @@ env.update(DEFAULT_SETTINGS)
 __all__ = ['prepare', 'install', 'setup',
            'run_test_original_file', 'run_test_custom_file',
            'run_test_ready_file', 'run_test_remote',
-           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv']
+           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler', 'plus_nxos', 'neutron', 'mercury', 'aio6']
 
 
 @task
@@ -137,15 +137,94 @@ def patchset(component="neutron", patch_set=None):
         run("screen -c {0} -d -m && sleep 1".format(stack_file))
 
 
-@task
-@timed
-def plus_n1kv(lab_id, is_override=True):
-    """Run devstack in one VM + n1kv in separate VM"""
-    MyLab(lab_id=lab_id, topology_name='devstack_plus_n1kv', is_override=is_override).create_lab()
+def determine_configuration(ip='localhost'):
+    with settings(host_string=ip):
+        folder = os.path.dirname(run('find ~ -name stack.sh'))
+        dest = run('grep -E "^DEST=(.+)$" {0}/local.conf {0}/stackrc | cut -d = -f2'.format(folder))
+
+    d = {'folder': folder, 'DEST': dest.split()[0], 'screen': folder + '/stack-screenrc'}
+    log.info(d)
+    return d
 
 
 @task
 @timed
-def plus_dhcp6(lab_id, is_override=True):
-    """Run devstack in one VM + dhcp6 server in separate VM"""
-    MyLab(lab_id=lab_id, topology_name='devstack_plus_dhcp6', is_override=is_override).create_lab()
+def apply_patches(component='neutron', from_folder='~/patches', ip='localhost'):
+    """ Apply all patches found in the given directory to the given component """
+    cfg = determine_configuration(ip=ip)
+    uploaded_folder = '~/uploaded_patches'
+    with settings(host_string=ip):
+        run('mkdir -p ' + uploaded_folder)
+        put(local_path=from_folder + '/*.patch', remote_path=uploaded_folder)
+        with cd(cfg['DEST'] + '/' + component):
+            run('git checkout -- .')
+            run('git checkout master')
+            for name in run('ls {0}/*.patch'.format(uploaded_folder)).split():
+                run('patch -p1 < ' + name)
+    restart_screen(ip=ip)
+
+
+def restart_screen(ip='localhost', screen_cfg=None):
+    """ (Re)start screen with all OS processes attached to it """
+    screen_cfg = screen_cfg or determine_configuration(ip=ip)['screen']
+    with settings(host_string=ip, abort_on_prompts=True, warn_only=True):
+        run('screen -S stack -X quit && sleep 5')
+        run('screen -c {0} -d -m && sleep 1'.format(screen_cfg))
+
+
+def lab_create_delete(lab_obj, phase, cleanup):
+    if not cleanup != 'do not cleanup':
+        lab_obj.create_lab(phase=phase)
+    else:
+        lab_obj.delete_lab()
+
+
+@task
+@timed
+def plus_dhcp6(lab_id, phase='lab', devstack_conf_addon='', cleanup='do not cleanup'):
+    """aio + dhcp6 server in separate VMs"""
+    lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dhcp6', devstack_conf_addon=devstack_conf_addon)
+    lab_create_delete(lab, phase, cleanup)
+
+
+@task
+@timed
+def plus_dibbler(lab_id, phase='lab', cleanup='do not cleanup'):
+    """aio + dibbler server in separate VMs"""
+    lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler')
+    lab_create_delete(lab, phase, cleanup)
+
+
+@task
+@timed
+def plus_nxos(phase='lab', cleanup='do not cleanup'):
+    """abc + compute, Cisco ML2 with external nxos switch"""
+    lab = MyLab(lab_id=77, topology_name='devstack_abc_compute_plus_nxos')
+    lab_create_delete(lab, phase, cleanup)
+
+
+@task
+@timed
+def neutron(lab_id,  cleanup='do not cleanup'):
+    """Run single machine with neutron only"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='neutron6',)
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+
+@task
+@timed
+def mercury(lab_id,  cleanup='do not cleanup'):
+    """Run reference topology for Mercury"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='mercury',)
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+
+@task
+@timed
+def aio6(lab_id,  cleanup='do not cleanup'):
+    """Run all in one OS deployed on v6 only virtual host"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='aio6',)
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)

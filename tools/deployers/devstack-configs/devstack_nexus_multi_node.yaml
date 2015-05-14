@@ -6,23 +6,19 @@ servers:
       NEUTRON_BRANCH=master
       HOST_IP={control_node_ip}
       MULTI_HOST=1
-      disable_service n-net heat h-api h-api-cfn h-api-cw h-eng cinder c-api c-sch c-vol n-novnc horizon
-      enable_service neutron
-      enable_service tempest
-      enable_service q-svc
-      enable_service q-agt
-      enable_service q-dhcp
-      enable_service q-l3
-      enable_service q-meta
-      enable_service n-cpu
-      enable_service q-vpn
-      enable_service q-lbaas
+      enable_service g-api g-reg key n-api n-crt n-obj n-cpu n-cond cinder c-sch
+      enable_service c-api c-vol n-sch n-novnc n-xvnc n-cauth horizon rabbit
+      enable_service mysql q-svc q-agt q-l3 q-dhcp q-meta q-lbaas q-vpn q-fwaas q-metering neutron
+      disable_service n-net
+      enable_service s-proxy s-object s-container s-account
+      enable_plugin networking-cisco https://git.openstack.org/stackforge/networking-cisco.git
+      enable_service net-cisco
       LIBVIRT_TYPE=qemu
       Q_PLUGIN=ml2
       Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,cisco_nexus
       Q_ML2_PLUGIN_TYPE_DRIVERS=vlan
-      Q_PLUGIN_EXTRA_CONF_PATH=(~/devstack)
-      Q_PLUGIN_EXTRA_CONF_FILES=(plugin_conf.ini)
+      Q_PLUGIN_EXTRA_CONF_PATH=(/opt/stack/networking-cisco/etc/neutron/plugins/ml2)
+      Q_PLUGIN_EXTRA_CONF_FILES=(ml2_conf_cisco.ini)
       ML2_VLAN_RANGES=physnet1:3160:3199
       PHYSICAL_NETWORK=physnet1
       OVS_PHYSICAL_BRIDGE=br-eth1
@@ -42,7 +38,12 @@ servers:
       password=cisco123
   commands_after:
     |
+      sudo ip l s eth1 up
       sudo ovs-vsctl add-port br-eth1 eth1
+      sudo pip install ncclient==0.4.2
+      ssh-keyscan -t rsa 172.22.191.18 >> ~/.ssh/known_hosts
+      sudo ip l s eth2 up
+      sudo ovs-vsctl add-port br-ex eth2
 -
   local_conf:
     |
@@ -62,8 +63,12 @@ servers:
       Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,cisco_nexus
       Q_ML2_PLUGIN_TYPE_DRIVERS=vlan
       DATABASE_TYPE=mysql
-      Q_PLUGIN_EXTRA_CONF_PATH=(~/devstack)
-      Q_PLUGIN_EXTRA_CONF_FILES=(plugin_conf.ini)
+      enable_plugin networking-cisco https://git.openstack.org/stackforge/networking-cisco.git
+      enable_service net-cisco
+      Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,cisco_nexus
+      Q_ML2_PLUGIN_TYPE_DRIVERS=vlan
+      Q_PLUGIN_EXTRA_CONF_PATH=(/opt/stack/networking-cisco/etc/neutron/plugins/ml2)
+      Q_PLUGIN_EXTRA_CONF_FILES=(ml2_conf_cisco.ini)
       ML2_VLAN_RANGES=physnet1:3160:3199
       PHYSICAL_NETWORK=physnet1
       OVS_PHYSICAL_BRIDGE=br-eth1
@@ -83,4 +88,7 @@ servers:
       password=cisco123
   commands_after:
     |
+      sudo ip l s eth1 up
       sudo ovs-vsctl add-port br-eth1 eth1
+      sudo pip install ncclient==0.4.2
+      ssh-keyscan -t rsa 172.22.191.18 >> ~/.ssh/known_hosts

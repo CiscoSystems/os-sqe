@@ -1,0 +1,92 @@
+servers:
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-aio</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://172.29.173.233/rhel.qcow-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='raw'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-10.{lab_id}.0'/>
+        <mac address='ee:{lab_id:02}:00:01:00:04'/>
+        <target dev='v-{lab_id}-if4'/>
+        <model type='virtio'/>
+      </interface>
+
+    </devices>
+
+  </domain>
+
+networks:
+- |
+  <network>
+    <name>lab-{lab_id}-10.{lab_id}.0</name>
+    <forward mode="nat"/>
+    <bridge name='br-{lab_id}-10.{lab_id}' />
+    <mac address='ee:{lab_id:02}:00:00:00:bb'/>
+    <ip address='10.{lab_id}.0.1' netmask='255.255.255.0'>
+      <dhcp>
+        <range start='10.{lab_id}.0.2' end='10.{lab_id}.0.254' />
+      </dhcp>
+    </ip>
+  </network>
+
+paas:
+  - net: lab-{lab_id}-10.{lab_id}.0
+    mac: ee:{lab_id:02}:00:01:00:04
+    user: cloud-user
+    password: ubuntu
+    cmd:
+      - deploy_by_packstack with redhat_packstack.conf.aio
+
+paas_post:
+    - run_tempest_local

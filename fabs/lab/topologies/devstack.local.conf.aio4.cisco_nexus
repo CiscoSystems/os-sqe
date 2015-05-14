@@ -1,0 +1,48 @@
+# Run all services but compute, with cisco nexus ML2 plugin
+[[local|localrc]]
+DEST=${HOME}/os
+DATA_DIR=${DEST}/data
+SERVICE_DIR=${DEST}/status
+LOGFILE=$DEST/logs/stack.sh.log
+SCREEN_LOGDIR=$DEST/logs
+VERBOSE=True
+DEBUG=True
+
+GIT_BASE=https://git.openstack.org
+IMAGE_URLS="http://172.29.173.233/ubuntu-14.04-server-cloudimg-amd64.tar.gz"
+
+MYSQL_PASSWORD=nova
+RABBIT_PASSWORD=nova
+SERVICE_TOKEN=nova
+SERVICE_PASSWORD=nova
+ADMIN_PASSWORD=nova
+
+disable_service n-net
+enable_service q-svc q-agt q-l3 q-dhcp q-meta neutron
+
+enable_plugin networking-cisco https://git.openstack.org/stackforge/networking-cisco.git
+enable_service net-cisco
+
+Q_PLUGIN=ml2
+Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,cisco_nexus
+Q_ML2_PLUGIN_TYPE_DRIVERS=vlan
+DATABASE_TYPE=mysql
+Q_PLUGIN_EXTRA_CONF_PATH=(${DEST}/networking-cisco/etc/neutron/plugins/ml2)
+Q_PLUGIN_EXTRA_CONF_FILES=(ml2_conf_cisco.ini)
+ML2_VLAN_RANGES=physnet1:3160:3199
+PHYSICAL_NETWORK=physnet1
+OVS_PHYSICAL_BRIDGE=br-eth1
+TENANT_VLAN_RANGE=3160:3199
+ENABLE_TENANT_VLANS=True
+ENABLE_TENANT_TUNNELS=False
+Q_ML2_TENANT_NETWORK_TYPE=vlan
+[[post-config|${DEST}/networking-cisco/etc/neutron/plugins/ml2/ml2_conf_cisco.ini]]
+
+[ml2_cisco]
+managed_physical_network = physnet1
+
+[ml2_mech_cisco_nexus:172.22.191.18]
+compute-1=1/31 #arbitrary name used on switch only
+compute-2=1/32 #arbitrary name used on switch only
+username=admin
+password=cisco123
