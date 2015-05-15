@@ -12,6 +12,9 @@ echo "apt_preserve_sources_list: true" | sudo tee /etc/cloud/cloud.cfg.d/99-loca
 sudo cp sources.list /etc/apt/
 sudo apt-get update
 
+https://raw.githubusercontent.com/pypa/pip/develop/contrib/get-pip.py
+sudo python get-pip.py
+
 # Install packages
-sudo apt-get install -y openjdk-6-jre git python-pip python-dev libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev gzip
+sudo apt-get install -y openjdk-6-jre git python-dev libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev gzip
 sudo pip install ecdsa junitxml
