@@ -12,7 +12,7 @@ echo "apt_preserve_sources_list: true" | sudo tee /etc/cloud/cloud.cfg.d/99-loca
 sudo cp sources.list /etc/apt/
 sudo apt-get update
 
-https://raw.githubusercontent.com/pypa/pip/develop/contrib/get-pip.py
+wget https://raw.githubusercontent.com/pypa/pip/develop/contrib/get-pip.py
 sudo python get-pip.py
 
 # Install packages
