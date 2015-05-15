@@ -49,7 +49,7 @@ class DevStack(object):
 
         self._tempest_path = '/opt/stack/tempest'
 
-    def clone(self, commit=None, force=False):
+    def clone(self, commit=None, force=True):
         logger.info('Clone DevStack to {0}'.format(self._clone_path))
         with settings(host_string=self.host_string):
             if exists(self._clone_path):
