@@ -7,6 +7,8 @@ class LabIds(object):
     devstack_aio6 = 52
     devstack_neutron = 55
     devstack_mercury = 59
+    plus_dibbler = 10
+    plus_dhcp6 = 11
 
     redhat_aio6 = 61
     redhat_aio46 = 62

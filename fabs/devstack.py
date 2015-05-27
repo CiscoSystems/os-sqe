@@ -182,7 +182,7 @@ def lab_create_delete(lab_obj, phase, cleanup):
 
 @task
 @timed
-def plus_dhcp6(lab_id, phase='lab', devstack_conf_addon='', cleanup='do not cleanup'):
+def plus_dhcp6(lab_id=LabIds.plus_dhcp6, phase='lab', devstack_conf_addon='', cleanup='do not cleanup'):
     """aio + dhcp6 server in separate VMs"""
     lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dhcp6', devstack_conf_addon=devstack_conf_addon)
     lab_create_delete(lab, phase, cleanup)
@@ -190,7 +190,7 @@ def plus_dhcp6(lab_id, phase='lab', devstack_conf_addon='', cleanup='do not clea
 
 @task
 @timed
-def plus_dibbler(lab_id, phase='lab', cleanup='do not cleanup'):
+def plus_dibbler(lab_id=LabIds.plus_dibbler, phase='lab', cleanup='do not cleanup'):
     """aio + dibbler server in separate VMs"""
     lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler')
     lab_create_delete(lab, phase, cleanup)
