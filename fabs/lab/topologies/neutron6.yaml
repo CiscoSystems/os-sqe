@@ -74,7 +74,7 @@ networks:
     </ip>
   </network>
 
-paas:
+paas_1:
   - net: EUI-64
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:

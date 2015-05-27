@@ -442,7 +442,7 @@ networks:
       </dhcp>
     </ip>
   </network>
-paas:
+paas_1:
   - net: lab-{lab_id}-prov4
     mac: ee:{lab_id:02}:00:01:00:04
     cmd:

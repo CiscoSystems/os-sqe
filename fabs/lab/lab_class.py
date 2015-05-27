@@ -165,9 +165,9 @@ class MyLab:
     def make_local_file_name(self, where, name, extension):
         return os.path.abspath(os.path.join(where, name.format(lab_id=self.lab_id) + '.' + extension))
 
-    def create_paas(self):
-        log.info('\n\nStarting PaaS phase')
-        if not self.topology.get('paas', []):
+    def create_paas(self, phase):
+        log.info('\n\nStarting {0} phase'.format(phase))
+        if not self.topology.get(phase, []):
             log.info('Nothing defined in PaaS section')
             return
         for net_mac_user_password_cmds in self.topology['paas']:
@@ -353,7 +353,7 @@ class MyLab:
         os_inspector.create_tempest_conf()
 
     def create_lab(self, phase):
-        """Possible phases: lab, paas_pre, net, dom, paas, delete. lab does all in chain. delete cleans up the lab"""
+        """Possible phases: lab, paas_pre, net, dom, paas_1, pass_2, paas_post, delete. lab does all in chain. delete cleans up the lab"""
         if phase not in ['paas', 'paas_pre', 'paas_post']:
             self.delete_lab()
             if phase == 'delete':
@@ -365,7 +365,9 @@ class MyLab:
             self.create_networks()
         if phase in ['lab', 'dom']:
             self.create_domains()
-        if phase in ['lab', 'paas']:
-            self.create_paas()
+        if phase in ['lab', 'paas_1']:
+            self.create_paas(phase='paas_1')
+        if phase in ['lab', 'paas_2']:
+            self.create_paas(phase='paas_2')
         if phase in ['lab', 'paas_post']:
             self.run_pre_or_post(pre_or_post='paas_post')

@@ -80,7 +80,7 @@ networks:
     </ip>
   </network>
 
-paas:
+paas_1:
   - net: lab-{lab_id}-10.{lab_id}.0
     mac: ee:{lab_id:02}:00:01:00:04
     user: cloud-user

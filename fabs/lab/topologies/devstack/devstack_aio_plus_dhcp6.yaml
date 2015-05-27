@@ -161,7 +161,7 @@ networks:
     <ip family="ipv6" address='20{lab_id:02}::1' prefix='64'>
     </ip>
   </network>
-paas:
+paas_1:
   - net: lab-{lab_id}-10.{lab_id}.0
     mac: ee:{lab_id:02}:00:02:00:01
     cmd:

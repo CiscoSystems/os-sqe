@@ -584,7 +584,7 @@ networks:
     <forward mode="nat"/>
     <ip family="ipv6" address='2001:db8:{lab_id}:40::1' prefix='64' />
   </network>
-paas:
+paas_1:
   - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
