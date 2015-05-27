@@ -167,10 +167,11 @@ class MyLab:
 
     def create_paas(self, phase):
         log.info('\n\nStarting {0} phase'.format(phase))
-        if not self.topology.get(phase, []):
-            log.info('Nothing defined in PaaS section')
+        paas_phase = self.topology.get(phase, [])
+        if not paas_phase:
+            log.info('Nothing defined in {0} section'.format(phase))
             return
-        for net_mac_user_password_cmds in self.topology['paas']:
+        for net_mac_user_password_cmds in paas_phase:
             net = net_mac_user_password_cmds['net'].format(lab_id=self.lab_id)
             mac = net_mac_user_password_cmds['mac'].format(lab_id=self.lab_id)
             user = net_mac_user_password_cmds.get('user', 'ubuntu')
@@ -354,7 +355,7 @@ class MyLab:
 
     def create_lab(self, phase):
         """Possible phases: lab, paas_pre, net, dom, paas_1, pass_2, paas_post, delete. lab does all in chain. delete cleans up the lab"""
-        if phase not in ['paas', 'paas_pre', 'paas_post']:
+        if phase not in ['paas_1', 'paas_2', 'paas_pre', 'paas_post']:
             self.delete_lab()
             if phase == 'delete':
                 return
