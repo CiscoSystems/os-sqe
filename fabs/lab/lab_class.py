@@ -319,6 +319,8 @@ class MyLab:
         match = re.search('DEST=(.+)\n', devstack_conf.getvalue())
         if match:
             tempest_dir = match.groups()[0].strip() + '/tempest'
+            if 'HOME' in tempest_dir:
+                tempest_dir = run('echo {0}'.format(tempest_dir))
         else:
             tempest_dir = '/opt/stack/tempest'
         with cd(tempest_dir):
