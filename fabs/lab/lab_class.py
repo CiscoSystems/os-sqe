@@ -246,7 +246,7 @@ class MyLab:
         return local_repo_dir
 
     def deploy_devstack(self, cmd, ip):
-        conf_local_path = os.path.join(lab.TOPOLOGIES_DIR, cmd.split(' with ')[-1])
+        conf_local_path = os.path.join(lab.DEVSTACK_CONF_DIR, cmd.split(' with ')[-1])
         if not self.control_ip:
             self.control_ip = ip
 
@@ -260,7 +260,7 @@ class MyLab:
         run('{0}/stack.sh'.format(local_cloned_repo))
 
     def deploy_by_packstack(self, cmd, ip):
-        conf_local_path = os.path.join(lab.TOPOLOGIES_DIR, cmd.split(' with ')[-1])
+        conf_local_path = os.path.join(lab.PACKSTACK_CONF_DIR, cmd.split(' with ')[-1])
         if not self.control_ip:
             self.control_ip = ip
 

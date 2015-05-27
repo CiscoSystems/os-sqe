@@ -39,14 +39,14 @@ class OS:
                 self.image_id_alt = image.id
 
     def create_tempest_conf(self):
-        with open(os.path.join(lab.TOPOLOGIES_DIR, 'tempest.conf')) as f:
+        with open(os.path.join(lab.TEMPEST_CONF_DIR, 'tempest.conf')) as f:
             template = f.read()
 
         with open('cisco-sqe-tempest.conf', 'w') as f:
             f.write(template.format(controller_ip=self.controller_ip, image_id=self.image_id, image_id_alt=self.image_id_alt))
 
     def create_openrc(self):
-        with open(os.path.join(lab.TOPOLOGIES_DIR, 'openrc')) as f:
+        with open(os.path.join(lab.TEMPEST_CONF_DIR, 'openrc')) as f:
             template = f.read()
 
         with open('openrc', 'w') as f:
