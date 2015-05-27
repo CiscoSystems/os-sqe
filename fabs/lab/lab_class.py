@@ -52,7 +52,7 @@ class MyLab:
             lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
             lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
             lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
-            self.control_ip = None  # will be filled in deploy_devstack if appropriate
+            self.controller_ip = None  # will be filled in deploy_devstack if appropriate
             self.nova_ips = []
             self.neutron_ips = []
             self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
@@ -207,7 +207,7 @@ class MyLab:
                         elif cmd.startswith('run_tempest'):
                             self.run_tempest(cmd)
                         elif cmd.startswith('register_as_control_node'):
-                            self.control_ip = ip
+                            self.controller_ip = ip
                         elif cmd.startswith('register_as_nova_node'):
                             self.nova_ips.append(ip)
                         elif cmd.startswith('register_as_neutron_node'):
@@ -245,30 +245,28 @@ class MyLab:
             run('git pull -q')
         return local_repo_dir
 
-    def deploy_devstack(self, cmd, ip):
-        conf_local_path = os.path.join(lab.DEVSTACK_CONF_DIR, cmd.split(' with ')[-1])
-        if not self.control_ip:
-            self.control_ip = ip
-
-        with open(conf_local_path) as f:
+    def build_config_from_base_and_addon(self, directory, ip, cmd):
+        if not self.controller_ip:
+            self.controller_ip = ip
+        with open(os.path.join(directory, 'base.conf')) as f:
             conf_as_string = f.read()
-            conf_as_string.replace('{control_ip}', str(self.control_ip))
+        with open(os.path.join(directory, cmd.split(' with ')[-1])) as f:
+            conf_as_string += f.read()
             conf_as_string += self.devstack_conf_addon
+            conf_as_string = conf_as_string.replace('{controller_ip}', str(self.controller_ip))
+            conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.nova_ips or [self.controller_ip]))
+            conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.neutron_ips or [self.controller_ip]))
+        return conf_as_string
+
+    def deploy_devstack(self, cmd, ip):
+        conf_as_string = self.build_config_from_base_and_addon(directory=lab.DEVSTACK_CONF_DIR, ip=ip, cmd=cmd)
 
         local_cloned_repo = MyLab.clone_repo('https://git.openstack.org/openstack-dev/devstack.git')
         put(local_path=StringIO(conf_as_string), remote_path='{0}/local.conf'.format(local_cloned_repo))
         run('{0}/stack.sh'.format(local_cloned_repo))
 
     def deploy_by_packstack(self, cmd, ip):
-        conf_local_path = os.path.join(lab.PACKSTACK_CONF_DIR, cmd.split(' with ')[-1])
-        if not self.control_ip:
-            self.control_ip = ip
-
-        with open(conf_local_path) as f:
-            conf_as_string = f.read()
-            conf_as_string = conf_as_string.replace('{controller_ip}', str(self.control_ip))
-            conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.nova_ips or [self.control_ip]))
-            conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.neutron_ips or [self.control_ip]))
+        conf_as_string = self.build_config_from_base_and_addon(directory=lab.PACKSTACK_CONF_DIR, ip=ip, cmd=cmd)
 
         with settings(warn_only=True):
             if run('rpm -q openstack-packstack').failed:
@@ -276,7 +274,7 @@ class MyLab:
                 sudo('yum install -y -q openstack-packstack')
         put(local_path=StringIO(conf_as_string), remote_path='cisco-sqe-packstack.conf')
         sudo('packstack --answer-file=cisco-sqe-packstack.conf')
-        self.create_tempest_conf(controller_ip=self.control_ip)
+        self.create_tempest_conf(controller_ip=self.controller_ip)
 
     @staticmethod
     def deploy_dibbler(cmd):

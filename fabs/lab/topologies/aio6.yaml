@@ -77,7 +77,7 @@ paas_1:
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
       - sudo echo 'nameserver 2001:4860:4860::8888' >> /etc/resolv.conf
-      - deploy_devstack with devstack.local.conf.default
+      - deploy_devstack with default
 
 paas_pre:
     - sudo brctl addbr abr6-{lab_id}

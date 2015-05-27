@@ -78,4 +78,4 @@ paas_1:
   - net: EUI-64
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
-      - deploy_devstack with devstack.local.conf.neutron_only
+      - deploy_devstack with neutron_only

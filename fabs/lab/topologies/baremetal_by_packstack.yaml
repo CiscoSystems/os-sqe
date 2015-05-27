@@ -24,7 +24,7 @@ paas_1:
     user: root
     password: cisco123
     cmd:
-      - deploy_by_packstack with redhat_packstack.conf.aio
+      - deploy_by_packstack with base.conf
 
 paas_post:
     - run_tempest_local test_network_multi_node

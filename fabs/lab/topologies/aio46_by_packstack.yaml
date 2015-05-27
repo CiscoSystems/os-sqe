@@ -86,7 +86,7 @@ paas_1:
     user: cloud-user
     password: ubuntu
     cmd:
-      - deploy_by_packstack with redhat_packstack.conf.aio
+      - deploy_by_packstack with base.conf
 
 paas_post:
     - run_tempest_local
