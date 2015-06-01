@@ -18,14 +18,17 @@ from fabs import REPO_DIR, HOME_DIR
 from fabs import decorators
 
 TOPOLOGIES_DIR = os.path.abspath(os.path.join(REPO_DIR, 'fabs/lab/topologies'))
+DEVSTACK_CONF_DIR = os.path.abspath(os.path.join(TOPOLOGIES_DIR, 'devstack'))
+PACKSTACK_CONF_DIR = os.path.abspath(os.path.join(TOPOLOGIES_DIR, 'packstack'))
+TEMPEST_CONF_DIR = os.path.abspath(os.path.join(TOPOLOGIES_DIR, 'tempest'))
 IMAGES_DIR = os.path.abspath(os.path.join(HOME_DIR, 'images'))
 DISKS_DIR = os.path.abspath(os.path.join(HOME_DIR, 'disks'))
 XMLS_DIR = os.path.abspath(os.path.join(HOME_DIR, 'xml'))
 
 CIRROS_BLD_DIR = os.path.abspath(os.path.join(HOME_DIR, 'BLD'))
-CIRROS_BUILD_ROOT_URL='http://buildroot.org/downloads/buildroot-2014.11.tar.gz'
-CIRROS_KERNEL_URL='http://kernel.ubuntu.com/~kernel-ppa/mainline/v3.17.4-vivid/linux-image-3.17.4-031704-generic_3.17.4-031704.201411211317_amd64.deb'
-CIRROS_CONFIGS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'fabs/lab/topologies'))
+CIRROS_BUILD_ROOT_URL = 'http://buildroot.org/downloads/buildroot-2014.11.tar.gz'
+CIRROS_KERNEL_URL = 'http://kernel.ubuntu.com/~kernel-ppa/mainline/v3.17.4-vivid/linux-image-3.17.4-031704-generic_3.17.4-031704.201411211317_amd64.deb'
+CIRROS_CONFIGS_DIR = os.path.abspath(os.path.join(TOPOLOGIES_DIR, 'cirros'))
 
 
 def make_tmp_dir(local_dir):

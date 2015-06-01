@@ -584,24 +584,24 @@ networks:
     <forward mode="nat"/>
     <ip family="ipv6" address='2001:db8:{lab_id}:40::1' prefix='64' />
   </network>
-paas:
+paas_1:
   - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
-      - deploy_devstack with devstack.local.conf.all_but_compute
+      - deploy_devstack with all_but_compute
   - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:02:00:01
     cmd:
-      - deploy_devstack with devstack.local.conf.all_but_compute
+      - deploy_devstack with all_but_compute
   - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:03:00:01
     cmd:
-      - deploy_devstack with devstack.local.conf.all_but_compute
+      - deploy_devstack with all_but_compute
   - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:00:01:01
     cmd:
-      - deploy_devstack with devstack.local.conf.compute_only
+      - deploy_devstack with compute_only
   - net: lab-{lab_id}-net4-prov
     mac: ee:{lab_id:02}:00:00:02:01
     cmd:
-      - deploy_devstack with devstack.local.conf.compute_only
+      - deploy_devstack with compute_only

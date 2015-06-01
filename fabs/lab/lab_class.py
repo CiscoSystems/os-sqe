@@ -52,7 +52,7 @@ class MyLab:
             lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
             lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
             lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
-            self.control_ip = None  # will be filled in deploy_devstack if appropriate
+            self.controller_ip = None  # will be filled in deploy_devstack if appropriate
             self.nova_ips = []
             self.neutron_ips = []
             self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
@@ -165,12 +165,13 @@ class MyLab:
     def make_local_file_name(self, where, name, extension):
         return os.path.abspath(os.path.join(where, name.format(lab_id=self.lab_id) + '.' + extension))
 
-    def create_paas(self):
-        log.info('\n\nStarting PaaS phase')
-        if not self.topology.get('paas', []):
-            log.info('Nothing defined in PaaS section')
+    def create_paas(self, phase):
+        log.info('\n\nStarting {0} phase'.format(phase))
+        paas_phase = self.topology.get(phase, [])
+        if not paas_phase:
+            log.info('Nothing defined in {0} section'.format(phase))
             return
-        for net_mac_user_password_cmds in self.topology['paas']:
+        for net_mac_user_password_cmds in paas_phase:
             net = net_mac_user_password_cmds['net'].format(lab_id=self.lab_id)
             mac = net_mac_user_password_cmds['mac'].format(lab_id=self.lab_id)
             user = net_mac_user_password_cmds.get('user', 'ubuntu')
@@ -207,7 +208,7 @@ class MyLab:
                         elif cmd.startswith('run_tempest'):
                             self.run_tempest(cmd)
                         elif cmd.startswith('register_as_control_node'):
-                            self.control_ip = ip
+                            self.controller_ip = ip
                         elif cmd.startswith('register_as_nova_node'):
                             self.nova_ips.append(ip)
                         elif cmd.startswith('register_as_neutron_node'):
@@ -245,30 +246,28 @@ class MyLab:
             run('git pull -q')
         return local_repo_dir
 
-    def deploy_devstack(self, cmd, ip):
-        conf_local_path = os.path.join(lab.TOPOLOGIES_DIR, cmd.split(' with ')[-1])
-        if not self.control_ip:
-            self.control_ip = ip
-
-        with open(conf_local_path) as f:
+    def build_config_from_base_and_addon(self, directory, ip, cmd):
+        if not self.controller_ip:
+            self.controller_ip = ip
+        with open(os.path.join(directory, 'base.conf')) as f:
             conf_as_string = f.read()
-            conf_as_string.replace('{control_ip}', str(self.control_ip))
+        with open(os.path.join(directory, cmd.split(' with ')[-1])) as f:
+            conf_as_string += f.read()
             conf_as_string += self.devstack_conf_addon
+            conf_as_string = conf_as_string.replace('{controller_ip}', str(self.controller_ip))
+            conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.nova_ips or [self.controller_ip]))
+            conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.neutron_ips or [self.controller_ip]))
+        return conf_as_string
+
+    def deploy_devstack(self, cmd, ip):
+        conf_as_string = self.build_config_from_base_and_addon(directory=lab.DEVSTACK_CONF_DIR, ip=ip, cmd=cmd)
 
         local_cloned_repo = MyLab.clone_repo('https://git.openstack.org/openstack-dev/devstack.git')
         put(local_path=StringIO(conf_as_string), remote_path='{0}/local.conf'.format(local_cloned_repo))
         run('{0}/stack.sh'.format(local_cloned_repo))
 
     def deploy_by_packstack(self, cmd, ip):
-        conf_local_path = os.path.join(lab.TOPOLOGIES_DIR, cmd.split(' with ')[-1])
-        if not self.control_ip:
-            self.control_ip = ip
-
-        with open(conf_local_path) as f:
-            conf_as_string = f.read()
-            conf_as_string = conf_as_string.replace('{controller_ip}', str(self.control_ip))
-            conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.nova_ips or [self.control_ip]))
-            conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.neutron_ips or [self.control_ip]))
+        conf_as_string = self.build_config_from_base_and_addon(directory=lab.PACKSTACK_CONF_DIR, ip=ip, cmd=cmd)
 
         with settings(warn_only=True):
             if run('rpm -q openstack-packstack').failed:
@@ -276,7 +275,7 @@ class MyLab:
                 sudo('yum install -y -q openstack-packstack')
         put(local_path=StringIO(conf_as_string), remote_path='cisco-sqe-packstack.conf')
         sudo('packstack --answer-file=cisco-sqe-packstack.conf')
-        self.create_tempest_conf(controller_ip=self.control_ip)
+        self.create_tempest_conf(controller_ip=self.controller_ip)
 
     @staticmethod
     def deploy_dibbler(cmd):
@@ -319,6 +318,8 @@ class MyLab:
         match = re.search('DEST=(.+)\n', devstack_conf.getvalue())
         if match:
             tempest_dir = match.groups()[0].strip() + '/tempest'
+            if 'HOME' in tempest_dir:
+                tempest_dir = run('echo {0}'.format(tempest_dir))
         else:
             tempest_dir = '/opt/stack/tempest'
         with cd(tempest_dir):
@@ -353,8 +354,8 @@ class MyLab:
         os_inspector.create_tempest_conf()
 
     def create_lab(self, phase):
-        """Possible phases: lab, paas_pre, net, dom, paas, delete. lab does all in chain. delete cleans up the lab"""
-        if phase not in ['paas', 'paas_pre', 'paas_post']:
+        """Possible phases: lab, paas_pre, net, dom, paas_1, pass_2, paas_post, delete. lab does all in chain. delete cleans up the lab"""
+        if phase not in ['paas_1', 'paas_2', 'paas_pre', 'paas_post']:
             self.delete_lab()
             if phase == 'delete':
                 return
@@ -365,7 +366,9 @@ class MyLab:
             self.create_networks()
         if phase in ['lab', 'dom']:
             self.create_domains()
-        if phase in ['lab', 'paas']:
-            self.create_paas()
+        if phase in ['lab', 'paas_1']:
+            self.create_paas(phase='paas_1')
+        if phase in ['lab', 'paas_2']:
+            self.create_paas(phase='paas_2')
         if phase in ['lab', 'paas_post']:
             self.run_pre_or_post(pre_or_post='paas_post')

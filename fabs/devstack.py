@@ -7,6 +7,7 @@ from tempest import prepare_devstack, run_tests, run_remote_tests
 from fabs import LAB, IMAGES_REPO, DEVSTACK_DISK, GLOBAL_TIMEOUT, DEFAULT_SETTINGS, DEVSTACK_CONF
 from fabs.lab.lab_class import MyLab
 from snap import destroy, create
+from fabs import LabIds
 
 env.update(DEFAULT_SETTINGS)
 
@@ -181,7 +182,7 @@ def lab_create_delete(lab_obj, phase, cleanup):
 
 @task
 @timed
-def plus_dhcp6(lab_id, phase='lab', devstack_conf_addon='', cleanup='do not cleanup'):
+def plus_dhcp6(lab_id=LabIds.plus_dhcp6, phase='lab', devstack_conf_addon='', cleanup='do not cleanup'):
     """aio + dhcp6 server in separate VMs"""
     lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dhcp6', devstack_conf_addon=devstack_conf_addon)
     lab_create_delete(lab, phase, cleanup)
@@ -189,7 +190,7 @@ def plus_dhcp6(lab_id, phase='lab', devstack_conf_addon='', cleanup='do not clea
 
 @task
 @timed
-def plus_dibbler(lab_id, phase='lab', cleanup='do not cleanup'):
+def plus_dibbler(lab_id=LabIds.plus_dibbler, phase='lab', cleanup='do not cleanup'):
     """aio + dibbler server in separate VMs"""
     lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler')
     lab_create_delete(lab, phase, cleanup)
@@ -205,7 +206,7 @@ def plus_nxos(phase='lab', cleanup='do not cleanup'):
 
 @task
 @timed
-def neutron(lab_id,  cleanup='do not cleanup'):
+def neutron(lab_id=LabIds.devstack_neutron,  cleanup='do not cleanup'):
     """Run single machine with neutron only"""
 
     lab = MyLab(lab_id=lab_id, topology_name='neutron6',)
@@ -214,7 +215,7 @@ def neutron(lab_id,  cleanup='do not cleanup'):
 
 @task
 @timed
-def mercury(lab_id,  cleanup='do not cleanup'):
+def mercury(lab_id=LabIds.devstack_mercury,  cleanup='do not cleanup'):
     """Run reference topology for Mercury"""
 
     lab = MyLab(lab_id=lab_id, topology_name='mercury',)
@@ -223,7 +224,7 @@ def mercury(lab_id,  cleanup='do not cleanup'):
 
 @task
 @timed
-def aio6(lab_id,  cleanup='do not cleanup'):
+def aio6(lab_id=LabIds.devstack_aio6,  cleanup='do not cleanup'):
     """Run all in one OS deployed on v6 only virtual host"""
 
     lab = MyLab(lab_id=lab_id, topology_name='aio6',)

@@ -5,6 +5,7 @@ from common import logger as log
 from tempest import prepare_with_ip, run_tests
 from fabs import LAB, IMAGES_REPO, CENTOS65_DISK, CENTOS7_DISK, FEDORA20_DISK, \
     REDHAT_DISK, GLOBAL_TIMEOUT, DEFAULT_SETTINGS, RHEL7_DISK
+from fabs import LabIds
 
 env.update(DEFAULT_SETTINGS)
 
@@ -92,7 +93,7 @@ def full(topology):
 
 @task
 @timed
-def aio6(lab_id=51, phase='lab', cleanup=None):
+def aio6(lab_id=LabIds.redhat_aio6, phase='lab', cleanup=None):
     """Run tempest on aio OS deployed by RH packstack, IPv6 only"""
     from fabs.lab.lab_class import MyLab
 
@@ -102,7 +103,7 @@ def aio6(lab_id=51, phase='lab', cleanup=None):
 
 @task
 @timed
-def aio46(lab_id=52, phase='lab', cleanup=None):
+def aio46(lab_id=LabIds.redhat_aio46, phase='lab', cleanup=None):
     """Run tempest on aio OS deployed by RH packstack, IPv4+6 dual-stack"""
     from fabs.lab.lab_class import MyLab
 
@@ -112,7 +113,7 @@ def aio46(lab_id=52, phase='lab', cleanup=None):
 
 @task
 @timed
-def mercury(lab_id=55, phase='lab', cleanup=None):
+def mercury(lab_id=LabIds.redhat_mercury, phase='lab', cleanup=None):
     """Run tempest on mercury topo deployed by RH packstack"""
     from fabs.lab.lab_class import MyLab
 
@@ -122,7 +123,7 @@ def mercury(lab_id=55, phase='lab', cleanup=None):
 
 @task
 @timed
-def baremetal(lab_id=77, phase='lab', cleanup=None):
+def baremetal(lab_id=LabIds.redhat_baremetal_g8, phase='lab', cleanup=None):
     """Run tempest on mercury topo deployed by RH packstack"""
     from fabs.lab.lab_class import MyLab
 

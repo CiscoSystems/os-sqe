@@ -1,4 +1,4 @@
-paas:
+paas_1:
   - net: baremetal
     mac: 172.29.172.96
     cmd:
@@ -20,15 +20,11 @@ paas:
     cmd:
       - register_as_nova_node
   - net: baremetal
-    mac: 172.29.172.101
+    mac: 172.29.172.96
+    user: root
+    password: cisco123
     cmd:
-      - register_as_nova_node
-  - net: baremetal
-    mac: 172.29.172.97
-    user: localadmin
-    password: ubuntu
-    cmd:
-      - deploy_by_packstack with redhat_packstack.conf.aio
+      - deploy_by_packstack with base.conf
 
 paas_post:
     - run_tempest_local test_network_multi_node

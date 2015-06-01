@@ -154,13 +154,13 @@ networks:
     </ip>
   </network>
 
-paas:
+paas_1:
   - net: lab-{lab_id}-v6
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
       - ssh-keyscan -t rsa 172.22.191.18 >> ~/.ssh/known_hosts
       - sudo hostname compute-1
-      - deploy_devstack with devstack.local.conf.aio4.cisco_nexus
+      - deploy_devstack with aio4.cisco_nexus
       - sudo pip install ncclient==0.4.2
       - sudo ovs-vsctl add-port br-eth1 eth1
       - sudo ip l s eth1 up
@@ -168,7 +168,7 @@ paas:
     mac: ee:{lab_id:02}:00:02:00:01
     cmd:
       - sudo hostname compute-2
-      - deploy_devstack with devstack.local.conf.compute_only.cisco_nexus
+      - deploy_devstack with compute_only.cisco_nexus
       - sudo ovs-vsctl add-port br-eth1 eth1
       - sudo ip l s eth1 up
   - net: lab-{lab_id}-v6
