@@ -43,6 +43,9 @@ enable_service quantum
 enable_service tempest
 enable_service q-agt
 
+enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
+enable_service net-cisco
+
 Q_PLUGIN=ml2
 Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,ncs,logger
 Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
@@ -87,6 +90,12 @@ password=admin
 
 class TailFNCSTest(BaseTestCase):
 
+    neutron_repo = os.environ.get('NEUTRON_REPO')
+    neutron_ref = os.environ.get('NEUTRON_REF')
+
+    net_cisco_repo = os.environ.get('NET_CISCO_REPO')
+    net_cisco_ref = os.environ.get('NET_CISCO_REF')
+
     @classmethod
     def setUpClass(cls):
         BaseTestCase.setUpClass()
@@ -104,8 +113,10 @@ class TailFNCSTest(BaseTestCase):
             f.write(ML2_CONF_NCS_INI)
 
         local_conf = LOCAL_CONF.format(
-            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
-            neutron_branch=ZUUL_REF,
+            neutron_repo=cls.neutron_repo,
+            neutron_branch=cls.neutron_ref,
+            net_cisco_repo=cls.net_cisco_repo,
+            net_cisco_ref=cls.net_cisco_ref,
             Q_PLUGIN_EXTRA_CONF_PATH=WORKSPACE,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES)
 
