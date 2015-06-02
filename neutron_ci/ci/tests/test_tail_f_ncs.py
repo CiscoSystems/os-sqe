@@ -71,6 +71,7 @@ SERVICE_TOKEN=service
 SERVICE_PASSWORD=admin
 ADMIN_PASSWORD=admin
 
+GIT_BASE=https://git.openstack.org
 API_RATE_LIMIT=False
 VERBOSE=True
 DEBUG=True
