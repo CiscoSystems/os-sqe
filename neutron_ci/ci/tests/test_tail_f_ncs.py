@@ -23,6 +23,8 @@ from ci.lib.test_case import BaseTestCase
 
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'tailf_ncs_tests.txt')
+Q_PLUGIN_EXTRA_CONF_PATH = \
+    '/opt/stack/networking-cisco/etc/neutron/plugins/ml2'
 Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_ncs.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
@@ -79,9 +81,8 @@ LOGFILE=/opt/stack/screen-logs/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
-'''
 
-ML2_CONF_NCS_INI = '''
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_ncs]
 url=http://127.0.0.1:8888/openstack/
 username=admin
@@ -108,16 +109,9 @@ class TailFNCSTest(BaseTestCase):
         local('sudo cp {0} /etc/nginx/sites-available/default'.format(nginx_conf))
         local('sudo service nginx restart')
 
-        # Create ml2 config for NCS
-        path = os.path.join(WORKSPACE, Q_PLUGIN_EXTRA_CONF_FILES)
-        with open(path, 'w') as f:
-            f.write(ML2_CONF_NCS_INI)
-
         local_conf = LOCAL_CONF.format(
-            neutron_repo=cls.neutron_repo,
-            neutron_branch=cls.neutron_ref,
-            net_cisco_repo=cls.net_cisco_repo,
-            net_cisco_ref=cls.net_cisco_ref,
+            neutron_repo=urlparse.urljoin(ZUUL_URL, ZUUL_PROJECT),
+            neutron_branch=ZUUL_REF,
             Q_PLUGIN_EXTRA_CONF_PATH=WORKSPACE,
             Q_PLUGIN_EXTRA_CONF_FILES=Q_PLUGIN_EXTRA_CONF_FILES)
 
