@@ -2,6 +2,9 @@
 
 DESTINATION=$1
 
+sudo mkdir -p ${DESTINATION}
+sudo chown ubuntu:root ${DESTINATION}
+
 # Clone repositories. "RECLONE=True" should be added to localrc
 PROJECTS="openstack/requirements.git openstack-dev/pbr.git openstack/cliff.git openstack/oslo.i18n.git"
 PROJECTS="${PROJECTS} openstack/oslo.config.git openstack/oslo.messaging.git openstack/oslo.rootwrap.git openstack/oslo.db.git"
@@ -13,6 +16,6 @@ PROJECTS="${PROJECTS} openstack/neutron-lbaas openstack/neutron-vpnaas openstack
 for PROJECT in ${PROJECTS}; do
 	NAME=$(echo $PROJECT | grep -P -o '(?<=\/).*(?=.git)')
 	PROJECT_DEST=${DESTINATION}${NAME}
-	sudo git clone git://git.openstack.org/${PROJECT} ${PROJECT_DEST}
+	git clone git://git.openstack.org/${PROJECT} ${PROJECT_DEST}
 	cd ${PROJECT_DEST} && sudo pip install -r requirements.txt || true
 done
