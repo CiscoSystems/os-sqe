@@ -194,13 +194,16 @@ class DevStack(object):
 
     def clear(self):
         with settings(host_string=self.host_string, warn_only=True):
-            logger.info('Remove /opt/stack folder')
-            run('sudo rm -rf /opt/stack')
             logger.info('Remove ~/.cache folder')
             run('sudo rm -rf ~/.cache')
             logger.info('Call "sudo apt-get autoremove"')
             run('sudo apt-get autoremove -y')
             run('sudo dpkg --configure -a')
+
+    def clear_stack_folder(self):
+        with settings(host_string=self.host_string, warn_only=True):
+            logger.info('Remove /opt/stack folder')
+            run('sudo rm -rf /opt/stack')
 
     def restart_ovs(self):
         with settings(host_string=self.host_string, warn_only=True):
