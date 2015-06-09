@@ -37,31 +37,30 @@ def _conn():
 
 
 class MyLab:
+    LAB_IDX_MIN = 0
+    LAB_IDX_MAX = 99
+
     def __init__(self, lab_id, topology_name, devstack_conf_addon='', is_only_xml=False):
         topo_path = os.path.join(lab.TOPOLOGIES_DIR, topology_name + '.yaml')
-        msg = None
-        try:
-            with open(topo_path) as f:
-                self.topology = yaml.load(f)
-            self.is_only_xml = is_only_xml
-            self.lab_id = int(lab_id)
-            if self.lab_id < 0 or self.lab_id > 99:
-                raise ValueError()
-            self.image_url_re = re.compile(r'source +file.+(http.+) *-->')
-            self.name_re = re.compile(r'<name>(.+)</name>')
-            lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
-            lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
-            lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
-            self.controller_ip = None  # will be filled in deploy_devstack if appropriate
-            self.nova_ips = []
-            self.neutron_ips = []
-            self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
-        except ValueError:
-            msg = 'lab_id is supposed to be integer in the range [0-99], you gave {0}'.format(str(lab_id))
-        except Exception as ex:
-            msg = ex.message
-        if msg:
+        with open(topo_path) as f:
+            self.topology = yaml.load(f)
+        self.is_only_xml = is_only_xml
+        self.lab_id = int(lab_id)
+        if self.lab_id < MyLab.LAB_IDX_MIN or self.lab_id > MyLab.LAB_IDX_MAX:
+            msg = 'lab_id is supposed to be integer ' \
+                  ' in the range [{min}-{max}], you gave {current}'\
+                .format(current=lab_id, min=MyLab.LAB_IDX_MIN,
+                        max=MyLab.LAB_IDX_MAX)
             sys.exit(msg)
+        self.image_url_re = re.compile(r'source +file.+(http.+) *-->')
+        self.name_re = re.compile(r'<name>(.+)</name>')
+        lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
+        lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
+        lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
+        self.controller_ip = None  # will be filled in deploy_devstack if appropriate
+        self.nova_ips = []
+        self.neutron_ips = []
+        self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
 
     def delete_of_something(self, list_of_something):
         for something in list_of_something():
