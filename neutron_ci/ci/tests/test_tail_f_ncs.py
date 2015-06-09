@@ -34,6 +34,7 @@ NEUTRON_BRANCH={neutron_branch}
 # Only uncomment the below two lines if you are running on Fedora
 disable_service heat h-api h-api-cfn h-api-cw h-eng
 disable_service cinder c-sch c-api c-vol
+disable_service horizon
 disable_service n-cpu
 enable_service n-cond
 disable_service n-net
