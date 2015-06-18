@@ -85,19 +85,3 @@ info_file_handler.setLevel(logging.INFO)
 info_file_handler.setFormatter(formatter)
 logger.addHandler(info_file_handler)
 
-# Print variables to debug log to help reproduce a build
-values = locals()
-msg = ['export {0}={1}'.format(key, values[key])
-       for key in dir() if key[0].isupper()]
-msg.insert(0, os.linesep)
-logger.debug(os.linesep.join(msg))
-
-# Raise exception if there are undefined variables
-nullable = ['NEXUS_IP', 'NEXUS_USER', 'NEXUS_PASSWORD',
-            'NEXUS_INTF_NUM', 'NEXUS_VLAN_START', 'NEXUS_VLAN_END',
-            'OS_AUTH_URL', 'OS_USERNAME', 'OS_PASSWORD', 'OS_TENANT_NAME',
-            'OS_IMAGE_NAME', 'OS_DNS']
-defined = [values[key] is not None for key in dir()
-           if key[0].isupper() and key not in nullable]
-if not all(defined):
-    raise Exception('There are undefined environment variables.')

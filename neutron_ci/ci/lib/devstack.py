@@ -17,12 +17,12 @@
 import logging
 import os
 import StringIO
+import time
 from fabric.api import cd, run, put
 from fabric.contrib.files import exists
 from fabric.context_managers import settings
 from fabric.operations import get, local
-import time
-from ci import WORKSPACE, BUILD_LOG_PATH, PARENT_FOLDER_PATH
+from ci import PARENT_FOLDER_PATH
 
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class DevStack(object):
                 if force:
                     logger.info('{0} already exists. Remove it.'
                                 ''.format(self._clone_path))
-                    run('rm -rf {0}'.format(self._clone_path))
+                    logger.info(run('rm -rf {0}'.format(self._clone_path)))
                 else:
                     logger.error('{0} already exists.'
                                  ''.format(self._clone_path))
@@ -67,10 +67,11 @@ class DevStack(object):
             output = run(cmd)
             logger.info(output)
 
-            if commit:
-                with cd(self._clone_path):
+            with cd(self._clone_path):
+                if commit:
                     output = run('git checkout {commit}'.format(commit=commit))
                     logger.info(output)
+                logger.info(run('git --no-pager log -n1'))
 
     def _put_localrc(self):
         if self.localrc is None:
@@ -115,15 +116,15 @@ class DevStack(object):
                 run(cmd, shell=True)
 
     def stack(self):
-        failed = False
         self._put_localrc()
         self._put_local_conf()
 
         logger.info('Launch stack.sh')
         with cd(self._clone_path), settings(warn_only=True,
                                             host_string=self.host_string):
-            failed = run('./stack.sh').failed
-        return failed
+            res = run('./stack.sh')
+            logger.info(res)
+        return res.failed
 
     def unstack(self):
         logger.info('Unstack')
@@ -133,11 +134,7 @@ class DevStack(object):
 
     def run_tempest(self, test_list_path):
         logger.info('Run tempest tests')
-        logger.info('Tests to be run: {0}'.format(test_list_path))
-        with open(test_list_path) as f:
-                logger.info(f.read())
 
-        failed = False
         with settings(host_string=self.host_string):
             temp_path = '/tmp/tempest_tests.txt'
             put(test_list_path, temp_path)
@@ -148,8 +145,9 @@ class DevStack(object):
                 # Run tempest
                 cmd = 'testr run --load-list="{tests_list}"' \
                       ''.format(tests_list=temp_path)
-                failed = run(cmd).failed
-        return failed
+                res = run(cmd)
+                logger.info(res)
+        return res.failed
 
     def get_tempest_unitxml(self, path):
         with settings(host_string=self.host_string,
@@ -195,10 +193,10 @@ class DevStack(object):
     def clear(self):
         with settings(host_string=self.host_string, warn_only=True):
             logger.info('Remove ~/.cache folder')
-            run('sudo rm -rf ~/.cache')
+            logger.info(run('sudo rm -rf ~/.cache'))
             logger.info('Call "sudo apt-get autoremove"')
-            run('sudo apt-get autoremove -y')
-            run('sudo dpkg --configure -a')
+            logger.info(run('sudo apt-get autoremove -y'))
+            logger.info(run('sudo dpkg --configure -a'))
 
     def clear_stack_folder(self):
         with settings(host_string=self.host_string, warn_only=True):
