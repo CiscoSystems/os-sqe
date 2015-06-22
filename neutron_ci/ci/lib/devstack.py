@@ -56,7 +56,7 @@ class DevStack(object):
                 if force:
                     logger.info('{0} already exists. Remove it.'
                                 ''.format(self._clone_path))
-                    logger.info(run('rm -rf {0}'.format(self._clone_path)))
+                    logger.info(run('rm -vrf {0}'.format(self._clone_path)))
                 else:
                     logger.error('{0} already exists.'
                                  ''.format(self._clone_path))
@@ -64,8 +64,7 @@ class DevStack(object):
             cmd = 'git clone -q -b {branch} {url} {dest}'.format(
                 branch=self._git_branch, url=self._git_url,
                 dest=self._clone_path)
-            output = run(cmd)
-            logger.info(output)
+            run(cmd)
 
             with cd(self._clone_path):
                 if commit:
@@ -193,7 +192,7 @@ class DevStack(object):
     def clear(self):
         with settings(host_string=self.host_string, warn_only=True):
             logger.info('Remove ~/.cache folder')
-            logger.info(run('sudo rm -rf ~/.cache'))
+            logger.info(run('sudo rm -vrf ~/.cache'))
             logger.info('Call "sudo apt-get autoremove"')
             logger.info(run('sudo apt-get autoremove -y'))
             logger.info(run('sudo dpkg --configure -a'))
@@ -201,7 +200,7 @@ class DevStack(object):
     def clear_stack_folder(self):
         with settings(host_string=self.host_string, warn_only=True):
             logger.info('Remove /opt/stack folder')
-            run('sudo rm -rf /opt/stack')
+            run('sudo rm -vrf /opt/stack')
 
     def restart_ovs(self):
         with settings(host_string=self.host_string, warn_only=True):
@@ -254,7 +253,7 @@ class DevStack(object):
         branch = 'testing'
         with settings(host_string=self.host_string):
             if exists(path):
-                run('rm -rf {0}'.format(path))
+                run('rm -vrf {0}'.format(path))
             run('mkdir -p {0}'.format(path))
             with cd(path):
                 logger.info(run('git clone {} .'.format(repo_url)))
