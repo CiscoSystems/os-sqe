@@ -77,11 +77,3 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(CONSOLE_LOG_LEVEL)
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
-
-# Handler for console.txt
-info_file_handler = logging.FileHandler(
-    os.path.join(BUILD_LOG_PATH, 'console.txt'))
-info_file_handler.setLevel(logging.INFO)
-info_file_handler.setFormatter(formatter)
-logger.addHandler(info_file_handler)
-
