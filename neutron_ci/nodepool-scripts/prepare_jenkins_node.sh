@@ -17,4 +17,4 @@ sudo python get-pip.py
 
 # Install packages
 sudo apt-get install -y openjdk-7-jre git python-dev libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev gzip
-sudo pip install ecdsa junitxml
+sudo pip install ecdsa junitxml ncclient
