@@ -134,7 +134,7 @@ class DevStack(object):
     def run_tempest(self, *args, **kwargs):
         logger.info('Run tempest tests')
 
-        test_list_path = kwargs['test_list_path']
+        test_list_path = kwargs.get('test_list_path')
         testr_args = ' '.join(args)
         with settings(host_string=self.host_string):
             if test_list_path:
