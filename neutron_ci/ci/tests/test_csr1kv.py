@@ -190,7 +190,8 @@ class Csr1kvRouterTest(Csr1kvTest):
 
         tempest_tests = os.path.join(PARENT_FOLDER_PATH,
                                      'cisco_csr1kv_tests.txt')
-        self.assertFalse(self.devstack.run_tempest(tempest_tests))
+        self.assertFalse(self.devstack.run_tempest(
+            test_list_path=tempest_tests))
 
 
 class Csr1kvFWaaSTest(Csr1kvTest):
@@ -215,7 +216,8 @@ class Csr1kvFWaaSTest(Csr1kvTest):
 
         tempest_tests = os.path.join(PARENT_FOLDER_PATH,
                                      'cisco_csr1kv_fwaas_tests.txt')
-        self.assertFalse(self.devstack.run_tempest(tempest_tests))
+        self.assertFalse(self.devstack.run_tempest(
+            test_list_path=tempest_tests))
 
 
 class Csr1kvVPNaaSTest(Csr1kvTest):
@@ -252,4 +254,5 @@ NEUTRON_VPNAAS_BRANCH={NEUTRON_VPNAAS_BRANCH}
 
         tempest_tests = os.path.join(PARENT_FOLDER_PATH,
                                      'cisco_vpn_tests.txt')
-        self.assertFalse(self.devstack.run_tempest(tempest_tests))
+        self.assertFalse(self.devstack.run_tempest(
+            test_list_path=tempest_tests))

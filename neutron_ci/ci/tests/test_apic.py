@@ -150,4 +150,5 @@ class ApicTest(BaseTestCase):
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
-        self.assertFalse(self.devstack.run_tempest(TEST_LIST_FILE))
+        self.assertFalse(self.devstack.run_tempest(
+            test_list_path=TEST_LIST_FILE))

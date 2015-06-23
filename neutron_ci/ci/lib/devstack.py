@@ -131,19 +131,23 @@ class DevStack(object):
                                             host_string=self.host_string):
             run('if screen -ls | grep stack; then  ./unstack.sh; fi')
 
-    def run_tempest(self, test_list_path):
+    def run_tempest(self, *args, **kwargs):
         logger.info('Run tempest tests')
 
+        test_list_path = kwargs['test_list_path']
+        testr_args = ' '.join(args)
         with settings(host_string=self.host_string):
-            temp_path = '/tmp/tempest_tests.txt'
-            put(test_list_path, temp_path)
+            if test_list_path:
+                temp_path = '/tmp/tempest_tests.txt'
+                put(test_list_path, temp_path)
+                testr_args += ' --load-list="{tests_list}"'.format(
+                    tests_list=temp_path)
 
             with cd(self._tempest_path), settings(warn_only=True):
                 if not exists('.testrepository'):
                     run('testr init')
                 # Run tempest
-                cmd = 'testr run --load-list="{tests_list}"' \
-                      ''.format(tests_list=temp_path)
+                cmd = 'testr run {0}'.format(testr_args)
                 res = run(cmd)
                 logger.info(res)
         return res.failed
