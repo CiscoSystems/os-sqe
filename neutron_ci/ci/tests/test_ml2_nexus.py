@@ -118,5 +118,7 @@ class ML2NexusTest(NexusTestCase):
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
         self.assertFalse(self.devstack.run_tempest(
-            'tempest.api.network tempest.scenario.test_network_basic_ops '
+            'tempest.api.network.test_networks '
+            'tempest.api.network.test_ports '
+            'tempest.scenario.test_network_basic_ops '
             'tempest.scenario.test_network_advanced_server_ops'))
