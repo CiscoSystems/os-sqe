@@ -28,7 +28,7 @@ fi
 
 echo "gzip logs folder"
 cd ${WORKSPACE}
-find logs -exec gzip -9 {} \;
+find logs -regex '.*log$' -exec gzip -9 {} \;
 
 if [[ -n "${publish_to}" ]]; then
     echo "Publish test results..."
