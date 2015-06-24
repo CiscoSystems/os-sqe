@@ -22,7 +22,7 @@ from ci.lib.test_case import BaseTestCase
 
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH,
-                              'cisco_n1kv_plugin_tests.txt')
+                              'cisco_n1kv_ml2_driver_tests.txt')
 UVEM_DEB = 'nexus_1000v_vem-12.04-5.2.1.SK1.3.0.135.S0-0gdb.deb'
 Q_PLUGIN_EXTRA_CONF_PATH = \
     '/opt/stack/networking-cisco/etc/neutron/plugins/ml2'
