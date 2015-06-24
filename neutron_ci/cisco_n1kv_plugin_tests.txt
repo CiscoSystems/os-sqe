@@ -10,7 +10,7 @@ tempest.api.network.test_networks.BulkNetworkOpsTestJSON.test_bulk_create_delete
 #tempest.api.network.test_networks.NetworksTestJSON.test_create_delete_subnet_without_gateway[id-d2d596e2-8e76-47a9-ac51-d4648009f4d3]
 #tempest.api.network.test_networks.NetworksTestJSON.test_create_update_delete_network_subnet[id-0e269138-0da6-4efc-a46d-578161e7b221,smoke]
 #tempest.api.network.test_networks.NetworksTestJSON.test_delete_network_with_subnet[id-f04f61a9-b7f3-4194-90b2-9bcf660d1bfe]
-tempest.api.network.test_networks.NetworksTestJSON.test_external_network_visibility[id-af774677-42a9-4e4b-bb58-16fe6a5bc1ec,smoke]
+#tempest.api.network.test_networks.NetworksTestJSON.test_external_network_visibility[id-af774677-42a9-4e4b-bb58-16fe6a5bc1ec,smoke]
 tempest.api.network.test_networks.NetworksTestJSON.test_list_networks[id-f7ffdeda-e200-4a7a-bcbe-05716e86bf43,smoke]
 tempest.api.network.test_networks.NetworksTestJSON.test_list_networks_fields[id-6ae6d24f-9194-4869-9c85-c313cb20e080]
 tempest.api.network.test_networks.NetworksTestJSON.test_list_subnets[id-db68ba48-f4ea-49e9-81d1-e367f6d0b20a,smoke]
