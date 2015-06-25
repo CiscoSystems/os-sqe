@@ -4,3 +4,4 @@
 4: {name: "Single node with DHCP6", job: "topo_aio_dhcp6"}
 5: {name: "Single node with Dibbler", job: "topo_aio_dibbler"}
 6: {name: "Plugin N1KV", job: "n1kv_neutron"}
+7: {name: "CSR1KV", job: "csr1kv_nightly"}
