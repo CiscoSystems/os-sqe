@@ -122,7 +122,7 @@ class DevStack(object):
         with cd(self._clone_path), settings(warn_only=True,
                                             host_string=self.host_string):
             res = run('./stack.sh')
-            logger.info(res)
+            #logger.info(res)
         return res.failed
 
     def unstack(self):
