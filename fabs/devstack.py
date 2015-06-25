@@ -11,11 +11,6 @@ from fabs import LabIds
 
 env.update(DEFAULT_SETTINGS)
 
-__all__ = ['prepare', 'install', 'setup',
-           'run_test_original_file', 'run_test_custom_file',
-           'run_test_ready_file', 'run_test_remote',
-           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler', 'plus_nxos', 'neutron', 'mercury', 'aio6']
-
 
 @task
 @timed
@@ -228,4 +223,14 @@ def aio6(lab_id=LabIds.devstack_aio6,  cleanup='do not cleanup'):
     """Run all in one OS deployed on v6 only virtual host"""
 
     lab = MyLab(lab_id=lab_id, topology_name='aio6',)
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+
+@task
+@timed
+def multinode(lab_id=LabIds.devstak_multinode, cleanup='do not cleanup'):
+
+    """Deploy devstack multinode: 1 all-but-compute, 3 computes"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='devstack_multinode')
     lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)

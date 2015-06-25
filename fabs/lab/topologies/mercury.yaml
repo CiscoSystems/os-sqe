@@ -33,7 +33,7 @@ servers:
       </disk>
 
       <disk type='file' device='disk'>
-        <driver name='qemu' type='raw'/>
+        <driver name='qemu' type='qcow2'/>
         <source file='{disk_cloud_init}'/>
         <target dev='hdb' bus='ide'/>
       </disk>
@@ -115,7 +115,7 @@ servers:
       </disk>
 
       <disk type='file' device='disk'>
-        <driver name='qemu' type='raw'/>
+        <driver name='qemu' type='qcow2'/>
         <source file='{disk_cloud_init}'/>
         <target dev='hdb' bus='ide'/>
       </disk>
@@ -197,7 +197,7 @@ servers:
       </disk>
 
       <disk type='file' device='disk'>
-        <driver name='qemu' type='raw'/>
+        <driver name='qemu' type='qcow2'/>
         <source file='{disk_cloud_init}'/>
         <target dev='hdb' bus='ide'/>
       </disk>
@@ -279,7 +279,7 @@ servers:
       </disk>
 
       <disk type='file' device='disk'>
-        <driver name='qemu' type='raw'/>
+        <driver name='qemu' type='qcow2'/>
         <source file='{disk_cloud_init}'/>
         <target dev='hdb' bus='ide'/>
       </disk>
@@ -361,7 +361,7 @@ servers:
       </disk>
 
       <disk type='file' device='disk'>
-        <driver name='qemu' type='raw'/>
+        <driver name='qemu' type='qcow2'/>
         <source file='{disk_cloud_init}'/>
         <target dev='hdb' bus='ide'/>
       </disk>

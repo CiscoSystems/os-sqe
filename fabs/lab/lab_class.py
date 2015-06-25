@@ -153,12 +153,13 @@ class MyLab:
         local('qemu-img create -f qcow2 -b {i} {d} 15G'.format(d=disk_local, i=image_local))
         disk_cloud_init = None
         if is_use_cloud_init_disk:
-            disk_cloud_init = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='cloud_init.raw')
+            disk_cloud_init = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='cloud_init.qcow2')
             user_data = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='user_data')
             meta_data = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='meta_data')
             local('echo "#cloud-config\npassword: ubuntu\nchpasswd: {{ expire: False }}\nssh_pwauth: True\n" > {0}'.format(user_data))
             local('echo instance_id: $(uuidgen) > {0}'.format(meta_data))
-            local('cloud-localds {disk} {u_d} {m_d}'.format(disk=disk_cloud_init, u_d=user_data, m_d=meta_data))
+            local('echo local-hostname: {1} >> {0}'.format(meta_data, domain_name))
+            local('cloud-localds -d qcow2 {disk} {u_d} {m_d}'.format(disk=disk_cloud_init, u_d=user_data, m_d=meta_data))
         return disk_local, disk_cloud_init
 
     def make_local_file_name(self, where, name, extension):
