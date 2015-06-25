@@ -76,7 +76,6 @@ class DevStack(object):
         if self.localrc is None:
             return
         logger.info('Writing localrc file to {0}'.format(self.localrc_path))
-        logger.debug(self.localrc)
         with settings(host_string=self.host_string):
             localrc_io = StringIO.StringIO()
             localrc_io.write(self.localrc)
@@ -196,7 +195,7 @@ class DevStack(object):
     def clear(self):
         with settings(host_string=self.host_string, warn_only=True):
             logger.info('Remove ~/.cache folder')
-            logger.info(run('sudo rm -vrf ~/.cache'))
+            logger.info(run('sudo rm -rf ~/.cache'))
             logger.info('Call "sudo apt-get autoremove"')
             logger.info(run('sudo apt-get autoremove -y'))
             logger.info(run('sudo dpkg --configure -a'))
