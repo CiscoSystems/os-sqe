@@ -21,7 +21,6 @@ from ci.lib.test_case import BaseTestCase
 from ci.lib.utils import clear_apic_config
 
 
-TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_apic_tests.txt')
 Q_PLUGIN_EXTRA_CONF_PATH = \
     '/opt/stack/networking-cisco/etc/neutron/plugins/ml2'
 Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_cisco.ini'
@@ -151,4 +150,5 @@ class ApicTest(BaseTestCase):
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
         self.assertFalse(self.devstack.run_tempest(
-            test_list_path=TEST_LIST_FILE))
+            'tempest.api.network.test_networks '
+            'tempest.api.network.test_ports'))
