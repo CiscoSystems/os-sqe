@@ -143,8 +143,6 @@ class ApicTest(BaseTestCase):
         # Next commit '1631af891af32eaa9af609398a88252ab437b0b4' forces
         # all openstack components to use keystone middleware but the APIC
         # does not support it
-        cls.devstack._git_url = 'https://github.com/CiscoSystems/devstack.git'
-        cls.devstack._git_branch = 'apic-ci'
         cls.devstack.clone()
 
     def test_tempest(self):
