@@ -172,4 +172,4 @@ paas_1:
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
       - deploy_devstack with aio4
-      - run_tempest 'v6|V6'
+      - run_tempest  'v6|V6'
