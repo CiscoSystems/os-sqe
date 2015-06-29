@@ -10,7 +10,7 @@ from utils import collect_logs, warn_if_fail, quit_if_fail, update_time, \
     collect_logs_devstack
 
 DESCRIPTION = 'Installer for Devstack.'
-CISCO_TEMPEST_REPO = 'https://github.com/CiscoSystems/tempest.git'
+CISCO_TEMPEST_REPO = 'https://github.com/cisco-openstack/tempest.git'
 DEVSTACK_REPO = 'https://github.com/openstack-dev/devstack.git'
 DEVSTACK_DEFAULT = './tools/deployers/devstack-configs/devstack_single_node.yaml'
 DEVSTACK_BRANCH = 'master'
@@ -190,7 +190,7 @@ def main():
                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument('-a', dest='host',
                    help='IP of host in to install Devstack on')
-    p.add_argument('-b', dest='branch', nargs="?", default="ipv6", const="ipv6",
+    p.add_argument('-b', dest='branch', nargs="?", default="proposed", const="proposed",
                    help='Tempest repository branch, default is ipv6')
     p.add_argument('-c', dest='config_file',
                    help='Configuration file for topology, default is None',
