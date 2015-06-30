@@ -14,15 +14,12 @@
 #
 # @author: Nikolay Fedotov, Cisco Systems, Inc.
 
-import urlparse
 from fabric.operations import local
 import os
-from ci import PARENT_FOLDER_PATH, ZUUL_URL, ZUUL_PROJECT, \
-    ZUUL_REF, WORKSPACE
+from ci import PARENT_FOLDER_PATH, WORKSPACE
 from ci.lib.test_case import BaseTestCase
 
 
-TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'tailf_ncs_tests.txt')
 Q_PLUGIN_EXTRA_CONF_PATH = \
     '/opt/stack/networking-cisco/etc/neutron/plugins/ml2'
 Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_ncs.ini'
@@ -124,4 +121,5 @@ class TailFNCSTest(BaseTestCase):
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
         self.assertFalse(self.devstack.run_tempest(
-            test_list_path=TEST_LIST_FILE))
+            'tempest.api.network.test_networks '
+            'tempest.api.network.test_ports '))
