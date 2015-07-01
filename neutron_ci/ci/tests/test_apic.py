@@ -81,6 +81,8 @@ admin_password = nova
 [[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_cisco_apic]
 
+apic_model = networking_cisco.plugins.ml2.drivers.cisco.apic.apic_model
+
 # Hostname for the APIC controller
 apic_host={APIC_HOST}
 
