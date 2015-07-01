@@ -1,0 +1,402 @@
+servers:
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-ucsM</name>
+    <memory unit='GiB'>1</memory>
+    <currentMemory unit='GiB'>1</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk_no_backing}'/> <!--http://172.29.173.233/ucsm/UCSPE_2.2.4b-disk1.qcow2-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-4'/>
+        <mac address='ee:{lab_id:02}:01:00:00:01'/>
+        <target dev='v-{lab_id}-ucsM1'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-4x'/>
+        <mac address='ee:{lab_id:02}:01:00:00:02'/>
+        <target dev='v-{lab_id}-ucsM2'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-4xx'/>
+        <mac address='ee:{lab_id:02}:01:00:00:03'/>
+        <target dev='v-{lab_id}-ucsM3'/>
+      </interface>
+
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-ucsm1</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-4'/>
+        <mac address='ee:{lab_id:02}:00:01:00:01'/>
+        <target dev='v-{lab_id}-ucsm11'/>
+      </interface>
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-ucsm2</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-4'/>
+        <mac address='ee:{lab_id:02}:00:02:00:01'/>
+        <target dev='v-{lab_id}-ucsm21'/>
+      </interface>
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-ucsm3</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-4'/>
+        <mac address='ee:{lab_id:02}:00:03:00:01'/>
+        <target dev='v-{lab_id}-ucsm31'/>
+      </interface>
+    </devices>
+
+  </domain>
+- |
+  <domain type='kvm'>
+    <name>lab-{lab_id}-ucsm4</name>
+    <memory unit='GiB'>8</memory>
+    <currentMemory unit='GiB'>8</currentMemory>
+    <vcpu placement='static'>2</vcpu>
+    <os>
+      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <boot dev='hd'/>
+      <boot dev='network'/>
+    </os>
+    <features>
+      <acpi/>
+      <apic/>
+      <pae/>
+    </features>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>restart</on_crash>
+    <pm>
+      <suspend-to-mem enabled='no'/>
+      <suspend-to-disk enabled='no'/>
+    </pm>
+
+    <devices>
+      <emulator>/usr/bin/kvm</emulator>
+      <input type='mouse' bus='ps2'/>
+
+      <serial type='pty'>
+        <source path='/dev/pts/3'/>
+        <target port='1'/>
+        <alias name='serial0'/>
+      </serial>
+      <console type='pty'>
+        <source path='/dev/pts/3'/>
+        <target type='serial' port='1'/>
+        <alias name='serial0'/>
+      </console>
+
+      <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
+        <listen type='address' address='0.0.0.0'/>
+      </graphics>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-4'/>
+        <mac address='ee:{lab_id:02}:00:04:00:01'/>
+        <target dev='v-{lab_id}-ucsm41'/>
+      </interface>
+
+    </devices>
+
+  </domain>
+
+networks:
+- |
+  <network>
+    <name>lab-{lab_id}-4</name>
+    <bridge name='br-{lab_id}-4' />
+    <forward mode="nat"/>
+    <mac address='ee:{lab_id:02}:00:00:00:bb'/>
+    <ip address='10.{lab_id}.0.1' netmask='255.255.255.0'>
+      <dhcp>
+        <range start='10.{lab_id}.0.2' end='10.{lab_id}.0.254' />
+      </dhcp>
+    </ip>
+  </network>
+- |
+  <network>
+    <name>lab-{lab_id}-4x</name>
+    <bridge name='br-{lab_id}-4x' />
+    <forward mode="nat"/>
+    <mac address='ee:{lab_id:02}:00:00:00:cc'/>
+    <ip address='10.{lab_id}.1.1' netmask='255.255.255.0'>
+      <dhcp>
+        <range start='10.{lab_id}.1.2' end='10.{lab_id}.1.254' />
+      </dhcp>
+    </ip>
+  </network>
+- |
+  <network>
+    <name>lab-{lab_id}-4xx</name>
+    <bridge name='br-{lab_id}-4xx' />
+    <forward mode="nat"/>
+    <mac address='ee:{lab_id:02}:00:00:00:dd'/>
+    <ip address='10.{lab_id}.2.1' netmask='255.255.255.0'>
+      <dhcp>
+        <range start='10.{lab_id}.2.2' end='10.{lab_id}.2.254' />
+      </dhcp>
+    </ip>
+  </network>
+
+paas_1:
+  - net: lab-{lab_id}-4
+    mac: ee:{lab_id:02}:01:00:00:01
+    cmd:
+      - register_as_ucsm_node
+  - net: lab-{lab_id}-4
+    mac: ee:{lab_id:02}:00:01:00:01
+    cmd:
+      - register_as_control_node
+  - net: lab-{lab_id}-4
+    mac: ee:{lab_id:02}:00:02:00:01
+    cmd:
+      - register_as_nova_node
+  - net: lab-{lab_id}-4
+    mac: ee:{lab_id:02}:00:03:00:01
+    cmd:
+      - register_as_nova_node
+  - net: lab-{lab_id}-4
+    mac: ee:{lab_id:02}:00:04:00:01
+    cmd:
+      - register_as_nova_node
+
+paas_2:
+  - net: lab-{lab_id}-4
+    mac: ee:{lab_id:02}:00:01:00:01
+    cmd:
+      - deploy_devstack with all_but_compute
+  - net: lab-{lab_id}-4
+    mac: ee:{lab_id:02}:00:02:00:01
+    cmd:
+      - deploy_devstack with ucsm
+  - net: lab-{lab_id}-4
+    mac: ee:{lab_id:02}:00:03:00:01
+    cmd:
+      - deploy_devstack with ucsm
+  - net: lab-{lab_id}-4
+    mac: ee:{lab_id:02}:00:04:00:01
+    cmd:
+      - deploy_devstack with ucsm

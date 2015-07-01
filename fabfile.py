@@ -4,9 +4,8 @@ from fabric.api import task, local
 from fabs.common import timed, virtual
 from fabs.common import logger as log
 from fabs import LVENV, CVENV, LAB
-from fabs import coi, tempest, snap, devstack, redhat, coverage, cirros
+from fabs import coi, tempest, snap, devstack, redhat, coverage, cirros, special
 from fabs import jenkins_reports
-
 
 @timed
 def venv(private=False):
