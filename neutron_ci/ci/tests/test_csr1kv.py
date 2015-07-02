@@ -105,9 +105,6 @@ case "$LIBVIRT_TYPE" in
         IMAGE_URLS="http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-uec.tar.gz";;
 esac
 
-# Sets the maximum number of workers for most services
-API_WORKERS=4
-
 Q_PLUGIN=cisco
 declare -a Q_CISCO_PLUGIN_SUBPLUGINS=(n1kv)
 Q_CISCO_PLUGIN_RESTART_VSM=yes
@@ -160,6 +157,10 @@ class Csr1kvTest(BaseTestCase):
         'TEMPEST_REPO', 'https://git.openstack.org/openstack/tempest.git')
     tempest_ref = os.environ.get('TEMPEST_REF', 'master')
 
+    devstack_repo = os.environ.get(
+        'DEVSTACK_REPO', 'https://github.com/CiscoSystems/devstack.git')
+    devstack_ref = os.environ.get('DEVSTACK_REF', 'csr1kv-ci')
+
     @classmethod
     def setUpClass(cls):
         BaseTestCase.setUpClass()
@@ -173,7 +174,8 @@ class Csr1kvTest(BaseTestCase):
             tempest_ref=cls.tempest_ref)
 
         cls.devstack.localrc = localrc
-        cls.devstack._git_url = 'https://github.com/CiscoSystems/devstack.git'
+        cls.devstack._git_url = cls.devstack_repo
+        cls.devstack._git_branch = cls.devstack_ref
 
 
 class Csr1kvRouterTest(Csr1kvTest):
@@ -182,7 +184,6 @@ class Csr1kvRouterTest(Csr1kvTest):
     def setUpClass(cls):
         Csr1kvTest.setUpClass()
 
-        cls.devstack._git_branch = 'csr1kv-ci'
         cls.devstack.clone()
 
     def test_tempest(self):
@@ -246,7 +247,6 @@ NEUTRON_VPNAAS_BRANCH={NEUTRON_VPNAAS_BRANCH}
            NEUTRON_VPNAAS_BRANCH=cls.neutron_vpnaas_ref,
            Q_PLUGIN_EXTRA_CONF_PATH='/opt/stack/neutron-vpnaas/etc',
            Q_PLUGIN_EXTRA_CONF_FILES='neutron_vpnaas.conf')
-        cls.devstack._git_branch = 'csr1kv-ci'
         cls.devstack.clone()
 
     def test_tempest(self):
