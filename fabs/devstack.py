@@ -243,3 +243,22 @@ def ucsm(lab_id=LabIds.ucsm, cleanup='do not cleanup'):
 
     lab = MyLab(lab_id=lab_id, topology_name='ucsm4')
     lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+@task
+@timed
+def neutron46(lab_id=LabIds.devstack_neutron_46, cleanup='do not cleanup'):
+
+    """Deploy devstack neutron only: Special for Neutron API tests"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='neutron46')
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+
+@task
+@timed
+def aio46(lab_id=LabIds.devstack_aio_46, cleanup='do not cleanup'):
+
+    """Deploy devstack aio46: Special for Neutron API tests"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='aio46')
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)

@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from fabric.api import local, settings, sudo, put, get, run, cd, lcd
+from fabric.context_managers import shell_env
 import yaml
 import exceptions
 import re
@@ -228,6 +229,8 @@ class MyLab:
                             self.neutron_ips.append(ip)
                         elif cmd.startswith('register_as_ucsm_node'):
                             self.ucsm_ip = ip
+                        elif cmd.startswith('run_neutron_api_tests'):
+                            self.run_neutron_api_tests()
                         else:
                             sudo(cmd)
 
@@ -329,15 +332,7 @@ class MyLab:
     @staticmethod
     def run_tempest(cmd):
         tempest_re = cmd.split(' ')[-1]
-        devstack_conf = StringIO()
-        get(remote_path='devstack/local.conf', local_path=devstack_conf)
-        match = re.search('DEST=(.+)\n', devstack_conf.getvalue())
-        if match:
-            tempest_dir = match.groups()[0].strip() + '/tempest'
-            if 'HOME' in tempest_dir:
-                tempest_dir = run('echo {0}'.format(tempest_dir))
-        else:
-            tempest_dir = '/opt/stack/tempest'
+        tempest_dir = MyLab.get_path_for('tempest')
         with cd(tempest_dir):
             with settings(warn_only=True):
                 run('testr init'.format(tempest_re))
@@ -396,3 +391,35 @@ class MyLab:
         log.info('ucsm ip: ' + str(self.ucsm_ip))
         log.info('network ips: ' + ' '.join(self.neutron_ips))
         log.info('compute ips: ' + ' '.join(self.nova_ips))
+
+    @staticmethod
+    def run_neutron_api_tests():
+        tempest_dir = MyLab.get_path_for('tempest')
+        neutron_dir = MyLab.get_path_for('neutron')
+        with cd(neutron_dir):
+            with shell_env(TEMPEST_CONFIG_DIR="{0}/etc/".format(tempest_dir)):
+                run('tox -e api')
+                run('sudo pip install junitxml')
+                run('testr last --subunit | subunit-1to2 | subunit2junitxml '
+                    '--output-to=neutron_api_results.xml')
+        get(remote_path=neutron_dir + '/neutron_api_results.xml',
+            local_path='neutron_api_results.xml')
+
+    @staticmethod
+    def get_path_for(component_name):
+        """
+        Reads remote devstack's local.conf to determine where stack.sh installed
+        given component
+        :param component_name: openstack component name
+        :return:  path to installed openstack componentd
+        """
+        devstack_conf = StringIO()
+        get(remote_path='devstack/local.conf', local_path=devstack_conf)
+        match = re.search('DEST=(.+)\n', devstack_conf.getvalue())
+        if match:
+            path = match.groups()[0].strip() + '/{}'.format(component_name)
+            if 'HOME' in path:
+                path = run('echo {0}'.format(component_name))
+        else:
+            path = "/opt/stack/{}".format(component_name)
+        return path

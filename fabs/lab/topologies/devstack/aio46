@@ -1,0 +1,6 @@
+# neutron service
+NEUTRON_REPO=https://github.com/cisco-openstack/neutron
+NEUTRON_BRANCH=master
+
+disable_service n-net
+enable_service q-svc q-agt q-l3 q-dhcp q-meta q-metering neutron tempest
