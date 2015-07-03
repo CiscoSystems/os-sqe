@@ -15,6 +15,7 @@ class LabIds(object):
     redhat_aio46 = 62
     redhat_mercury = 63
     redhat_baremetal_g8 = 64
+    ucsm = 77
 
 
 DEFAULT_SETTINGS = {"host_string": "localhost",

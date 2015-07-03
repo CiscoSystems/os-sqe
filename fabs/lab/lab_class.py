@@ -17,7 +17,6 @@ import yaml
 import exceptions
 import re
 import os
-import libvirt
 import sys
 from StringIO import StringIO
 
@@ -29,6 +28,8 @@ CONN = None
 
 
 def _conn():
+    import libvirt
+
     global CONN
 
     if not CONN:
@@ -58,11 +59,14 @@ class MyLab:
         lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
         lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
         self.controller_ip = None  # will be filled in deploy_devstack if appropriate
+        self.ucsm_ip = None
         self.nova_ips = []
         self.neutron_ips = []
         self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
 
     def delete_of_something(self, list_of_something):
+        import libvirt
+
         for something in list_of_something():
             if 'lab-{0}-'.format(self.lab_id) in something.name():
                 try:
@@ -114,12 +118,18 @@ class MyLab:
 
         for domain_template in self.topology['servers']:
             image_url = self.search_for(self.image_url_re, domain_template)
-            domain_name = self.search_for(self.name_re, domain_template)
+            domain_name = self.search_for(self.name_re, domain_template).format(lab_id=self.lab_id)
 
             image_local, kernel_local = self.wget_image(image_url=image_url)
-            disk_local, cloud_init_local = self.create_disk(image_local=image_local, domain_name=domain_name,
-                                                            is_use_cloud_init_disk='{disk_cloud_init}' in domain_template)
-            xml = domain_template.format(lab_id=self.lab_id, disk=disk_local, kernel=kernel_local, disk_cloud_init=cloud_init_local)
+            disk_local, cloud_init_local = self.create_disk(domain_yaml=domain_template,
+                                                            image_local=image_local,
+                                                            domain_name=domain_name)
+
+            xml = domain_template.format(lab_id=self.lab_id,
+                                         disk=disk_local,
+                                         disk_no_backing=disk_local,
+                                         kernel=kernel_local,
+                                         disk_cloud_init=cloud_init_local)
             self.save_xml(name=domain_name, xml=xml)
             if not self.is_only_xml:
                 domain = _conn().defineXML(xml)
@@ -148,11 +158,14 @@ class MyLab:
                     kernel_local = lab.IMAGES_DIR + '/' + name
         return image_local, kernel_local
 
-    def create_disk(self, image_local, domain_name, is_use_cloud_init_disk):
+    def create_disk(self, domain_yaml, image_local, domain_name):
         disk_local = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='qcow2')
-        local('qemu-img create -f qcow2 -b {i} {d} 15G'.format(d=disk_local, i=image_local))
+        if '{disk_no_backing}' in domain_yaml:
+            local('cp {i} {d}'.format(i=image_local, d=disk_local))
+        else:
+            local('qemu-img create -f qcow2 -b {i} {d} 15G'.format(d=disk_local, i=image_local))
         disk_cloud_init = None
-        if is_use_cloud_init_disk:
+        if '{disk_cloud_init}' in domain_yaml:
             disk_cloud_init = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='cloud_init.qcow2')
             user_data = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='user_data')
             meta_data = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='meta_data')
@@ -163,7 +176,7 @@ class MyLab:
         return disk_local, disk_cloud_init
 
     def make_local_file_name(self, where, name, extension):
-        return os.path.abspath(os.path.join(where, name.format(lab_id=self.lab_id) + '.' + extension))
+        return os.path.abspath(os.path.join(where, name + '.' + extension))
 
     def create_paas(self, phase):
         log.info('\n\nStarting {0} phase'.format(phase))
@@ -213,6 +226,8 @@ class MyLab:
                             self.nova_ips.append(ip)
                         elif cmd.startswith('register_as_neutron_node'):
                             self.neutron_ips.append(ip)
+                        elif cmd.startswith('register_as_ucsm_node'):
+                            self.ucsm_ip = ip
                         else:
                             sudo(cmd)
 
@@ -255,6 +270,7 @@ class MyLab:
             conf_as_string += f.read()
             conf_as_string += self.devstack_conf_addon
             conf_as_string = conf_as_string.replace('{controller_ip}', str(self.controller_ip))
+            conf_as_string = conf_as_string.replace('{ucsm_ip}', str(self.ucsm_ip))
             conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.nova_ips or [self.controller_ip]))
             conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.neutron_ips or [self.controller_ip]))
         return conf_as_string
@@ -372,3 +388,11 @@ class MyLab:
             self.create_paas(phase='paas_2')
         if phase in ['lab', 'paas_post']:
             self.run_pre_or_post(pre_or_post='paas_post')
+        self.report_status()
+
+    def report_status(self):
+        log.info('lab: ' + str(self.lab_id))
+        log.info('controller ip: ' + str(self.controller_ip))
+        log.info('ucsm ip: ' + str(self.ucsm_ip))
+        log.info('network ips: ' + ' '.join(self.neutron_ips))
+        log.info('compute ips: ' + ' '.join(self.nova_ips))

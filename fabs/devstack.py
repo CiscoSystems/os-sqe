@@ -234,3 +234,12 @@ def multinode(lab_id=LabIds.devstak_multinode, cleanup='do not cleanup'):
 
     lab = MyLab(lab_id=lab_id, topology_name='devstack_multinode')
     lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+@task
+@timed
+def ucsm(lab_id=LabIds.ucsm, cleanup='do not cleanup'):
+
+    """Deploy devstack with ucsm plugin: 1 all-but-compute, 3 computes with ucsm"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='ucsm4')
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
