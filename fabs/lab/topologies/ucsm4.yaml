@@ -1,7 +1,7 @@
 servers:
 - |
   <domain type='kvm'>
-    <name>lab-{lab_id}-ucsM</name>
+    <name>lab{lab_id}-ucsm</name>
     <memory unit='GiB'>1</memory>
     <currentMemory unit='GiB'>1</currentMemory>
     <vcpu placement='static'>1</vcpu>
@@ -47,23 +47,28 @@ servers:
         <target dev='vda' bus='virtio'/>
       </disk>
 
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-4'/>
+        <source network='lab{lab_id}-4'/>
         <mac address='ee:{lab_id:02}:01:00:00:01'/>
-        <target dev='v-{lab_id}-ucsM1'/>
+        <target dev='v{lab_id}-ucsm-1'/>
       </interface>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-4x'/>
+        <source network='lab{lab_id}-4x'/>
         <mac address='ee:{lab_id:02}:01:00:00:02'/>
-        <target dev='v-{lab_id}-ucsM2'/>
+        <target dev='v{lab_id}-ucsm-2'/>
       </interface>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-4xx'/>
+        <source network='lab{lab_id}-4xx'/>
         <mac address='ee:{lab_id:02}:01:00:00:03'/>
-        <target dev='v-{lab_id}-ucsM3'/>
+        <target dev='v{lab_id}-ucsm-3'/>
       </interface>
 
     </devices>
@@ -71,7 +76,7 @@ servers:
   </domain>
 - |
   <domain type='kvm'>
-    <name>lab-{lab_id}-ucsm1</name>
+    <name>lab{lab_id}-controller</name>
     <memory unit='GiB'>8</memory>
     <currentMemory unit='GiB'>8</currentMemory>
     <vcpu placement='static'>2</vcpu>
@@ -125,16 +130,16 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-4'/>
+        <source network='lab{lab_id}-4'/>
         <mac address='ee:{lab_id:02}:00:01:00:01'/>
-        <target dev='v-{lab_id}-ucsm11'/>
+        <target dev='v{lab_id}-ucsc-1'/>
       </interface>
     </devices>
 
   </domain>
 - |
   <domain type='kvm'>
-    <name>lab-{lab_id}-ucsm2</name>
+    <name>lab{lab_id}-1-compute</name>
     <memory unit='GiB'>8</memory>
     <currentMemory unit='GiB'>8</currentMemory>
     <vcpu placement='static'>2</vcpu>
@@ -188,16 +193,16 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-4'/>
+        <source network='lab{lab_id}-4'/>
         <mac address='ee:{lab_id:02}:00:02:00:01'/>
-        <target dev='v-{lab_id}-ucsm21'/>
+        <target dev='v{lab_id}-ucsc1-1'/>
       </interface>
     </devices>
 
   </domain>
 - |
   <domain type='kvm'>
-    <name>lab-{lab_id}-ucsm3</name>
+    <name>lab{lab_id}-2-compute</name>
     <memory unit='GiB'>8</memory>
     <currentMemory unit='GiB'>8</currentMemory>
     <vcpu placement='static'>2</vcpu>
@@ -251,16 +256,16 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-4'/>
+        <source network='lab{lab_id}-4'/>
         <mac address='ee:{lab_id:02}:00:03:00:01'/>
-        <target dev='v-{lab_id}-ucsm31'/>
+        <target dev='v{lab_id}-ucsc2-1'/>
       </interface>
     </devices>
 
   </domain>
 - |
   <domain type='kvm'>
-    <name>lab-{lab_id}-ucsm4</name>
+    <name>lab{lab_id}-3-compute</name>
     <memory unit='GiB'>8</memory>
     <currentMemory unit='GiB'>8</currentMemory>
     <vcpu placement='static'>2</vcpu>
@@ -314,9 +319,9 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-4'/>
+        <source network='lab{lab_id}-4'/>
         <mac address='ee:{lab_id:02}:00:04:00:01'/>
-        <target dev='v-{lab_id}-ucsm41'/>
+        <target dev='v{lab_id}-ucsc3-1'/>
       </interface>
 
     </devices>
@@ -326,8 +331,8 @@ servers:
 networks:
 - |
   <network>
-    <name>lab-{lab_id}-4</name>
-    <bridge name='br-{lab_id}-4' />
+    <name>lab{lab_id}-4</name>
+    <bridge name='br{lab_id}-4' />
     <forward mode="nat"/>
     <mac address='ee:{lab_id:02}:00:00:00:bb'/>
     <ip address='10.{lab_id}.0.1' netmask='255.255.255.0'>
@@ -338,8 +343,8 @@ networks:
   </network>
 - |
   <network>
-    <name>lab-{lab_id}-4x</name>
-    <bridge name='br-{lab_id}-4x' />
+    <name>lab{lab_id}-4x</name>
+    <bridge name='br{lab_id}-4x' />
     <forward mode="nat"/>
     <mac address='ee:{lab_id:02}:00:00:00:cc'/>
     <ip address='10.{lab_id}.1.1' netmask='255.255.255.0'>
@@ -350,8 +355,8 @@ networks:
   </network>
 - |
   <network>
-    <name>lab-{lab_id}-4xx</name>
-    <bridge name='br-{lab_id}-4xx' />
+    <name>lab{lab_id}-4xx</name>
+    <bridge name='br{lab_id}-4xx' />
     <forward mode="nat"/>
     <mac address='ee:{lab_id:02}:00:00:00:dd'/>
     <ip address='10.{lab_id}.2.1' netmask='255.255.255.0'>
@@ -361,42 +366,18 @@ networks:
     </ip>
   </network>
 
-paas_1:
-  - net: lab-{lab_id}-4
-    mac: ee:{lab_id:02}:01:00:00:01
-    cmd:
-      - register_as_ucsm_node
-  - net: lab-{lab_id}-4
-    mac: ee:{lab_id:02}:00:01:00:01
-    cmd:
-      - register_as_control_node
-  - net: lab-{lab_id}-4
-    mac: ee:{lab_id:02}:00:02:00:01
-    cmd:
-      - register_as_nova_node
-  - net: lab-{lab_id}-4
-    mac: ee:{lab_id:02}:00:03:00:01
-    cmd:
-      - register_as_nova_node
-  - net: lab-{lab_id}-4
-    mac: ee:{lab_id:02}:00:04:00:01
-    cmd:
-      - register_as_nova_node
 
-paas_2:
-  - net: lab-{lab_id}-4
-    mac: ee:{lab_id:02}:00:01:00:01
+paas_1:
+  - hostname: lab{lab_id}-controller
     cmd:
-      - deploy_devstack with all_but_compute
-  - net: lab-{lab_id}-4
-    mac: ee:{lab_id:02}:00:02:00:01
+      - deploy_devstack with ucsm_controller
+      - sudo pip install UcsSdk
+  - hostname: lab{lab_id}-1-compute
     cmd:
-      - deploy_devstack with ucsm
-  - net: lab-{lab_id}-4
-    mac: ee:{lab_id:02}:00:03:00:01
+      - deploy_devstack with ucsm_compute
+  - hostname: lab{lab_id}-2-compute
     cmd:
-      - deploy_devstack with ucsm
-  - net: lab-{lab_id}-4
-    mac: ee:{lab_id:02}:00:04:00:01
+      - deploy_devstack with ucsm_compute
+  - hostname: lab{lab_id}-3-compute
     cmd:
-      - deploy_devstack with ucsm
+      - deploy_devstack with ucsm_compute

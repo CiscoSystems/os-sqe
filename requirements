@@ -20,3 +20,4 @@ PyYAML>=3.11
 testresources>=0.2.7
 testtools>=1.1.0
 wsgiref>=0.1.2
+beautifulsoup4==4.4.0

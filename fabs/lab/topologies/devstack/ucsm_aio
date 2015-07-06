@@ -1,16 +1,7 @@
-MULTI_HOST=1
-ENABLED_SERVICES=n-cpu,n-api,q-agt
-disable_service n-net
-
-
-SERVICE_HOST={controller_ip}
-MYSQL_HOST={controller_ip}
-RABBIT_HOST={controller_ip}
-GLANCE_HOST={controller_ip}
-
 enable_plugin networking-cisco https://git.openstack.org/openstack/networking-cisco master
 enable_service net-cisco
 
+IP_VERSION=4
 Q_PLUGIN=ml2
 Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,cisco_ucsm
 Q_ML2_PLUGIN_TYPE_DRIVERS=vlan
@@ -21,13 +12,10 @@ PHYSICAL_NETWORK=physnet1
 OVS_PHYSICAL_BRIDGE=br-eth1
 TENANT_VLAN_RANGE=100:200
 ENABLE_TENANT_VLANS=True
-IP_VERSION=4
-API_RATE_LIMIT=False
-VERBOSE=True
-DEBUG=True
+
 [[post-config|/etc/neutron/plugins/ml2/ml2_conf.ini]]
 [ml2_cisco_ucsm]
 ucsm_ip={ucsm_ip}
 ucsm_username=ucspe
 ucsm_password=ucspe
-ucsm_host_list=neutron1:neutron1
+ucsm_host_list={ucsm_host_list}
