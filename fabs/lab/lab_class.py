@@ -324,18 +324,30 @@ class MyLab:
         return local_repo_dir
 
     def build_config_from_base_and_addon(self, directory, cmd):
+        from fabs.ucsm import ucsm
+
         with open(os.path.join(directory, 'base.conf')) as f:
             conf_as_string = f.read()
-        with open(os.path.join(directory, cmd.split(' with ')[-1])) as f:
+        addon_config_name = cmd.split(' with ')[-1]
+        with open(os.path.join(directory, addon_config_name)) as f:
             conf_as_string += f.read()
             conf_as_string += self.devstack_conf_addon
             conf_as_string = conf_as_string.replace('{controller_ip}', self.status.get_first(role='controller', parameter='ip'))
             conf_as_string = conf_as_string.replace('{controller_name}', self.status.get_first(role='controller', parameter='hostname'))
-            conf_as_string = conf_as_string.replace('{ucsm_ip}', self.status.get_first(role='ucsm', parameter='ip'))
-            conf_as_string = conf_as_string.replace('{ucsm_host_list}', ','.join([hostname + ':test-profile' for hostname in self.status.get(role='compute', parameter='hostname')]))
             conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.status.get(role='compute', parameter='ip')))
             conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.status.get(role='compute', parameter='ip')))
             conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.status.get(role='network', parameter='ip')))
+            if 'ucsm' in addon_config_name:
+                ucsm_user = 'ucspe'
+                ucsm_password = 'ucspe'
+                ucsm_service_profile = 'test-profile'
+                ucsm_ip = self.status.get_first(role='ucsm', parameter='ip')
+                ucsm(host=ucsm_ip, username=ucsm_user, password=ucsm_password, service_profile_name=ucsm_service_profile)
+                conf_as_string = conf_as_string.replace('{ucsm_ip}', ucsm_ip)
+                conf_as_string = conf_as_string.replace('{ucsm_username}', ucsm_user)
+                conf_as_string = conf_as_string.replace('{ucsm_password}', ucsm_password)
+                l_hostnames = self.status.get(role='compute', parameter='hostname') + self.status.get(role='controller', parameter='hostname')
+                conf_as_string = conf_as_string.replace('{ucsm_host_list}', ','.join([hostname + ':' + ucsm_service_profile for hostname in l_hostnames]))
         log.info(msg='Config for OS deployer:\n' + conf_as_string)
         return conf_as_string
 

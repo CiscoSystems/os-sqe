@@ -20,6 +20,6 @@ ENABLE_TENANT_VLANS=True
 [[post-config|/etc/neutron/plugins/ml2/ml2_conf.ini]]
 [ml2_cisco_ucsm]
 ucsm_ip={ucsm_ip}
-ucsm_username=ucspe
-ucsm_password=ucspe
+ucsm_username={ucsm_username}
+ucsm_password={ucsm_password}
 ucsm_host_list={ucsm_host_list}

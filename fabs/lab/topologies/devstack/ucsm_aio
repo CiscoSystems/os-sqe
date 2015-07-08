@@ -1,3 +1,6 @@
+disable_service n-net
+enable_service q-svc q-agt q-l3 q-dhcp q-meta neutron
+
 enable_plugin networking-cisco https://git.openstack.org/openstack/networking-cisco master
 enable_service net-cisco
 
