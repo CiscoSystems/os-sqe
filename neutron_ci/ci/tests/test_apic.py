@@ -50,6 +50,7 @@ enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
 enable_service net-cisco
 
 LIBVIRT_TYPE=qemu
+IP_VERSION=4
 NOVA_USE_QUANTUM_API=v2
 VOLUME_BACKING_FILE_SIZE=2052M
 IPV6_ENABLED=False
