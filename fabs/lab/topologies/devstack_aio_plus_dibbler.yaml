@@ -1,7 +1,7 @@
 servers:
 - |
   <domain type='kvm'>
-    <name>lab-{lab_id}-aio</name>
+    <name>lab{lab_id}-controller</name>
     <memory unit='GiB'>8</memory>
     <currentMemory unit='GiB'>8</currentMemory>
     <vcpu placement='static'>2</vcpu>
@@ -25,31 +25,6 @@ servers:
 
     <devices>
       <emulator>/usr/bin/kvm</emulator>
-
-      <disk type='file' device='disk'>
-        <driver name='qemu' type='qcow2'/>
-        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
-        <target dev='vda' bus='virtio'/>
-      </disk>
-
-      <disk type='file' device='disk'>
-        <driver name='qemu' type='qcow2'/>
-        <source file='{disk_cloud_init}'/>
-        <target dev='hdb' bus='ide'/>
-      </disk>
-
-      <interface type='network'>
-        <source network='lab-{lab_id}-10.{lab_id}.0'/>
-        <mac address='ee:{lab_id:02}:00:01:00:01'/>
-        <target dev='v-{lab_id}-aio-4'/>
-      </interface>
-
-      <interface type='network'>
-        <source network='lab-{lab_id}-20{lab_id:02}::0'/>
-        <mac address='ee:{lab_id:02}:00:01:00:02'/>
-        <target dev='v-{lab_id}-aio-6'/>
-      </interface>
-
       <input type='mouse' bus='ps2'/>
 
       <serial type='pty'>
@@ -66,13 +41,36 @@ servers:
       <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
         <listen type='address' address='0.0.0.0'/>
       </graphics>
-    </devices>
 
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab{lab_id}-4'/>
+        <mac address='ee:{lab_id:02}:00:01:00:01'/>
+        <target dev='v{lab_id}-aio-4'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab{lab_id}-6'/>
+        <mac address='ee:{lab_id:02}:00:01:00:02'/>
+        <target dev='v{lab_id}-aio-6'/>
+      </interface>
+    </devices>
   </domain>
 
 - |
   <domain type='kvm'>
-    <name>lab-{lab_id}-dibbler</name>
+    <name>lab{lab_id}-dibbler</name>
     <memory unit='GiB'>1</memory>
     <currentMemory unit='GiB'>1</currentMemory>
     <vcpu placement='static'>1</vcpu>
@@ -96,31 +94,6 @@ servers:
 
     <devices>
       <emulator>/usr/bin/kvm</emulator>
-
-      <disk type='file' device='disk'>
-        <driver name='qemu' type='qcow2'/>
-        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
-        <target dev='vda' bus='virtio'/>
-      </disk>
-
-      <disk type='file' device='disk'>
-        <driver name='qemu' type='qcow2'/>
-        <source file='{disk_cloud_init}'/>
-        <target dev='hdb' bus='ide'/>
-      </disk>
-
-      <interface type='network'>
-        <source network='lab-{lab_id}-10.{lab_id}.0'/>
-        <mac address='ee:{lab_id:02}:00:02:00:01'/>
-        <target dev='v-{lab_id}-dibbler-4'/>
-      </interface>
-
-      <interface type='network'>
-        <source network='lab-{lab_id}-20{lab_id:02}::0'/>
-        <mac address='ee:{lab_id:02}:00:02:00:02'/>
-        <target dev='v-{lab_id}-dibbler-6'/>
-      </interface>
-
       <input type='mouse' bus='ps2'/>
 
       <serial type='pty'>
@@ -137,15 +110,38 @@ servers:
       <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0' keymap='en-us'>
         <listen type='address' address='0.0.0.0'/>
       </graphics>
-    </devices>
 
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk}'/> <!--http://cloud-images.ubuntu.com/releases/trusty/release/ubuntu-14.04-server-cloudimg-amd64-disk1.img-->
+        <target dev='vda' bus='virtio'/>
+      </disk>
+
+      <disk type='file' device='disk'>
+        <driver name='qemu' type='qcow2'/>
+        <source file='{disk_cloud_init}'/>
+        <target dev='hdb' bus='ide'/>
+      </disk>
+
+      <interface type='network'>
+        <source network='lab{lab_id}-4'/>
+        <mac address='ee:{lab_id:02}:00:02:00:01'/>
+        <target dev='v{lab_id}-dibbler-4'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab{lab_id}-6'/>
+        <mac address='ee:{lab_id:02}:00:02:00:02'/>
+        <target dev='v{lab_id}-dibbler-6'/>
+      </interface>
+    </devices>
   </domain>
 
 networks:
 - |
   <network>
-    <name>lab-{lab_id}-10.{lab_id}.0</name>
-    <bridge name='br-{lab_id}-10.{lab_id}' />
+    <name>lab{lab_id}-4</name>
+    <bridge name='br{lab_id}-4' />
     <forward mode="nat"/>
     <ip address='10.{lab_id}.0.1' netmask='255.255.255.0'>
       <dhcp>
@@ -155,19 +151,19 @@ networks:
   </network>
 - |
   <network>
-    <name>lab-{lab_id}-20{lab_id:02}::0</name>
-    <bridge name='br-{lab_id}-20{lab_id:02}' />
+    <name>lab{lab_id}-6</name>
+    <bridge name='br{lab_id}-6' />
     <forward mode="nat"/>
     <ip family="ipv6" address='20{lab_id:02}::1' prefix='64'>
     </ip>
   </network>
 paas_1:
-  - net: lab-{lab_id}-10.{lab_id}.0
+  - net: lab{lab_id}-4
     mac: ee:{lab_id:02}:00:02:00:01
     cmd:
       - deploy_dibbler with dibbler.conf
 
-  - net: lab-{lab_id}-10.{lab_id}.0
+  - net: lab{lab_id}-6
     mac: ee:{lab_id:02}:00:01:00:01
     cmd:
       - deploy_devstack with aio4

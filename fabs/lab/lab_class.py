@@ -66,11 +66,10 @@ class CloudStatus:
 
     def set(self, role, ip, mac, hostname):
         """ Set all parameters for the given server"""
-        if role not in self.info.keys():
-            return
-        self.info[role].append({'ip': ip, 'mac': mac, 'hostname': hostname})
         self.hostname_2_ip[hostname] = ip
         self.mac_2_ip[mac] = ip
+        if role in self.info.keys():
+            self.info[role].append({'ip': ip, 'mac': mac, 'hostname': hostname})
 
     def create_open_rc(self):
         """ Creates open_rc for the given cloud"""
@@ -482,6 +481,7 @@ class MyLab:
             self.create_networks()
         if phase in ['lab', 'dom']:
             self.create_domains()
+            self.status.log()
         if phase in ['lab', 'paas_1']:
             self.create_paas(phase='paas_1')
         if phase in ['lab', 'paas_2']:
