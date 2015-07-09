@@ -1,0 +1,18 @@
+paas_1:
+  - hostname: lab{lab_id}-ucsm
+    ip: 172.29.172.177
+    cmd:
+      - register_as_ucsm_node
+  - hostname: lab{lab_id}-controller
+    ip: 172.29.172.168
+    cmd:
+      - deploy_devstack with ucsm_controller
+      - sudo pip install UcsSdk
+  - hostname: lab{lab_id}-1-compute
+    ip: 172.29.172.168
+    cmd:
+      - deploy_devstack with ucsm_compute
+  - hostname: lab{lab_id}-2-compute
+    ip: 172.29.172.187
+    cmd:
+      - deploy_devstack with ucsm_compute

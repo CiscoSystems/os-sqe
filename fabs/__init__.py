@@ -16,6 +16,7 @@ class LabIds(object):
     redhat_mercury = 63
     redhat_baremetal_g8 = 64
     ucsm = 77
+    ucsm_g10 = 92
     devstack_neutron_46 = 66
     devstack_aio_46 = 67
 

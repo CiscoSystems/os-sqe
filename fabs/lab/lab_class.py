@@ -88,7 +88,7 @@ export OS_REGION_NAME=RegionOne
         for hostname in sorted(self.hostname_2_ip.keys()):
             log.info(hostname + ': ' + self.hostname_2_ip[hostname])
         log.info('\n')
-        for role in self.info.keys():
+        for role in sorted(self.info.keys()):
             log.info(role + ' ip: ' + ' '.join(self.get(role=role, parameter='ip')))
 
 
@@ -240,33 +240,33 @@ class MyLab:
             return
 
         for segment in paas_phase:
-            # possible values: net, mac, hostname, user, password, cmd.
-            hostname = segment.get('hostname')
-            net = segment.get('net')
-            mac = segment.get('mac')
-            user = segment.get('user', 'ubuntu')
-            password = segment.get('password', 'ubuntu')
+            # possible values: net, mac, ip, hostname, user, password, cmd.
+            host = {key: segment.get(key, 'Unknown_' + key).format(lab_id=self.lab_id) for key in ['hostname', 'net', 'mac', 'ip']}
+            host['user'] = segment.get('user', 'ubuntu')
+            host['password'] = segment.get('password', 'ubuntu')
+            host['role'] = host['hostname'].split('-')[-1]
             commands = segment['cmd']
 
-            if hostname:
-                ip = self.status.hostname_2_ip[hostname.format(lab_id=self.lab_id)]
-            elif mac:
-                ip = self.status.mac_2_ip[mac.format(lab_id=self.lab_id)]
-            elif net == 'local' or net == 'localhost':
-                ip = 'localhost'
-            elif mac and net.startswith('2001:'):
-                ip = lab.ip_for_mac_and_prefix(mac=mac.format(lab_id=self.lab_id), prefix=net)
-            elif net == 'baremetal':
-                ip = mac
+            if not host['hostname'].startswith('Unknown'):
+                if host['ip'].startswith('Unknown'):
+                    ip = self.status.hostname_2_ip[host['hostname']]
+                else:
+                    ip = host['ip']
+            elif not host['mac'].startswith('Unknown'):
+                ip = self.status.mac_2_ip[host['mac']]
+            elif host['net'].startswith('local'):
+                ip = '127.0.0.1'
+            elif host['net'].startswith('2001:'):
+                ip = lab.ip_for_mac_and_prefix(host['mac'], prefix=host['net'])
             else:
                 raise exceptions.UserWarning('no way to determine where to execute! you provided hostname={hostname} net={net} mac={mac}')
 
             for cmd in commands:
                 cmd = cmd.format(lab_id=self.lab_id)
-                if ip == 'localhost':
+                if ip in ['localhost', '127.0.0.1']:
                     local(cmd)
                 else:
-                    with settings(host_string='{user}@{ip}'.format(user=user, ip=ip), password=password, connection_attempts=50, warn_only=False):
+                    with settings(host_string='{user}@{ip}'.format(user=host['user'], ip=ip), password=host['password'], connection_attempts=50, warn_only=False):
                         if cmd.startswith('deploy_devstack'):
                             self.deploy_by_devstack(cmd)
                         elif cmd.startswith('deploy_by_packstack'):
@@ -281,14 +281,8 @@ class MyLab:
                             self.run_tempest(cmd)
                         elif cmd.startswith('run_neutron_api_tests'):
                             self.run_neutron_api_tests()
-                        elif cmd.startswith('register_as_control_node'):
-                            self.status.set(role='controller', ip=ip, mac=mac, hostname='Not known')
-                        elif cmd.startswith('register_as_nova_node'):
-                            self.status.set(role='compute', ip=ip, mac=mac, hostname='Not known')
-                        elif cmd.startswith('register_as_neutron_node'):
-                            self.status.set(role='network', ip=ip, mac=mac, hostname='Not known')
-                        elif cmd.startswith('register_as_ucsm_node'):
-                            self.status.set(role='ucsm', ip=ip, mac=mac, hostname='Not known')
+                        elif cmd.startswith('register_as'):
+                            self.status.set(role=host['role'], ip=host['ip'], mac=host['mac'], hostname=host['hostname'])
                         else:
                             sudo(cmd)
 
@@ -440,7 +434,7 @@ class MyLab:
         if match:
             path = match.groups()[0].strip() + '/{}'.format(component_name)
             if 'HOME' in path:
-                path = run('echo {0}'.format(component_name))
+                path = run('echo {0}'.format(path))
         else:
             path = "/opt/stack/{}".format(component_name)
         return path
