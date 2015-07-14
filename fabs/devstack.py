@@ -265,9 +265,11 @@ def neutron46(lab_id=LabIds.devstack_neutron_46, cleanup='do not cleanup'):
 
 @task
 @timed
-def aio46(lab_id=LabIds.devstack_aio_46, cleanup='do not cleanup'):
+def aio46(lab_id=LabIds.devstack_aio_46, cleanup='do not cleanup',
+          devstack_conf_addon=''):
 
     """Deploy devstack aio46: Special for Neutron API tests"""
 
-    lab = MyLab(lab_id=lab_id, topology_name='aio46')
+    lab = MyLab(lab_id=lab_id, topology_name='aio46',
+                devstack_conf_addon=devstack_conf_addon)
     lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)

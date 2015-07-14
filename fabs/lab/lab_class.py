@@ -178,6 +178,8 @@ class MyLab:
 
             hostname = b.find('name').string.format(lab_id=self.lab_id)
             host_type = hostname.split('-')[-1]
+            # todo kshileev - what if we have two mac adresses
+            # and only second one is for ip resolving is needed?
             mac = b.find('mac')['address'].format(lab_id=self.lab_id)
             image_url = b.find(string=re.compile('^http'))
 
