@@ -39,16 +39,16 @@ servers:
       </disk>
 
       <interface type='network'>
-        <source network='lab-{lab_id}-v6'/>
-        <mac address='ee:{lab_id:02}:00:01:00:01'/>
-        <target dev='v-{lab_id}-aio-6'/>
-      </interface>
-
-      <interface type='network'>
         <source network='lab-{lab_id}-v4'/>
         <mac address='ee:{lab_id:02}:00:01:00:02'/>
         <target dev='v-{lab_id}-aio-4'/>
         <model type='virtio'/>
+      </interface>
+
+      <interface type='network'>
+        <source network='lab-{lab_id}-v6'/>
+        <mac address='ee:{lab_id:02}:00:01:00:01'/>
+        <target dev='v-{lab_id}-aio-6'/>
       </interface>
 
       <input type='mouse' bus='ps2'/>
