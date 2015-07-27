@@ -17,10 +17,7 @@ git checkout FETCH_HEAD
 git --no-pager log -n1
 
 # Write neutron-ref to test-patches.txt Used by tools/add_neutron_patches.sh
-echo ${NEUTRON_REF} >>test-patches.txt
-
-# Set neutron repo
-sed -i "s/git:\/\/git.openstack.org\/openstack\/neutron.git/git+${NEUTRON_REPO//\//\\/}/" requirements.txt
+echo ${NEUTRON_REF} >> test-patches.txt
 
 # Fix add_neutron_patches.sh
 sed -i "s/https:\/\/review.openstack.org\//${ZUUL_URL//\//\\/}/" tools/add_neutron_patches.sh
