@@ -1,9 +1,17 @@
-ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cond,cinder,c-sch,c-api,c-vol,n-sch,n-novnc,n-xvnc,n-cauth,horizon,mysql,rabbit,tempest
-disable_service n-net n-cpu
+TEMPEST_REPO=https://review.gerrithub.io/cisco-openstack/tempest
+TEMPEST_BRANCH=refs/changes/54/241054/12
+
+ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cond,n-cpu,cinder,c-sch,c-api,c-vol,n-sch,n-novnc,n-xvnc,n-cauth,horizon,mysql,rabbit,tempest
+disable_service n-net
 enable_service q-svc q-agt q-l3 q-dhcp q-meta neutron
 
-enable_plugin networking-cisco https://git.openstack.org/openstack/networking-cisco master
+#enable_plugin networking-cisco https://git.openstack.org/openstack/networking-cisco master
+# The patchset below contains fix for UCSM driver
+enable_plugin networking-cisco https://review.openstack.org/openstack/networking-cisco refs/changes/04/200304/12
 enable_service net-cisco
+
+enable_plugin cisco-tempest ${TEMPEST_REPO} ${TEMPEST_BRANCH}
+enable_service ucsm-tests
 
 IP_VERSION=4
 Q_PLUGIN=ml2
@@ -17,9 +25,32 @@ OVS_PHYSICAL_BRIDGE=br-eth1
 TENANT_VLAN_RANGE=100:200
 ENABLE_TENANT_VLANS=True
 
+#IMAGE_URLS="http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-uec.tar.gz"
+# Ubuntu image for SR-IOV ports. Cirros image can not boot (has SHUTOFF state)
+IMAGE_URLS="https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img"
+
+[[post-config|$NOVA_CONF]]
+[DEFAULT]
+pci_passthrough_whitelist = {"'"product_id"'":"'"0071"'", "'"address"'":"'"*:06:00.*"'", "'"physical_network"'":"'"physnet1"'"}
+
 [[post-config|/etc/neutron/plugins/ml2/ml2_conf.ini]]
 [ml2_cisco_ucsm]
 ucsm_ip={ucsm_ip}
 ucsm_username={ucsm_username}
 ucsm_password={ucsm_password}
 ucsm_host_list={ucsm_host_list}
+
+[[post-extra|$TEMPEST_CONFIG]]
+[compute]
+flavor_ref_alt = 3
+flavor_ref = 3
+image_ssh_user = ubuntu
+image_alt_ssh_user = ubuntu
+[ucsm]
+ucsm_ip={ucsm_ip}
+ucsm_username={ucsm_username}
+ucsm_password={ucsm_password}
+ucsm_host_dict={ucsm_host_list}
+network_node_host={network_node_host}
+eth_names=eth0,eth1
+virtual_functions_amount=4

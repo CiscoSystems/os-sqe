@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from fabric.api import local, settings, sudo, put, get, run, cd, lcd
-from fabric.context_managers import shell_env
+from fabric.context_managers import shell_env, warn_only
 import yaml
 import exceptions
 import re
@@ -64,12 +64,14 @@ class CloudStatus:
         else:
             return 'NoValueFor' + role + parameter
 
-    def set(self, role, ip, mac, hostname):
+    def set(self, role, ip, mac, user, password, hostname, host_list, network_node_host):
         """ Set all parameters for the given server"""
         self.hostname_2_ip[hostname] = ip
         self.mac_2_ip[mac] = ip
         if role in self.info.keys():
-            self.info[role].append({'ip': ip, 'mac': mac, 'hostname': hostname})
+            _info = {'ip': ip, 'mac': mac, 'user': user, 'hostname': hostname, 'password': password,
+                     'host_list': host_list, 'network_node_host': network_node_host}
+            self.info[role].append(_info)
 
     def create_open_rc(self):
         """ Creates open_rc for the given cloud"""
@@ -127,12 +129,14 @@ class MyLab:
                 log.info('{0} was deleted'.format(something.name()))
 
     def delete_lab(self):
-        self.delete_of_something(_conn().listAllDomains)
-        self.delete_of_something(_conn().listAllNetworks)
-        local('rm -f {0}/*{1}*'.format(lab.DISKS_DIR, self.lab_id))
-        for bridge in local("brctl show | grep 8000 | grep {0} | awk '{{print $1}}'".format(self.lab_id), capture=True).split('\n'):
-            if bridge:
-                local('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
+        if self.topology.get('networks'):
+            self.delete_of_something(_conn().listAllNetworks)
+            for bridge in local("brctl show | grep 8000 | grep {0} | awk '{{print $1}}'".format(self.lab_id), capture=True).split('\n'):
+                if bridge:
+                    local('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
+        if self.topology.get('servers'):
+            self.delete_of_something(_conn().listAllDomains)
+            local('rm -f {0}/*{1}*'.format(lab.DISKS_DIR, self.lab_id))
 
     def create_networks(self):
         from bs4 import BeautifulSoup
@@ -243,23 +247,24 @@ class MyLab:
 
         for segment in paas_phase:
             # possible values: net, mac, ip, hostname, user, password, cmd.
-            host = {key: segment.get(key, 'Unknown_' + key).format(lab_id=self.lab_id) for key in ['hostname', 'net', 'mac', 'ip']}
-            host['user'] = segment.get('user', 'ubuntu')
-            host['password'] = segment.get('password', 'ubuntu')
-            host['role'] = host['hostname'].split('-')[-1]
+            segment.update({key: segment.get(key, 'Unknown_' + key).format(lab_id=self.lab_id)
+                            for key in ['hostname', 'net', 'mac', 'ip', 'host_list', 'network_node_host'] if not segment.get(key)})
+            segment['user'] = segment.get('user', 'ubuntu')
+            segment['password'] = segment.get('password', 'ubuntu')
+            segment['role'] = segment['hostname'].split('-')[-1]
             commands = segment['cmd']
 
-            if not host['hostname'].startswith('Unknown'):
-                if host['ip'].startswith('Unknown'):
-                    ip = self.status.hostname_2_ip[host['hostname']]
+            if not segment['hostname'].startswith('Unknown'):
+                if segment['ip'].startswith('Unknown'):
+                    ip = self.status.hostname_2_ip[segment['hostname']]
                 else:
-                    ip = host['ip']
-            elif not host['mac'].startswith('Unknown'):
-                ip = self.status.mac_2_ip[host['mac']]
-            elif host['net'].startswith('local'):
+                    ip = segment['ip']
+            elif not segment['mac'].startswith('Unknown'):
+                ip = self.status.mac_2_ip[segment['mac']]
+            elif segment['net'].startswith('local'):
                 ip = '127.0.0.1'
-            elif host['net'].startswith('2001:'):
-                ip = lab.ip_for_mac_and_prefix(host['mac'], prefix=host['net'])
+            elif segment['net'].startswith('2001:'):
+                ip = lab.ip_for_mac_and_prefix(segment['mac'], prefix=segment['net'])
             else:
                 raise exceptions.UserWarning('no way to determine where to execute! you provided hostname={hostname} net={net} mac={mac}')
 
@@ -268,7 +273,7 @@ class MyLab:
                 if ip in ['localhost', '127.0.0.1']:
                     local(cmd)
                 else:
-                    with settings(host_string='{user}@{ip}'.format(user=host['user'], ip=ip), password=host['password'], connection_attempts=50, warn_only=False):
+                    with settings(host_string='{user}@{ip}'.format(user=segment['user'], ip=ip), password=segment['password'], connection_attempts=50, warn_only=False):
                         if cmd.startswith('deploy_devstack'):
                             self.deploy_by_devstack(cmd)
                         elif cmd.startswith('deploy_by_packstack'):
@@ -284,7 +289,11 @@ class MyLab:
                         elif cmd.startswith('run_neutron_api_tests'):
                             self.run_neutron_api_tests()
                         elif cmd.startswith('register_as'):
-                            self.status.set(role=host['role'], ip=host['ip'], mac=host['mac'], hostname=host['hostname'])
+                            self.status.set(role=segment['role'], ip=segment['ip'],
+                                            mac=segment['mac'], hostname=segment['hostname'],
+                                            user=segment['user'], password=segment['password'],
+                                            host_list=segment['host_list'],
+                                            network_node_host=segment['network_node_host'])
                         else:
                             sudo(cmd)
 
@@ -319,7 +328,7 @@ class MyLab:
         return local_repo_dir
 
     def build_config_from_base_and_addon(self, directory, cmd):
-        from fabs.ucsm import ucsm
+        #from fabs.ucsm import ucsm
 
         with open(os.path.join(directory, 'base.conf')) as f:
             conf_as_string = f.read()
@@ -331,18 +340,21 @@ class MyLab:
             conf_as_string = conf_as_string.replace('{controller_name}', self.status.get_first(role='controller', parameter='hostname'))
             conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.status.get(role='compute', parameter='ip')))
             conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.status.get(role='compute', parameter='ip')))
-            conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.status.get(role='network', parameter='ip')))
+            #conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.status.get(role='network', parameter='ip')))
             if 'ucsm' in addon_config_name:
-                ucsm_user = 'ucspe'
-                ucsm_password = 'ucspe'
-                ucsm_service_profile = 'test-profile'
                 ucsm_ip = self.status.get_first(role='ucsm', parameter='ip')
-                ucsm(host=ucsm_ip, username=ucsm_user, password=ucsm_password, service_profile_name=ucsm_service_profile)
+                ucsm_user = self.status.get_first(role='ucsm', parameter='user')
+                ucsm_password = self.status.get_first(role='ucsm', parameter='password')
+                ucsm_host_list = self.status.get_first(role='ucsm', parameter='host_list')
+                network_node_host = self.status.get_first(role='ucsm', parameter='network_node_host')
+                #ucsm_service_profile = 'test-profile'
+                #ucsm(host=ucsm_ip, username=ucsm_user, password=ucsm_password, service_profile_name=ucsm_service_profile)
                 conf_as_string = conf_as_string.replace('{ucsm_ip}', ucsm_ip)
                 conf_as_string = conf_as_string.replace('{ucsm_username}', ucsm_user)
                 conf_as_string = conf_as_string.replace('{ucsm_password}', ucsm_password)
-                l_hostnames = self.status.get(role='compute', parameter='hostname') + self.status.get(role='controller', parameter='hostname')
-                conf_as_string = conf_as_string.replace('{ucsm_host_list}', ','.join([hostname + ':' + ucsm_service_profile for hostname in l_hostnames]))
+                #l_hostnames = self.status.get(role='compute', parameter='hostname') + self.status.get(role='controller', parameter='hostname')
+                conf_as_string = conf_as_string.replace('{ucsm_host_list}', ucsm_host_list)
+                conf_as_string = conf_as_string.replace('{network_node_host}', network_node_host)
         log.info(msg='Config for OS deployer:\n' + conf_as_string)
         return conf_as_string
 
@@ -351,6 +363,10 @@ class MyLab:
 
         local_cloned_repo = MyLab.clone_repo('https://git.openstack.org/openstack-dev/devstack.git')
         put(local_path=StringIO(conf_as_string), remote_path='{0}/local.conf'.format(local_cloned_repo))
+        run('{0}/unstack.sh'.format(local_cloned_repo))
+        # Kill all python processes to avoid errors: Address already in use
+        with settings(warn_only=True):
+            run('sudo pkill --signal 9 -f python')
         run('{0}/stack.sh'.format(local_cloned_repo))
 
     def deploy_by_packstack(self, cmd):

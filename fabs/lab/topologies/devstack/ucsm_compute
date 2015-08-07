@@ -18,3 +18,7 @@ PHYSICAL_NETWORK=physnet1
 OVS_PHYSICAL_BRIDGE=br-eth1
 TENANT_VLAN_RANGE=100:200
 ENABLE_TENANT_VLANS=True
+
+[[post-config|$NOVA_CONF]]
+[DEFAULT]
+pci_passthrough_whitelist = {"'"product_id"'":"'"0071"'", "'"address"'":"'"*:06:00.*"'", "'"physical_network"'":"'"physnet1"'"}
