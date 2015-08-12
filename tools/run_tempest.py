@@ -41,6 +41,7 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
             if patch_set:
                 api.run('git fetch https://review.gerrithub.io/cisco-openstack/tempest'
                         ' {0} && git checkout FETCH_HEAD'.format(patch_set))
+            api.run(command='if [ ! -d ".tox/venv/bin" ]; then tox -revenv -- verify-tempest-config; fi')
             api.run(command='testr init')
             api.run(command=cmd)
             api.run(command=TEMPEST_SUBUNIT_CMD)
