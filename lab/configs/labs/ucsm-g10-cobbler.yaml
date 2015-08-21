@@ -1,0 +1,22 @@
+provider1: {ProviderCobbler: {host: 172.29.74.8,
+                             user: cobbler,
+                             password: cobbler,
+                             system_password: cisco123,
+                             force_pxe_boot: True,
+                             selector: {name: G10-QA11, owners: kshileev}
+                             }
+          }
+provider2: {ProviderUCSM:    {host: 10.23.228.253,
+                             username: admin,
+                             password: cisco,
+                            }
+          }
+deployer: {DeployerOSP7: {rdo_account: ymorkovn@cisco.com,
+                          rdo_password: 280778,
+                          rdo_pool_id: 8a85f9864cfbfc41014cfc065097403b,
+                          director: 172.29.172.168,
+                          images_url: 'http://172.29.173.233/redhat/osp7',
+                          undercloud_config_file: g10-undercloud.conf
+                          }
+          }
+
