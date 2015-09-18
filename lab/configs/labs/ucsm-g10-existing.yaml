@@ -1,9 +1,10 @@
-provider: {ProviderUCSM: {host: 10.23.228.253, username: admin, password: cisco}}
+provider1: {ProviderExisting: [{host: 172.29.172.168, username: stack, password: cisco123}]}
+provider2: {ProviderUCSM: {host: 10.23.228.253, username: admin, password: cisco}}
 deployer: {DeployerOSP7: {rdo_account: ymorkovn@cisco.com,
                           rdo_password: 280778,
                           rdo_pool_id: 8a85f9864cfbfc41014cfc065097403b,
                           undercloud_config_file: g10-undercloud.conf,
                           images_url: 'http://172.29.173.233/redhat/osp7',
-                          director: {host: 172.29.172.168, username: root, password: cisco123}
+                          director: 172.29.172.168
                           }
           }

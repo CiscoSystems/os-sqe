@@ -6,12 +6,17 @@ CONFIG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'configs'))
 
 
 class Server(object):
-    def __init__(self, ip, username, password, ssh_public_key='N/A', ssh_port=22):
+    def __init__(self, ip, username, password, ssh_public_key='N/A', ssh_port=22, ipmi_ip=None, ipmi_username=None, ipmi_password=None, pxe_mac=None):
         self.ip = ip
         self.username = username
         self.password = password
         self.ssh_public_key = ssh_public_key
         self.ssh_port = ssh_port
+
+        self.ipmi_ip = ipmi_ip
+        self.ipmi_username = ipmi_username
+        self.ipmi_password = ipmi_password
+        self.pxe_mac = pxe_mac
 
 
 class LabConfigException(Exception):

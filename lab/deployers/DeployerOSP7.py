@@ -97,15 +97,15 @@ class DeployerOSP7(Deployer):
 
         config = {'nodes': []}
         for server in servers:
-            config['nodes'].append({'mac': [server.nics['eth1']],
-                                    'cpu': server.n_cores,
-                                    'memory': server.mem_size_gb,
-                                    'disk': server.disk_size_gb,
-                                    'arch': server.arch,
+            config['nodes'].append({'mac': [server.pxe_mac],
+                                    'cpu': 2,
+                                    'memory': 128,
+                                    'disk': 500,
+                                    'arch': 'x86_64',
                                     'pm_type': "pxe_ipmitool",
-                                    'pm_user': server.ipmi['username'],
-                                    'pm_password': server.ipmi['password'],
-                                    'pm_addr': server.ipmi['ip']})
+                                    'pm_user': server.ipmi_username,
+                                    'pm_password': server.ipmi_password,
+                                    'pm_addr': server.ipmi_ip})
         self.__overcloud_config = StringIO(json.dumps(config))
 
     def verify_cloud(self):
@@ -114,9 +114,9 @@ class DeployerOSP7(Deployer):
     def wait_for_cloud(self, list_of_servers):
         servers = []
         for server in list_of_servers:
-            if server['host'] == self.director_ip:
-                self.director_username = server['username']
-                self.director_password = server['password']
+            if server.ip == self.director_ip:
+                self.director_username = server.username
+                self.director_password = server.password
             else:
                 servers.append(server)
         self.__create_overcloud_config(servers=servers)

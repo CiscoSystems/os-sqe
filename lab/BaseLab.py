@@ -18,7 +18,8 @@ class BaseLab(WithStatusMixIn):
 
         yaml_path = yaml_name if os.path.isfile(yaml_name) else os.path.join(CONFIG_DIR, 'labs', yaml_name)
         if not os.path.isfile(yaml_path):
-            raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_name, '\n'.join(filter(lambda name: name.endswith('.yaml'), os.listdir(CONFIG_DIR)))))
+            folder = os.path.abspath(os.path.join(CONFIG_DIR, 'labs'))
+            raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_name, '\n'.join(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))))
 
         with open(yaml_path) as f:
             config = yaml.load(f)

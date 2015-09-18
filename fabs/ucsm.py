@@ -39,11 +39,14 @@ def read_config_sdk(host='10.23.228.253', username='admin', password='cisco'):
 
 
 class UcsmServer(object):
-    def __init__(self, server_num, profile_name):
+    def __init__(self, server_num, profile_name, ipmi_ip, ipmi_username, ipmi_password, pxe_mac):
         self.server_num = server_num
         self.profile_name = profile_name
-        self.ipmi = {'ip': None, 'username': None, 'password': 'cisco'}
-        self.nics = {}
+        self.ipmi_ip = ipmi_ip
+        self.ipmi_username = ipmi_username
+        self.ipmi_password = ipmi_password
+        self.pxe_mac = pxe_mac
+
         self.arch = 'x86_64'
         self.n_cores = 20
         self.mem_size_gb = 128
@@ -52,10 +55,10 @@ class UcsmServer(object):
     def __repr__(self):
         return 'N{num}: profile: {profile} ipmi: {user}:{password}@{ip} PXE: {mac} '.format(num=self.server_num,
                                                                                             profile=self.profile_name,
-                                                                                            user=self.ipmi['username'],
-                                                                                            password=self.ipmi['password'],
-                                                                                            ip=self.ipmi['ip'],
-                                                                                            mac=self.nics['eth0'])
+                                                                                            user=self.ipmi_username,
+                                                                                            password=self.ipmi_password,
+                                                                                            ip=self.ipmi_ip,
+                                                                                            mac=self.pxe_mac)
 
     def add_nic(self, name, mac):
         self.nics[name] = mac
@@ -65,39 +68,44 @@ class UcsmServer(object):
         self.n_cores = n_cores
         self.disk_size_gb = 500
 
-    def set_ipmi(self, ip, username):
-        self.ipmi['ip'] = ip
-        self.ipmi['username'] = username
+    @staticmethod
+    def json(servers):
+        from StringIO import StringIO
+        import json
+
+        config = {'nodes': []}
+        for server in servers:
+            config['nodes'].append({'mac': server.pxe_mac,
+                                    'cpu': server.n_cores,
+                                    'memory': server.mem_size_gb,
+                                    'disk': server.disk_size_gb,
+                                    'arch': server.arch,
+                                    'pm_type': "pxe_ipmitool",
+                                    'pm_user': server.ipmi_username,
+                                    'pm_password': server.ipmi_password,
+                                    'pm_addr': server.ipmi_ip})
+        return StringIO(json.dumps(config))
 
 
 @task
 def read_config_ssh(host='10.23.228.253', username='admin', password='cisco'):
     """Reads config needed for OSP7 via ssh to UCSM"""
     from fabric.api import settings, run
-    import re
-
-    mac_re = re.compile(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', re.I)
-
-    def normalize_output(multiline):
-        multiline = multiline.split('\r\n')
-        return multiline if len(multiline) > 1 else multiline[0]
 
     servers = {}
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
-        ipmi_username, _, _ = normalize_output(run('scope org; scope ipmi-access-profile IPMI; sh ipmi-user | egrep -v "User|---|IPMI"', shell=False, quiet=True)).split()
+        ipmi_users = run('scope org; scope ipmi-access-profile IPMI; sh ipmi-user | egrep -v "Description|---|IPMI" | cut -f 5 -d " "', shell=False, quiet=True).split('\n')
+        if 'cobbler' not in ipmi_users:
+            raise Exception('No IPMI user "cobbler" in UCSM! Add it with password "cobbler" manually')
 
-        for profile in normalize_output(run('scope org; show service-profile | egrep Associated', shell=False, quiet=True)):
-            profile_name, _, server_num, _, _ = profile.split()
-            ipmi_ip, _, _, _ = normalize_output(run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9]'.format(server_num), shell=False, quiet=True)).split()
-            server = UcsmServer(server_num=server_num, profile_name=profile_name)
-            server.set_ipmi(ip=ipmi_ip, username=ipmi_username)
-            for eth in normalize_output(run('scope org; scope service-profile {}; sh vnic | egrep -v "Name|---|vNIC"'.format(profile_name), shell=False, quiet=True)):
-                name = eth.split()[0]
-                mac = mac_re.search(eth).group()
-                server.add_nic(name=name, mac=mac)
-            servers[server_num] = server
-
-    return [servers[key] for key in sorted(servers.keys())]
+        for profile in run('scope org; show service-profile | egrep Associated | egrep -V DIRECTOR | cut -f 5-35 -d " "', shell=False, quiet=True).split('\n'):
+            profile_name, _, server_num = profile.split()
+            ipmi_ip = run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_num), shell=False, quiet=True)
+            pxe_mac = run('scope org; scope service-profile {0}; sh vnic | egrep PXE-INT | cut -f 25 -d " "'.format(profile_name), shell=False, quiet=True)
+            servers[server_num] = UcsmServer(server_num=server_num, profile_name=profile_name, ipmi_ip=ipmi_ip, ipmi_username='cobbler', ipmi_password='cobbler', pxe_mac=pxe_mac)
+    lst = [servers[key] for key in sorted(servers.keys())]
+    json = UcsmServer.json(servers=lst)
+    return lst
 
 
 @task
@@ -120,13 +128,13 @@ def cleanup(host='10.23.228.253', username='admin', password='cisco'):
 
 
 @task
-def configure_for_osp7(host='10.23.228.253', username='admin', password='cisco'):
+def configure_for_osp7(host='10.23.228.253', username='admin', password='cisco', mgmt_vlan=1723):
     from fabric.api import settings, run
 
     server_pool_name = 'QA-SERVERS'
     uuid_pool_name = 'QA'
     mac_pools = {'PXE-INT': 'AA', 'MGMT': 'BB', 'eth0': 'CC', 'eth1': 'DD'}
-    vlans = {'MGMT': 1723, 'PXE-INT': 111, 'eth0': 333, 'eth1': 334}
+    vlans = {'MGMT': mgmt_vlan, 'PXE-INT': 111, 'eth0': 333, 'eth1': 334}
     mgmt_ips = '10.23.228.231 10.23.228.233 10.23.228.224 255.255.255.225'
 
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
@@ -159,7 +167,7 @@ def configure_for_osp7(host='10.23.228.253', username='admin', password='cisco')
         for server_num in server_nums:
             # add server to server pool
             run('scope org; scope server-pool {0}; create server {1}; commit-buffer'.format(server_pool_name, server_num), shell=False)
-            profile = 'QA1{0}'.format(server_num)
+            profile = 'DIRECTOR' if server_num == '1' else 'QA1{0}'.format(server_num)
             # service profile
             run('scope org; create service-profile {0}; set ipmi-access-profile IPMI; commit-buffer'.format(profile), shell=False)
             if server_num == '1':
