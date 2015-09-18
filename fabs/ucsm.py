@@ -128,12 +128,15 @@ def cleanup(host='10.23.228.253', username='admin', password='cisco'):
 
 
 @task
-def configure_for_osp7(host='10.23.228.253', username='admin', password='cisco', mgmt_vlan=1723):
+def configure_for_osp7(host, username, password, mgmt_vlan, lab_id):
     from fabric.api import settings, run
 
     server_pool_name = 'QA-SERVERS'
     uuid_pool_name = 'QA'
-    mac_pools = {'PXE-INT': 'AA', 'MGMT': 'BB', 'eth0': 'CC', 'eth1': 'DD'}
+
+    mac_pools = {x[0]: '00:25:B5:{0:02}:{1}'.format(lab_id, x[1]) for x in [('eth0', '00'), ('eth1', '01'), ('MGMT', 'AA'), ('PXE-INT', 'EE')]}
+    pxe_ext_mac = '00:25:B5:{lab_id:02}:FE:FE}'.format(lab_id=lab_id)
+
     vlans = {'MGMT': mgmt_vlan, 'PXE-INT': 111, 'eth0': 333, 'eth1': 334}
     mgmt_ips = '10.23.228.231 10.23.228.233 10.23.228.224 255.255.255.225'
 
@@ -152,9 +155,9 @@ def configure_for_osp7(host='10.23.228.253', username='admin', password='cisco',
         # IPMI access policy
 
         # MAC pools
-        for mac_pool_name, mac_value in mac_pools.iteritems():
-            mac_range = '00:25:B5:00:{0}:01 00:25:B5:00:{0}:{1}'.format(mac_value, n_servers)
-            run('scope org; create mac-pool {0}; set assignment-order sequential; create block {1}; commit-buffer'.format(mac_pool_name, mac_range), shell=False)
+        for if_name, mac_value in mac_pools.iteritems():
+            mac_range = '{0}:01 {0}:{1}'.format(mac_value, n_servers)
+            run('scope org; create mac-pool {0}; set assignment-order sequential; create block {1}; commit-buffer'.format(if_name, mac_range), shell=False)
         # VLANs
         for vlan_name, vlan_id in vlans.iteritems():
             run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(vlan_name, vlan_id), shell=False)
@@ -172,7 +175,7 @@ def configure_for_osp7(host='10.23.228.253', username='admin', password='cisco',
             run('scope org; create service-profile {0}; set ipmi-access-profile IPMI; commit-buffer'.format(profile), shell=False)
             if server_num == '1':
                 # special vNIC to have this server booted via external PXE
-                run('scope org; scope service-profile {0}; create vnic PXE-EXT fabric a-b; set identity dynamic-mac 00:25:B5:11:11:11; commit-buffer'.format(profile), shell=False)
+                run('scope org; scope service-profile {0}; create vnic PXE-EXT fabric a-b; set identity dynamic-mac {1}; commit-buffer'.format(profile, pxe_ext_mac), shell=False)
                 run('scope org; scope service-profile {0}; set boot-policy PXE-EXT; commit-buffer'.format(profile), shell=False)
             else:
                 run('scope org; scope service-profile {0}; set boot-policy PXE-INT; commit-buffer'.format(profile), shell=False)
