@@ -12,8 +12,8 @@ def read_config_sdk(host='10.23.228.253', username='admin', password='cisco'):
     import UcsSdk
 
     configuration = {'nodes': []}
+    u = UcsSdk.UcsHandle()
     try:
-        u = UcsSdk.UcsHandle()
         u.Login(name=host, username=username, password=password)
 
         mo_list = u.GetManagedObject(inMo=None, classId=UcsSdk.LsServer.ClassId(), params=None)
@@ -60,14 +60,6 @@ class UcsmServer(object):
                                                                                             ip=self.ipmi_ip,
                                                                                             mac=self.pxe_mac)
 
-    def add_nic(self, name, mac):
-        self.nics[name] = mac
-
-    def set_hardware(self, mem_size_mb, n_cores):
-        self.mem_size_gb = int(mem_size_mb)/1024
-        self.n_cores = n_cores
-        self.disk_size_gb = 500
-
     @staticmethod
     def json(servers):
         from StringIO import StringIO
@@ -104,12 +96,12 @@ def read_config_ssh(host='10.23.228.253', username='admin', password='cisco'):
             pxe_mac = run('scope org; scope service-profile {0}; sh vnic | egrep PXE-INT | cut -f 25 -d " "'.format(profile_name), shell=False, quiet=True)
             servers[server_num] = UcsmServer(server_num=server_num, profile_name=profile_name, ipmi_ip=ipmi_ip, ipmi_username='cobbler', ipmi_password='cobbler', pxe_mac=pxe_mac)
     lst = [servers[key] for key in sorted(servers.keys())]
-    json = UcsmServer.json(servers=lst)
+    print UcsmServer.json(servers=lst)
     return lst
 
 
 @task
-def cleanup(host='10.23.228.253', username='admin', password='cisco'):
+def cleanup(host, username, password):
     from fabric.api import settings, run
 
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
@@ -125,20 +117,34 @@ def cleanup(host='10.23.228.253', username='admin', password='cisco'):
             run('scope org; delete boot-policy {0}; commit-buffer'.format(boot_policy), shell=False)
         for vlan in run('scope eth-uplink; sh vlan | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "', shell=False).split():
             run('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan), shell=False)
+        for server_num in run('sh server status | egrep ^[1-9] | cut -f 1 -d " "', shell=False).split():
+            if run('scope server {0}; scope cimc; sh ext-static-ip'.format(server_num), shell=False):
+                run('scope server {0}; scope cimc; delete ext-static-ip; commit-buffer'.format(server_num), shell=False)
+        for block in run('scope org; scope ip-pool ext-mgmt; sh block | egrep [1-9] | cut -f 5-10 -d " "', shell=False).split('\n'):
+            if block:
+                run('scope org; scope ip-pool ext-mgmt; delete block {0}; commit-buffer'.format(block), shell=False)
 
 
 @task
-def configure_for_osp7(host, username, password, mgmt_vlan, lab_id):
+def configure_for_osp7(host, username, password, lab_id):
     from fabric.api import settings, run
 
     server_pool_name = 'QA-SERVERS'
     uuid_pool_name = 'QA'
 
-    mac_pools = {x[0]: '00:25:B5:{0:02}:{1}'.format(lab_id, x[1]) for x in [('eth0', '00'), ('eth1', '01'), ('MGMT', 'AA'), ('PXE-INT', 'EE')]}
-    pxe_ext_mac = '00:25:B5:{lab_id:02}:FE:FE}'.format(lab_id=lab_id)
+    mac_pools = {x[0]: '00:25:B5:{0:02}:{1}'.format(int(lab_id), x[1]) for x in [('eth0', '00'), ('eth1', '01'), ('MGMT', 'AA'), ('PXE-INT', 'EE')]}
+    pxe_ext_mac = '00:25:B5:{0:02}:FE:FE'.format(int(lab_id))
+
+    if int(lab_id) == 8:
+        ipmi_ips = '10.30.119.93 10.30.119.98 10.30.119.1 255.255.255.0'
+        mgmt_vlan = 174
+    elif int(lab_id) == 10:
+        ipmi_ips = '10.23.228.231 10.23.228.234 10.23.228.225 255.255.255.224'
+        mgmt_vlan = 1723
+    else:
+        raise Exception('I know nothing about lab {0}'.format(lab_id))
 
     vlans = {'MGMT': mgmt_vlan, 'PXE-INT': 111, 'eth0': 333, 'eth1': 334}
-    mgmt_ips = '10.23.228.231 10.23.228.233 10.23.228.224 255.255.255.225'
 
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
         server_nums = run('sh server status | egrep -V "Server|----" | cut -f 1 -d " "', shell=False).split()
@@ -152,8 +158,6 @@ def configure_for_osp7(host, username, password, mgmt_vlan, lab_id):
             run('scope org; create boot-policy {0}; set boot-mode legacy; commit-buffer'.format(card), shell=False)
             run('scope org; scope boot-policy {0}; create lan; set order 1;  create path primary; set vnic {0}; commit-buffer'.format(card), shell=False)
             run('scope org; scope boot-policy {0}; create storage; create local; create local-any; set order 2; commit-buffer'.format(card), shell=False)
-        # IPMI access policy
-
         # MAC pools
         for if_name, mac_value in mac_pools.iteritems():
             mac_range = '{0}:01 {0}:{1}'.format(mac_value, n_servers)
@@ -161,17 +165,18 @@ def configure_for_osp7(host, username, password, mgmt_vlan, lab_id):
         # VLANs
         for vlan_name, vlan_id in vlans.iteritems():
             run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(vlan_name, vlan_id), shell=False)
-        # Mgmt IPs pool
-        #run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(mgmt_ips), shell=False)
-
+        # IPMI ip pool
+        run('scope org; scope ip-pool ext-mgmt; create block {0}; commit-buffer'.format(ipmi_ips), shell=False)
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
 
         for server_num in server_nums:
+            # add IPMI static ip:
+            # run('scope server {0}; scope cimc; create ext-static-ip; set addr {1}; set default-gw {2}; set subnet {3}; commit-buffer'.format(mgmt_ips), shell=False)
             # add server to server pool
             run('scope org; scope server-pool {0}; create server {1}; commit-buffer'.format(server_pool_name, server_num), shell=False)
             profile = 'DIRECTOR' if server_num == '1' else 'QA1{0}'.format(server_num)
-            # service profile
+            # create service profile
             run('scope org; create service-profile {0}; set ipmi-access-profile IPMI; commit-buffer'.format(profile), shell=False)
             if server_num == '1':
                 # special vNIC to have this server booted via external PXE
@@ -186,9 +191,6 @@ def configure_for_osp7(host, username, password, mgmt_vlan, lab_id):
                 run('scope org; scope service-profile {0}; scope vnic {1}; create eth-if {1}; set default-net yes; commit-buffer'.format(profile, mac_pool_name), shell=False)
                 # remove default VLAN
                 run('scope org; scope service-profile {0}; scope vnic {1}; delete eth-if default; commit-buffer'.format(profile, mac_pool_name), shell=False)
-
-            # enable SoL
-            # run('scope org; scope service-profile {0};  create sol-config; enable; commit-buffer'.format(profile), shell=False)
 
             # main step - association - here server will be rebooted
             run('scope org; scope service-profile {0}; associate server {1}; commit-buffer'.format(profile, server_num), shell=False)
@@ -210,7 +212,7 @@ def ucsm(host='10.23.228.253', username='admin', password='cisco', service_profi
 
 
 @task
-def sandhya(host='10.23.228.253', username='admin', password='cisco', service_profile_name='test_profile'):
+def sandhya(host='10.23.228.253', username='admin', password='cisco'):
     import UcsSdk
 
     class Const(object):
