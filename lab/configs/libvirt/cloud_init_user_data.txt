@@ -1,0 +1,14 @@
+#cloud-config
+password: {password}
+chpasswd: {expire: False}
+ssh_pwauth: True
+ssh_authorized_keys:
+   - {public_key}
+
+users:
+  - default
+  - name: {username}
+    gecos: Sudo user
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+      - {public_key}

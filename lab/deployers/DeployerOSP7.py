@@ -41,11 +41,7 @@ class DeployerOSP7(Deployer):
         run('mkdir -p images')
         with cd('images'):
             for file_name, checksum in images.iteritems():
-                run('test -e  {loc} || wget -nv {url}/{loc} -O {loc}'.format(loc=file_name, url=self.images_url))
-                reculculated_checksum = run('sha256sum {loc}'.format(loc=file_name)).split()[0]
-                if reculculated_checksum != checksum:
-                    run('rm {}'.format(file_name))
-                    raise ErrorDeployerOSP7('I deleted image {} since it is broken (checksum is not matched). Re-run the script'.format(file_name))
+                self.wget_file(url=self.images_url + '/' + file_name, checksum=checksum)
                 run('tar -xf {}'.format(file_name))
             run('source ../stackrc && openstack overcloud image upload')
 

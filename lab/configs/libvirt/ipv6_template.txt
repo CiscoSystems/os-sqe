@@ -1,0 +1,7 @@
+<network>
+    <name>lab{lab_id}-6</name>
+    <bridge name='br{lab_id}-6' />
+    <forward mode="nat"/>
+    <ip family="ipv6" address='20{lab_id:02}::1' prefix='64'>
+    </ip>
+</network>

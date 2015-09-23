@@ -24,4 +24,5 @@ class ProviderExisting(Provider):
         for server in servers:
             with settings(host_string='{user}@{ip}'.format(user=server.username, ip=server.ip), password=server.password, connection_attempts=50, warn_only=False):
                 server.hostname = run('hostname')
+                server.ip_mac = run('iface=$(ip -o address | grep {0} | cut -f2 -d " "); ip -o link | grep $iface | cut -f20 -d " "'.format(server.ip))
         return servers

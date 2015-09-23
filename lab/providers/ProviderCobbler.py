@@ -25,6 +25,7 @@ class ProviderCobbler(WithConfig):
     def __init__(self, config):
         import datetime
         import xmlrpclib
+        import os
 
         super(ProviderCobbler, self).__init__(config=config)
         self.host = config['host']
@@ -35,8 +36,8 @@ class ProviderCobbler(WithConfig):
         self.force_pxe_boot = config['force_pxe_boot']
         self.__cobbler = xmlrpclib.Server(uri="http://{host}/cobbler_api".format(host=self.host))
 
-        now = datetime.datetime.now()
-        self.prov_time = now.strftime('test1-%Y-%b-%d-%H-%M-%S-')
+        now = datetime.datetime.utcnow()
+        self.prov_time = now.strftime('%b-%d-%H-%M-%S-UTC-by-{0}'.format(os.getenv('USER')))
 
     @staticmethod
     def is_valid_ipv4(ip):
@@ -67,6 +68,7 @@ class ProviderCobbler(WithConfig):
 
     def reboot_system(self, system_name):
         from lab import Server
+        from lab.logger import lab_logger
 
         token = self.__cobbler.login(self.user, self.password)
         handle = self.__cobbler.get_system_handle(system_name, token)
@@ -76,11 +78,14 @@ class ProviderCobbler(WithConfig):
             self.__cobbler.modify_system(handle, 'ks_meta', 'ProvTime={0}'.format(self.prov_time), token)
         self.__cobbler.power_system(handle, "reboot", token)
         rendered = self.__cobbler.get_system_as_rendered(system_name)
-        return Server(ip=self.ip_for_system(rendered),
-                      username=self.username_for_system(rendered),
-                      ssh_public_key=rendered.get("redhat_management_key"),
-                      password=self.system_password,
-                      ssh_port=22)
+
+        server = Server(ip=self.ip_for_system(rendered),
+                        username=self.username_for_system(rendered),
+                        ssh_public_key=rendered.get("redhat_management_key"),
+                        password=self.system_password,
+                        ssh_port=22)
+        lab_logger.info('server {0} is being provisioned'.format(server))
+        return server
 
     def create_servers(self):
         systems = self.__cobbler.find_system(dict(self.selector))
@@ -99,7 +104,7 @@ class ProviderCobbler(WithConfig):
 
         servers = self.create_servers()
         for server in servers:
-            with settings(host_string='{user}@{ip}'.format(user=server.username, ip=server.ip), password=server.password, connection_attempts=50, warn_only=False):
+            with settings(host_string='{user}@{ip}'.format(user=server.username, ip=server.ip), password=server.password, connection_attempts=150, warn_only=False):
                 if self.force_pxe_boot:
                     prov_time = StringIO.StringIO()
                     get(remote_path='/root/ProvTime', local_path=prov_time)
