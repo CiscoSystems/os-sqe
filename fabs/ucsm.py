@@ -126,25 +126,33 @@ def cleanup(host, username, password):
 
 
 @task
-def configure_for_osp7(host, username, password, lab_id):
+def configure_for_osp7(yaml_path):
     from fabric.api import settings, run
+    import os
+    import yaml
+
+    if not os.path.isfile(yaml_path):
+        raise IOError('{0} not found. Provide full path to your yaml config file'.format(yaml_path))
+
+    with open(yaml_path) as f:
+        config = yaml.load(f)
+
+    lab_id = config['lab_id']
+    ipmi_ips = config['ipmi_ips']
+    mgmt_vlan = config['mgmt_vlan']
+    host = config['host']
+    username = config['username']
+    password = config['password']
 
     server_pool_name = 'QA-SERVERS'
     uuid_pool_name = 'QA'
 
-    mac_pools = {x[0]: '00:25:B5:{0:02}:{1}'.format(int(lab_id), x[1]) for x in [('eth0', '00'), ('eth1', '01'), ('MGMT', 'AA'), ('PXE-INT', 'EE')]}
-    pxe_ext_mac = '00:25:B5:{0:02}:FE:FE'.format(int(lab_id))
+    pxe_ext_mac = '00:25:B5:{0:02}:FE:FE'.format(lab_id)
 
-    if int(lab_id) == 8:
-        ipmi_ips = '10.30.119.93 10.30.119.98 10.30.119.1 255.255.255.0'
-        mgmt_vlan = 174
-    elif int(lab_id) == 10:
-        ipmi_ips = '10.23.228.231 10.23.228.234 10.23.228.225 255.255.255.224'
-        mgmt_vlan = 1723
-    else:
-        raise Exception('I know nothing about lab {0}'.format(lab_id))
-
-    vlans = {'MGMT': mgmt_vlan, 'PXE-INT': 111, 'eth0': 333, 'eth1': 334}
+    mac_pools = [('eth0', '00:25:B5:{0:02}:00'.format(lab_id), 2000),
+                 ('eth1', '00:25:B5:{0:02}:01'.format(lab_id), 2001),
+                 ('mgmt', '00:25:B5:{0:02}:AA'.format(lab_id), mgmt_vlan),
+                 ('pxe-int', '00:25:B5:{0:02}:EE'.format(lab_id), 2222)]
 
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
         server_nums = run('sh server status | egrep -V "Server|----" | cut -f 1 -d " "', shell=False).split()
@@ -159,14 +167,14 @@ def configure_for_osp7(host, username, password, lab_id):
             run('scope org; scope boot-policy {0}; create lan; set order 1;  create path primary; set vnic {0}; commit-buffer'.format(card), shell=False)
             run('scope org; scope boot-policy {0}; create storage; create local; create local-any; set order 2; commit-buffer'.format(card), shell=False)
         # MAC pools
-        for if_name, mac_value in mac_pools.iteritems():
+        for if_name, mac_value, _ in mac_pools:
             mac_range = '{0}:01 {0}:{1}'.format(mac_value, n_servers)
             run('scope org; create mac-pool {0}; set assignment-order sequential; create block {1}; commit-buffer'.format(if_name, mac_range), shell=False)
         # VLANs
-        for vlan_name, vlan_id in vlans.iteritems():
+        for vlan_name, _, vlan_id in mac_pools:
             run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(vlan_name, vlan_id), shell=False)
         # IPMI ip pool
-        run('scope org; scope ip-pool ext-mgmt; create block {0}; commit-buffer'.format(ipmi_ips), shell=False)
+        run('scope org; scope ip-pool ext-mgmt; create block {0}; set assignment-order sequential; commit-buffer'.format(ipmi_ips), shell=False)
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
 
@@ -184,13 +192,14 @@ def configure_for_osp7(host, username, password, lab_id):
                 run('scope org; scope service-profile {0}; set boot-policy PXE-EXT; commit-buffer'.format(profile), shell=False)
             else:
                 run('scope org; scope service-profile {0}; set boot-policy PXE-INT; commit-buffer'.format(profile), shell=False)
-            for mac_pool_name in mac_pools.keys():
+            for order, tpl in enumerate(mac_pools, start=1):
+                vnic, _, _ = tpl
                 # add vNICs
-                run('scope org; scope service-profile {0}; create vnic {1} fabric a-b; set identity mac-pool {1}; commit-buffer'.format(profile, mac_pool_name), shell=False)
+                run('scope org; scope service-profile {0}; create vnic {1} fabric a-b; set identity mac-pool {1}; set order {2}; commit-buffer'.format(profile, vnic, order), shell=False)
                 # add VLAN to vNIC
-                run('scope org; scope service-profile {0}; scope vnic {1}; create eth-if {1}; set default-net yes; commit-buffer'.format(profile, mac_pool_name), shell=False)
+                run('scope org; scope service-profile {0}; scope vnic {1}; create eth-if {1}; set default-net yes; commit-buffer'.format(profile, vnic), shell=False)
                 # remove default VLAN
-                run('scope org; scope service-profile {0}; scope vnic {1}; delete eth-if default; commit-buffer'.format(profile, mac_pool_name), shell=False)
+                run('scope org; scope service-profile {0}; scope vnic {1}; delete eth-if default; commit-buffer'.format(profile, vnic), shell=False)
 
             # main step - association - here server will be rebooted
             run('scope org; scope service-profile {0}; associate server {1}; commit-buffer'.format(profile, server_num), shell=False)
