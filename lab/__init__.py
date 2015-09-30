@@ -120,6 +120,7 @@ class WithConfig(object):
 
         loc = url.split('/')[-1]
         if loc_dir:
+            run('mkdir -p {0}'.format(loc_dir))
             loc = os.path.abspath(os.path.join(loc_dir, loc))
 
         cmd_wget = 'test -e  {loc} || wget -nv {url} -O {loc}'.format(loc=loc, url=url)

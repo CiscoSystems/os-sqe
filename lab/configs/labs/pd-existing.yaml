@@ -1,3 +1,0 @@
-provider: {ProviderExisting: [{host: 10.77.0.89, username: ubuntu, password: ubuntu}, {host: 10.77.0.90, username: ubuntu, password: ubuntu}]}
-deployer1: {DeployerDevstack: {password: 'nova', server_config_pairs: [{hostname: aio, devstack_config: aio}]}}
-deployer2: {DeployerDibbler: {prefix: '2222:2222:2222::/48', hostname: dibbler}}

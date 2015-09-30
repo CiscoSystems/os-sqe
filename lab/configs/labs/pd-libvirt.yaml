@@ -1,6 +1,6 @@
 provider: {ProviderLibvirt: {
             lab_id: 77,
-            username: fedora,
+            username: cisco,
             password: cisco123,
             networks: [41, 61],
             instances: [{hostname: dibbler, on_nets: [41, 61],
