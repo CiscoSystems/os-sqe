@@ -2,5 +2,5 @@ host: 10.30.119.66 # management ip of UCSM
 username: admin
 password: cisco
 lab_id:  8 # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools
-ipmi_ips: '10.30.119.93 10.30.119.98 10.30.119.1 255.255.255.0' # range of IPs for IPMI and KVM
+ipmi_ips: '10.30.119.95 10.30.119.98 10.30.119.1 255.255.255.0' # range of IPs for IPMI and KVM
 mgmt_vlan: 174 # vlan used on management network, to get access to OSP7 director and overcloud nodes

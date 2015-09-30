@@ -162,7 +162,7 @@ def configure_for_osp7(yaml_path):
         run('scope org; create uuid-suffix-pool {name}; set assignment-order sequential; create block 1234-000000000001 1234-00000000000{n}; commit-buffer'.format(
             name=uuid_pool_name, n=n_servers), shell=False)
         # Boot policy
-        for card in ['PXE-EXT', 'PXE-INT']:
+        for card in ['PXE-EXT', 'pxe-int']:
             run('scope org; create boot-policy {0}; set boot-mode legacy; commit-buffer'.format(card), shell=False)
             run('scope org; scope boot-policy {0}; create lan; set order 1;  create path primary; set vnic {0}; commit-buffer'.format(card), shell=False)
             run('scope org; scope boot-policy {0}; create storage; create local; create local-any; set order 2; commit-buffer'.format(card), shell=False)
@@ -174,7 +174,7 @@ def configure_for_osp7(yaml_path):
         for vlan_name, _, vlan_id in mac_pools:
             run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(vlan_name, vlan_id), shell=False)
         # IPMI ip pool
-        run('scope org; scope ip-pool ext-mgmt; create block {0}; set assignment-order sequential; commit-buffer'.format(ipmi_ips), shell=False)
+        run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_ips), shell=False)
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
 
@@ -191,7 +191,7 @@ def configure_for_osp7(yaml_path):
                 run('scope org; scope service-profile {0}; create vnic PXE-EXT fabric a-b; set identity dynamic-mac {1}; commit-buffer'.format(profile, pxe_ext_mac), shell=False)
                 run('scope org; scope service-profile {0}; set boot-policy PXE-EXT; commit-buffer'.format(profile), shell=False)
             else:
-                run('scope org; scope service-profile {0}; set boot-policy PXE-INT; commit-buffer'.format(profile), shell=False)
+                run('scope org; scope service-profile {0}; set boot-policy pxe-int; commit-buffer'.format(profile), shell=False)
             for order, tpl in enumerate(mac_pools, start=1):
                 vnic, _, _ = tpl
                 # add vNICs
