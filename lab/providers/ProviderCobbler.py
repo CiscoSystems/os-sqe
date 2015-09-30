@@ -84,7 +84,7 @@ class ProviderCobbler(WithConfig):
                         ssh_public_key=rendered.get("redhat_management_key"),
                         password=self.system_password,
                         ssh_port=22)
-        lab_logger.info('server {0} is being provisioned'.format(server))
+        lab_logger.info('server {0} is being provisioned by PXE re-booting... (might take several minutes- please wait)'.format(server))
         return server
 
     def create_servers(self):
