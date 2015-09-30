@@ -11,7 +11,7 @@ class DeployerOSP7(Deployer):
         return {'rdo_account': 'email as username on RDO',
                 'rdo_password': 'password on RDO',
                 'rdo_pool_id': 'pool ID on RDO',
-                'undercloud_config_file': 'valid config file',
+                'undercloud_network_cidr': 'cidr',
                 'images_url': 'http://1.1.1.1/path/to/dir',
                 'director': 'ipv4 of host to match with provided list of servers'
                 }
@@ -24,11 +24,16 @@ class DeployerOSP7(Deployer):
         self.rdo_account = config['rdo_account']
         self.rdo_password = config['rdo_password']
         self.rdo_pool_id = config['rdo_pool_id']
-        self.undercloud_config = os.path.abspath(os.path.join(CONFIG_DIR, 'osp7', config['undercloud_config_file']))
         self.images_url = config['images_url']
         self.director_ip = config['director']
         self.director_username = 'None'
         self.director_password = 'None'
+        self.undercloud_network_cidr = config['undercloud_network_cidr']
+
+        with open(os.path.join(CONFIG_DIR, 'osp7', 'undercloud_conf.template')) as f:
+            self.undercloud_config_template = f.read()
+
+
 
     def __wget_images(self):
         from fabric.api import run, cd
@@ -49,9 +54,18 @@ class DeployerOSP7(Deployer):
         from fabric.api import settings
 
         with settings(host_string='{user}@{ip}'.format(user=self.director_username, ip=self.director_ip), password=self.director_password, connection_attempts=50, warn_only=False):
+            self.__hostname_and_etc_hosts()
             self.__subscribe_and_install()
             self.__deploy_undercloud()
             self.__deploy_overcloud()
+
+    @staticmethod
+    def __hostname_and_etc_hosts():
+        from fabric.api import sudo
+
+        hostname = sudo('hostname')
+        if not sudo('grep {0} /etc/hosts'.format(hostname), warn_only=True):
+            sudo('echo {0} >> /etc/hosts'.format(hostname))
 
     def __subscribe_and_install(self):
         from fabric.api import sudo
@@ -69,10 +83,21 @@ class DeployerOSP7(Deployer):
         sudo('yum update -y')
         sudo('yum install -y python-rdomanager-oscplugin')
 
+    def __undercloud_config(self):
+        from fabric.api import put
+        from StringIO import StringIO
+
+        undercloud_config = self.undercloud_config_template.replace('cidr', self.undercloud_network_cidr)
+        undercloud_config = undercloud_config.replace('{pxe_iface}', 'pxe-int')
+        undercloud_config = undercloud_config.replace('{gw}', 'pxe-int')
+
+        put(local_path=StringIO(undercloud_config), remote_path='/root/undercloud.conf')
+
+
     def __deploy_undercloud(self):
         from fabric.api import put, sudo
 
-        put(local_path=self.undercloud_config, remote_path='/root/undercloud.conf')
+        self.__undercloud_config()
         sudo('openstack undercloud install')
         self.__wget_images()
         subnet_id = sudo('source stackrc && neutron subnet-list -c id -f csv').split()[-1].strip('"')

@@ -1,6 +1,15 @@
 import os
 
 
+def read_config_from_file(yaml_path):
+    import os
+    import yaml
+    if not os.path.isfile(yaml_path):
+        raise IOError('{0} not found. Provide full path to your yaml config file'.format(yaml_path))
+    with open(yaml_path) as f:
+        return yaml.load(f)
+
+
 class LabIds(object):
     # default lab IDs to be used by fabric tasks
 
