@@ -117,7 +117,7 @@ def cleanup(host, username, password):
             run('scope org; delete boot-policy {0}; commit-buffer'.format(boot_policy), shell=False)
         for vlan in run('scope eth-uplink; sh vlan | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "', shell=False).split():
             run('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan), shell=False)
-        for server_num in run('sh server status | egrep ^[1-9] | cut -f 1 -d " "', shell=False).split():
+        for server_num in run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split():
             if run('scope server {0}; scope cimc; sh ext-static-ip'.format(server_num), shell=False):
                 run('scope server {0}; scope cimc; delete ext-static-ip; commit-buffer'.format(server_num), shell=False)
         for block in run('scope org; scope ip-pool ext-mgmt; sh block | egrep [1-9] | cut -f 5-10 -d " "', shell=False).split('\n'):
@@ -155,7 +155,7 @@ def configure_for_osp7(yaml_path):
                  ('pxe-int', '00:25:B5:{0:02}:EE'.format(lab_id), 2222)]
 
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
-        server_nums = run('sh server status | egrep -V "Server|----" | cut -f 1 -d " "', shell=False).split()
+        server_nums = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
         n_servers = len(server_nums)  # how many servers UCSM currently sees
 
         # UUID pool
@@ -177,13 +177,18 @@ def configure_for_osp7(yaml_path):
         run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_ips), shell=False)
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
-
+        is_director = False
         for server_num in server_nums:
             # add IPMI static ip:
             # run('scope server {0}; scope cimc; create ext-static-ip; set addr {1}; set default-gw {2}; set subnet {3}; commit-buffer'.format(mgmt_ips), shell=False)
             # add server to server pool
+
             run('scope org; scope server-pool {0}; create server {1}; commit-buffer'.format(server_pool_name, server_num), shell=False)
-            profile = 'DIRECTOR' if server_num == '1' else 'QA1{0}'.format(server_num)
+            if not is_director:
+                profile = 'DIRECTOR'
+                is_director = True
+            else:
+                profile = 'QA{0}'.format(server_num.replace('/', '-'))
             # create service profile
             run('scope org; create service-profile {0}; set ipmi-access-profile IPMI; commit-buffer'.format(profile), shell=False)
             if server_num == '1':
