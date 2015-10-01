@@ -12,4 +12,4 @@ provider: {ProviderLibvirt: {
                        ]
           }}
 deployer1: {DeployerDibbler: {prefix: '2222:2222:2222::/48', hostname: dibbler}}
-deployer2: {DeployerDevstack: {password: cisco123, server_config_pairs: [{hostname: aio, devstack_config: aio-pd}]}}
+deployer2: {DeployerDevstack: {cloudname: aio, username: cisco, password: cisco123, server_config_pairs: [{hostname: aio, devstack_config: aio-pd}]}}

@@ -12,6 +12,6 @@ class RunnerTempest(Runner):
 
         super(RunnerTempest, self).__init__(config=config)
 
-    def run(self, servers):
+    def execute(self, clouds, servers):
         
         pass

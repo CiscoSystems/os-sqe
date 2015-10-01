@@ -1,5 +1,7 @@
 from fabric.api import task
-from lab import CONFIG_DIR, decorators, LabConfigException, WithStatusMixIn
+from lab import decorators
+from lab.WithStatusMixin import WithStatusMixIn
+from lab.WithConfig import CONFIG_DIR, LabConfigException
 
 
 class BaseLab(WithStatusMixIn):
@@ -15,6 +17,7 @@ class BaseLab(WithStatusMixIn):
         self.runners = []
 
         self.servers = []
+        self.clouds = []
 
         yaml_path = yaml_name if os.path.isfile(yaml_name) else os.path.join(CONFIG_DIR, 'labs', yaml_name)
         if not os.path.isfile(yaml_path):
@@ -34,7 +37,8 @@ class BaseLab(WithStatusMixIn):
                     module = importlib.import_module('lab.{package}.{klass}'.format(package=section_package, klass=section_class_name))
                 except ImportError:
                     section_dir = 'lab/' + section_package
-                    classes = map(lambda name: name.split('.')[0], filter(lambda name: name.startswith(section_name_no_digits.capitalize()), os.listdir(section_dir)))
+                    classes = map(lambda name: name.split('.')[0], filter(lambda name: name.startswith(section_name_no_digits.capitalize()) and name.endswith('.py'),
+                                                                          os.listdir(section_dir)))
                     message = '{0} {1} is not defined! Use one of {2}'.format(section_name, section_class_name, classes)
                     sample_config = '{' + section_name + ': {' + classes[0] + ': { some configuration which will be checked on next run } }'
                     raise LabConfigException(lab_class=type(self), sample_config=sample_config, config=config, message=message)
@@ -54,9 +58,9 @@ class BaseLab(WithStatusMixIn):
         for provider in self.providers:
             self.servers.extend(provider.wait_for_servers())
         for deployer in self.deployers:
-            deployer.wait_for_cloud(self.servers)
+            self.clouds.append(deployer.wait_for_cloud(self.servers))
         for runner in self.runners:
-            runner.run(self.servers)
+            runner.execute(self.clouds, self.servers)
 
 
 __all__ = ['run_lab']
