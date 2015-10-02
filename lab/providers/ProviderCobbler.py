@@ -1,4 +1,4 @@
-from lab import WithConfig
+from lab.WithConfig import WithConfig
 
 
 class CobblerError(Exception):
@@ -67,7 +67,7 @@ class ProviderCobbler(WithConfig):
         return rendered_system['mgmt_parameters']['username']
 
     def reboot_system(self, system_name):
-        from lab import Server
+        from lab.Server import Server
         from lab.logger import lab_logger
 
         token = self.__cobbler.login(self.user, self.password)

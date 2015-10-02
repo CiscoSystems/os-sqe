@@ -1,8 +1,9 @@
 import abc
-from lab import WithConfig
+from lab.WithConfig import WithConfig
+from lab.WithRunMixin import WithRunMixin
 
 
-class Runner(WithConfig):
+class Runner(WithConfig, WithRunMixin):
     @abc.abstractmethod
-    def run(self, servers):
+    def execute(self, clouds, servers):
         pass

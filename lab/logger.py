@@ -5,7 +5,7 @@ lab_logger.setLevel(logging.DEBUG)
 
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s\n\n')
 
-fh = logging.FileHandler('LAB-LOG')
+fh = logging.FileHandler('LAB-LOG.txt')
 fh.setLevel(logging.DEBUG)
 
 ch = logging.StreamHandler()

@@ -12,11 +12,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import abc
-from lab.WithConfig import WithConfig
 
+class WithStatusMixIn(object):
+    def __repr__(self):
+        attributes = vars(self)
+        return '\n'.join(['{0}:\t{1}'.format(key, attributes[key]) for key in sorted(attributes.keys()) if not key.startswith('_')])
 
-class Configurator(WithConfig):
-    @abc.abstractmethod
-    def config(self, config):
-        pass
+    def status(self):
+        from logger import lab_logger
+        lab_logger.info('status of {0}:\n{1}'.format(type(self), self))

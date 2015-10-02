@@ -138,7 +138,7 @@ class ProviderLibvirt(Provider):
         return main_disk_path
 
     def create_server(self, dev_num, hostname, on_nets, image_url, image_checksum):
-        from lab import Server
+        from lab.Server import Server
 
         net_tmpl = '''
 <interface type='network'>

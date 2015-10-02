@@ -18,7 +18,7 @@ class DeployerOSP7(Deployer):
 
     def __init__(self, config):
         import os
-        from lab import CONFIG_DIR
+        from lab.WithConfig import CONFIG_DIR
 
         super(DeployerOSP7, self).__init__(config=config)
         self.rdo_account = config['rdo_account']

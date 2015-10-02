@@ -17,7 +17,7 @@ class ProviderUCSM(Provider):
     def create_servers(self):
         """They are not actually created, their properties are defined by UCSM"""
         from fabs.ucsm import read_config_ssh
-        from lab import Server
+        from lab.Server import Server
 
         servers = []
         for ucsm_server in read_config_ssh(host=self.ucsm_host, username=self.ucsm_username, password=self.ucsm_password):

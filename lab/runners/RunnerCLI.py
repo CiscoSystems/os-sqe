@@ -8,23 +8,29 @@ class ErrorRunnerCLI(Exception):
 class RunnerCLI(Runner):
 
     def sample_config(self):
-        return {'hostname': 'host where to run commands', 'commands': ['cmd1', 'cmd2']}
+        return [{'hostname': 'host where to run commands', 'cloud': 'cloud name', 'commands': ['cmd1', 'cmd2']}]
 
     def __init__(self, config):
-        self.hostname = config['hostname']
-        self.commands = config['commands']
-
         super(RunnerCLI, self).__init__(config=config)
+        self.list_of_hostname_commands_dicts = config
+        self.clouds = []
 
-    def run(self, servers):
-        from fabric.api import settings, run
+    def execute(self, clouds, servers):
+        servers = {server.hostname: server for server in servers}
+        clouds = {cloud.cloud: cloud for cloud in clouds}
 
-        server = [x for x in servers if x.hostname==self.hostname]
+        for hostname_commands in self.list_of_hostname_commands_dicts:
+            hostname = hostname_commands['hostname']
+            cloud_name = hostname_commands['cloud']
+            commands = hostname_commands['commands']
+            if hostname not in servers:
+                raise ErrorRunnerCLI('No server with hostname {0} provided'.format(hostname))
+            if cloud_name not in clouds:
+                raise ErrorRunnerCLI('No cloud with name {0} provided'.format(cloud_name))
+            server = servers[hostname]
+            cloud = clouds[cloud_name]
 
-        if len(server) == 0:
-            raise ErrorRunnerCLI('No server with hostname {0} provided'.format(self.hostname))
-
-        server = server[0]
-        with settings(host_string='{user}@{ip}'.format(user=server.username, ip=server.ip), password=server.password, connection_attempts=50, warn_only=False):
-            for command in self.commands:
-                run(command)
+            for command in commands:
+                if command.startswith('neutron') or command.startswith('nova'):
+                    command = '{0} {1}'.format(command, cloud)
+                self.run(command=command, server=server)
