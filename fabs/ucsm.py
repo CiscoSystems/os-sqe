@@ -115,6 +115,8 @@ def cleanup(host, username, password):
             run('scope org; delete uuid-suffix-pool {0}; commit-buffer'.format(uuid_pool), shell=False)
         for boot_policy in run('scope org; sh boot-policy | egrep -V "Name|----|UUID" | cut -f 5 -d " "', shell=False).split():
             run('scope org; delete boot-policy {0}; commit-buffer'.format(boot_policy), shell=False)
+        for dyn_vnic_policy in run('scope org; show dynamic-vnic-conn-policy detail | egrep "Name:" | cut -f 6 -d " "', shell=False).split():
+            run('scope org; delete dynamic-vnic-conn-policy {0}; commit-buffer'.format(dyn_vnic_policy), shell=False)
         for vlan in run('scope eth-uplink; sh vlan | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "', shell=False).split():
             run('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan), shell=False)
         for server_num in run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split():
@@ -146,6 +148,7 @@ def configure_for_osp7(yaml_path):
 
     server_pool_name = 'QA-SERVERS'
     uuid_pool_name = 'QA'
+    dynamic_vnic_policy_name = 'dvnic-4'
 
     pxe_ext_mac = '00:25:B5:{0:02}:FE:FE'.format(lab_id)
 
@@ -166,6 +169,8 @@ def configure_for_osp7(yaml_path):
             run('scope org; create boot-policy {0}; set boot-mode legacy; commit-buffer'.format(card), shell=False)
             run('scope org; scope boot-policy {0}; create lan; set order 1;  create path primary; set vnic {0}; commit-buffer'.format(card), shell=False)
             run('scope org; scope boot-policy {0}; create storage; create local; create local-any; set order 2; commit-buffer'.format(card), shell=False)
+        # Dynamic vnic connection policy
+        run('scope org; create dynamic-vnic-conn-policy {name}; set dynamic-eth 4; set adapter-policy Linux; commit-buffer'.format(name=dynamic_vnic_policy_name), shell=False)
         # MAC pools
         for if_name, mac_value, _ in mac_pools:
             mac_range = '{0}:01 {0}:{1}'.format(mac_value, n_servers)
@@ -190,7 +195,7 @@ def configure_for_osp7(yaml_path):
             else:
                 profile = 'QA{0}'.format(server_num.replace('/', '-'))
             # create service profile
-            run('scope org; create service-profile {0}; set ipmi-access-profile IPMI; commit-buffer'.format(profile), shell=False)
+            run('scope org; create service-profile {0}; set ipmi-access-profile IPMI; set bios-policy SRIOV; commit-buffer'.format(profile), shell=False)
             if server_num == '1':
                 # special vNIC to have this server booted via external PXE
                 run('scope org; scope service-profile {0}; create vnic PXE-EXT fabric a-b; set identity dynamic-mac {1}; commit-buffer'.format(profile, pxe_ext_mac), shell=False)
@@ -205,6 +210,9 @@ def configure_for_osp7(yaml_path):
                 run('scope org; scope service-profile {0}; scope vnic {1}; create eth-if {1}; set default-net yes; commit-buffer'.format(profile, vnic), shell=False)
                 # remove default VLAN
                 run('scope org; scope service-profile {0}; scope vnic {1}; delete eth-if default; commit-buffer'.format(profile, vnic), shell=False)
+                # set dynamic vnic connection policy
+                if vnic in ['eth0', 'eth1']:
+                    run('scope org; scope service-profile {0}; scope vnic {1}; set adapter-policy Linux; enter dynamic-conn-policy-ref {2}; commit-buffer'.format(profile, vnic, dynamic_vnic_policy_name), shell=False)
 
             # main step - association - here server will be rebooted
             run('scope org; scope service-profile {0}; associate server {1}; commit-buffer'.format(profile, server_num), shell=False)
