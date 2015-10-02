@@ -182,21 +182,21 @@ def configure_for_osp7(yaml_path):
         run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_ips), shell=False)
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
-        is_director = False
+        director_num = None
         for server_num in server_nums:
             # add IPMI static ip:
             # run('scope server {0}; scope cimc; create ext-static-ip; set addr {1}; set default-gw {2}; set subnet {3}; commit-buffer'.format(mgmt_ips), shell=False)
             # add server to server pool
 
             run('scope org; scope server-pool {0}; create server {1}; commit-buffer'.format(server_pool_name, server_num), shell=False)
-            if not is_director:
+            if not director_num:
                 profile = 'DIRECTOR'
-                is_director = True
+                director_num = server_num
             else:
                 profile = 'QA{0}'.format(server_num.replace('/', '-'))
             # create service profile
             run('scope org; create service-profile {0}; set ipmi-access-profile IPMI; set bios-policy SRIOV; commit-buffer'.format(profile), shell=False)
-            if server_num == '1':
+            if server_num == director_num:
                 # special vNIC to have this server booted via external PXE
                 run('scope org; scope service-profile {0}; create vnic PXE-EXT fabric a-b; set identity dynamic-mac {1}; commit-buffer'.format(profile, pxe_ext_mac), shell=False)
                 run('scope org; scope service-profile {0}; set boot-policy PXE-EXT; commit-buffer'.format(profile), shell=False)
