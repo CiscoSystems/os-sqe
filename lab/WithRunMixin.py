@@ -21,7 +21,6 @@ class WithRunMixin(object):
         """Do run with possible sudo on remote server"""
         from fabric.api import run, local, sudo, settings, cd, lcd
 
-
         if not server:
             with lcd(in_directory):
                 return local(command, capture=True)
@@ -33,7 +32,8 @@ class WithRunMixin(object):
 
         with settings(**WithRunMixin.construct_settings(server=server, warn_only=warn_only)):
             with cd(in_directory):
-                return run_or_sudo(command)
+                result = run_or_sudo(command)
+                return result
 
     @staticmethod
     def put(what, name, server, in_directory='.'):
@@ -41,9 +41,10 @@ class WithRunMixin(object):
         from fabric.api import put, settings, cd
         from StringIO import StringIO
 
-        with settings(WithRunMixin.construct_settings(server=server, warn_only=False)):
+        use_sudo = True if name.startswith('/') else False
+        with settings(**WithRunMixin.construct_settings(server=server, warn_only=False)):
             with cd(in_directory):
-                return put(local_path=StringIO(what), remote_path=name)
+                return put(local_path=StringIO(what), remote_path=name, use_sudo=use_sudo)
 
     @staticmethod
     def wget_file(url, to_directory, checksum, server=None):
@@ -58,11 +59,11 @@ class WithRunMixin(object):
 
     @staticmethod
     def is_dpkg(server):
-        return WithRunMixin.run(command='whereis rpm', server=server).succeded
+        return WithRunMixin.run(command='whereis dpkg', server=server) != 'dpkg:'
 
     @staticmethod
     def check_or_install_package(package_name, server):
-        if WithRunMixin.run(command='whereis {0}'.format(package_name), server=server).failed:
+        if WithRunMixin.run(command='whereis {0}'.format(package_name), server=server) == package_name + ':':
             if WithRunMixin.is_dpkg(server=server):
                 WithRunMixin.run(command='sudo rm /var/lib/apt/lists/* -vrf', server=server)  # This is workaround for ubuntu update fails with Hash Sum mismatch on some packages
                 WithRunMixin.run(command='sudo apt-get -y -q update && apt-get install -y -q {0}'.format(package_name), server=server)
@@ -76,7 +77,6 @@ class WithRunMixin(object):
         local_repo_dir = urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
 
         WithRunMixin.check_or_install_package(package_name='git', server=server)
-        if WithRunMixin.run(command='test -d {0}'.format(local_repo_dir), server=server).failed:
-            WithRunMixin.run(command='git clone -q {0}'.format(repo_url), server=server)
+        WithRunMixin.run(command='test -d {0} || git clone -q {1}'.format(local_repo_dir, repo_url), server=server)
         WithRunMixin.run(command='git pull -q', server=server, in_directory=local_repo_dir)
         return local_repo_dir

@@ -19,10 +19,6 @@ class DeployerDibbler(Deployer):
         pass
 
     def wait_for_cloud(self, list_of_servers):
-        from fabric.api import settings, sudo, put
-        from StringIO import StringIO
-        from time import sleep
-
         conf = '''
 
 iface "{iface}" {
@@ -36,10 +32,9 @@ iface "{iface}" {
         conf = conf.replace('{iface}', 'eth1')
         for server in list_of_servers:
             if server.hostname == self.hostname:
-                with settings(host_string='{user}@{ip}'.format(user=server.username, ip=server.ip), password=server.password, connection_attempts=50, warn_only=False):
-                    self.check_or_install_package(package_name='dibbler-server')
-                    put(local_path=StringIO(conf), remote_path='/etc/dibbler/server.conf', use_sudo=True)
-                    sudo('dibbler-server start')
-                    sudo('ps auxw | grep dibbler | grep -v grep')
+                self.check_or_install_package(package_name='dibbler-server', server=server)
+                self.put(what=conf, name='/etc/dibbler/server.conf', server=server)
+                self.run(command='sudo dibbler-server start', server=server)
+                self.run(command='ps auxw | grep dibbler | grep -v grep')
                 return
         raise ErrorDeployerDibbler('Server {0} expected by config is not provided!'.format(self.hostname))

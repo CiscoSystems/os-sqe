@@ -1,5 +1,5 @@
 provider: {ProviderLibvirt: {
-            lab_id: 77,
+            lab_id: 33,
             username: cisco,
             password: cisco123,
             networks: [41, 61],
@@ -12,4 +12,4 @@ provider: {ProviderLibvirt: {
                        ]
           }}
 deployer1: {DeployerDibbler: {prefix: '2222:2222:2222::/48', hostname: dibbler}}
-deployer2: {DeployerDevstack: {cloudname: aio, username: cisco, password: cisco123, server_config_pairs: [{hostname: aio, devstack_config: aio-pd}]}}
+deployer2: {DeployerDevstack: {cloud: aio, tenant: demo, user: demo, password: cisco123, server_config_pairs: [{hostname: aio, devstack_config: aio-pd}]}}

@@ -128,7 +128,7 @@ class ProviderLibvirt(Provider):
     def create_main_disk(self, hostname, image_url, image_checksum):
         from fabric.api import local, settings
 
-        loc_back_disk = self.wget_file(url=image_url, checksum=image_checksum, loc_dir=self.dir_for_backing_disks)
+        loc_back_disk = self.wget_file(url=image_url, checksum=image_checksum, to_directory=self.dir_for_backing_disks)
 
         main_disk_path = self.make_local_file_name(where=self.dir_for_main_disks, name=hostname, extension='qcow2')
         with settings(warn_only=False):
