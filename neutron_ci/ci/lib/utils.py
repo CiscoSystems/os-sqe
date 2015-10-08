@@ -43,7 +43,7 @@ def run_cmd_line(cmd_str, stderr=None, shell=False, check_result=True):
 def clear_nexus_config(ip, user, password, intf_num, vlan_start, vlan_end):
     logger.info('Clearing nexus config')
     script_path = os.path.join(PARENT_FOLDER_PATH,
-                               'tools/clear_nexus_config.py')
+                               'tools/clear_nexus_vlans.py')
     cmd = 'python {script} {ip} {user} {password} {intf_num} {vlan_start} ' \
           '{vlan_end}' \
           ''.format(script=script_path,
