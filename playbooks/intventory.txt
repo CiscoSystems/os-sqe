@@ -1,0 +1,23 @@
+
+[g8]
+g8-N9k1	ansible_connection=local
+g8-N9k2	ansible_connection=local
+
+[g8:vars]
+state=absent
+uplink_vlans='174, 1732'
+server_vlans='1, 174, 1732'
+
+uplink_ports='["Eth1/1"]'
+uplink_port_channel=1
+
+peer_link_ports='["Eth1/31", "Eth1/33", "Eth1/35"]'
+peer_link_channel=100
+
+fabric_a_ports='["Eth1/9"]'
+fabric_a_port_channel=81
+
+fabric_b_ports='["Eth1/10"]'
+fabric_b_port_channel=82
+
+server_ports='["Eth1/3", "Eth1/4"]'
