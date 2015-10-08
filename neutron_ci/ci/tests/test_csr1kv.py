@@ -67,6 +67,7 @@ ADMIN_PASSWORD=$our_pw
 disable_service heat h-api h-api-cfn h-api-cw h-eng
 disable_service cinder c-sch c-api c-vol
 disable_service n-net
+disable_service n-cauth
 enable_service neutron
 enable_service q-svc
 disable_service q-agt

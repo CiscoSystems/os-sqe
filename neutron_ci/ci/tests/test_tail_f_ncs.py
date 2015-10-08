@@ -35,6 +35,7 @@ disable_service horizon
 disable_service n-cpu
 enable_service n-cond
 disable_service n-net
+disable_service n-cauth
 enable_service q-svc
 enable_service q-dhcp
 enable_service q-l3

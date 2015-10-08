@@ -36,7 +36,7 @@ RABBIT_PASSWORD=nova
 SERVICE_TOKEN=nova
 SERVICE_PASSWORD=nova
 ADMIN_PASSWORD=nova
-ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,n-sch,n-novnc,n-xvnc,n-cauth,rabbit
+ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,n-sch,n-novnc,n-xvnc,rabbit
 NETWORK_API_EXTENSIONS=agent,allowed-address-pairs,binding,dhcp_agent_scheduler,dvr,ext-gw-mode,external-net,extra_dhcp_opt,extraroute,l3-ha,l3_agent_scheduler,multi-provider,provider,quotas,router,security-group,service-type
 enable_service mysql
 disable_service n-net

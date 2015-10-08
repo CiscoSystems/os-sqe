@@ -37,7 +37,7 @@ RABBIT_PASSWORD=nova
 SERVICE_TOKEN=nova
 SERVICE_PASSWORD=nova
 ADMIN_PASSWORD=nova
-ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,cinder,c-sch,c-api,c-vol,n-sch,n-novnc,n-xvnc,n-cauth,rabbit,mysql,q-svc,q-dhcp,q-meta,neutron,tempest
+ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,cinder,c-sch,c-api,c-vol,n-sch,n-novnc,n-xvnc,rabbit,mysql,q-svc,q-dhcp,q-meta,neutron,tempest
 
 enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
 enable_service net-cisco

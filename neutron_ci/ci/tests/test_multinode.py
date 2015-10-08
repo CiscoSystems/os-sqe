@@ -25,7 +25,7 @@ HOST_IP={CONTROL_HOST_IP}
 
 MULTI_HOST=1
 
-disable_service n-net heat h-api h-api-cfn h-api-cw h-eng cinder c-api c-sch c-vol n-novnc horizon
+disable_service n-net heat h-api h-api-cfn h-api-cw h-eng cinder c-api c-sch c-vol n-novnc horizon c-nauth
 enable_service neutron
 enable_service tempest
 enable_service q-svc
