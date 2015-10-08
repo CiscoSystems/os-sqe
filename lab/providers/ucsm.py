@@ -80,8 +80,9 @@ class UcsmServer(object):
 
 
 @task
-def read_config_ssh(host='10.23.228.253', username='admin', password='cisco'):
+def read_config_ssh(host, username, password):
     """Reads config needed for OSP7 via ssh to UCSM"""
+    from lab.Server import Server
     from fabric.api import settings, run
 
     servers = {}
@@ -90,14 +91,20 @@ def read_config_ssh(host='10.23.228.253', username='admin', password='cisco'):
         if 'cobbler' not in ipmi_users:
             raise Exception('No IPMI user "cobbler" in UCSM! Add it with password "cobbler" manually')
 
-        for profile in run('scope org; show service-profile | egrep Associated | egrep -V DIRECTOR | cut -f 5-35 -d " "', shell=False, quiet=True).split('\n'):
-            profile_name, _, server_num = profile.split()
+        for profile in run('scope org; show service-profile | egrep Associated | cut -f 5-35 -d " "', shell=False, quiet=True).split('\n'):
+            split = profile.split()
+            profile_name = split[0]
+            server_num = split[2]
             ipmi_ip = run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_num), shell=False, quiet=True)
-            pxe_mac = run('scope org; scope service-profile {0}; sh vnic | egrep PXE-INT | cut -f 25 -d " "'.format(profile_name), shell=False, quiet=True)
-            servers[server_num] = UcsmServer(server_num=server_num, profile_name=profile_name, ipmi_ip=ipmi_ip, ipmi_username='cobbler', ipmi_password='cobbler', pxe_mac=pxe_mac)
-    lst = [servers[key] for key in sorted(servers.keys())]
-    print UcsmServer.json(servers=lst)
-    return lst
+            if_mac = {}
+            for line in run('scope org; scope service-profile {0}; sh vnic | i 00:'.format(profile_name), shell=False, quiet=True).split('\n'):
+                split = line.split()
+                if_mac[split[0]] = split[3]
+            server = Server(ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM')
+            server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
+            server.set_ucsm(service_profile=profile_name, iface_mac=if_mac)
+            servers[profile_name] = server
+    return servers
 
 
 @task
@@ -142,9 +149,9 @@ def configure_for_osp7(yaml_path):
     lab_id = config['lab_id']
     ipmi_ips = config['ipmi_ips']
     mgmt_vlan = config['mgmt_vlan']
-    host = config['host']
-    username = config['username']
-    password = config['password']
+    host = config['ucsm']['host']
+    username = config['ucsm']['username']
+    password = config['ucsm']['password']
 
     server_pool_name = 'QA-SERVERS'
     uuid_pool_name = 'QA'

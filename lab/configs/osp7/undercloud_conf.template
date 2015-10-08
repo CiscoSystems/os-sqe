@@ -1,18 +1,17 @@
 [DEFAULT]
 
-image_path = /stack/images
+image_path = {images_dir}
 
 local_interface = {pxe_iface}
 network_cidr = {cidr}
 network_gateway = {gw}
-local_ip = {cidr}
+local_ip = {local_ip}
 undercloud_public_vip = {public_vip}
 undercloud_admin_vip = {admin_vip}
 masquerade_network = {cidr}
 dhcp_start = {dhcp_start}
 dhcp_end = {dhcp_end}
-discovery_iprange = {discovery_range}
-
+discovery_iprange = {discovery_start}, {discovery_end}
 
 [auth]
 undercloud_admin_password = {cloud_password}

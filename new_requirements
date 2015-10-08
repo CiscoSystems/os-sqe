@@ -4,4 +4,5 @@ validators>=0.8
 requests>=2.7.0
 PyYAML>=3.11
 libvirt-python>=1.2.19
-ncclient>=0.4.5
+netaddr>=0.7.18
+pytz>=2015.6
