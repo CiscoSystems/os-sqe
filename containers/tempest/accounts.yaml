@@ -1,0 +1,33 @@
+- username: 'user_1'
+  tenant_name: 'test_tenant_1'
+  password: 'test_password'
+
+- username: 'user_2'
+  tenant_name: 'test_tenant_2'
+  password: 'test_password'
+
+
+- username: 'multi_role_user'
+  tenant_name: 'test_tenant_42'
+  password: 'test_password'
+  roles:
+    - 'fun_role'
+    - 'not_an_admin'
+    - 'an_admin'
+
+- username: 'swift_pseudo_admin_user_1'
+  tenant_name: 'admin_tenant_1'
+  password: 'test_password'
+  types:
+     - 'reseller_admin'
+     - 'operator'
+
+
+- username: 'admin_user_1'
+  tenant_name: 'admin_tenant_1'
+  password: 'test_password'
+  types:
+     - 'admin'
+  resources:
+    network: 'public'
+    router: 'admin_tenant_1-router'
