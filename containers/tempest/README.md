@@ -11,13 +11,16 @@
      - uri_v3
      - uri
 
-* Build container with docker build -t tempest:proposed .
+* Build container with 
+```sh  
+$ docker build -t tempest:proposed .
+```
 * Run container with: 
 ```sh    
-$ docker run tempest --regex  '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario))'
+$ docker run tempest:proposed --regex  '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario))'
 ```
 ## Pitfals
-* If your subnet for external network  floating ip pool is smal  set --concurrency param to 2 or 1 
+* If your subnet for external network  floating ip pool is small set --concurrency param to 2 or 1 
    i.e:
 ```sh  
 $  docker run tempest:proposed --regex  '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario))' --parallel --concurrency 1 
@@ -46,6 +49,9 @@ $  docker run tempest:proposed --regex  '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|s
             
             ubuntu image "http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-i386-disk1.img"
             cirros image "http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-disk.img"
-            
+             
             If you plan to use non default (non cirros) image for testing - you should put value for  
             img_file  in the [scenario] section of defaults-overrides.conf
+            
+            If you are using ubuntu image make sure that you use flavor bigger
+            than m1.nano (use m1.small at least)
