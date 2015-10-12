@@ -129,3 +129,33 @@ def baremetal(lab_id=LabIds.redhat_baremetal_g8, phase='lab', cleanup=None):
 
     l = MyLab(lab_id=lab_id, topology_name='baremetal_by_packstack')
     l.create_lab(phase='delete' if cleanup else phase)
+
+
+@task
+@timed
+def emc_install(lab_id, tb_name, args=""):
+    from fabs.lab.emc import EmcController
+
+    l = EmcController(lab_id)
+    l.emc_install(tb_name, args)
+
+
+@task
+@timed
+def emc_update(lab_id, tb_name, url,
+               version, args="", sendto=""):
+    from fabs.lab.emc import EmcController
+
+    l = EmcController(lab_id)
+    l.emc_update_installer(tb_name, url, version, args)
+    if sendto:
+        l.email_report(sendto, tb_name, url, version)
+
+
+@task
+@timed
+def emc_test(lab_id, tb_name, test_list=""):
+    from fabs.lab.emc import EmcController
+
+    l = EmcController(lab_id)
+    l.emc_test(tb_name, test_list)
