@@ -1,11 +1,11 @@
-from lab.WithConfig import WithConfig
+from lab.providers import Provider
 
 
 class CobblerError(Exception):
     pass
 
 
-class ProviderCobbler(WithConfig):
+class ProviderCobbler(Provider):
     """Creates servers via PXE boot from given cobbler selector.
 
     Cobbler selector may contain a combination of fields
@@ -20,7 +20,8 @@ class ProviderCobbler(WithConfig):
                 'password': 'password on cobbler server',
                 'system_password': 'password on all servers deployed by cobbler',
                 'selector': {'name': 'cobbler_system_name', 'owners': 'user1'},
-                'force_pxe_boot': 'set True if you want to force PXE re-provisioning'}
+                'force_pxe_boot': 'set True if you want to force PXE re-provisioning'
+                }
 
     def __init__(self, config):
         import datetime
@@ -74,8 +75,9 @@ class ProviderCobbler(WithConfig):
         handle = self.__cobbler.get_system_handle(system_name, token)
 
         if self.force_pxe_boot:
-            self.__cobbler.modify_system(handle, "netboot_enabled", True, token)
+            self.__cobbler.modify_system(handle, 'netboot_enabled', True, token)
             self.__cobbler.modify_system(handle, 'ks_meta', 'ProvTime={0}'.format(self.prov_time), token)
+            self.__cobbler.modify_system(handle, 'comment', 'Used to deploy the director', token)
         self.__cobbler.power_system(handle, "reboot", token)
         rendered = self.__cobbler.get_system_as_rendered(system_name)
 
@@ -99,18 +101,11 @@ class ProviderCobbler(WithConfig):
         return servers
 
     def wait_for_servers(self):
-        import StringIO
-        from fabric.api import get, run, settings
-
         servers = self.create_servers()
         for server in servers:
-            with settings(host_string='{user}@{ip}'.format(user=server.username, ip=server.ip), password=server.password, connection_attempts=150, warn_only=False):
-                if self.force_pxe_boot:
-                    prov_time = StringIO.StringIO()
-                    get(remote_path='/root/ProvTime', local_path=prov_time)
-                    when_provided = prov_time.getvalue().strip()
-                    if when_provided != self.prov_time:
-                        raise CobblerError('Wrong provisioning attempt- timestamps are not matched')
-                else:
-                    server.hostname = run('hostname')
+            if self.force_pxe_boot:
+                when_provided = self.run(command='cat ProvTime', server=server)
+                if when_provided != self.prov_time:
+                    raise CobblerError('Wrong provisioning attempt- timestamps are not matched')
+            server.hostname = self.run(command='hostname', server=server)
         return servers

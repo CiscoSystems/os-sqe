@@ -4,9 +4,10 @@ from fabric.api import task, local
 from fabs.common import timed, virtual
 from fabs.common import logger as log
 from fabs import LVENV, CVENV, LAB
-from fabs import coi, tempest, snap, devstack, redhat, coverage, cirros, special, ucsm, verify, cimc, n9k
+from fabs import coi, tempest, snap, devstack, redhat, coverage, cirros, special, verify, cimc
 from fabs import jenkins_reports
 from lab import BaseLab
+from lab.providers import cobbler, ucsm, n9k
 
 
 @timed
