@@ -1,5 +1,5 @@
 from fabric.api import task
-from lab.time import time_as_string
+from lab.time_func import time_as_string
 
 
 @task
