@@ -6,7 +6,7 @@ from lab.time_func import time_as_string
 def configure_for_osp7(yaml_path):
     from netaddr import IPNetwork
     import xmlrpclib
-    from lab.providers import read_config_from_file
+    from lab.WithConfig import read_config_from_file
     from lab.providers import ucsm
 
     config = read_config_from_file(yaml_path=yaml_path)
@@ -22,7 +22,7 @@ def configure_for_osp7(yaml_path):
     user_net = IPNetwork(config['user-net']['cidr'])
     user_iface_name = config['user-net']['iface-name']
 
-    ucsm_info = ucsm.read_config_ssh(host=config['ucsm']['host'], username=config['ucsm']['username'], password=config['ucsm']['password'])
+    ucsm_info = ucsm.read_config_ssh(yaml_path=yaml_path)
     server = ucsm_info[ucsm_director_profile_name]
     mac_user = server.get_mac(iface_name=user_iface_name)
     mac_cobbler = server.get_mac(iface_name=cobbler_iface_name)

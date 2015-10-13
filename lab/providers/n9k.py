@@ -29,7 +29,7 @@ def nxapi(n9k_creds, commands):
 @task
 def configure_for_osp7(yaml_path):
     """configures n9k to run on top of UCSM"""
-    from lab.providers import read_config_from_file
+    from lab.WithConfig import read_config_from_file
 
     config = read_config_from_file(yaml_path=yaml_path)
     n9k_creds = config['n9k']

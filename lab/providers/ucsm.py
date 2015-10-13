@@ -80,13 +80,21 @@ class UcsmServer(object):
 
 
 @task
-def read_config_ssh(host, username, password):
+def read_config_ssh(yaml_path, is_director=True):
     """Reads config needed for OSP7 via ssh to UCSM"""
     from lab.Server import Server
     from fabric.api import settings, run
+    from lab.WithConfig import read_config_from_file
+
+    config = read_config_from_file(yaml_path=yaml_path)
+
+    ucsm_ip  = config['ucsm']['host']
+    ucsm_username = config['ucsm']['username']
+    ucsm_password = config['ucsm']['password']
+    ucsm_director = config['ucsm']['director-profile']
 
     servers = {}
-    with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
+    with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
         ipmi_users = run('scope org; scope ipmi-access-profile IPMI; sh ipmi-user | egrep -v "Description|---|IPMI" | cut -f 5 -d " "', shell=False, quiet=True).split('\n')
         if 'cobbler' not in ipmi_users:
             raise Exception('No IPMI user "cobbler" in UCSM! Add it with password "cobbler" manually')
@@ -94,6 +102,8 @@ def read_config_ssh(host, username, password):
         for profile in run('scope org; show service-profile | egrep Associated | cut -f 5-35 -d " "', shell=False, quiet=True).split('\n'):
             split = profile.split()
             profile_name = split[0]
+            if is_director and profile_name == ucsm_director:
+                continue
             server_num = split[2]
             ipmi_ip = run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_num), shell=False, quiet=True)
             if_mac = {}

@@ -134,9 +134,9 @@ class DeployerOSP7(Deployer):
                                     'disk': 500,
                                     'arch': 'x86_64',
                                     'pm_type': "pxe_ipmitool",
-                                    'pm_user': server.ipmi_username,
-                                    'pm_password': server.ipmi_password,
-                                    'pm_addr': server.ipmi_ip})
+                                    'pm_user': server.ipmi['username'],
+                                    'pm_password': server.ipmi['password'],
+                                    'pm_addr': server.ipmi['ip']})
         self.__overcloud_config = StringIO(json.dumps(config))
 
     def wait_for_cloud(self, list_of_servers):

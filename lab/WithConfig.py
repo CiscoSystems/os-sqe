@@ -43,3 +43,16 @@ class LabConfigException(Exception):
                                                                                                                                    klass=self.__class_name,
                                                                                                                                    sample=self.__sample_config,
                                                                                                                                    provided=self.__config))
+
+
+def read_config_from_file(yaml_path):
+    import os
+    import yaml
+
+    actual_path = yaml_path if os.path.isfile(yaml_path) else os.path.join(CONFIG_DIR, 'labs', yaml_path)
+    if not os.path.isfile(actual_path):
+        folder = os.path.abspath(os.path.join(CONFIG_DIR, 'labs'))
+        raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_path, '\n'.join(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))))
+
+    with open(actual_path) as f:
+        return yaml.load(f)
