@@ -228,7 +228,7 @@ def configure_for_osp7(yaml_path):
                 # remove default VLAN
                 run('scope org; scope service-profile {0}; scope vnic {1}; delete eth-if default; commit-buffer'.format(profile, vnic), shell=False)
                 # set dynamic vnic connection policy
-                if vnic in ['eth0', 'eth1']:
+                if vnic in ['eth1']:
                     run('scope org; scope service-profile {0}; scope vnic {1}; set adapter-policy Linux; enter dynamic-conn-policy-ref {2}; commit-buffer'.format(profile, vnic, dynamic_vnic_policy_name), shell=False)
 
             # main step - association - here server will be rebooted
