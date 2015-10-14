@@ -45,7 +45,7 @@ class LabConfigException(Exception):
                                                                                                                                    provided=self.__config))
 
 
-def read_config_from_file(yaml_path):
+def read_config_from_file(yaml_path, is_as_string=False):
     import os
     import yaml
 
@@ -55,4 +55,4 @@ def read_config_from_file(yaml_path):
         raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_path, '\n'.join(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))))
 
     with open(actual_path) as f:
-        return yaml.load(f)
+        return f.read() if is_as_string else yaml.load(f)

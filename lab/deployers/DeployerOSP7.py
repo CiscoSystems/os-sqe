@@ -58,16 +58,6 @@ class DeployerOSP7(Deployer):
 
         self.director_server.username = new_username
 
-    def deploy_cloud(self, n_nodes):
-        from lab.Cloud import Cloud
-
-        self.__hostname_and_etc_hosts()
-        self.__subscribe_and_install()
-        self.__create_user_stack()
-        self.__deploy_undercloud(n_nodes=n_nodes)
-        self.__deploy_overcloud()
-        return Cloud(cloud='osp7', user='demo', admin='admin', tenant='demo', password=self.cloud_password)
-
     def __hostname_and_etc_hosts(self):
         hostname = self.run(command='hostname', server=self.director_server)
         if not self.run(command='grep {0} /etc/hosts'.format(hostname), server=self.director_server, warn_only=True):
@@ -111,36 +101,94 @@ class DeployerOSP7(Deployer):
         subnet_id = self.run(command='source stackrc && neutron subnet-list -c id -f csv', server=self.director_server).split()[-1].strip('"')
         dns_ip = self.run(command='grep nameserver /etc/resolv.conf', server=self.director_server).split()[-1]
         self.run('source stackrc && neutron subnet-update {id} --dns-nameserver {ip}'.format(id=subnet_id, ip=dns_ip), server=self.director_server)
+        self.run(command='source stackrc && openstack baremetal import --json ~/overcloud.json', server=self.director_server)
+        self.run(command='source stackrc && openstack baremetal configure boot', server=self.director_server)
+        self.run(command='source stackrc && openstack baremetal introspection bulk start', server=self.director_server)
+        self.run(command='openstack baremetal list', server=self.director_server)
 
     def __deploy_overcloud(self):
-        self.put(what=self.__overcloud_config, name='overcloud.json', server=self.director_server)
-        self.run('source stackrc && openstack baremetal import --json ~/overcloud.json', server=self.director_server)
-        self.run('source stackrc && openstack baremetal configure boot', server=self.director_server)
-        self.run('source stackrc && openstack baremetal introspection bulk start', server=self.director_server)
+        if not self.run(command='source stackrc &&  openstack flavor list | grep baremetal', server=self.director_server, warn_only=True):
+            self.run(command='source stackrc && openstack flavor create --id auto --ram 4096 --disk 40 --vcpus 1 baremetal', server=self.director_server)
+            self.run(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" baremetal',
+                     server=self.director_server)
+        for x in ['control', 'compute']:
+            if not self.run(command='source stackrc &&  openstack flavor list | grep {0}'.format(x), server=self.director_server, warn_only=True):
+                self.run(command='source stackrc && openstack flavor create --id auto --ram 128 --disk 500 --vcpus 2 {0}'.format(x), server=self.director_server)
+                self.run(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" '
+                                 '--property "capabilities:profile"="{0}" {0}'.format(x), server=self.director_server)
 
-    def __create_overcloud_config(self, servers):
+        n_control_served = 0
+        for line in self.run(command='source stackrc && ironic node-list', server=self.director_server).split('\n'):
+            if line.startswith('+') or line.startswith('| UUID'):
+                continue
+            uuid = line.split()[1]
+            profile = 'control' if n_control_served < 3 else 'compute'
+            self.run(command='source stackrc && ironic node-update {0} replace properties/capabilities=profile:{1},boot_option:local'.format(uuid, profile),
+                     server=self.director_server)
+            n_control_served += 1
+
+        self.run(command='source stackrc && openstack overcloud deploy --templates '
+                         '-e /usr/share/openstack-tripleo-heat-templates/overcloud-resource-registry-puppet.yaml '
+                         '-e /home/stack/templates/networking-cisco-environment.yaml '
+                         '--control-flavor control --compute-flavor compute '
+                         '--control-scale 3 --compute-scale 1 --ceph-storage-scale 0 --block-storage-scale 0 --swift-storage-scale 0 '
+                         '--neutron-network-type vlan --neutron-disable-tunneling '
+                         '--neutron-public-interface eth0 --hypervisor-neutron-public-interface eth0 '
+                         '--neutron-tunnel-type vlan '
+                         '--neutron-network-vlan-ranges datacentre:10:2500 '
+                         '--ntp-server 1.ntp.esl.cisco.com', server=self.director_server)
+
+    def __create_overcloud_config_and_template(self, servers):
         import json
+        import os
+        from lab.WithConfig import read_config_from_file, CONFIG_DIR
 
         config = {'nodes': []}
+        mac_profiles = []
+        ucsm_ip = servers[0].ucsm['ip']
+        ucsm_username = servers[0].ucsm['username']
+        ucsm_password = servers[0].ucsm['password']
+
         for server in servers:
-            config['nodes'].append({'mac': server.ucsm['iface_mac'].values()[0:1],
+            ucsm_profile = server.ucsm['service-profile']
+            mac_profiles.append('{0}:{1}'.format(server.ucsm['iface_mac']['eth0'], ucsm_profile))
+            pxe_mac = server.ucsm['iface_mac']['pxe-int']
+
+            config['nodes'].append({'mac': [pxe_mac],
                                     'cpu': 2,
-                                    'memory': 128,
+                                    'memory': 128000,
                                     'disk': 500,
                                     'arch': 'x86_64',
                                     'pm_type': "pxe_ipmitool",
                                     'pm_user': server.ipmi['username'],
                                     'pm_password': server.ipmi['password'],
                                     'pm_addr': server.ipmi['ip']})
-        self.__overcloud_config = json.dumps(config)
+        self.put(what=json.dumps(config), name='overcloud.json', server=self.director_server)
 
-    def wait_for_cloud(self, list_of_servers):
+        yaml_name = 'networking-cisco-environment.yaml'
+        config_tmpl = read_config_from_file(yaml_path=os.path.join(CONFIG_DIR, 'osp7', yaml_name), is_as_string=True)
+        config = config_tmpl.format(network_ucsm_ip=ucsm_ip, network_ucsm_username=ucsm_username, network_ucsm_password=ucsm_password,
+                                    network_ucsm_host_list=','.join(mac_profiles))
+        self.put(what=config, name=yaml_name, server=self.director_server, in_directory='templates')
+
+    def deploy_cloud(self, list_of_servers):
+        from lab.Cloud import Cloud
+
         servers = []
         for server in list_of_servers:
             if server.ip == self.director_ip:
                 self.director_server = server
             else:
                 servers.append(server)
-        self.__create_overcloud_config(servers=servers)
-        cloud = self.deploy_cloud(n_nodes=len(servers))
+
+        self.__hostname_and_etc_hosts()
+        self.__subscribe_and_install()
+        self.__create_user_stack()
+        self.__deploy_undercloud(n_nodes=len(list_of_servers))
+        self.__create_overcloud_config_and_template(servers=servers)
+        self.__deploy_overcloud()
+        return Cloud(cloud='osp7', user='demo', admin='admin', tenant='demo', password=self.cloud_password)
+
+    def wait_for_cloud(self, list_of_servers):
+        cloud = self.deploy_cloud(list_of_servers=list_of_servers)
         return self.verify_cloud(cloud=cloud, from_server=self.director_server)

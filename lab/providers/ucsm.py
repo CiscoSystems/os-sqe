@@ -88,7 +88,7 @@ def read_config_ssh(yaml_path, is_director=True):
 
     config = read_config_from_file(yaml_path=yaml_path)
 
-    ucsm_ip  = config['ucsm']['host']
+    ucsm_ip = config['ucsm']['host']
     ucsm_username = config['ucsm']['username']
     ucsm_password = config['ucsm']['password']
     ucsm_director = config['ucsm']['director-profile']
@@ -112,7 +112,7 @@ def read_config_ssh(yaml_path, is_director=True):
                 if_mac[split[0]] = split[3]
             server = Server(ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM')
             server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
-            server.set_ucsm(service_profile=profile_name, iface_mac=if_mac)
+            server.set_ucsm(ip=ucsm_ip, username=ucsm_username, password=ucsm_password, service_profile=profile_name, iface_mac=if_mac)
             servers[profile_name] = server
     return servers
 

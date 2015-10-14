@@ -1,0 +1,18 @@
+resource_registry:
+  OS::TripleO::AllNodesExtraConfig: /usr/share/openstack-tripleo-heat-templates/puppet/extraconfig/all_nodes/neutron-ml2-cisco-nexus-ucsm.yaml
+  OS::TripleO::Compute::Net::SoftwareConfig: /usr/share/openstack-tripleo-heat-templates/net-config-bridge.yaml
+
+parameter_defaults:
+  NetworkUCSMIp: '{network_ucsm_ip}'
+  NetworkUCSMUsername: '{network_ucsm_username}'
+  NetworkUCSMPassword: '{network_ucsm_password}'
+  NetworkUCSMHostList: '{network_ucsm_host_list}'
+
+  NeutronNetworkVLANRanges: 'datacenter:10:2000'
+  NeutronMechanismDrivers: 'openvswitch,cisco_ucsm'
+
+parameters:
+  controllerExtraConfig:
+    neutron::server::api_workers: 0
+    neutron::agents::metadata::metadata_workers: 0
+    neutron::server::rpc_workers: 0
