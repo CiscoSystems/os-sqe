@@ -48,12 +48,12 @@ class WithRunMixin(object):
 
     @staticmethod
     def wget_file(url, to_directory, checksum, server=None):
-        loc = os.path.abspath(os.path.join(to_directory, url.split('/')[-1]))
+        loc = url.split('/')[-1]
         WithRunMixin.run(command='mkdir -p {0}'.format(to_directory), server=server)
-        WithRunMixin.run(command='test -e  {loc} || wget -nv {url} -O {loc}'.format(loc=loc, url=url), server=server)
-        calc_checksum = WithRunMixin.run(command='sha256sum {loc}'.format(loc=loc), server=server)
+        WithRunMixin.run(command='test -e  {loc} || wget -nv {url} -O {loc}'.format(loc=loc, url=url), server=server, in_directory=to_directory)
+        calc_checksum = WithRunMixin.run(command='sha256sum {loc}'.format(loc=loc), server=server, in_directory=to_directory)
         if calc_checksum.split()[0] != checksum:
-            WithRunMixin.run(command='rm {0}'.format(loc), server=server)
+            WithRunMixin.run(command='rm {0}'.format(loc), server=server, in_directory=to_directory)
             raise RuntimeError('I deleted image {0} since it is broken (checksum is not matched). Re-run the script'.format(loc))
         return loc
 

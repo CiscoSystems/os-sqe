@@ -102,7 +102,7 @@ def read_config_ssh(yaml_path, is_director=True):
         for profile in run('scope org; show service-profile | egrep Associated | cut -f 5-35 -d " "', shell=False, quiet=True).split('\n'):
             split = profile.split()
             profile_name = split[0]
-            if is_director and profile_name == ucsm_director:
+            if not is_director and profile_name == ucsm_director:
                 continue
             server_num = split[2]
             ipmi_ip = run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_num), shell=False, quiet=True)

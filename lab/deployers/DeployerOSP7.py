@@ -42,7 +42,6 @@ class DeployerOSP7(Deployer):
                   'overcloud-full-7.0.0-32.tar': '33c08823e459f19df49b8a997637df6029337113fd717e4bc9119965c40dee94'
                   }
 
-        self.run(command='mkdir -p images', server=self.director_server)
         for file_name, checksum in images.iteritems():
             self.wget_file(url=self.images_url + '/' + file_name, to_directory=self.images_dir, checksum=checksum, server=self.director_server)
             self.run(command='tar -xf {}'.format(file_name), in_directory=self.images_dir, server=self.director_server)
@@ -59,13 +58,13 @@ class DeployerOSP7(Deployer):
 
         self.director_server.username = new_username
 
-    def deploy_cloud(self):
+    def deploy_cloud(self, n_nodes):
         from lab.Cloud import Cloud
 
         self.__hostname_and_etc_hosts()
         self.__subscribe_and_install()
         self.__create_user_stack()
-        self.__deploy_undercloud()
+        self.__deploy_undercloud(n_nodes=n_nodes)
         self.__deploy_overcloud()
         return Cloud(cloud='osp7', user='demo', admin='admin', tenant='demo', password=self.cloud_password)
 
@@ -88,9 +87,8 @@ class DeployerOSP7(Deployer):
         self.run(command='sudo yum update -y', server=self.director_server)
         self.run(command='sudo yum install -y python-rdomanager-oscplugin', server=self.director_server)
 
-    def __undercloud_config(self):
+    def __undercloud_config(self, n_nodes):
         iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server)
-        n_overcloud_nodes = 5
         undercloud_config = self.undercloud_config_template.format(pxe_iface=iface.strip(':'),
                                                                    cidr=str(self.undercloud_network),
                                                                    gw=str(self.undercloud_network[1]),
@@ -98,16 +96,16 @@ class DeployerOSP7(Deployer):
                                                                    public_vip=str(self.undercloud_network[3]),
                                                                    admin_vip=str(self.undercloud_network[4]),
                                                                    dhcp_start=str(self.undercloud_network[100]),
-                                                                   dhcp_end=str(self.undercloud_network[100 + n_overcloud_nodes]),
+                                                                   dhcp_end=str(self.undercloud_network[100 + n_nodes]),
                                                                    discovery_start=str(self.undercloud_network[200]),
-                                                                   discovery_end=str(self.undercloud_network[200 + n_overcloud_nodes]),
+                                                                   discovery_end=str(self.undercloud_network[200 + n_nodes]),
                                                                    cloud_password=self.cloud_password,
                                                                    images_dir=self.images_dir
                                                                    )
         self.put(what=undercloud_config, name='undercloud.conf', server=self.director_server)
 
-    def __deploy_undercloud(self):
-        self.__undercloud_config()
+    def __deploy_undercloud(self, n_nodes):
+        self.__undercloud_config(n_nodes=n_nodes)
         self.run(command='openstack undercloud install', server=self.director_server)
         self.__wget_images()
         subnet_id = self.run(command='source stackrc && neutron subnet-list -c id -f csv', server=self.director_server).split()[-1].strip('"')
@@ -115,20 +113,17 @@ class DeployerOSP7(Deployer):
         self.run('source stackrc && neutron subnet-update {id} --dns-nameserver {ip}'.format(id=subnet_id, ip=dns_ip), server=self.director_server)
 
     def __deploy_overcloud(self):
-        from fabric.api import put, sudo
-
-        put(local_path=self.__overcloud_config, remote_path='overcloud.json')
-        sudo('source stackrc && openstack baremetal import --json ~/overcloud.json')
-        sudo('source stackrc && openstack baremetal configure boot')
-        sudo('source stackrc && openstack baremetal introspection bulk start')
+        self.put(what=self.__overcloud_config, name='overcloud.json', server=self.director_server)
+        self.run('source stackrc && openstack baremetal import --json ~/overcloud.json', server=self.director_server)
+        self.run('source stackrc && openstack baremetal configure boot', server=self.director_server)
+        self.run('source stackrc && openstack baremetal introspection bulk start', server=self.director_server)
 
     def __create_overcloud_config(self, servers):
-        from StringIO import StringIO
         import json
 
         config = {'nodes': []}
         for server in servers:
-            config['nodes'].append({'mac': [server.pxe_mac],
+            config['nodes'].append({'mac': server.ucsm['iface_mac'].values()[0:1],
                                     'cpu': 2,
                                     'memory': 128,
                                     'disk': 500,
@@ -137,7 +132,7 @@ class DeployerOSP7(Deployer):
                                     'pm_user': server.ipmi['username'],
                                     'pm_password': server.ipmi['password'],
                                     'pm_addr': server.ipmi['ip']})
-        self.__overcloud_config = StringIO(json.dumps(config))
+        self.__overcloud_config = json.dumps(config)
 
     def wait_for_cloud(self, list_of_servers):
         servers = []
@@ -147,5 +142,5 @@ class DeployerOSP7(Deployer):
             else:
                 servers.append(server)
         self.__create_overcloud_config(servers=servers)
-        cloud = self.deploy_cloud()
+        cloud = self.deploy_cloud(n_nodes=len(servers))
         return self.verify_cloud(cloud=cloud, from_server=self.director_server)
