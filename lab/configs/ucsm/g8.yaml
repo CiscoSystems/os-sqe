@@ -1,6 +1,6 @@
-host: 10.30.119.66 # management ip of UCSM
-username: admin
-password: cisco
-lab_id:  8 # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools
-ipmi_ips: '10.30.119.102 10.30.119.107 10.30.119.1 255.255.255.0' # range of IPs for IPMI and KVM
-mgmt_vlan: 174 # vlan used on management network, to get access to OSP7 director and overcloud nodes
+lab-id: 8 # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools
+user-net: {cidr: 10.23.230.64/27, vlan: 174, iface-name: mgmt} # used for normal user traffic
+mgmt-net: {cidr: 10.30.119.0/24, vlan: 8} # used for UCSM KVM IPMI
+ucsm: {host: 10.30.119.67, username: admin, password: cisco, director-profile: DIRECTOR}
+n9k: {host: 172.31.229.207, username: admin, password: CTO1234!}
+cobbler: {host: 172.29.74.8, username: cobbler, password: cobbler, iface-name: PXE-EXT}
