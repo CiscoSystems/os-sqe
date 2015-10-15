@@ -122,26 +122,33 @@ def cleanup(host, username, password):
     from fabric.api import settings, run
 
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
-        for profile in run('scope org; sh service-profile status | egrep -V "Service|----" | cut -f 1 -d " "', shell=False).split():
+        for profile in run('scope org; sh service-profile status | no-more | egrep -V "Service|----" | cut -f 1 -d " "', shell=False).split():
             run('scope org; delete service-profile {0}; commit-buffer'.format(profile), shell=False)
-        for mac_pool in run('scope org; sh mac-pool | egrep -V "Name|----|MAC" | cut -f 5 -d " "', shell=False).split():
+        for mac_pool in run('scope org; sh mac-pool | no-more | egrep -V "Name|----|MAC" | cut -f 5 -d " "', shell=False).split():
             run('scope org; delete mac-pool {0}; commit-buffer'.format(mac_pool), shell=False)
-        for server_pool in run('scope org; sh server-pool | egrep -V "Name|----|MAC" | cut -f 5 -d " "', shell=False).split():
+        for server_pool in run('scope org; sh server-pool | no-more | egrep -V "Name|----|MAC" | cut -f 5 -d " "', shell=False).split():
             run('scope org; delete server-pool {0}; commit-buffer'.format(server_pool), shell=False)
-        for uuid_pool in run('scope org; sh uuid-suffix-pool | egrep -V "Name|----|UUID" | cut -f 5 -d " "', shell=False).split():
+        for uuid_pool in run('scope org; sh uuid-suffix-pool | no-more | egrep -V "Name|----|UUID" | cut -f 5 -d " "', shell=False).split():
             run('scope org; delete uuid-suffix-pool {0}; commit-buffer'.format(uuid_pool), shell=False)
-        for boot_policy in run('scope org; sh boot-policy | egrep -V "Name|----|UUID" | cut -f 5 -d " "', shell=False).split():
+        for boot_policy in run('scope org; sh boot-policy | no-more | egrep -V "Name|----|UUID" | cut -f 5 -d " "', shell=False).split():
             run('scope org; delete boot-policy {0}; commit-buffer'.format(boot_policy), shell=False)
-        for dyn_vnic_policy in run('scope org; show dynamic-vnic-conn-policy detail | egrep "Name:" | cut -f 6 -d " "', shell=False).split():
+        for dyn_vnic_policy in run('scope org; show dynamic-vnic-conn-policy detail | no-more | egrep "Name:" | cut -f 6 -d " "', shell=False).split():
             run('scope org; delete dynamic-vnic-conn-policy {0}; commit-buffer'.format(dyn_vnic_policy), shell=False)
-        for vlan in run('scope eth-uplink; sh vlan | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "', shell=False).split():
+        for vlan in run('scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "', shell=False).split():
             run('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan), shell=False)
-        for server_num in run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split():
+        for server_num in run('sh server status | no-more | egrep "Complete$" | cut -f 1 -d " "', shell=False).split():
             if run('scope server {0}; scope cimc; sh ext-static-ip'.format(server_num), shell=False):
                 run('scope server {0}; scope cimc; delete ext-static-ip; commit-buffer'.format(server_num), shell=False)
         for block in run('scope org; scope ip-pool ext-mgmt; sh block | egrep [1-9] | cut -f 5-10 -d " "', shell=False).split('\n'):
             if block:
                 run('scope org; scope ip-pool ext-mgmt; delete block {0}; commit-buffer'.format(block), shell=False)
+        for pp in run('scope system; scope vm-mgmt; scope profile-set; show port-profile detail | no-more | egrep "Name:" | cut -f 6 -d " "', shell=False).split('\n'):
+            if pp.strip():
+                run("end; scope system; scope vm-mgmt; scope profile-set; delete port-profile {0} ; commit-buffer".format(pp.strip()), shell=False)
+        for fabric in 'a', 'b':
+            for port_channel_id in run('scope eth-uplink; scope fabric {0}; show port-channel detail | egrep "Port Channel Id:" | cut -f 8 -d " "'.format(fabric), shell=False).split():
+                if port_channel_id.strip():
+                    run('scope eth-uplink; scope fabric {0}; delete port-channel {1}; commit-buffer'.format(fabric, port_channel_id.strip()), shell=False)
 
 
 @task
@@ -164,12 +171,14 @@ def configure_for_osp7(yaml_path):
     host = config['ucsm']['host']
     username = config['ucsm']['username']
     password = config['ucsm']['password']
+    uplink_ports = config['ucsm']['uplink_ports']
 
     server_pool_name = 'QA-SERVERS'
     uuid_pool_name = 'QA'
     dynamic_vnic_policy_name = 'dvnic-4'
 
     pxe_ext_mac = '00:25:B5:{0:02}:FE:FE'.format(lab_id)
+    uplink_port_channel_id = 81
 
     mac_pools = [('eth0', '00:25:B5:{0:02}:00'.format(lab_id), 2000),
                  ('eth1', '00:25:B5:{0:02}:01'.format(lab_id), 2001),
@@ -180,6 +189,12 @@ def configure_for_osp7(yaml_path):
         server_nums = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
         n_servers = len(server_nums)  # how many servers UCSM currently sees
 
+        # Create up-links (port-channels)
+        for fabric in 'a', 'b':
+            run('scope eth-uplink; scope fabric {0}; create port-channel {1}; commit-buffer'.format(fabric, uplink_port_channel_id), shell=False)
+            for port in uplink_ports:
+                slot_id, port_id = port.split('/')
+                run('scope eth-uplink; scope fabric {0}; scope port-channel {1}; enter member-port {2} {3}; commit-buffer'.format(fabric, uplink_port_channel_id, slot_id, port_id), shell=False)
         # UUID pool
         run('scope org; create uuid-suffix-pool {name}; set assignment-order sequential; create block 1234-000000000001 1234-00000000000{n}; commit-buffer'.format(
             name=uuid_pool_name, n=n_servers), shell=False)
@@ -231,7 +246,7 @@ def configure_for_osp7(yaml_path):
                 # remove default VLAN
                 run('scope org; scope service-profile {0}; scope vnic {1}; delete eth-if default; commit-buffer'.format(profile, vnic), shell=False)
                 # set dynamic vnic connection policy
-                if vnic in ['eth1']:
+                if director_num != server_num and vnic in ['eth1']:
                     run('scope org; scope service-profile {0}; scope vnic {1}; set adapter-policy Linux; enter dynamic-conn-policy-ref {2}; commit-buffer'.format(profile, vnic, dynamic_vnic_policy_name), shell=False)
 
             # main step - association - here server will be rebooted
