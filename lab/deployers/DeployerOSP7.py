@@ -77,8 +77,8 @@ class DeployerOSP7(Deployer):
         self.run(command='sudo yum update -y', server=self.director_server)
         self.run(command='sudo yum install -y python-rdomanager-oscplugin', server=self.director_server)
 
-    def __undercloud_config(self, n_nodes):
-        iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server)
+    def __undercloud_config(self):
+        iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server).split('')
         undercloud_config = self.undercloud_config_template.format(pxe_iface=iface.strip(':'),
                                                                    cidr=str(self.undercloud_network),
                                                                    gw=str(self.undercloud_network[1]),
@@ -86,16 +86,16 @@ class DeployerOSP7(Deployer):
                                                                    public_vip=str(self.undercloud_network[3]),
                                                                    admin_vip=str(self.undercloud_network[4]),
                                                                    dhcp_start=str(self.undercloud_network[100]),
-                                                                   dhcp_end=str(self.undercloud_network[100 + n_nodes]),
+                                                                   dhcp_end=str(self.undercloud_network[100 + 50]),
                                                                    discovery_start=str(self.undercloud_network[200]),
-                                                                   discovery_end=str(self.undercloud_network[200 + n_nodes]),
+                                                                   discovery_end=str(self.undercloud_network[200 + 50]),
                                                                    cloud_password=self.cloud_password,
                                                                    images_dir=self.images_dir
                                                                    )
         self.put(what=undercloud_config, name='undercloud.conf', server=self.director_server)
 
-    def __deploy_undercloud(self, n_nodes):
-        self.__undercloud_config(n_nodes=n_nodes)
+    def __deploy_undercloud(self):
+        self.__undercloud_config()
         self.run(command='openstack undercloud install', server=self.director_server)
         self.__wget_images()
         subnet_id = self.run(command='source stackrc && neutron subnet-list -c id -f csv', server=self.director_server).split()[-1].strip('"')
@@ -184,7 +184,7 @@ class DeployerOSP7(Deployer):
         self.__hostname_and_etc_hosts()
         self.__subscribe_and_install()
         self.__create_user_stack()
-        self.__deploy_undercloud(n_nodes=len(list_of_servers))
+        self.__deploy_undercloud()
         self.__create_overcloud_config_and_template(servers=servers)
         self.__deploy_overcloud()
         return Cloud(cloud='osp7', user='demo', admin='admin', tenant='demo', password=self.cloud_password)
