@@ -1,3 +1,4 @@
+localhost ansible_connection=local
 
 [g8]
 g8-N9k1	ansible_connection=local
@@ -21,3 +22,11 @@ fabric_b_ports='["Eth1/10"]'
 fabric_b_port_channel=82
 
 server_ports='["Eth1/3", "Eth1/4"]'
+
+[ucsm]
+localhost ansible_connection=local
+
+[ucsm:vars]
+ucsm_vip=10.30.119.66
+ucsm_user=admin
+ucsm_password=cisco
