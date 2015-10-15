@@ -63,14 +63,13 @@ class Cloud:
     def create_open_rc(self):
         """ Creates open_rc for the given cloud"""
         open_rc = """
-export OS_USERNAME=admin
-export OS_TENANT_NAME=admin
-export OS_PASSWORD=admin
+export OS_USERNAME={user}
+export OS_TENANT_NAME={tenant}
+export OS_PASSWORD={password}
 export OS_AUTH_URL=http://{ip}:5000/v2.0/
 export OS_REGION_NAME=RegionOne
 """
-        with open('open_rc', 'w') as f:
-            f.write(open_rc.format(ip=self.get_first(self.ROLE_CONTROLLER, 'ip')))
+        return open_rc.format(user=self.user, tenant=self.tenant, password=self.password, ip=self.get_first(self.ROLE_CONTROLLER, 'ip'))
 
     def log(self):
         from lab.logger import lab_logger

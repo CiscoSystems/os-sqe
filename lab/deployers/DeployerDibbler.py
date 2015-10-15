@@ -32,7 +32,7 @@ iface "{iface}" {
         conf = conf.replace('{iface}', 'eth1')
         for server in list_of_servers:
             if server.hostname == self.hostname:
-                self.check_or_install_package(package_name='dibbler-server', server=server)
+                self.check_or_install_packages(package_names='dibbler-server', server=server)
                 self.put(what=conf, name='/etc/dibbler/server.conf', server=server)
                 self.run(command='sudo dibbler-server start', server=server)
                 self.run(command='ps auxw | grep dibbler | grep -v grep')

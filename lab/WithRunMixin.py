@@ -58,25 +58,35 @@ class WithRunMixin(object):
         return loc
 
     @staticmethod
-    def is_dpkg(server):
-        return WithRunMixin.run(command='whereis dpkg', server=server) != 'dpkg:'
+    def get_package_manager(server):
+        possible_packages = ['apt-get', 'dnf', 'yum']
+        for x in possible_packages:
+            if WithRunMixin.run(command='whereis {0}'.format(x), server=server) != x + ':':
+                return x
+        raise RuntimeError('do not know which package manager to use: neither of {0} found'.format(possible_packages))
 
     @staticmethod
-    def check_or_install_package(package_name, server):
-        if WithRunMixin.run(command='whereis {0}'.format(package_name), server=server) == package_name + ':':
-            if WithRunMixin.is_dpkg(server=server):
-                WithRunMixin.run(command='sudo rm /var/lib/apt/lists/* -vrf', server=server)  # This is workaround for ubuntu update fails with Hash Sum mismatch on some packages
-                WithRunMixin.run(command='sudo apt-get -y -q update && apt-get install -y -q {0}'.format(package_name), server=server)
-            else:
-                WithRunMixin.run(command='sudo dnf install -y {0}'.format(package_name), server=server)
+    def check_or_install_packages(package_names, server):
+        for package_name in package_names.split():
+            if WithRunMixin.run(command='whereis {0}'.format(package_name), server=server) == package_name + ':':
+                pm = WithRunMixin.get_package_manager(server=server)
+                WithRunMixin.run(command='sudo {0} install -y {1}'.format(pm, package_name), server=server)
 
     @staticmethod
-    def clone_repo(repo_url, server):
+    def clone_repo(repo_url, local_repo_dir=None, server=None):
         import urlparse
 
-        local_repo_dir = urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
+        local_repo_dir = local_repo_dir or urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
 
-        WithRunMixin.check_or_install_package(package_name='git', server=server)
-        WithRunMixin.run(command='test -d {0} || git clone -q {1}'.format(local_repo_dir, repo_url), server=server)
+        WithRunMixin.check_or_install_packages(package_names='git', server=server)
+        WithRunMixin.run(command='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url), server=server)
         WithRunMixin.run(command='git pull -q', server=server, in_directory=local_repo_dir)
-        return local_repo_dir
+        return WithRunMixin.run(command='pwd', server=server, in_directory=local_repo_dir)
+
+    def create_user(self, new_username, server):
+        if not self.run(command='grep {0} /etc/passwd'.format(new_username), server=server, warn_only=True):
+            encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(server.password), server=server)
+            self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password, new_username), server=server)
+            self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username), server=server)
+            self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username), server=server)
+        server.username = new_username
