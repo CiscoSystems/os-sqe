@@ -149,6 +149,8 @@ def configure_for_osp7(yaml_path):
     from fabric.api import settings, run
     import os
     import yaml
+    from netaddr import IPNetwork
+
 
     if not os.path.isfile(yaml_path):
         raise IOError('{0} not found. Provide full path to your yaml config file'.format(yaml_path))
@@ -156,9 +158,9 @@ def configure_for_osp7(yaml_path):
     with open(yaml_path) as f:
         config = yaml.load(f)
 
-    lab_id = config['lab_id']
-    ipmi_ips = config['ipmi_ips']
-    mgmt_vlan = config['mgmt_vlan']
+    lab_id = config['lab-id']
+    ipmi_net = IPNetwork(config['mgmt-net']['cidr'])
+    mgmt_vlan = config['user-net']['vlan']
     host = config['ucsm']['host']
     username = config['ucsm']['username']
     password = config['ucsm']['password']
@@ -196,7 +198,8 @@ def configure_for_osp7(yaml_path):
         for vlan_name, _, vlan_id in mac_pools:
             run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(vlan_name, vlan_id), shell=False)
         # IPMI ip pool
-        run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_ips), shell=False)
+        ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[107]), last=str(ipmi_net[107+n_servers]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
+        run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_pool), shell=False)
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
         director_num = None
