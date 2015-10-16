@@ -11,8 +11,8 @@ class Deployer(WithConfig, WithRunMixin):
         pass
 
     def verify_cloud(self, cloud, from_server):
-        self.run(command='neutron net-list {cloud}'.format(cloud=cloud), server=from_server)
-        self.run(command='neutron subnet-list {cloud}'.format(cloud=cloud), server=from_server)
-        self.run(command='neutron router-list {cloud}'.format(cloud=cloud), server=from_server)
-        self.run(command='openstack server list {cloud}'.format(cloud=cloud), server=from_server)
+        from_server.run(command='neutron net-list {cloud}'.format(cloud=cloud))
+        from_server.run(command='neutron subnet-list {cloud}'.format(cloud=cloud))
+        from_server.run(command='neutron router-list {cloud}'.format(cloud=cloud))
+        from_server.run(command='openstack server list {cloud}'.format(cloud=cloud))
         return cloud
