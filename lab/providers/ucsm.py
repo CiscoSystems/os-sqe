@@ -213,7 +213,7 @@ def configure_for_osp7(yaml_path):
         for vlan_name, _, vlan_id in mac_pools:
             run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(vlan_name, vlan_id), shell=False)
         # IPMI ip pool
-        ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[107]), last=str(ipmi_net[107+n_servers]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
+        ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[5]), last=str(ipmi_net[5+n_servers]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
         run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_pool), shell=False)
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
