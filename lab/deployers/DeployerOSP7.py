@@ -70,15 +70,16 @@ class DeployerOSP7(Deployer):
                            '--enable=rhel-7-server-openstack-7.0-rpms',
                            '--enable=rhel-7-server-openstack-7.0-director-rpms']
 
-        self.run(command='sudo subscription-manager register --username={0} --password={1}'.format(self.rdo_account, self.rdo_password), server=self.director_server)
-        self.run(command='sudo subscription-manager attach --pool={0}'.format(self.rdo_pool_id), server=self.director_server)
-        self.run(command='sudo subscription-manager repos --disable=*', server=self.director_server)
-        self.run(command='sudo subscription-manager repos ' + ' '.join(repos_to_enable), server=self.director_server)
-        self.run(command='sudo yum update -y', server=self.director_server)
-        self.run(command='sudo yum install -y python-rdomanager-oscplugin', server=self.director_server)
+        if 'Subscribed' not in self.director_server.run(command='subscription-manager list'):
+            self.director_server.run(command='sudo subscription-manager register --username={0} --password={1}'.format(self.rdo_account, self.rdo_password))
+            self.director_server.run(command='sudo subscription-manager attach --pool={0}'.format(self.rdo_pool_id))
+            self.director_server.run(command='sudo subscription-manager repos --disable=*')
+            self.director_server.run(command='sudo subscription-manager repos ' + ' '.join(repos_to_enable))
+            self.director_server.run(command='sudo yum update -y')
+            self.director_server.run(command='sudo yum install -y python-rdomanager-oscplugin')
 
     def __undercloud_config(self):
-        iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server).split('\n')
+        iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server).split('\n')[0]
         undercloud_config = self.undercloud_config_template.format(pxe_iface=iface.strip(':'),
                                                                    cidr=str(self.undercloud_network),
                                                                    gw=str(self.undercloud_network[1]),
@@ -184,8 +185,8 @@ class DeployerOSP7(Deployer):
         self.__hostname_and_etc_hosts()
         self.__subscribe_and_install()
         self.__create_user_stack()
-        self.__deploy_undercloud()
         self.__create_overcloud_config_and_template(servers=servers)
+        self.__deploy_undercloud()
         self.__deploy_overcloud()
         return Cloud(cloud='osp7', user='demo', admin='admin', tenant='demo', password=self.cloud_password)
 

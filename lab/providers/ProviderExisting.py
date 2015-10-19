@@ -21,5 +21,5 @@ class ProviderExisting(Provider):
         servers = self.create_servers()
         for server in servers:
             server.hostname = self.run(command='hostname', server=server)
-            server.ip_mac = self.run(command='iface=$(ip -o address | grep {0} | cut -f2 -d " "); ip -o link | grep $iface | cut -f20 -d " "'.format(server.ip), server=server)
+            server.ip_mac = self.run(command='iface=$(ip -o address | grep {0} | cut -f2 -d " "); ip -o link | grep $iface | cut -f18 -d " "'.format(server.ip), server=server)
         return servers
