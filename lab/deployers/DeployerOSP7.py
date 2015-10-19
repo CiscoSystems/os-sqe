@@ -170,7 +170,7 @@ class DeployerOSP7(Deployer):
         config_tmpl = read_config_from_file(yaml_path=os.path.join(CONFIG_DIR, 'osp7', yaml_name), is_as_string=True)
         config = config_tmpl.format(network_ucsm_ip=ucsm_ip, network_ucsm_username=ucsm_username, network_ucsm_password=ucsm_password,
                                     network_ucsm_host_list=','.join(mac_profiles))
-        self.put(what=config, name=yaml_name, server=self.director_server, in_directory='templates')
+        self.director_server.put(strting_to_put=config, remote_path=yaml_name, in_directory='templates')
 
     def deploy_cloud(self, list_of_servers):
         from lab.Cloud import Cloud
