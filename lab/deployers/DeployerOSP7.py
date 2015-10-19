@@ -78,7 +78,7 @@ class DeployerOSP7(Deployer):
         self.run(command='sudo yum install -y python-rdomanager-oscplugin', server=self.director_server)
 
     def __undercloud_config(self):
-        iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server).split('')
+        iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server).split('\n')
         undercloud_config = self.undercloud_config_template.format(pxe_iface=iface.strip(':'),
                                                                    cidr=str(self.undercloud_network),
                                                                    gw=str(self.undercloud_network[1]),
