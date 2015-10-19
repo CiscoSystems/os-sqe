@@ -188,6 +188,8 @@ def configure_for_osp7(yaml_path):
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
         server_nums = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
         n_servers = len(server_nums)  # how many servers UCSM currently sees
+        if config['mgmt-net']['end'] - config['mgmt-net']['start'] + 1 < n_servers:
+            raise Exception("mgmt-net less than servers amount. {0}".format(config['mgmt-net']))
 
         # Create up-links (port-channels)
         for fabric in 'a', 'b':
@@ -213,7 +215,7 @@ def configure_for_osp7(yaml_path):
         for vlan_name, _, vlan_id in mac_pools:
             run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(vlan_name, vlan_id), shell=False)
         # IPMI ip pool
-        ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[5]), last=str(ipmi_net[5+n_servers]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
+        ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[config['mgmt-net']['start']]), last=str(ipmi_net[config['mgmt-net']['end']]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
         run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_pool), shell=False)
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
