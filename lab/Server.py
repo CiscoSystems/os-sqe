@@ -79,7 +79,7 @@ class Server(object):
 
         use_sudo = True if remote_path.startswith('/') else False
         with settings(**self.construct_settings(warn_only=False)):
-            self.run(command='sudo mkdir -p {0}'.format(in_directory))
+            self.run(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
             with cd(in_directory):
                 return put(local_path=StringIO(string_to_put), remote_path=remote_path, use_sudo=use_sudo)
 

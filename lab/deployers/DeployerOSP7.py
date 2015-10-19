@@ -80,7 +80,7 @@ class DeployerOSP7(Deployer):
 
     def __undercloud_config(self):
         iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server).split('\n')[0]
-        undercloud_config = self.undercloud_config_template.format(pxe_iface=iface.strip(':'),
+        undercloud_config = self.undercloud_config_template.format(pxe_iface=iface.strip(':\r'),
                                                                    cidr=str(self.undercloud_network),
                                                                    gw=str(self.undercloud_network[1]),
                                                                    local_ip=str(self.undercloud_network[2]),
@@ -93,19 +93,20 @@ class DeployerOSP7(Deployer):
                                                                    cloud_password=self.cloud_password,
                                                                    images_dir=self.images_dir
                                                                    )
-        self.put(what=undercloud_config, name='undercloud.conf', server=self.director_server)
+        self.director_server.put(string_to_put=undercloud_config, remote_path='undercloud.conf')
 
     def __deploy_undercloud(self):
         self.__undercloud_config()
-        self.run(command='openstack undercloud install', server=self.director_server)
+        self.director_server.run(command='openstack undercloud install')
         self.__wget_images()
-        subnet_id = self.run(command='source stackrc && neutron subnet-list -c id -f csv', server=self.director_server).split()[-1].strip('"')
-        dns_ip = self.run(command='grep nameserver /etc/resolv.conf', server=self.director_server).split()[-1]
-        self.run('source stackrc && neutron subnet-update {id} --dns-nameserver {ip}'.format(id=subnet_id, ip=dns_ip), server=self.director_server)
-        self.run(command='source stackrc && openstack baremetal import --json ~/overcloud.json', server=self.director_server)
-        self.run(command='source stackrc && openstack baremetal configure boot', server=self.director_server)
-        self.run(command='source stackrc && openstack baremetal introspection bulk start', server=self.director_server)
-        self.run(command='openstack baremetal list', server=self.director_server)
+        subnet_id = self.director_server.run(command='source stackrc && neutron subnet-list -c id -f csv').split()[-1].strip('"')
+        dns_ip = self.director_server.run(command='grep nameserver /etc/resolv.conf').split()[-1]
+        self.director_server.run('source stackrc && neutron subnet-update {id} --dns-nameserver {ip}'.format(id=subnet_id, ip=dns_ip))
+        self.director_server.run(command='source stackrc && openstack baremetal import --json ~/overcloud.json')
+        self.director_server.run(command='source stackrc && openstack baremetal configure boot')
+        self.director_server.run('date')
+        self.director_server.run(command='source stackrc && openstack baremetal introspection bulk start')
+        self.director_server.run(command='source stackrc && openstack baremetal list')
 
     def __deploy_overcloud(self):
         if not self.run(command='source stackrc &&  openstack flavor list | grep baremetal', server=self.director_server, warn_only=True):
@@ -170,7 +171,7 @@ class DeployerOSP7(Deployer):
         config_tmpl = read_config_from_file(yaml_path=os.path.join(CONFIG_DIR, 'osp7', yaml_name), is_as_string=True)
         config = config_tmpl.format(network_ucsm_ip=ucsm_ip, network_ucsm_username=ucsm_username, network_ucsm_password=ucsm_password,
                                     network_ucsm_host_list=','.join(mac_profiles))
-        self.director_server.put(strting_to_put=config, remote_path=yaml_name, in_directory='templates')
+        self.director_server.put(string_to_put=config, remote_path=yaml_name, in_directory='templates')
 
     def deploy_cloud(self, list_of_servers):
         from lab.Cloud import Cloud
