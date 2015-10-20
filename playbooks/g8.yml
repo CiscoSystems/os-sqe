@@ -51,6 +51,12 @@
           vlans: "{{ server_vlans }}"
         - channel: "{{ fabric_b_port_channel }}"
           vlans: "{{ server_vlans }}"
+    - name: create vpc domain
+      nxos_vpc:
+        domain: 1
+        pkl_src: "{{ source }}"
+        pkl_dest: "{{ peer_keapalive }}"
+        host: "{{ inventory_hostname }}"
     - name: create VPCs
       nxos_vpc_interface:
         portchannel: "{{ item.channel  }}"
