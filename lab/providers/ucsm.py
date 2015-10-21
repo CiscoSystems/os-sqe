@@ -158,7 +158,6 @@ def configure_for_osp7(yaml_path):
     import yaml
     from netaddr import IPNetwork
 
-
     if not os.path.isfile(yaml_path):
         raise IOError('{0} not found. Provide full path to your yaml config file'.format(yaml_path))
 
@@ -230,7 +229,7 @@ def configure_for_osp7(yaml_path):
                 profile = 'DIRECTOR'
                 director_num = server_num
             else:
-                profile = 'QA{0}'.format(server_num.replace('/', '-'))
+                profile = 'B{0}'.format(server_num.replace('/', '')) if '/' in server_num else 'C{0}'.format(server_num)
             # create service profile
             run('scope org; create service-profile {0}; set ipmi-access-profile IPMI; set bios-policy SRIOV; commit-buffer'.format(profile), shell=False)
             if server_num == director_num:
