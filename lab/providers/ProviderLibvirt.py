@@ -17,6 +17,7 @@ class ProviderLibvirt(Provider):
     def __init__(self, config):
         import libvirt
         import os
+        from lab.Server import Server
 
         super(ProviderLibvirt, self).__init__(config=config)
         self.lab_id = config['lab_id']
@@ -26,16 +27,16 @@ class ProviderLibvirt(Provider):
         self.network_names = {x: '{0}-{1}'.format(self.lab_id, x) for x in self.network_id}
         self.instances = config['instances']
 
-        self.dir_for_backing_disks = os.path.abspath(os.path.join(os.getenv('HOME'), 'libvirt_backing_images'))
-        self.dir_for_main_disks = os.path.abspath(os.path.join(os.getenv('HOME'), 'libvirt_main_disks'))
-        self.dir_for_saved_xml = os.path.abspath(os.path.join(os.getenv('HOME'), 'libvirt_saved_xml'))
+        self.dir_for_backing_disks = os.path.abspath(os.path.join(os.getenv('HOME'), 'libvirt', 'backing_images'))
+        self.dir_for_main_disks = os.path.abspath(os.path.join(os.getenv('HOME'), 'libvirt', 'main_disks'))
+        self.dir_for_saved_xml = os.path.abspath(os.path.join(os.getenv('HOME'), 'libvirt', 'saved_xml'))
         with open(self.CONFIG_DIR + '/libvirt/domain_template.txt') as f:
             self.domain_tmpl = f.read()
         self.connection = libvirt.open()
         self.servers = []
+        self.local = Server(ip='localhost')
 
     def delete_lab(self):
-        from fabric.api import local
         import libvirt
 
         servers_and_networks = self.connection.listAllDomains()
@@ -47,10 +48,10 @@ class ProviderLibvirt(Provider):
                 except libvirt.libvirtError:
                     pass
                 obj.undefine()
-        for bridge in local('brctl show | grep 8000 | grep {0} | cut -f1'.format(self.lab_id), capture=True).split('\n'):
+        for bridge in self.local.run(command='brctl show | grep 8000 | grep {0} | cut -f1'.format(self.lab_id)).split('\n'):
             if bridge:
-                local('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
-        local('rm -f {0}/*{1}*'.format(self.dir_for_main_disks, self.lab_id))
+                self.local.run('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
+        self.local.run('rm -f {0}/*{1}*'.format(self.dir_for_main_disks, self.lab_id))
 
     def create_networks(self):
         tmpl = '''
@@ -74,22 +75,15 @@ class ProviderLibvirt(Provider):
             lab_logger.info('Network {0} created'.format(name))
 
     def save_xml(self, name, xml):
-        from fabric.api import local
-
-        local('mkdir -p {0}'.format(self.dir_for_saved_xml))
-        with open(self.make_local_file_name(where=self.dir_for_saved_xml, name=name, extension='xml'), 'w') as f:
-            f.write(xml)
+        self.local.put(string_to_put=xml, file_name=name, in_directory=self.dir_for_saved_xml)
 
     @decorators.repeat_until_not_false(n_repetitions=50, time_between_repetitions=5)
     def ip_for_mac_by_looking_at_libvirt_leases(self, net, mac):
-        from fabric.api import settings, local
-
-        with settings(warn_only=True):
-            ans = local('sudo grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), capture=True)
-            if ans:
-                return ans.split(' ')[2]
-            else:
-                return ans
+        ans = self.local.run(command='sudo grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), warn_only=True)
+        if ans:
+            return ans.split(' ')[2]
+        else:
+            return ans
 
     def make_local_file_name(self, where, name, extension):
         import os
@@ -97,7 +91,6 @@ class ProviderLibvirt(Provider):
         return os.path.abspath(os.path.join(where, str(self.lab_id) + name + '.' + extension))
 
     def create_cloud_init_disk(self, hostname):
-        from fabric.api import local, settings
         import os
         import uuid
 
@@ -121,21 +114,15 @@ class ProviderLibvirt(Provider):
             f.write(meta_data)
 
         cloud_init_disk_path = self.make_local_file_name(where=self.dir_for_main_disks, name=hostname, extension='cloud_init.qcow2')
-        with settings(warn_only=False):
-            local('cloud-localds -d qcow2 {ci_d} {u_d} {m_d}'.format(ci_d=cloud_init_disk_path, u_d=user_data_path, m_d=meta_data_path))
+        self.local.run('cloud-localds -d qcow2 {ci_d} {u_d} {m_d}'.format(ci_d=cloud_init_disk_path, u_d=user_data_path, m_d=meta_data_path))
         return cloud_init_disk_path
 
     def create_main_disk(self, hostname, image_url, image_checksum):
-        from fabric.api import local, settings
+        back_disk = self.local.wget_file(url=image_url, checksum=image_checksum, to_directory=self.dir_for_backing_disks)
+        main_disk = self.make_local_file_name(where=self.dir_for_main_disks, name=hostname, extension='qcow2')
+        self.local.run(command='qemu-img create -f qcow2 -b {0} {1} 15G'.format(back_disk, main_disk), in_directory=self.dir_for_main_disks)
 
-        loc_back_disk = self.wget_file(url=image_url, checksum=image_checksum, to_directory=self.dir_for_backing_disks)
-
-        main_disk_path = self.make_local_file_name(where=self.dir_for_main_disks, name=hostname, extension='qcow2')
-        with settings(warn_only=False):
-            local('mkdir -p {0}'.format(self.dir_for_main_disks))
-            local('qemu-img create -f qcow2 -b {back_disk} {main_disk} 15G'.format(back_disk=loc_back_disk, main_disk=main_disk_path))
-
-        return main_disk_path
+        return main_disk
 
     def create_server(self, dev_num, hostname, on_nets, image_url, image_checksum):
         from lab.Server import Server
@@ -176,7 +163,7 @@ class ProviderLibvirt(Provider):
         ip = self.ip_for_mac_by_looking_at_libvirt_leases(net=net_names[0], mac=macs[0])
 
         lab_logger.info(msg='Domain {0} created'.format(hostname))
-        return Server(ip=ip, username=self.username, password=self.password)
+        return Server(ip=ip, username=self.username)
 
     def create_servers(self):
         for server_num, server in enumerate(self.instances, start=1):
@@ -185,16 +172,13 @@ class ProviderLibvirt(Provider):
         return self.servers
 
     def wait_for_servers(self):
-        from fabric.api import run, settings, sudo
-
         self.delete_lab()
         self.create_networks()
         servers = self.create_servers()
         for server in servers:
-            with settings(host_string='{user}@{ip}'.format(user=server.username, ip=server.ip), key_filename=self.PRIVATE_KEY, connection_attempts=50, warn_only=False):
-                server.hostname = run('hostname')
-                pwd = run('pwd')
-                run('chmod 755 {0}'.format(pwd))
-                if run('ip -o link | grep eth1', warn_only=True):
-                    sudo('ip l s dev eth1 up')
+            server.hostname = server.run('hostname')
+            pwd = server.run('pwd')
+            server.run('chmod 755 {0}'.format(pwd))
+            if server.run('ip -o link | grep eth1', warn_only=True):
+                server.run('sudo ip l s dev eth1 up')
         return servers

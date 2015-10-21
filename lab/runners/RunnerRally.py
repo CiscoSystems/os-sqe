@@ -23,8 +23,8 @@ class RunnerRally(Runner):
             task_body = f.read()
 
         server.create_user(new_username='rally')
-        server.put(string_to_put=open_rc_body, remote_path=open_rc_path)
-        server.put(string_to_put=task_body, remote_path=task_path)
+        server.put(string_to_put=open_rc_body, file_name=open_rc_path)
+        server.put(string_to_put=task_body, file_name=task_path)
 
         repo_dir = server.clone_repo(repo_url='https://git.openstack.org/openstack/rally.git')
         server.check_or_install_packages(package_names='libffi-devel gmp-devel postgresql-devel wget python-virtualenv')

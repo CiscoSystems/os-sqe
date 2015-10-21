@@ -93,7 +93,7 @@ class DeployerOSP7(Deployer):
                                                                    cloud_password=self.cloud_password,
                                                                    images_dir=self.images_dir
                                                                    )
-        self.director_server.put(string_to_put=undercloud_config, remote_path='undercloud.conf')
+        self.director_server.put(string_to_put=undercloud_config, file_name='undercloud.conf')
 
     def __deploy_undercloud(self):
         self.__undercloud_config()
@@ -171,7 +171,7 @@ class DeployerOSP7(Deployer):
         config_tmpl = read_config_from_file(yaml_path=os.path.join(CONFIG_DIR, 'osp7', yaml_name), is_as_string=True)
         config = config_tmpl.format(network_ucsm_ip=ucsm_ip, network_ucsm_username=ucsm_username, network_ucsm_password=ucsm_password,
                                     network_ucsm_host_list=','.join(mac_profiles))
-        self.director_server.put(string_to_put=config, remote_path=yaml_name, in_directory='templates')
+        self.director_server.put(string_to_put=config, file_name=yaml_name, in_directory='templates')
 
     def deploy_cloud(self, list_of_servers):
         from lab.Cloud import Cloud

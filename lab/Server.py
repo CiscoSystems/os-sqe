@@ -1,5 +1,5 @@
 class Server(object):
-    def __init__(self, ip, username, password, hostname='Unknown', ssh_public_key='N/A', ssh_port=22):
+    def __init__(self, ip, username='UnknownInServer', password='ssh_key', hostname='UnknownInServer', ssh_public_key='N/A', ssh_port=22):
         import os
         from lab.WithConfig import CONFIG_DIR
 
@@ -62,6 +62,9 @@ class Server(object):
         """Do run with possible sudo on remote server"""
         from fabric.api import run, sudo, settings, cd
 
+        if self.ip == 'localhost' or self.ip == '127.0.0.1':
+            return self.run_local(command, in_directory=in_directory, warn_only=warn_only)
+
         run_or_sudo = run
         if command.startswith('sudo '):
             command = command.replace('sudo ', '')
@@ -72,16 +75,35 @@ class Server(object):
                 result = run_or_sudo(command)
                 return result
 
-    def put(self, string_to_put, remote_path, in_directory='.'):
+    @staticmethod
+    def run_local(command, in_directory='.', warn_only=False):
+        from fabric.api import local, settings, lcd
+
+        if in_directory != '.':
+            local('mkdir -p {0}'.format(in_directory))
+        with settings(warn_only=warn_only):
+            with lcd(in_directory):
+                return local(command=command, capture=True)
+
+    def put(self, string_to_put, file_name, in_directory='.'):
         """Put given string as file to remote server"""
-        from fabric.api import put, settings, cd
+        from fabric.api import put, settings, cd, lcd, local
+        import os
         from StringIO import StringIO
 
-        use_sudo = True if remote_path.startswith('/') else False
-        with settings(**self.construct_settings(warn_only=False)):
+        use_sudo = True if in_directory.startswith('/') else False
+
+        if in_directory != '.':
             self.run(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
-            with cd(in_directory):
-                return put(local_path=StringIO(string_to_put), remote_path=remote_path, use_sudo=use_sudo)
+
+        if self.ip == 'localhost' or self.ip == '127.0.0.1':
+            with lcd(in_directory):
+                local('echo "{0}" > {1}'.format(string_to_put, file_name))
+                return os.path.abspath(os.path.join(in_directory, file_name))
+        else:
+            with settings(**self.construct_settings(warn_only=False)):
+                with cd(in_directory):
+                    return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)
 
     def get(self, remote_path, in_directory='.', local_path=None):
         """Get remote file as string or local file if local_path is specified"""
@@ -99,14 +121,15 @@ class Server(object):
         return local_path.getvalue() if isinstance(local_path, StringIO) else local_path
 
     def wget_file(self, url, to_directory, checksum):
+        import os
+
         loc = url.split('/')[-1]
-        self.run(command='mkdir -p {0}'.format(to_directory))
         self.run(command='test -e  {loc} || wget -nv {url} -O {loc}'.format(loc=loc, url=url), in_directory=to_directory)
         calc_checksum = self.run(command='sha256sum {loc}'.format(loc=loc), in_directory=to_directory)
         if calc_checksum.split()[0] != checksum:
             self.run(command='rm {0}'.format(loc), in_directory=to_directory)
             raise RuntimeError('I deleted image {0} since it is broken (checksum is not matched). Re-run the script'.format(loc))
-        return loc
+        return os.path.abspath(os.path.join(to_directory, loc))
 
     def check_or_install_packages(self, package_names):
         pm = self.get_package_manager()
