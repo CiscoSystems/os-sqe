@@ -8,7 +8,7 @@ from fabs import coi, tempest, snap, devstack, redhat, coverage, cirros, special
 from fabs import jenkins_reports
 from lab import BaseLab
 from lab.providers import cobbler, ucsm, n9k
-
+from lab.runners import rally
 
 @timed
 def venv(private=False):

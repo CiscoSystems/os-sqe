@@ -17,4 +17,6 @@ class Runner(WithConfig, WithRunMixin):
 
         cmd = 'sudo grep -i ERROR /var/log/neutron/* | grep -i ucsm'
         configs.append('\n{0} gives:\n {1}'.format(cmd, server.run(cmd)))
-        return '\n\n'.join(configs)
+
+        with open('configs-logs.txt', 'w') as f:
+            f.write('\n\n'.join(configs))

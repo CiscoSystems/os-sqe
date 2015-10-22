@@ -1,17 +1,17 @@
 ---
   NovaServers.boot_and_delete_multiple_servers:
-   {% for n_tenants in range(10, 50, 10) %}
+   {% for n_tenants in range({n_tenants_start_end_step}) %}
     -
       args:
         image:
-          name: "^cirros.*img$"
+          name: "^cirros"
         flavor:
           name: "m1.tiny"
         count: 2
       runner:
         type: "constant"
         times: {{n_tenants}}
-        concurrency: 7
+        concurrency: {concurrency}
       context:
         users:
           tenants: {{n_tenants}}
