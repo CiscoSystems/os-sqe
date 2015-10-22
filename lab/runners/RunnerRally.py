@@ -34,6 +34,6 @@ class RunnerRally(Runner):
         server.run(command='./install_rally.sh -y -d {0}'.format(venv_path), in_directory=repo_dir)
         server.run(command='source {0} && {1}/bin/rally deployment create --fromenv --name {2}'.format(open_rc_path, venv_path, self.cloud_name))
         server.run(command='{0}/bin/rally task start {1}'.format(venv_path, task_path))
-        server.run(command='{0}/bin/rally task report --output {1}'.format(venv_path, results_path))
+        server.run(command='{0}/bin/rally task report --out {1}'.format(venv_path, results_path))
         server.get(results_path=results_path, local_path=results_path)
         self.get_artefacts(server=server)
