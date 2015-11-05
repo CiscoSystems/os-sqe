@@ -119,26 +119,32 @@ class DeployerOSP7(Deployer):
                 self.run(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" '
                                  '--property "capabilities:profile"="{0}" {0}'.format(x), server=self.director_server)
 
-        n_control_served = 0
-        for line in self.run(command='source stackrc && ironic node-list', server=self.director_server).split('\n'):
-            if line.startswith('+') or line.startswith('| UUID'):
-                continue
-            uuid = line.split()[1]
-            profile = 'control' if n_control_served < 3 else 'compute'
-            self.run(command='source stackrc && ironic node-update {0} replace properties/capabilities=profile:{1},boot_option:local'.format(uuid, profile),
-                     server=self.director_server)
-            n_control_served += 1
+        n_controls = 3
 
-        self.run(command='source stackrc && openstack overcloud deploy --templates '
-                         '-e /usr/share/openstack-tripleo-heat-templates/overcloud-resource-registry-puppet.yaml '
-                         '-e /home/stack/templates/networking-cisco-environment.yaml '
-                         '--control-flavor control --compute-flavor compute '
-                         '--control-scale 3 --compute-scale 1 --ceph-storage-scale 0 --block-storage-scale 0 --swift-storage-scale 0 '
-                         '--neutron-network-type vlan --neutron-disable-tunneling '
-                         '--neutron-public-interface eth0 --hypervisor-neutron-public-interface eth0 '
-                         '--neutron-tunnel-type vlan '
-                         '--neutron-network-vlan-ranges datacentre:10:2500 '
-                         '--ntp-server 1.ntp.esl.cisco.com', server=self.director_server)
+        results = self.run(command='source stackrc && ironic node-list', server=self.director_server).split('\n')
+        uuids = [line.split()[1] for line in results if line.startswith('+') or line.startswith('| UUID')]
+        if len(uuids) < n_controls:
+            raise ErrorDeployerOSP7('not enough bare-metal nodes to deploy {0} controllers'.format(n_controls))
+
+        n_computes = len(uuids) - n_controls
+
+        cmd = 'source stackrc && ironic node-update {0} replace properties/capabilities=profile:{1},boot_option:local'
+        map(lambda uuid: self.run(command=cmd.format(uuid, 'control'), server=self.director_server), uuids[:n_controls])
+        map(lambda uuid: self.run(command=cmd.format(uuid, 'compute'), server=self.director_server), uuids[n_controls:])
+
+        command = 'source stackrc && openstack overcloud deploy --templates ' \
+                  '-e /usr/share/openstack-tripleo-heat-templates/overcloud-resource-registry-puppet.yaml ' \
+                  '-e /home/stack/templates/networking-cisco-environment.yaml ' \
+                  '--control-flavor control --compute-flavor compute ' \
+                  '--control-scale {n_controls} --compute-scale {n_computes} --ceph-storage-scale 0 --block-storage-scale 0 --swift-storage-scale 0 ' \
+                  '--neutron-network-type vlan --neutron-disable-tunneling ' \
+                  '--neutron-public-interface eth0 --hypervisor-neutron-public-interface eth0 ' \
+                  '--neutron-tunnel-type vlan ' \
+                  '--neutron-network-vlan-ranges datacentre:10:2500 ' \
+                  '--ntp-server 1.ntp.esl.cisco.com'.format(n_controls=n_controls, n_computes=n_computes)
+
+        self.director_server.put(string_to_put=command, file_name='RE-DEPLOY')
+        self.director_server.run(command=command)
 
     def __create_overcloud_config_and_template(self, servers):
         import json

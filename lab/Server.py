@@ -91,7 +91,7 @@ class Server(object):
         import os
         from StringIO import StringIO
 
-        use_sudo = True if in_directory.startswith('/') else False
+        use_sudo = True if in_directory.startswith('/etc') else False
 
         if in_directory != '.':
             self.run(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
