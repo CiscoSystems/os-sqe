@@ -27,9 +27,9 @@ class ProviderLibvirt(Provider):
         self.network_names = {x: '{0}-{1}'.format(self.lab_id, x) for x in self.network_id}
         self.instances = config['instances']
 
-        self.dir_for_backing_disks = os.path.abspath(os.path.join(os.getenv('HOME'), 'libvirt', 'backing_images'))
-        self.dir_for_main_disks = os.path.abspath(os.path.join(os.getenv('HOME'), 'libvirt', 'main_disks'))
-        self.dir_for_saved_xml = os.path.abspath(os.path.join(os.getenv('HOME'), 'libvirt', 'saved_xml'))
+        self.dir_for_backing_disks = os.path.abspath(os.path.join('/tmp', 'libvirt', 'backing_images'))
+        self.dir_for_main_disks = os.path.abspath(os.path.join('/tmp', 'libvirt', 'main_disks'))
+        self.dir_for_saved_xml = os.path.abspath(os.path.join('/tmp', 'libvirt', 'saved_xml'))
         with open(self.CONFIG_DIR + '/libvirt/domain_template.txt') as f:
             self.domain_tmpl = f.read()
         self.connection = libvirt.open()
