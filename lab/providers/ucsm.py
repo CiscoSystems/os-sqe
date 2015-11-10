@@ -179,10 +179,10 @@ def configure_for_osp7(yaml_path):
     pxe_ext_mac = '00:25:B5:{0:02}:FE:FE'.format(lab_id)
     uplink_port_channel_id = 81
 
-    mac_pools = [('eth0', '00:25:B5:{0:02}:00'.format(lab_id), 2000),
-                 ('eth1', '00:25:B5:{0:02}:01'.format(lab_id), 2001),
+    mac_pools = [('eth0', '00:25:B5:{0:02}:00'.format(lab_id), 3000),
+                 ('eth1', '00:25:B5:{0:02}:01'.format(lab_id), 3001),
                  ('mgmt', '00:25:B5:{0:02}:AA'.format(lab_id), mgmt_vlan),
-                 ('pxe-int', '00:25:B5:{0:02}:EE'.format(lab_id), 2222)]
+                 ('pxe-int', '00:25:B5:{0:02}:EE'.format(lab_id), config['undercloud-net']['vlan'])]
 
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
         server_nums = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
