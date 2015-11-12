@@ -2,10 +2,18 @@
     sudo pip install ansible
 #. Install pycsco
     sudo pip install pycsco
-#. Clone https://github.com/jedelman8/nxos-ansible.git project
-    git clone https://github.com/jedelman8/nxos-ansible.git
+#. Clone https://github.com/nikolay-fedotov/nxos-ansible.git project
+    git clone https://github.com/nikolay-fedotov/nxos-ansible.git
 #. Define ANSIBLE_LIBRARY environment variable. It should points to library folder in nxos-ansible project:
     export ANSIBLE_LIBRARY="nxos-ansible/library"
+#. Create file ".netauth" in home directory. Content:
+---
+
+cisco:
+  nexus:
+    username: "<username>"
+    password: "<password>"
+    
 #. CD to "openstack-sqe/playbooks" folder
 #. Run playbook. For example g8 playbook:
     ansible-playbook -i intventory.txt --extra-vars "state=present" g8.yml
