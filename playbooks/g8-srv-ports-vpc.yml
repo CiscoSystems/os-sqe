@@ -1,0 +1,59 @@
+---
+
+- name: G8 playbook
+  hosts: g8
+  gather_facts: no
+
+  tasks:
+
+    - name: config server ports
+      nxos_interface:
+        interface: "{{ item }}"
+        mode: layer2
+        host: "{{ inventory_hostname }}"
+        state: "{{ state }}"
+      with_items:
+        "{{ server_ports }}"
+    - name: create port-channels
+      nxos_portchannel:
+        group: "{{ item.1 }}"
+        members: "{{ item.0 }}"
+        mode: active
+        host: "{{ inventory_hostname }}"
+        state: "{{ state }}"
+      with_together:
+        - "{{ server_ports }}"
+        - "{{ server_vpcs }}"
+    - name: config port-channels
+      nxos_interface:
+        interface: "Po{{ item }}"
+        mode: layer2
+        host: "{{ inventory_hostname }}"
+        state: "{{ state }}"
+      with_items:
+        "{{ server_vpcs }}"
+    - name: add vlans to port-channels
+      nxos_switchport:
+        interface: "Po{{ item }}"
+        mode: trunk
+        trunk_vlans: "{{ server_vlans }}"
+        host: "{{ inventory_hostname }}"
+        state: "{{ state }}"
+      when: state == "present"
+      with_items:
+        "{{ server_vpcs }}"
+
+    - name: create vpc domain
+      nxos_vpc:
+        domain: 1
+        pkl_src: "{{ source }}"
+        pkl_dest: "{{ peer_keapalive }}"
+        host: "{{ inventory_hostname }}"
+    - name: create VPCs
+      nxos_vpc_interface:
+        portchannel: "{{ item  }}"
+        vpc: "{{ item  }}"
+        host: "{{ inventory_hostname }}"
+        state: "{{ state }}"
+      with_items:
+        "{{ server_vpcs }}"

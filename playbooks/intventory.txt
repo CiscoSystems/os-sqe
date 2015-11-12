@@ -26,6 +26,7 @@ fabric_b_ports='["Eth1/10"]'
 fabric_b_port_channel=82
 
 server_ports='["Eth1/3", "Eth1/4"]'
+server_vpcs='[3, 4]'
 
 [ucsm]
 localhost ansible_connection=local
