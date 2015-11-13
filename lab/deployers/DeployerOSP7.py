@@ -8,9 +8,7 @@ class ErrorDeployerOSP7(Exception):
 class DeployerOSP7(Deployer):
 
     def sample_config(self):
-        return {'rdo_account': 'email as username on RDO',
-                'rdo_password': 'password on RDO',
-                'rdo_pool_id': 'pool ID on RDO',
+        return {'rh-secret': 'http:// file with RH creds',
                 'undercloud_network_cidr': 'cidr',
                 'images_url': 'http://1.1.1.1/path/to/dir',
                 'director': 'ipv4 of host to match with provided list of servers',
@@ -20,12 +18,16 @@ class DeployerOSP7(Deployer):
     def __init__(self, config):
         import os
         from netaddr import IPNetwork
+        import requests
         from lab.WithConfig import CONFIG_DIR
 
         super(DeployerOSP7, self).__init__(config=config)
-        self.rdo_account = config['rdo_account']
-        self.rdo_password = config['rdo_password']
-        self.rdo_pool_id = config['rdo_pool_id']
+
+        rh_creds = requests.get(config['rh-secret']).text
+        rh = {x.split('=')[0].strip(): x.split('=')[1].strip() for x in rh_creds.split('\n') if x}
+        self.rh_account = rh['rhel_username']
+        self.rh_password = rh['rhel_password']
+        self.rh_pool_id = rh['rhel_pool']
         self.images_url = config['images_url']
         self.director_ip = config['director']
         self.cloud_password = config['cloud_password']
@@ -71,8 +73,8 @@ class DeployerOSP7(Deployer):
                            '--enable=rhel-7-server-openstack-7.0-director-rpms']
 
         if 'Subscribed' not in self.director_server.run(command='subscription-manager list'):
-            self.director_server.run(command='sudo subscription-manager register --username={0} --password={1}'.format(self.rdo_account, self.rdo_password))
-            self.director_server.run(command='sudo subscription-manager attach --pool={0}'.format(self.rdo_pool_id))
+            self.director_server.run(command='sudo subscription-manager register --username={0} --password={1}'.format(self.rh_account, self.rh_password))
+            self.director_server.run(command='sudo subscription-manager attach --pool={0}'.format(self.rh_pool_id))
             self.director_server.run(command='sudo subscription-manager repos --disable=*')
             self.director_server.run(command='sudo subscription-manager repos ' + ' '.join(repos_to_enable))
             self.director_server.run(command='sudo yum update -y')

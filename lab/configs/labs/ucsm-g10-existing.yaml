@@ -1,8 +1,6 @@
 provider1: {ProviderExisting: [{host: 10.23.230.132, username: root, password: cisco123}]}
 provider2: {ProviderUCSM: {yaml_path: g10.yaml}}
-deployer: {DeployerOSP7: {rdo_account: ymorkovn@cisco.com,
-                          rdo_password: 280778,
-                          rdo_pool_id: 8a85f9864cfbfc41014cfc065097403b,
+deployer: {DeployerOSP7: {rh-secret: http://172.29.173.233/redhat/osp7/redhat-developers-account.yaml,
                           undercloud_network_cidr: '10.11.12.0/24',
                           images_url: 'http://172.29.173.233/redhat/osp7',
                           director: 10.23.230.132,
