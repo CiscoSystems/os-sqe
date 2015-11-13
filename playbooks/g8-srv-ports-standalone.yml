@@ -1,0 +1,26 @@
+---
+
+- name: G8 playbook
+  hosts: g8
+  gather_facts: no
+
+  tasks:
+
+    - name: config server ports
+      nxos_interface:
+        interface: "{{ item }}"
+        mode: layer2
+        host: "{{ inventory_hostname }}"
+        state: "{{ state }}"
+      with_items:
+        "{{ server_ports }}"
+    - name: add vlans to server ports
+      nxos_switchport:
+        interface: "{{ item }}"
+        mode: trunk
+        trunk_vlans: "{{ server_vlans }}"
+        host: "{{ inventory_hostname }}"
+        state: "{{ state }}"
+      when: state == "present"
+      with_items:
+        "{{ server_ports }}"

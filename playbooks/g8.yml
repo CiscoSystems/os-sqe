@@ -73,32 +73,3 @@
         peer_link: true
         host: "{{ inventory_hostname }}"
         state: "{{ state }}"
-
-    - name: config server ports
-      nxos_interface:
-        interface: "{{ item }}"
-        mode: layer2
-        host: "{{ inventory_hostname }}"
-        state: "{{ state }}"
-      with_items:
-        "{{ server_ports }}"
-    - name: add vlans to server ports
-      nxos_switchport:
-        interface: "{{ item }}"
-        mode: trunk
-        trunk_vlans: "{{ server_vlans }}"
-        host: "{{ inventory_hostname }}"
-        state: "{{ state }}"
-      when: state == "present"
-      with_items:
-        "{{ server_ports }}"
-
-- name: G8 UCSM playbook
-  hosts: ucsm
-  gather_facts: no
-  tasks:
-    - shell: pwd
-    - name: Clear UCSM
-      shell: "fab ucsm.cleanup:{{ ucsm_vip }},{{ ucsm_user }},{{ ucsm_password }}"
-    - name: Configure UCSM
-      shell: "fab ucsm.configure_for_osp7:../lab/configs/labs/g8.yaml"
