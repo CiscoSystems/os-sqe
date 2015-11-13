@@ -11,21 +11,14 @@ def configure_for_osp7(yaml_path):
 
     config = read_config_from_file(yaml_path=yaml_path)
 
-    lab_id = config['lab-id']
-
     cobbler_host = config['cobbler']['host']
     cobbler_username = config['cobbler']['username']
     cobbler_password = config['cobbler']['password']
-    cobbler_iface_name = config['cobbler']['iface-name']
 
-    ucsm_director_profile_name = config['ucsm']['director-profile']
     user_net = IPNetwork(config['user-net']['cidr'])
-    user_iface_name = config['user-net']['iface-name']
 
     ucsm_info = ucsm.read_config_ssh(yaml_path=yaml_path)
-    server = ucsm_info[ucsm_director_profile_name]
-    mac_user = server.get_mac(iface_name=user_iface_name)
-    mac_cobbler = server.get_mac(iface_name=cobbler_iface_name)
+    server = ucsm_info[str(config['ucsm']['director-server-id'])]
 
     ipmi_ip = str(server.ipmi['ip'])
     ipmi_username = server.ipmi['username']
@@ -34,17 +27,18 @@ def configure_for_osp7(yaml_path):
     cobbler = xmlrpclib.Server(uri="http://{host}/cobbler_api".format(host=cobbler_host))
 
     token = cobbler.login(cobbler_username, cobbler_password)
-    handle = cobbler.get_system_handle('G{0}-DIRECTOR'.format(lab_id), token)
+    handle = cobbler.get_system_handle('G{0}-DIRECTOR'.format(config['lab-id']), token)
 
-    cobbler.modify_system(handle, 'comment', 'This system is created by {0} for LAB{1} at {2}'.format(__file__, lab_id, time_as_string()), token)
-    cobbler.modify_system(handle, 'hostname', 'g{0}-director.ctocllab.cisco.com'.format(lab_id), token)
+    cobbler.modify_system(handle, 'comment', 'This system is created by {0} for LAB{1} at {2}'.format(__file__, config['lab-id'], time_as_string()), token)
+    cobbler.modify_system(handle, 'hostname', 'g{0}-director.ctocllab.cisco.com'.format(config['lab-id']), token)
     cobbler.modify_system(handle, 'gateway', str(user_net[1]), token)
 
-    cobbler.modify_system(handle, 'modify_interface', {'macaddress-MGMT': mac_user,
-                                                       'ipaddress-MGMT': str(user_net[4]),
-                                                       'static-MGMT': True,
-                                                       'subnet-MGMT': str(user_net.netmask)}, token)
-    cobbler.modify_system(handle, 'modify_interface', {'macaddress-PXE-EXT': mac_cobbler}, token)
+    for iface, mac in server.get_mac('all').iteritems():
+        cobbler.modify_system(handle, 'modify_interface', {'macaddress-{0}'.format(iface): mac}, token)
+        if iface == config['user-net']['iface-name']:
+            cobbler.modify_system(handle, 'modify_interface', {'ipaddress-{0}'.format(iface): str(user_net[4]),
+                                                               'static-{0}'.format(iface): True,
+                                                               'subnet-{0}'.format(iface): str(user_net.netmask)}, token)
 
     cobbler.modify_system(handle, 'power_address', ipmi_ip, token)
     cobbler.modify_system(handle, 'power_user', ipmi_username, token)

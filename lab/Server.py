@@ -27,15 +27,19 @@ class Server(object):
         self.ipmi['username'] = username
         self.ipmi['password'] = password
 
-    def set_ucsm(self, ip, username, password, service_profile, iface_mac):
+    def set_ucsm(self, ip, username, password, service_profile, server_id, iface_mac):
         self.ucsm['ip'] = ip
         self.ucsm['username'] = username
         self.ucsm['password'] = password
         self.ucsm['service-profile'] = service_profile
         self.ucsm['iface_mac'] = iface_mac
+        self.ucsm['server-id'] = server_id
 
     def get_mac(self, iface_name):
-        return self.ucsm['iface_mac'].get(iface_name, 'UnknownInServer')
+        if iface_name in self.ucsm['iface_mac']:
+            return self.ucsm['iface_mac'].get(iface_name, 'UnknownInServer')
+        else:
+            return self.ucsm['iface_mac']
 
     def get_package_manager(self):
         if not self.package_manager:
