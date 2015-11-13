@@ -4,8 +4,8 @@ localhost ansible_connection=local
 # Add lines to /etc/hosts
 # 172.31.229.207 g8-N9k1
 # 172.31.230.234 g8-N9k2
-g8-N9k1	ansible_connection=local peer_keapalive=172.31.230.234 source=172.31.229.207
-g8-N9k2	ansible_connection=local peer_keapalive=172.31.229.207 source=172.31.230.234
+g8-N9k1	ansible_connection=local peer_keapalive=172.31.230.234 source=172.31.229.207 lo1_ip=1.1.1.221 lo2_ip=2.2.2.221 eth48_ip=169.0.1.1
+g8-N9k2	ansible_connection=local peer_keapalive=172.31.229.207 source=172.31.230.234 lo1_ip=1.1.1.222 lo2_ip=2.2.2.222 eth48_ip=169.0.2.1
 
 [g8:vars]
 state=present
@@ -26,6 +26,9 @@ fabric_b_ports='["Eth1/10"]'
 fabric_b_port_channel=82
 
 server_ports='["Eth1/3", "Eth1/4"]'
+
+router_ospf=111
+router_area=0.0.0.0
 
 [ucsm]
 localhost ansible_connection=local
