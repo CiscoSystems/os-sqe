@@ -82,8 +82,8 @@ class DeployerOSP7(Deployer):
         iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server).split('\n')[0]
         undercloud_config = self.undercloud_config_template.format(pxe_iface=iface.strip(':\r'),
                                                                    cidr=str(self.undercloud_network),
-                                                                   gw=str(self.undercloud_network[1]),
-                                                                   local_ip=str(self.undercloud_network[2]),
+                                                                   gw=str(self.undercloud_network[1]),  # gw == local_ip! possible bug or feature?
+                                                                   local_ip=str(self.undercloud_network[1]),
                                                                    public_vip=str(self.undercloud_network[3]),
                                                                    admin_vip=str(self.undercloud_network[4]),
                                                                    dhcp_start=str(self.undercloud_network[100]),
