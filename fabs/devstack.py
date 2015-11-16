@@ -11,11 +11,6 @@ from fabs import LabIds
 
 env.update(DEFAULT_SETTINGS)
 
-__all__ = ['prepare', 'install', 'setup',
-           'run_test_original_file', 'run_test_custom_file',
-           'run_test_ready_file', 'run_test_remote',
-           'snapshot_create', 'set_branch', 'patchset', 'plus_dhcp6', 'plus_n1kv', 'plus_dibbler', 'plus_nxos', 'neutron', 'mercury', 'aio6']
-
 
 @task
 @timed
@@ -228,4 +223,53 @@ def aio6(lab_id=LabIds.devstack_aio6,  cleanup='do not cleanup'):
     """Run all in one OS deployed on v6 only virtual host"""
 
     lab = MyLab(lab_id=lab_id, topology_name='aio6',)
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+
+@task
+@timed
+def multinode(lab_id=LabIds.devstak_multinode, cleanup='do not cleanup'):
+
+    """Deploy devstack multinode: 1 all-but-compute, 3 computes"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='devstack_multinode')
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+@task
+@timed
+def ucsm(lab_id=LabIds.ucsm, cleanup='do not cleanup'):
+
+    """Deploy devstack with ucsm plugin: 1 all-but-compute, 3 computes"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='ucsm4')
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+@task
+@timed
+def ucsm_g10(lab_id=LabIds.ucsm_g10, phase='lab', cleanup='do not cleanup'):
+
+    """Deploy devstack with ucsm plugin on G10 hardware lab: 1 all-but-compute, 3 computes """
+
+    lab = MyLab(lab_id=lab_id, topology_name='ucsm-g10')
+    lab_create_delete(lab_obj=lab, phase=phase, cleanup=cleanup)
+
+@task
+@timed
+def neutron46(lab_id=LabIds.devstack_neutron_46, cleanup='do not cleanup'):
+
+    """Deploy devstack neutron only: Special for Neutron API tests"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='neutron46')
+    lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)
+
+
+@task
+@timed
+def aio46(lab_id=LabIds.devstack_aio_46, cleanup='do not cleanup',
+          devstack_conf_addon=''):
+
+    """Deploy devstack aio46: Special for Neutron API tests"""
+
+    lab = MyLab(lab_id=lab_id, topology_name='aio46',
+                devstack_conf_addon=devstack_conf_addon)
     lab_create_delete(lab_obj=lab, phase='lab', cleanup=cleanup)

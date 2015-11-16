@@ -1,0 +1,19 @@
+<network>
+    <name>net{name}</name>
+    <bridge name='br{name}' />
+    <forward mode="nat"/>
+    <ip address='10.{lab_id}.0.1' netmask='255.255.255.0'>
+      <dhcp>
+        <range start='10.{lab_id}.0.2' end='10.{lab_id}.0.254' />
+      </dhcp>
+    </ip>
+</network>
+
+<network>
+    <name>lab{lab_id}-6</name>
+    <bridge name='br{lab_id}-6' />
+    <forward mode="nat"/>
+    <ip family="ipv6" address='20{lab_id:02}::1' prefix='64'>
+    </ip>
+</network>
+

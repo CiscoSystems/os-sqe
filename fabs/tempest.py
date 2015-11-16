@@ -192,3 +192,12 @@ def run_remote_tests():
         wrk=WORKSPACE, ip=ip, args=args, repo=tempest_repo,
         br=tempest_br, kill_time=QA_KILLTIME, wait_time=QA_WAITTIME,
         test_time=OS_TEST_TIMEOUT, ps=tempest_patch_set))
+
+
+@task
+@timed
+def create_tempest_conf(cloud_controller_ip):
+    from os_inspector import OS
+
+    os_inspector = OS(ip=cloud_controller_ip)
+    os_inspector.create_tempest_conf()

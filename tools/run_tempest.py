@@ -29,6 +29,9 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
                 'password': password,
                 'warn_only': True}
     with api.settings(**settings):
+        if not files.exists(tempest_dir):
+            api.run('mkdir -p {dest}'.format(dest=tempest_dir))
+            api.run('git clone {repo} {dest}'.format(repo=tempest_repo, dest=tempest_dir))
         with api.cd(tempest_dir):
             random_name = ''.join(random.choice(string.lowercase) for _ in range(5))
             api.run('git remote add {name} {repo}'.format(name=random_name, repo=tempest_repo))
@@ -41,6 +44,7 @@ def main(host, user, password, tempest_filter, tempest_dir, tempest_list_file,
             if patch_set:
                 api.run('git fetch https://review.gerrithub.io/cisco-openstack/tempest'
                         ' {0} && git checkout FETCH_HEAD'.format(patch_set))
+            api.run(command='if [ ! -d ".tox/venv/bin" ]; then tox -revenv -- verify-tempest-config; fi')
             api.run(command='testr init')
             api.run(command=cmd)
             api.run(command=TEMPEST_SUBUNIT_CMD)

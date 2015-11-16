@@ -1,0 +1,8 @@
+disable_service n-net
+enable_service q-svc q-agt q-l3 q-dhcp q-meta q-metering neutron tempest
+
+[[post-config|/etc/neutron/neutron.conf]]
+[DEFAULT]
+default_ipv6_subnet_pool = prefix_delegation
+pd_dhcp_driver = neutron_pd_agent
+pd_interface = eth1

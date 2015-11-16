@@ -11,7 +11,7 @@ servers:
       enable_service mysql q-svc q-agt q-l3 q-dhcp q-meta q-lbaas q-vpn q-fwaas q-metering neutron
       disable_service n-net
       enable_service s-proxy s-object s-container s-account
-      enable_plugin networking-cisco https://git.openstack.org/stackforge/networking-cisco.git
+      enable_plugin networking-cisco https://git.openstack.org/openstack/networking-cisco.git
       enable_service net-cisco
       LIBVIRT_TYPE=qemu
       Q_PLUGIN=ml2
@@ -27,7 +27,13 @@ servers:
       ENABLE_TENANT_TUNNELS=False
       Q_ML2_TENANT_NETWORK_TYPE=vlan
       RECLONE=True
+      [[post-config|/etc/neutron/neutron.conf]]
+      [DEFAULT]
+      advertise_mtu = True
       [[post-config|/opt/stack/networking-cisco/etc/neutron/plugins/ml2/ml2_conf_cisco.ini]]
+      [ml2]
+      segment_mtu = 1000
+      path_mtu = 1200
       [ml2_cisco]
       managed_physical_network = physnet1
       [ml2_mech_cisco_nexus:172.22.191.18]
@@ -77,7 +83,13 @@ servers:
       ENABLE_TENANT_TUNNELS=False
       Q_ML2_TENANT_NETWORK_TYPE=vlan
       RECLONE=True
+      [[post-config|/etc/neutron/neutron.conf]]
+      [DEFAULT]
+      advertise_mtu = True
       [[post-config|/opt/stack/networking-cisco/etc/neutron/plugins/ml2/ml2_conf_cisco.ini]]
+      [ml2]
+      segment_mtu = 1000
+      path_mtu = 1200
       [ml2_cisco]
       managed_physical_network = physnet1
       [ml2_mech_cisco_nexus:172.22.191.18]

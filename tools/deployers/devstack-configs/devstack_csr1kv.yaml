@@ -75,8 +75,8 @@ servers:
       Q_CISCO_PLUGIN_VSM_IP=192.168.168.2
       Q_CISCO_PLUGIN_VSM_USERNAME=admin
       Q_CISCO_PLUGIN_VSM_PASSWORD=Sfish123
-      Q_CISCO_PLUGIN_VSM_ISO_IMAGE=/home/localadmin/n1000v-dk9.5.2.1.SK3.1.0.181.iso
-      Q_CISCO_PLUGIN_UVEM_DEB_IMAGE=/home/localadmin/nexus_1000v_vem-12.04-5.2.1.SK3.1.0.181.S0-0gdb.deb
+      Q_CISCO_PLUGIN_VSM_ISO_IMAGE=/home/localadmin/n1000v-dk9.5.2.1.SK3.2.1a.iso
+      Q_CISCO_PLUGIN_UVEM_DEB_IMAGE=/home/localadmin/nexus_1000v_vem-14.04-5.2.1.SK3.2.1a.S0-0.deb
       Q_CISCO_PLUGIN_HOST_MGMT_INTF=eth1
       #Q_CISCO_PLUGIN_UPSTREAM_INTF=eth1
       #Q_CISCO_PLUGIN_UPLINK2_INTF=eth1
@@ -90,7 +90,7 @@ servers:
       Q_CISCO_MGMT_SUBNET_USAGE_RANGE_END=10.0.200.254
 
       Q_CISCO_ROUTER_PLUGIN=yes
-      Q_CISCO_CSR1KV_QCOW2_IMAGE=/home/localadmin/csr1000v-universalk9.03.13.00.S.154-3.S-ext.qcow2
+      Q_CISCO_CSR1KV_QCOW2_IMAGE=/home/localadmin/csr1000v-universalk9.03.14.01.S.155-1.S1-std.qcow2
 
       GIT_BASE=https://github.com
 
@@ -107,9 +107,9 @@ servers:
       mv local.conf localrc
       sed -i '/[[local|localrc]]/d' localrc
       cd ~
-      rm -rf n1000v-dk9.5.2.1.SK3.1.0.181.iso || true
-      rm -rf nexus_1000v_vem-12.04-5.2.1.SK3.1.0.181.S0-0gdb.deb || true
-      rm -rf csr1000v-universalk9.03.13.00.S.154-3.S-ext.qcow2 || true
-      wget http://172.29.173.233/n1kv/n1000v-dk9.5.2.1.SK3.1.0.181.iso
-      wget http://172.29.173.233/n1kv/nexus_1000v_vem-12.04-5.2.1.SK3.1.0.181.S0-0gdb.deb
-      wget http://172.29.173.233/csr/csr1000v-universalk9.03.13.00.S.154-3.S-ext.qcow2
+      rm -rf n1000v-dk9.5.2.1.SK3.2.1a.iso || true
+      rm -rf nexus_1000v_vem-14.04-5.2.1.SK3.2.1a.S0-0.deb || true
+      rm -rf csr1000v-universalk9.03.14.01.S.155-1.S1-std.qcow2 || true
+      wget http://172.29.173.233/n1kv/n1000v-dk9.5.2.1.SK3.2.1a.iso
+      wget http://172.29.173.233/n1kv/nexus_1000v_vem-14.04-5.2.1.SK3.2.1a.S0-0.deb
+      wget http://172.29.173.233/csr/csr1000v-universalk9.03.14.01.S.155-1.S1-std.qcow2

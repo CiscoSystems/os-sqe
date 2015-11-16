@@ -1,7 +1,7 @@
-IMAGE_URLS="http://172.29.173.233/ubuntu-14.04-server-cloudimg-amd64.tar.gz"
-
-ENABLED_SERVICES=n-cpu,n-api,c-sch,c-api,c-vol,q-agt,q-l3,q-dhcp
+MULTI_HOST=1
+ENABLED_SERVICES=n-cpu,n-api,q-agt,q-l3,q-dhcp
 disable_service n-net
+
 
 SERVICE_HOST={controller_ip}
 MYSQL_HOST={controller_ip}

@@ -1,0 +1,2 @@
+disable_service n-net
+enable_service q-svc q-agt q-l3 q-dhcp q-meta q-metering neutron  q-lbaas q-vpn q-fwaas tempest

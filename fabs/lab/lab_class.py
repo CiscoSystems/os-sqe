@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from fabric.api import local, settings, sudo, put, get, run, cd, lcd
+from fabric.context_managers import shell_env, warn_only
 import yaml
 import exceptions
 import re
 import os
-import libvirt
 import sys
 from StringIO import StringIO
 
@@ -29,6 +29,7 @@ CONN = None
 
 
 def _conn():
+    import libvirt
     global CONN
 
     if not CONN:
@@ -36,36 +37,90 @@ def _conn():
     return CONN
 
 
+class CloudStatus:
+    def __init__(self, lab_id):
+        self.lab_id = lab_id
+        self.info = {'controller': [], 'ucsm': [], 'network': [], 'compute': []}
+        self.mac_2_ip = {}
+        self.hostname_2_ip = {}
+
+    def get(self, role, parameter):
+        """
+            :param role: controller, network, compute, ucsm
+            :param parameter: ip, mac, hostname
+            :return: a list of values for given parameter of given role
+        """
+        return [server.get(parameter) for server in self.info.get(role, [])]
+
+    def get_first(self, role, parameter):
+        """
+            :param role: controller, network, compute, ucsm
+            :param parameter: ip, mac, hostname
+            :return: the first value for given parameter of given role
+        """
+        values = self.get(role=role, parameter=parameter)
+        if values:
+            return values[0]
+        else:
+            return 'NoValueFor' + role + parameter
+
+    def set(self, role, ip, mac, user, password, hostname, host_list, network_node_host):
+        """ Set all parameters for the given server"""
+        self.hostname_2_ip[hostname] = ip
+        self.mac_2_ip[mac] = ip
+        if role in self.info.keys():
+            _info = {'ip': ip, 'mac': mac, 'user': user, 'hostname': hostname, 'password': password,
+                     'host_list': host_list, 'network_node_host': network_node_host}
+            self.info[role].append(_info)
+
+    def create_open_rc(self):
+        """ Creates open_rc for the given cloud"""
+        open_rc = """
+export OS_USERNAME=admin
+export OS_TENANT_NAME=admin
+export OS_PASSWORD=admin
+export OS_AUTH_URL=http://{ip}:5000/v2.0/
+export OS_REGION_NAME=RegionOne
+"""
+        with open('{id}.open_rc'.format(id=self.lab_id), 'w') as f:
+            f.write(open_rc.format(ip=self.get_first('controller', 'ip')))
+
+    def log(self):
+        log.info('\n\n Report on lab: ' + str(self.lab_id))
+        for hostname in sorted(self.hostname_2_ip.keys()):
+            log.info(hostname + ': ' + self.hostname_2_ip[hostname])
+        log.info('\n')
+        for role in sorted(self.info.keys()):
+            log.info(role + ' ip: ' + ' '.join(self.get(role=role, parameter='ip')))
+
+
 class MyLab:
+    LAB_IDX_MIN = 0
+    LAB_IDX_MAX = 99
+
     def __init__(self, lab_id, topology_name, devstack_conf_addon='', is_only_xml=False):
         topo_path = os.path.join(lab.TOPOLOGIES_DIR, topology_name + '.yaml')
-        msg = None
-        try:
-            with open(topo_path) as f:
-                self.topology = yaml.load(f)
-            self.is_only_xml = is_only_xml
-            self.lab_id = int(lab_id)
-            if self.lab_id < 0 or self.lab_id > 99:
-                raise ValueError()
-            self.image_url_re = re.compile(r'source +file.+(http.+) *-->')
-            self.name_re = re.compile(r'<name>(.+)</name>')
-            lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
-            lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
-            lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
-            self.controller_ip = None  # will be filled in deploy_devstack if appropriate
-            self.nova_ips = []
-            self.neutron_ips = []
-            self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
-        except ValueError:
-            msg = 'lab_id is supposed to be integer in the range [0-99], you gave {0}'.format(str(lab_id))
-        except Exception as ex:
-            msg = ex.message
-        if msg:
+        with open(topo_path) as f:
+            self.topology = yaml.load(f)
+        self.is_only_xml = is_only_xml
+        self.lab_id = int(lab_id)
+        if self.lab_id < MyLab.LAB_IDX_MIN or self.lab_id > MyLab.LAB_IDX_MAX:
+            msg = 'lab_id is supposed to be integer ' \
+                  ' in the range [{min}-{max}], you gave {current}'\
+                .format(current=lab_id, min=MyLab.LAB_IDX_MIN,
+                        max=MyLab.LAB_IDX_MAX)
             sys.exit(msg)
+        lab.make_tmp_dir(local_dir=lab.IMAGES_DIR)
+        lab.make_tmp_dir(local_dir=lab.DISKS_DIR)
+        lab.make_tmp_dir(local_dir=lab.XMLS_DIR)
+        self.devstack_conf_addon = devstack_conf_addon  # string to be added at the end of all local.conf
+        self.status = CloudStatus(lab_id=lab_id)
 
     def delete_of_something(self, list_of_something):
+        import libvirt
+
         for something in list_of_something():
-            if 'lab-{0}-'.format(self.lab_id) in something.name():
+            if '{0}'.format(self.lab_id) in something.name():
                 try:
                     something.destroy()
                 except libvirt.libvirtError:
@@ -74,14 +129,18 @@ class MyLab:
                 log.info('{0} was deleted'.format(something.name()))
 
     def delete_lab(self):
-        self.delete_of_something(_conn().listAllDomains)
-        self.delete_of_something(_conn().listAllNetworks)
-        local('rm -f {0}/lab-{1}*'.format(lab.DISKS_DIR, self.lab_id))
-        for bridge in local("brctl show | grep 8000 | grep {0} | awk '{{print $1}}'".format(self.lab_id), capture=True).split('\n'):
-            if bridge:
-                local('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
+        if self.topology.get('networks'):
+            self.delete_of_something(_conn().listAllNetworks)
+            for bridge in local("brctl show | grep 8000 | grep {0} | awk '{{print $1}}'".format(self.lab_id), capture=True).split('\n'):
+                if bridge:
+                    local('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
+        if self.topology.get('servers'):
+            self.delete_of_something(_conn().listAllDomains)
+            local('rm -f {0}/*{1}*'.format(lab.DISKS_DIR, self.lab_id))
 
     def create_networks(self):
+        from bs4 import BeautifulSoup
+
         log.info('\n\nStarting IaaS phase- creating nets')
         list_of_networks = self.topology.get('networks', [])
         if not list_of_networks:
@@ -93,11 +152,14 @@ class MyLab:
                 xml = network_template.format(lab_id=self.lab_id, ipv6_prefix=self.define_ipv6_prefix())
             else:
                 xml = network_template.format(lab_id=self.lab_id)
-            self.save_xml(name='net-'+self.search_for(self.name_re, xml), xml=xml)
+            b = BeautifulSoup(xml, 'lxml')
+            net_name = b.find('name').string
+            self.save_xml(name='net-' + net_name, xml=xml)
             if not self.is_only_xml:
                 net = _conn().networkDefineXML(xml)
                 net.create()
                 net.setAutostart(True)
+                log.info('Network {} created'.format(net_name))
 
     def define_ipv6_prefix(self):
         try:
@@ -107,6 +169,8 @@ class MyLab:
             raise Exception('No globally routed v6 prefix found in routers table!')
 
     def create_domains(self):
+        from bs4 import BeautifulSoup
+
         log.info('\n\nStarting IaaS phase- creating VMs')
         list_of_domains = self.topology.get('servers', [])
         if not list_of_domains:
@@ -114,17 +178,35 @@ class MyLab:
             return
 
         for domain_template in self.topology['servers']:
-            image_url = self.search_for(self.image_url_re, domain_template)
-            domain_name = self.search_for(self.name_re, domain_template)
+            b = BeautifulSoup(domain_template, 'lxml')
 
-            image_local, kernel_local = self.wget_image(image_url=image_url)
-            disk_local, cloud_init_local = self.create_disk(image_local=image_local, domain_name=domain_name,
-                                                            is_use_cloud_init_disk='{disk_cloud_init}' in domain_template)
-            xml = domain_template.format(lab_id=self.lab_id, disk=disk_local, kernel=kernel_local, disk_cloud_init=cloud_init_local)
-            self.save_xml(name=domain_name, xml=xml)
+            hostname = b.find('name').string.format(lab_id=self.lab_id)
+            host_type = hostname.split('-')[-1]
+            # todo kshileev - what if we have two mac adresses
+            # and only second one is for ip resolving is needed?
+            mac = b.find('mac')['address'].format(lab_id=self.lab_id)
+            image_url = b.find(string=re.compile('^http'))
+
+            image_path = lab.wget_file(local_dir=lab.IMAGES_DIR, file_url=image_url)
+            main_disk_path = self.create_main_disk(image_path=image_path, hostname=hostname, is_no_backing='disk_no_backing' in domain_template)
+
+            if 'disk_cloud_init' in domain_template:
+                cloud_init_disk_path = self.create_cloud_init_disk(hostname=hostname)
+            else:
+                cloud_init_disk_path = 'NoCloudInitDiskRequested'
+
+            xml = domain_template.format(lab_id=self.lab_id,
+                                         disk=main_disk_path,
+                                         disk_no_backing=main_disk_path,
+                                         disk_cloud_init=cloud_init_disk_path)
+            self.save_xml(name=hostname, xml=xml)
             if not self.is_only_xml:
                 domain = _conn().defineXML(xml)
                 domain.create()
+                net = b.find('interface').find('source')['network'].format(lab_id=self.lab_id)
+                ip = lab.ip_for_mac_by_looking_at_libvirt_leases(net=net, mac=mac)
+                self.status.set(role=host_type, ip=ip, mac=mac, hostname=hostname)
+                log.info(msg='Domain {0} created'.format(hostname))
 
     @staticmethod
     def search_for(regexp, xml):
@@ -134,36 +216,27 @@ class MyLab:
         with open(self.make_local_file_name(where=lab.XMLS_DIR, name=name, extension='xml'), 'w') as f:
             f.write(xml)
 
+    def create_main_disk(self, image_path, hostname, is_no_backing):
+        main_disk_path = self.make_local_file_name(where=lab.DISKS_DIR, name=hostname, extension='qcow2')
+        if is_no_backing:
+            local('cp {i} {d}'.format(i=image_path, d=main_disk_path))
+        else:
+            local('qemu-img create -f qcow2 -b {i} {d} 15G'.format(i=image_path, d=main_disk_path))
+        return main_disk_path
+
+    def create_cloud_init_disk(self, hostname):
+        cloud_init_disk_path = self.make_local_file_name(where=lab.DISKS_DIR, name=hostname, extension='cloud_init.qcow2')
+        user_data = self.make_local_file_name(where=lab.DISKS_DIR, name=hostname, extension='user_data')
+        meta_data = self.make_local_file_name(where=lab.DISKS_DIR, name=hostname, extension='meta_data')
+        local('echo "#cloud-config\npassword: ubuntu\nchpasswd: {{ expire: False }}\nssh_pwauth: True\n" > {0}'.format(user_data))
+        local('echo instance_id: $(uuidgen) > {0}'.format(meta_data))
+        local('echo local-hostname: {1} >> {0}'.format(meta_data, hostname))
+        local('cloud-localds -d qcow2 {ci_d} {u_d} {m_d}'.format(ci_d=cloud_init_disk_path, u_d=user_data, m_d=meta_data))
+        return cloud_init_disk_path
+
     @staticmethod
-    def wget_image(image_url):
-        image_local = lab.wget_file(local_dir=lab.IMAGES_DIR, file_url=image_url)
-        kernel_local = None
-        if image_local.endswith('.tar.gz'):
-            cmd = 'cd {image_dir} && tar xvf {image_local} --exclude=*-floppy --exclude=*-loader --exclude=README*'.format(image_dir=lab.IMAGES_DIR,
-                                                                                                                           image_local=image_local)
-            ans = local(cmd, capture=True)
-            for name in ans.split():
-                if '.img' in name:
-                    image_local = lab.IMAGES_DIR + '/' + name
-                if 'vmlinuz' in name:
-                    kernel_local = lab.IMAGES_DIR + '/' + name
-        return image_local, kernel_local
-
-    def create_disk(self, image_local, domain_name, is_use_cloud_init_disk):
-        disk_local = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='qcow2')
-        local('qemu-img create -f qcow2 -b {i} {d} 15G'.format(d=disk_local, i=image_local))
-        disk_cloud_init = None
-        if is_use_cloud_init_disk:
-            disk_cloud_init = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='cloud_init.raw')
-            user_data = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='user_data')
-            meta_data = self.make_local_file_name(where=lab.DISKS_DIR, name=domain_name, extension='meta_data')
-            local('echo "#cloud-config\npassword: ubuntu\nchpasswd: {{ expire: False }}\nssh_pwauth: True\n" > {0}'.format(user_data))
-            local('echo instance_id: $(uuidgen) > {0}'.format(meta_data))
-            local('cloud-localds {disk} {u_d} {m_d}'.format(disk=disk_cloud_init, u_d=user_data, m_d=meta_data))
-        return disk_local, disk_cloud_init
-
-    def make_local_file_name(self, where, name, extension):
-        return os.path.abspath(os.path.join(where, name.format(lab_id=self.lab_id) + '.' + extension))
+    def make_local_file_name(where, name, extension):
+        return os.path.abspath(os.path.join(where, name + '.' + extension))
 
     def create_paas(self, phase):
         log.info('\n\nStarting {0} phase'.format(phase))
@@ -171,34 +244,40 @@ class MyLab:
         if not paas_phase:
             log.info('Nothing defined in {0} section'.format(phase))
             return
-        for net_mac_user_password_cmds in paas_phase:
-            net = net_mac_user_password_cmds['net'].format(lab_id=self.lab_id)
-            mac = net_mac_user_password_cmds['mac'].format(lab_id=self.lab_id)
-            user = net_mac_user_password_cmds.get('user', 'ubuntu')
-            password = net_mac_user_password_cmds.get('password', 'ubuntu')
-            commands = net_mac_user_password_cmds['cmd']
 
-            if net == 'local':
-                ip = 'local'
-            elif net.startswith('2001:'):
-                ip = lab.ip_for_mac_and_prefix(mac=mac, prefix=net)
-            elif net == 'baremetal':
-                ip = mac
+        for segment in paas_phase:
+            # possible values: net, mac, ip, hostname, user, password, cmd.
+            segment.update({key: segment.get(key, 'Unknown_' + key).format(lab_id=self.lab_id)
+                            for key in ['hostname', 'net', 'mac', 'ip', 'host_list', 'network_node_host'] if not segment.get(key)})
+            segment['user'] = segment.get('user', 'ubuntu')
+            segment['password'] = segment.get('password', 'ubuntu')
+            segment['role'] = segment['hostname'].split('-')[-1]
+            commands = segment['cmd']
+
+            if not segment['hostname'].startswith('Unknown'):
+                if segment['ip'].startswith('Unknown'):
+                    ip = self.status.hostname_2_ip[segment['hostname']]
+                else:
+                    ip = segment['ip']
+            elif not segment['mac'].startswith('Unknown'):
+                ip = self.status.mac_2_ip[segment['mac']]
+            elif segment['net'].startswith('local'):
+                ip = '127.0.0.1'
+            elif segment['net'].startswith('2001:'):
+                ip = lab.ip_for_mac_and_prefix(segment['mac'], prefix=segment['net'])
             else:
-                ip = lab.ip_for_mac_by_looking_at_libvirt_leases(net=net, mac=mac)
-                if not ip:
-                    raise exceptions.UserWarning('failed to obtain IP from libvirt lease file')
+                raise exceptions.UserWarning('no way to determine where to execute! you provided hostname={hostname} net={net} mac={mac}')
 
             for cmd in commands:
                 cmd = cmd.format(lab_id=self.lab_id)
-                if ip == 'local':
+                if ip in ['localhost', '127.0.0.1']:
                     local(cmd)
                 else:
-                    with settings(host_string='{user}@{ip}'.format(user=user, ip=ip), password=password, connection_attempts=50, warn_only=False):
+                    with settings(host_string='{user}@{ip}'.format(user=segment['user'], ip=ip), password=segment['password'], connection_attempts=50, warn_only=False):
                         if cmd.startswith('deploy_devstack'):
-                            self.deploy_devstack(cmd, ip)
+                            self.deploy_by_devstack(cmd)
                         elif cmd.startswith('deploy_by_packstack'):
-                            self.deploy_by_packstack(cmd=cmd, ip=ip)
+                            self.deploy_by_packstack(cmd=cmd)
                         elif cmd.startswith('deploy_dibbler'):
                             self.deploy_dibbler(cmd)
                         elif cmd.startswith('put_config'):
@@ -207,12 +286,14 @@ class MyLab:
                             self.get_artifact(cmd)
                         elif cmd.startswith('run_tempest'):
                             self.run_tempest(cmd)
-                        elif cmd.startswith('register_as_control_node'):
-                            self.controller_ip = ip
-                        elif cmd.startswith('register_as_nova_node'):
-                            self.nova_ips.append(ip)
-                        elif cmd.startswith('register_as_neutron_node'):
-                            self.neutron_ips.append(ip)
+                        elif cmd.startswith('run_neutron_api_tests'):
+                            self.run_neutron_api_tests()
+                        elif cmd.startswith('register_as'):
+                            self.status.set(role=segment['role'], ip=segment['ip'],
+                                            mac=segment['mac'], hostname=segment['hostname'],
+                                            user=segment['user'], password=segment['password'],
+                                            host_list=segment['host_list'],
+                                            network_node_host=segment['network_node_host'])
                         else:
                             sudo(cmd)
 
@@ -246,28 +327,50 @@ class MyLab:
             run('git pull -q')
         return local_repo_dir
 
-    def build_config_from_base_and_addon(self, directory, ip, cmd):
-        if not self.controller_ip:
-            self.controller_ip = ip
+    def build_config_from_base_and_addon(self, directory, cmd):
+        #from fabs.ucsm import ucsm
+
         with open(os.path.join(directory, 'base.conf')) as f:
             conf_as_string = f.read()
-        with open(os.path.join(directory, cmd.split(' with ')[-1])) as f:
+        addon_config_name = cmd.split(' with ')[-1]
+        with open(os.path.join(directory, addon_config_name)) as f:
             conf_as_string += f.read()
             conf_as_string += self.devstack_conf_addon
-            conf_as_string = conf_as_string.replace('{controller_ip}', str(self.controller_ip))
-            conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.nova_ips or [self.controller_ip]))
-            conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.neutron_ips or [self.controller_ip]))
+            conf_as_string = conf_as_string.replace('{controller_ip}', self.status.get_first(role='controller', parameter='ip'))
+            conf_as_string = conf_as_string.replace('{controller_name}', self.status.get_first(role='controller', parameter='hostname'))
+            conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.status.get(role='compute', parameter='ip')))
+            conf_as_string = conf_as_string.replace('{nova_ips}', ','.join(self.status.get(role='compute', parameter='ip')))
+            #conf_as_string = conf_as_string.replace('{neutron_ips}', ','.join(self.status.get(role='network', parameter='ip')))
+            if 'ucsm' in addon_config_name:
+                ucsm_ip = self.status.get_first(role='ucsm', parameter='ip')
+                ucsm_user = self.status.get_first(role='ucsm', parameter='user')
+                ucsm_password = self.status.get_first(role='ucsm', parameter='password')
+                ucsm_host_list = self.status.get_first(role='ucsm', parameter='host_list')
+                network_node_host = self.status.get_first(role='ucsm', parameter='network_node_host')
+                #ucsm_service_profile = 'test-profile'
+                #ucsm(host=ucsm_ip, username=ucsm_user, password=ucsm_password, service_profile_name=ucsm_service_profile)
+                conf_as_string = conf_as_string.replace('{ucsm_ip}', ucsm_ip)
+                conf_as_string = conf_as_string.replace('{ucsm_username}', ucsm_user)
+                conf_as_string = conf_as_string.replace('{ucsm_password}', ucsm_password)
+                #l_hostnames = self.status.get(role='compute', parameter='hostname') + self.status.get(role='controller', parameter='hostname')
+                conf_as_string = conf_as_string.replace('{ucsm_host_list}', ucsm_host_list)
+                conf_as_string = conf_as_string.replace('{network_node_host}', network_node_host)
+        log.info(msg='Config for OS deployer:\n' + conf_as_string)
         return conf_as_string
 
-    def deploy_devstack(self, cmd, ip):
-        conf_as_string = self.build_config_from_base_and_addon(directory=lab.DEVSTACK_CONF_DIR, ip=ip, cmd=cmd)
+    def deploy_by_devstack(self, cmd):
+        conf_as_string = self.build_config_from_base_and_addon(directory=lab.DEVSTACK_CONF_DIR, cmd=cmd)
 
         local_cloned_repo = MyLab.clone_repo('https://git.openstack.org/openstack-dev/devstack.git')
         put(local_path=StringIO(conf_as_string), remote_path='{0}/local.conf'.format(local_cloned_repo))
+        run('{0}/unstack.sh'.format(local_cloned_repo))
+        # Kill all python processes to avoid errors: Address already in use
+        with settings(warn_only=True):
+            run('sudo pkill --signal 9 -f python')
         run('{0}/stack.sh'.format(local_cloned_repo))
 
-    def deploy_by_packstack(self, cmd, ip):
-        conf_as_string = self.build_config_from_base_and_addon(directory=lab.PACKSTACK_CONF_DIR, ip=ip, cmd=cmd)
+    def deploy_by_packstack(self, cmd):
+        conf_as_string = self.build_config_from_base_and_addon(directory=lab.PACKSTACK_CONF_DIR, cmd=cmd)
 
         with settings(warn_only=True):
             if run('rpm -q openstack-packstack').failed:
@@ -275,7 +378,7 @@ class MyLab:
                 sudo('yum install -y -q openstack-packstack')
         put(local_path=StringIO(conf_as_string), remote_path='cisco-sqe-packstack.conf')
         sudo('packstack --answer-file=cisco-sqe-packstack.conf')
-        self.create_tempest_conf(controller_ip=self.controller_ip)
+        self.create_tempest_conf(controller_ip=self.status.get(role='controller', parameter='ip'))
 
     @staticmethod
     def deploy_dibbler(cmd):
@@ -313,15 +416,7 @@ class MyLab:
     @staticmethod
     def run_tempest(cmd):
         tempest_re = cmd.split(' ')[-1]
-        devstack_conf = StringIO()
-        get(remote_path='devstack/local.conf', local_path=devstack_conf)
-        match = re.search('DEST=(.+)\n', devstack_conf.getvalue())
-        if match:
-            tempest_dir = match.groups()[0].strip() + '/tempest'
-            if 'HOME' in tempest_dir:
-                tempest_dir = run('echo {0}'.format(tempest_dir))
-        else:
-            tempest_dir = '/opt/stack/tempest'
+        tempest_dir = MyLab.get_path_for('tempest')
         with cd(tempest_dir):
             with settings(warn_only=True):
                 run('testr init'.format(tempest_re))
@@ -329,6 +424,38 @@ class MyLab:
                 run('sudo pip install junitxml')
                 run('testr last --subunit | subunit-1to2 | subunit2junitxml --output-to=tempest_results.xml')
         get(remote_path=tempest_dir + '/tempest_results.xml', local_path='tempest_results.xml')
+
+    @staticmethod
+    def run_neutron_api_tests():
+        tempest_dir = MyLab.get_path_for('tempest')
+        neutron_dir = MyLab.get_path_for('neutron')
+        with cd(neutron_dir):
+            with shell_env(TEMPEST_CONFIG_DIR="{0}/etc/".format(tempest_dir)):
+                run('tox -e api')
+                run('sudo pip install junitxml')
+                run('testr last --subunit | subunit-1to2 | subunit2junitxml '
+                    '--output-to=neutron_api_results.xml')
+        get(remote_path=neutron_dir + '/neutron_api_results.xml',
+            local_path='neutron_api_results.xml')
+
+    @staticmethod
+    def get_path_for(component_name):
+        """
+        Reads remote devstack's local.conf to determine where stack.sh installed
+        given component
+        :param component_name: openstack component name
+        :return:  path to installed openstack componentd
+        """
+        devstack_conf = StringIO()
+        get(remote_path='devstack/local.conf', local_path=devstack_conf)
+        match = re.search('DEST=(.+)\n', devstack_conf.getvalue())
+        if match:
+            path = match.groups()[0].strip() + '/{}'.format(component_name)
+            if 'HOME' in path:
+                path = run('echo {0}'.format(path))
+        else:
+            path = "/opt/stack/{}".format(component_name)
+        return path
 
     @staticmethod
     def run_tempest_local():
@@ -366,9 +493,11 @@ class MyLab:
             self.create_networks()
         if phase in ['lab', 'dom']:
             self.create_domains()
+            self.status.log()
         if phase in ['lab', 'paas_1']:
             self.create_paas(phase='paas_1')
         if phase in ['lab', 'paas_2']:
             self.create_paas(phase='paas_2')
         if phase in ['lab', 'paas_post']:
             self.run_pre_or_post(pre_or_post='paas_post')
+        self.status.log()

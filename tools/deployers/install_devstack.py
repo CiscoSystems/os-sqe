@@ -10,7 +10,7 @@ from utils import collect_logs, warn_if_fail, quit_if_fail, update_time, \
     collect_logs_devstack
 
 DESCRIPTION = 'Installer for Devstack.'
-CISCO_TEMPEST_REPO = 'https://github.com/CiscoSystems/tempest.git'
+CISCO_TEMPEST_REPO = 'https://github.com/cisco-openstack/tempest.git'
 DEVSTACK_REPO = 'https://github.com/openstack-dev/devstack.git'
 DEVSTACK_DEFAULT = './tools/deployers/devstack-configs/devstack_single_node.yaml'
 DEVSTACK_BRANCH = 'master'
@@ -111,28 +111,26 @@ def prepare(host, topo_config_file, devstack_config_file, apt_cacher_proxy,
     local_ssh_key_file = os.path.join(os.path.dirname(__file__), "..",
                                       "libvirt-scripts", "id_rsa")
     fab_settings.update({"key_filename": ssh_key_file or local_ssh_key_file})
-    if topo_config_file:
-        topo_config = yaml.load(topo_config_file)
-    else:
+    devstack_config = yaml.load(devstack_config_file)
+    with open(os.path.join(DEV_CONF_PATH, "devstack_template.yaml")) as f:
+        devstack_template = yaml.load(f)
+    if host:
         fab_settings.update({"host_string": host})
         topo_config = {
             'servers': {
             'devstack-server': [{"ip": host, "hostname": "devstack-server00"}]}}
-    devstack_config = yaml.load(devstack_config_file)
-    with open(os.path.join(DEV_CONF_PATH, "devstack_template.yaml")) as f:
-        devstack_template = yaml.load(f)
-
-    # Generate ssh-keys for new nodes
-    with settings(warn_only=True, abort_on_prompts=True):
-        path = os.environ.get("WORKSPACE", os.getcwd())
-        warn_if_fail(local("rm {0}/id_rsa_*".format(path)))
-        keys = len(topo_config['servers']['devstack-server']) or 1
-        for i in range(keys):
-            local("ssh-keygen -f {path}/id_rsa_{i} -t rsa -N ''".format(path=path,
-                    i=topo_config['servers']['devstack-server'][i]['hostname']))
-            local("cat  {path}/id_rsa_{i}.pub >> {path}/id_rsa_all.pub".format(
-                path=path, i=topo_config['servers']['devstack-server'][i]['hostname']))
-
+    else:
+        topo_config = yaml.load(topo_config_file)
+        # Generate ssh-keys for new nodes
+        with settings(warn_only=True, abort_on_prompts=True):
+            path = os.environ.get("WORKSPACE", os.getcwd())
+            warn_if_fail(local("rm {0}/id_rsa_*".format(path)))
+            keys = len(topo_config['servers']['devstack-server']) or 1
+            for i in range(keys):
+                local("ssh-keygen -f {path}/id_rsa_{i} -t rsa -N ''".format(path=path,
+                        i=topo_config['servers']['devstack-server'][i]['hostname']))
+                local("cat  {path}/id_rsa_{i}.pub >> {path}/id_rsa_all.pub".format(
+                    path=path, i=topo_config['servers']['devstack-server'][i]['hostname']))
     # Install control node first
     control_node = topo_config['servers']['devstack-server'][0]
     fab_settings["host_string"] = control_node["ip"]
@@ -188,9 +186,9 @@ def prepare(host, topo_config_file, devstack_config_file, apt_cacher_proxy,
 def main():
     p = argparse.ArgumentParser(description=DESCRIPTION,
                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument('-a', dest='host',
+    p.add_argument('-a', dest='host', default=os.getenv('HOST_IP', ""),
                    help='IP of host in to install Devstack on')
-    p.add_argument('-b', dest='branch', nargs="?", default="ipv6", const="ipv6",
+    p.add_argument('-b', dest='branch', nargs="?", default="proposed", const="proposed",
                    help='Tempest repository branch, default is ipv6')
     p.add_argument('-c', dest='config_file',
                    help='Configuration file for topology, default is None',

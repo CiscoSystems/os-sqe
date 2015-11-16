@@ -79,4 +79,4 @@ def get_lab_vm_ip():
         sys.exit(1)
     net, ip = re.search(LAB + r":\s*net_start: ([\.\d]+)\s*ip_start: (\d+)",
                         labs, re.MULTILINE).groups(1)
-    return net + "." + ip
+    return os.getenv('HOST_IP', net + "." + ip)

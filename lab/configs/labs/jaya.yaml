@@ -1,0 +1,7 @@
+lab-id: 99 # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools
+user-net: {cidr: 172.29.86.160/27, vlan: 865, iface-name: ???} # used for normal user traffic
+mgmt-net: {cidr: ????, vlan: ??} # used for UCSM KVM IPMI
+ucsm: {host: 172.31.229.248, username: admin, password: lab, director-profile: ????}
+n9k: {host: 172.29.86.179, username: admin, password: lab}  # peer N9k at 172.29.86.181
+cobbler: {host: 172.29.74.8, username: cobbler, password: cobbler, iface-name: PXE-EXT}
+
