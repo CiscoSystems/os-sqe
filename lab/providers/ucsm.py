@@ -26,7 +26,7 @@ def read_config_ssh(yaml_path, is_director=True):
             split = profile.split()
             profile_name = split[0]
             server_id = split[2]
-            if not is_director and server_id == config['ucsm']['director-server-id']:
+            if not is_director and server_id == str(config['ucsm']['director-server-id']):
                 continue
             ipmi_ip = run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_id), shell=False, quiet=True)
             if_mac = {}
