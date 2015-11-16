@@ -13,7 +13,6 @@ def read_config_ssh(yaml_path, is_director=True):
     ucsm_ip = config['ucsm']['host']
     ucsm_username = config['ucsm']['username']
     ucsm_password = config['ucsm']['password']
-    ucsm_director = config['ucsm']['director-profile']
 
     servers = {}
     with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
@@ -26,9 +25,9 @@ def read_config_ssh(yaml_path, is_director=True):
                 return servers
             split = profile.split()
             profile_name = split[0]
-            if not is_director and profile_name == ucsm_director:
-                continue
             server_id = split[2]
+            if not is_director and server_id == config['ucsm']['director-server-id']:
+                continue
             ipmi_ip = run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_id), shell=False, quiet=True)
             if_mac = {}
             for line in run('scope org; scope service-profile {0}; sh vnic | i {1}:'.format(profile_name, config['lab-id']), shell=False, quiet=True).split('\n'):
@@ -152,7 +151,7 @@ def configure_for_osp7(yaml_path):
             profile = 'G{0}-{1}'.format(config['lab-id'], b_c_id)
 
             if server_id == str(config['ucsm']['director-server-id']):
-                profile += 'DIRECTOR'
+                profile += '-' + config['ucsm']['director-profile']
             # add IPMI static ip:
             addr = ipmi_net[config['mgmt-net']['start'] + i]
             gw = ipmi_net[1]

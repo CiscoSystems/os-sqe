@@ -81,7 +81,7 @@ class DeployerOSP7(Deployer):
             self.director_server.run(command='sudo yum install -y python-rdomanager-oscplugin')
 
     def __undercloud_config(self):
-        iface = self.run(command="ip -o link | awk '/ee:/ {print $2}'", server=self.director_server).split('\n')[0]
+        iface = self.director_server.run(command="ip -o link | awk '/ee:/ {print $2}'").split('\n')[0]
         undercloud_config = self.undercloud_config_template.format(pxe_iface=iface.strip(':\r'),
                                                                    cidr=str(self.undercloud_network),
                                                                    gw=str(self.undercloud_network[1]),  # gw == local_ip! possible bug or feature?
