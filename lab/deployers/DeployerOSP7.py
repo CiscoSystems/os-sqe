@@ -96,6 +96,7 @@ class DeployerOSP7(Deployer):
                                                                    images_dir=self.images_dir
                                                                    )
         self.director_server.put(string_to_put=undercloud_config, file_name='undercloud.conf')
+        self.director_server.get(remote_path='undercloud.conf', local_path='undercloud.conf')
 
     def __deploy_undercloud(self):
         self.__undercloud_config()
@@ -173,7 +174,8 @@ class DeployerOSP7(Deployer):
                                     'pm_user': server.ipmi['username'],
                                     'pm_password': server.ipmi['password'],
                                     'pm_addr': server.ipmi['ip']})
-        self.put(what=json.dumps(config), name='overcloud.json', server=self.director_server)
+        self.director_server.put(string_to_put=json.dumps(config), file_name='overcloud.json')
+        self.director_server.get(remote_path='overcloud.json', local_path='overcloud.json')
 
         yaml_name = 'networking-cisco-environment.yaml'
         config_tmpl = read_config_from_file(yaml_path=os.path.join(CONFIG_DIR, 'osp7', yaml_name), is_as_string=True)
