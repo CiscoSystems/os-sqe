@@ -54,7 +54,7 @@ class Server(object):
 
     def construct_settings(self, warn_only):
         kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
-                  'connection_attempts': 50,
+                  'connection_attempts': 100,
                   'warn_only': warn_only}
         if self.password == 'ssh_key':
             kwargs['key_filename'] = self.private_key_path
