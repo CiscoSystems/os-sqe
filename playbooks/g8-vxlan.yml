@@ -6,6 +6,23 @@
 
   tasks:
 
+    - name: delete port-channels
+      nxos_portchannel:
+        group: "{{ item.1 }}"
+        members: "{{ item.0 }}"
+        mode: active
+        host: "{{ inventory_hostname }}"
+        state: absent
+      with_together:
+        - "{{ server_ports }}"
+        - "{{ server_vpcs }}"
+
+    - name: Shutdown port-channel 100
+      nxos_interface:
+        interface: port-channel100
+        host: "{{ inventory_hostname }}"
+        admin_state: down
+
     - nxos_feature:
         feature: ospf
         state: enabled
@@ -31,7 +48,6 @@
         ip_addr: "{{ lo1_ip }}"
         ip_router_ospf: "{{ router_ospf }}"
         ip_router_area: "{{ router_area }}"
-        ip_pim_sparse_mode: True
         mask: 32
         host: "{{ inventory_hostname }}"
         state: "{{ state }}"
