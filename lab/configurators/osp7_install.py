@@ -28,7 +28,7 @@ def configure_for_osp7(yaml_path):
     nodes_string = '{{"nodes":[\n\t{{\n\t  {0}\n\t}}\n\t]\n\t}}'.format('\n\t},\n\t{\n\t  '.join(nodes))
 
     cfg = osp7_install_template.format(director_node_hostname='g{0}-director.ctocllab.cisco.com'.format(lab_config['lab-id']),
-                                       director_node_ssh_ip=user_net[lab_config['nodes']['ip-shift'][0]],
+                                       director_node_ssh_ip=user_net[lab_config['nodes']['director']['ip-shift'][0]],
                                        undercloud_network_cidr=undercloud_net,
                                        undercloud_local_ip=undercloud_net[1],
                                        undercloud_local_ip_simple=undercloud_net[1],
