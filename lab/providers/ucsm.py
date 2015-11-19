@@ -89,20 +89,13 @@ def configure_for_osp7(yaml_path):
     with open(yaml_path) as f:
         config = yaml.load(f)
 
-    ipmi_net = IPNetwork(config['mgmt-net']['cidr'])
-    host = config['ucsm']['host']
-    username = config['ucsm']['username']
-    password = config['ucsm']['password']
-
     server_pool_name = 'QA-SERVERS'
     uuid_pool_name = 'QA'
     dynamic_vnic_policy_name = 'dvnic-4'
 
-    with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
-        server_nums = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
-        n_servers = len(server_nums)  # how many servers UCSM currently sees
-        if config['mgmt-net']['end'] - config['mgmt-net']['start'] + 1 < n_servers:
-            raise Exception("mgmt-net less than servers amount. {0}".format(config['mgmt-net']))
+    with settings(host_string='{user}@{ip}'.format(user=config['ucsm']['username'], ip=config['ucsm']['host']), password=config['ucsm']['password'], connection_attempts=50, warn_only=False):
+        server_ids = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
+        n_servers = len(server_ids)  # how many servers UCSM currently sees
 
         # Create up-links (port-channels)
         for fabric in 'a', 'b':
@@ -116,13 +109,13 @@ def configure_for_osp7(yaml_path):
             name=uuid_pool_name, n=n_servers), shell=False)
 
         # Boot policy
-        for card in [config['pxe-ext-net']['iface-name'], config['pxe-int-net']['iface-name']]:
-            run('scope org; create boot-policy {0}; set boot-mode legacy; commit-buffer'.format(card), shell=False)
-            run('scope org; scope boot-policy {0}; create lan; set order 1;  create path primary; set vnic {0}; commit-buffer'.format(card), shell=False)
-            run('scope org; scope boot-policy {0}; create storage; create local; create local-any; set order 2; commit-buffer'.format(card), shell=False)
+        for iface_name in [x for x in config['nets'].keys() if 'pxe' in x]:
+            run('scope org; create boot-policy {0}; set boot-mode legacy; commit-buffer'.format(iface_name), shell=False)
+            run('scope org; scope boot-policy {0}; create lan; set order 1;  create path primary; set vnic {0}; commit-buffer'.format(iface_name), shell=False)
+            run('scope org; scope boot-policy {0}; create storage; create local; create local-any; set order 2; commit-buffer'.format(iface_name), shell=False)
 
         # Dynamic vnic connection policy
-        if config['is-add-sriov']:
+        if any([x['is-sriov'] for x in config['nodes'].values()]):
             run('scope org; create dynamic-vnic-conn-policy {name}; set dynamic-eth 4; set adapter-policy Linux; commit-buffer'.format(name=dynamic_vnic_policy_name), shell=False)
 
         # MAC pools
@@ -131,9 +124,10 @@ def configure_for_osp7(yaml_path):
         #    run('scope org; create mac-pool {0}; set assignment-order sequential; create block {1}; commit-buffer'.format(if_name, mac_range), shell=False)
 
         # VLANs
-        for net_name in ['user-net', 'pxe-int-net', 'eth0-net', 'eth1-net']:
-            net = config[net_name]
-            run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(net['iface-name'], net['vlan']), shell=False)
+        for name, value in config['nets'].iteritems():
+            vlan = value['vlan']
+            if vlan != 1:
+                run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(name, vlan), shell=False)
 
         # IPMI ip pool
         # ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[config['mgmt-net']['start']]), last=str(ipmi_net[config['mgmt-net']['end']]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
@@ -142,52 +136,50 @@ def configure_for_osp7(yaml_path):
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
 
-        for i, server_id in enumerate(server_nums):
-            if '/' in server_id:
-                b_c_id = 'B{0}:{1:02}'.format(int(server_id.split('/')[0]), int(server_id.split('/')[1]))
-            else:
-                b_c_id = 'C0:{0:02}'.format(int(server_id))
+        ipmi_net = IPNetwork(config['nets']['mgmt']['cidr'])
+        for role, description in config['nodes'].iteritems():
+            is_sriov = description['is-sriov']
+            on_nets = description['nets']
 
-            profile = 'G{0}-{1}'.format(config['lab-id'], b_c_id)
+            for i, server_id in enumerate(description['server-id']):
+                if server_id not in server_ids:
+                    raise EnvironmentError('Server id={0} is not dicovered by UCSM'.format(server_id))
+                if '/' in server_id:
+                    b_c_id = 'B{0}:{1:02}'.format(int(server_id.split('/')[0]), int(server_id.split('/')[1]))
+                else:
+                    b_c_id = 'C0:{0:02}'.format(int(server_id))
 
-            if server_id == str(config['ucsm']['director-server-id']):
-                profile += '-' + config['ucsm']['director-profile']
-            # add IPMI static ip:
-            addr = ipmi_net[config['mgmt-net']['start'] + i]
-            gw = ipmi_net[1]
-            net_mask = str(ipmi_net.netmask)
-            run('scope server {0}; scope cimc; create ext-static-ip; set addr {1}; set default-gw {2}; set subnet {3}; commit-buffer'.format(server_id, addr, gw, net_mask), shell=False)
+                profile = 'G{0}-{1}-{2}'.format(config['lab-id'], b_c_id, role)
 
-            # add server to server pool
-            run('scope org; scope server-pool {0}; create server {1}; commit-buffer'.format(server_pool_name, server_id), shell=False)
+                # add IPMI static ip:
+                addr = ipmi_net[description['ip-shift'][i]]
+                gw = ipmi_net[1]
+                net_mask = str(ipmi_net.netmask)
+                run('scope server {0}; scope cimc; create ext-static-ip; set addr {1}; set default-gw {2}; set subnet {3}; commit-buffer'.format(server_id, addr, gw, net_mask), shell=False)
 
-            # create service profile
-            run('scope org; create service-profile {0}; set ipmi-access-profile IPMI;  commit-buffer'.format(profile, 'set bios-policy SRIOV;' if config['is-add-sriov'] else ''), shell=False)
+                # add server to server pool
+                run('scope org; scope server-pool {0}; create server {1}; commit-buffer'.format(server_pool_name, server_id), shell=False)
 
-            for order, net_name in enumerate(['eth0-net', 'eth1-net', 'pxe-int-net', 'user-net'], start=1):
-                vnic = config[net_name]['iface-name']
-                mac = config[net_name]['mac-tmpl'].format(lab_id=config['lab-id'], b_c_id=b_c_id)
-                # add VNIC
-                run('scope org; scope service-profile {0}; create vnic {1} fabric a-b; set identity dynamic-mac {2}; set order {3}; commit-buffer'.format(profile, vnic, mac, order), shell=False)
-                # add VLAN to vNIC
-                run('scope org; scope service-profile {0}; scope vnic {1}; create eth-if {1}; set default-net yes; commit-buffer'.format(profile, vnic), shell=False)
-                # remove default VLAN
-                run('scope org; scope service-profile {0}; scope vnic {1}; delete eth-if default; commit-buffer'.format(profile, vnic), shell=False)
+                # create service profile
+                run('scope org; create service-profile {0}; set ipmi-access-profile IPMI;  commit-buffer'.format(profile, 'set bios-policy SRIOV;' if is_sriov else ''), shell=False)
 
-            if server_id == str(config['ucsm']['director-server-id']):
-                # special vNIC to have this server booted via external PXE
-                vnic = config['pxe-ext-net']['iface-name']
-                mac = config['pxe-ext-net']['mac-tmpl'].format(lab_id=config['lab-id'], b_c_id=b_c_id)
-                run('scope org; scope service-profile {0}; create vnic {1} fabric a-b; set identity dynamic-mac {2}; commit-buffer'.format(profile, vnic, mac), shell=False)
-                run('scope org; scope service-profile {0}; set boot-policy {1}; commit-buffer'.format(profile, config['pxe-ext-net']['iface-name']), shell=False)
-            else:
-                run('scope org; scope service-profile {0}; set boot-policy {1}; commit-buffer'.format(profile, config['pxe-int-net']['iface-name']), shell=False)
+                for order, net_name in enumerate(on_nets, start=1):
+                    vnic = net_name
+                    mac = config[net_name]['mac-tmpl'].format(lab_id=config['lab-id'], b_c_id=b_c_id)
+                    # add VNIC
+                    run('scope org; scope service-profile {0}; create vnic {1} fabric a-b; set identity dynamic-mac {2}; set order {3}; commit-buffer'.format(profile, vnic, mac, order), shell=False)
+                    # add VLAN to vNIC
+                    run('scope org; scope service-profile {0}; scope vnic {1}; create eth-if {1}; set default-net yes; commit-buffer'.format(profile, vnic), shell=False)
+                    # remove default VLAN
+                    run('scope org; scope service-profile {0}; scope vnic {1}; delete eth-if default; commit-buffer'.format(profile, vnic), shell=False)
+                    if is_sriov and vnic in ['eth1']:
+                        run('scope org; scope service-profile {0}; scope vnic {1}; set adapter-policy Linux; enter dynamic-conn-policy-ref {2}; commit-buffer'.format(profile, vnic, dynamic_vnic_policy_name), shell=False)
+
+                run('scope org; scope service-profile {0}; set boot-policy {1}; commit-buffer'.format(profile, 'pxe-ext' if role == 'director' else 'pxe-int'), shell=False)
                 # set dynamic vnic connection policy
-                if config['is-add-sriov'] and config['ucsm']['director-server-id'] != server_id and vnic in ['eth1']:
-                    run('scope org; scope service-profile {0}; scope vnic {1}; set adapter-policy Linux; enter dynamic-conn-policy-ref {2}; commit-buffer'.format(profile, vnic, dynamic_vnic_policy_name), shell=False)
 
-            # main step - association - here server will be rebooted
-            run('scope org; scope service-profile {0}; associate server {1}; commit-buffer'.format(profile, server_id), shell=False)
+                # main step - association - here server will be rebooted
+                run('scope org; scope service-profile {0}; associate server {1}; commit-buffer'.format(profile, server_id), shell=False)
 
 
 # @task
