@@ -3,14 +3,21 @@ director_node_hostname = {director_node_hostname}
 director_node_ssh_ip = {director_node_ssh_ip}
 director_node_ssh_username = root
 
-neutron_mechanism_drivers = openvswitch,cisco_ucsm # used to create neutron ml2 config
+rhel_pool = fake
+rhel_username = fake
+rhel_password = fake
+
+# used to create neutron ml2 config
+neutron_mechanism_drivers = openvswitch,cisco_ucsm
 network_ucsm_ip = {ucsm_ip}
 network_ucsm_username = {ucsm_username}
 network_ucsm_password = {ucsm_password}
 network_ucsm_host_list = {ucsm_mac_profile_list}
 
-undercloud_local_interface = {undercloud_local_interface} # iface used for internal PXE network, usually pxe-int
-undercloud_network_cidr =  {undercloud_network_cidr} # used to create undercloud.conf for 'openstack undercloud install'
+# iface used for internal PXE network, usually pxe-int
+undercloud_local_interface = {undercloud_local_interface}
+# used to create undercloud.conf for 'openstack undercloud install'
+undercloud_network_cidr =  {undercloud_network_cidr}
 undercloud_local_ip =  {undercloud_local_ip}
 undercloud_local_ip_simple = {undercloud_local_ip_simple}
 undercloud_masquerade_network = {undercloud_masquerade_network}
@@ -22,11 +29,17 @@ undercloud_public_vip = {undercloud_public_vip}
 undercloud_admin_vip = {undercloud_admin_vip}
 
 
-overcloud_nodes = {overcloud_nodes}  # used to create overcloud.json for 'openstack baremetal import --json ~/overcloud.json'
+# used to create overcloud.json for 'openstack baremetal import --json ~/overcloud.json'
+overcloud_nodes = {overcloud_nodes}
 
-overcloud_control_scale = 3  # used in 'openstack overcloud deploy' for --control-scale
-overcloud_compute_scale = {overcloud_compute_scale} # used in 'openstack overcloud deploy' for --compute-scale
-single_nic = eth0 # used in 'openstack overcloud deploy' for --neutron-public-interface and --hypervisor-neutron-public-interface
+# used in 'openstack overcloud deploy' for --control-scale
+overcloud_control_scale = {overcloud_control_scale}
+# used in 'openstack overcloud deploy' for --compute-scale
+overcloud_compute_scale = {overcloud_compute_scale}
+# used in 'openstack overcloud deploy' for --ceph-storage-scale
+overcloud_ceph_storage_scale = {overcloud_ceph_storage_scale}
+# used in 'openstack overcloud deploy' for --neutron-public-interface and --hypervisor-neutron-public-interface
+single_nic = eth0
 
 overcloud_network_cidr = 20.0.0.0/24  # this network will be created as external in overcloud openstack
 overcloud_floating_ip_cidr = 20.0.0.0/24

@@ -36,6 +36,7 @@ def read_config_ssh(yaml_path, is_director=True):
             server = Server(ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM')
             server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
             server.set_ucsm(ip=ucsm_ip, username=ucsm_username, password=ucsm_password, service_profile=profile_name, server_id=server_id, iface_mac=if_mac)
+            server.role = profile_name.split('-')[-1]
             if 'director' in profile_name:
                 profile_name = 'director'
             servers[profile_name] = server
