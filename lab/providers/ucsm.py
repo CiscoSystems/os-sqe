@@ -26,7 +26,7 @@ def read_config_ssh(yaml_path, is_director=True):
             split = profile.split()
             profile_name = split[0]
             server_id = split[2]
-            if not is_director and config['ucsm']['director-profile'] in profile_name:
+            if not is_director and 'director' in profile_name:
                 continue
             ipmi_ip = run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_id), shell=False, quiet=True)
             if_mac = {}
@@ -36,8 +36,8 @@ def read_config_ssh(yaml_path, is_director=True):
             server = Server(ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM')
             server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
             server.set_ucsm(ip=ucsm_ip, username=ucsm_username, password=ucsm_password, service_profile=profile_name, server_id=server_id, iface_mac=if_mac)
-            if server_id == str(config['ucsm']['director-server-id']):
-                profile_name = server_id
+            if 'director' in profile_name:
+                profile_name = 'director'
             servers[profile_name] = server
     return servers
 
@@ -93,7 +93,12 @@ def configure_for_osp7(yaml_path):
     uuid_pool_name = 'QA'
     dynamic_vnic_policy_name = 'dvnic-4'
 
-    with settings(host_string='{user}@{ip}'.format(user=config['ucsm']['username'], ip=config['ucsm']['host']), password=config['ucsm']['password'], connection_attempts=50, warn_only=False):
+    ucsm_user = config['ucsm']['username']
+    ucsm_host = config['ucsm']['host']
+    ucsm_password = config['ucsm']['password']
+
+    cleanup(host=ucsm_host, username=ucsm_user, password=ucsm_password)
+    with settings(host_string='{user}@{ip}'.format(user=ucsm_user, ip=ucsm_host), password=ucsm_password, connection_attempts=50, warn_only=False):
         server_ids = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
         n_servers = len(server_ids)  # how many servers UCSM currently sees
 
@@ -126,8 +131,7 @@ def configure_for_osp7(yaml_path):
         # VLANs
         for name, value in config['nets'].iteritems():
             vlan = value['vlan']
-            if vlan != 1:
-                run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(name, vlan), shell=False)
+            run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(name, vlan), shell=False)
 
         # IPMI ip pool
         # ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[config['mgmt-net']['start']]), last=str(ipmi_net[config['mgmt-net']['end']]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
@@ -165,7 +169,7 @@ def configure_for_osp7(yaml_path):
 
                 for order, net_name in enumerate(on_nets, start=1):
                     vnic = net_name
-                    mac = config[net_name]['mac-tmpl'].format(lab_id=config['lab-id'], b_c_id=b_c_id)
+                    mac = config['nets'][net_name]['mac-tmpl'].format(lab_id=config['lab-id'], b_c_id=b_c_id)
                     # add VNIC
                     run('scope org; scope service-profile {0}; create vnic {1} fabric a-b; set identity dynamic-mac {2}; set order {3}; commit-buffer'.format(profile, vnic, mac, order), shell=False)
                     # add VLAN to vNIC

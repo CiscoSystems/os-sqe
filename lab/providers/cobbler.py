@@ -15,10 +15,10 @@ def configure_for_osp7(yaml_path):
     cobbler_username = config['cobbler']['username']
     cobbler_password = config['cobbler']['password']
 
-    user_net = IPNetwork(config['user-net']['cidr'])
+    user_net = IPNetwork(config['nets']['user']['cidr'])
 
     ucsm_info = ucsm.read_config_ssh(yaml_path=yaml_path)
-    server = ucsm_info[str(config['ucsm']['director-server-id'])]
+    server = ucsm_info['director']
 
     ipmi_ip = str(server.ipmi['ip'])
     ipmi_username = server.ipmi['username']
@@ -35,7 +35,7 @@ def configure_for_osp7(yaml_path):
 
     for iface, mac in server.get_mac('all').iteritems():
         cobbler.modify_system(handle, 'modify_interface', {'macaddress-{0}'.format(iface): mac}, token)
-        if iface == config['user-net']['iface-name']:
+        if iface == 'user':
             cobbler.modify_system(handle, 'modify_interface', {'ipaddress-{0}'.format(iface): str(user_net[4]),
                                                                'static-{0}'.format(iface): True,
                                                                'subnet-{0}'.format(iface): str(user_net.netmask)}, token)

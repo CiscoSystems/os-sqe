@@ -9,13 +9,14 @@ def configure_for_osp7(yaml_path):
 
     lab_config = read_config_from_file(yaml_path=yaml_path)
     osp7_install_template = read_config_from_file(yaml_path='./lab/configs/osp7/osp7-install.yaml', is_as_string=True)
-    user_net = IPNetwork(lab_config['user-net']['cidr'])
-    undercloud_net = IPNetwork(lab_config['pxe-int-net']['cidr'])
+    user_net = IPNetwork(lab_config['nets']['mgmt']['cidr'])
+    undercloud_net = IPNetwork(lab_config['nets']['pxe-int']['cidr'])
 
     mac_profiles = []
     nodes = []
     for ucsm_profile, server in sorted(ucsm.read_config_ssh(yaml_path=yaml_path, is_director=False).iteritems()):
-        mac_profiles.append('{0}:{1}'.format(server.ucsm['iface_mac']['eth0'], ucsm_profile))
+        if 'eth0' in server.ucsm['iface_mac']:
+            mac_profiles.append('{0}:{1}'.format(server.ucsm['iface_mac']['eth0'], ucsm_profile))
         pxe_mac = server.ucsm['iface_mac']['pxe-int']
 
         descriptor = {'arch': 'x86_64', 'cpu': '2', 'memory': '256', 'disk': '1112',
@@ -31,7 +32,7 @@ def configure_for_osp7(yaml_path):
                                        undercloud_network_cidr=undercloud_net,
                                        undercloud_local_ip=undercloud_net[1],
                                        undercloud_local_ip_simple=undercloud_net[1],
-                                       undercloud_local_interface=lab_config['pxe-int-net']['iface-name'],
+                                       undercloud_local_interface='pxe-int',
                                        undercloud_masquerade_network=undercloud_net,
                                        undercloud_dhcp_start=undercloud_net[100],
                                        undercloud_dhcp_end=undercloud_net[100 + 50],
@@ -46,7 +47,7 @@ def configure_for_osp7(yaml_path):
                                        ucsm_username=lab_config['ucsm']['username'],
                                        ucsm_password=lab_config['ucsm']['password'],
                                        ucsm_mac_profile_list=','.join(mac_profiles),
-                                       cobbler_system=lab_config['ucsm']['director-profile'])
+                                       cobbler_system='THIS NEEDS to be changed')
 
     with open('osp7_install_config.conf', 'w') as f:
         f.write(cfg)
