@@ -9,7 +9,7 @@ def configure_for_osp7(yaml_path):
 
     lab_config = read_config_from_file(yaml_path=yaml_path)
     osp7_install_template = read_config_from_file(yaml_path='./lab/configs/osp7/osp7-install.yaml', is_as_string=True)
-    user_net = IPNetwork(lab_config['nets']['mgmt']['cidr'])
+    user_net = IPNetwork(lab_config['nets']['user']['cidr'])
     undercloud_net = IPNetwork(lab_config['nets']['pxe-int']['cidr'])
 
     mac_profiles = []
@@ -28,7 +28,7 @@ def configure_for_osp7(yaml_path):
     nodes_string = '{{"nodes":[\n\t{{\n\t  {0}\n\t}}\n\t]\n\t}}'.format('\n\t},\n\t{\n\t  '.join(nodes))
 
     cfg = osp7_install_template.format(director_node_hostname='g{0}-director.ctocllab.cisco.com'.format(lab_config['lab-id']),
-                                       director_node_ssh_ip=user_net[4],
+                                       director_node_ssh_ip=user_net[lab_config['nodes']['ip-shift'][0]],
                                        undercloud_network_cidr=undercloud_net,
                                        undercloud_local_ip=undercloud_net[1],
                                        undercloud_local_ip_simple=undercloud_net[1],
