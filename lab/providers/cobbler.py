@@ -36,7 +36,7 @@ def configure_for_osp7(yaml_path):
     for iface, mac in server.get_mac('all').iteritems():
         cobbler.modify_system(handle, 'modify_interface', {'macaddress-{0}'.format(iface): mac}, token)
         if iface == 'user':
-            cobbler.modify_system(handle, 'modify_interface', {'ipaddress-{0}'.format(iface): str(user_net[4]),
+            cobbler.modify_system(handle, 'modify_interface', {'ipaddress-{0}'.format(iface): str(user_net[config['nodes']['director']['ip-shift'][0]]),
                                                                'static-{0}'.format(iface): True,
                                                                'subnet-{0}'.format(iface): str(user_net.netmask)}, token)
 
