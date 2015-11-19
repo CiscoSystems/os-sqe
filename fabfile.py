@@ -9,6 +9,7 @@ from fabs import jenkins_reports
 from lab import BaseLab
 from lab.providers import cobbler, ucsm, n9k
 from lab.runners import rally
+from lab.configurators import osp7_install
 
 @timed
 def venv(private=False):
