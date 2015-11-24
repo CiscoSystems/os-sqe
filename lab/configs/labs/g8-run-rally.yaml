@@ -1,0 +1,3 @@
+provider: {ProviderExisting: [{host: 10.23.230.70, username: root, password: cisco123}]}
+deployer:  {DeployerExisting: {end_point: 172.29.173.75 , cloud: g8, user: admin, tenant: admin, admin: admin, password: 3c803f21e369062ba16cf3421bbc1d7c45dd7eb3}}
+runner:  {RunnerRally: {cloud: g8, task-yaml: task-rally.yaml}}

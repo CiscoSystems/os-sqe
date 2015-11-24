@@ -1,4 +1,7 @@
 [DEFAULT]
+# switch on/off time consuming operation - openstack baremetal introspection bulk start
+node_discovery = false
+
 director_node_hostname = {director_node_hostname}
 director_node_ssh_ip = {director_node_ssh_ip}
 director_node_ssh_username = root
