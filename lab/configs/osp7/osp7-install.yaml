@@ -21,12 +21,12 @@ network_ucsm_host_list = {ucsm_mac_profile_list}
 undercloud_local_interface = {undercloud_local_interface}
 # used to create undercloud.conf for 'openstack undercloud install'
 undercloud_network_cidr =  {undercloud_network_cidr}
-undercloud_local_ip =  {undercloud_local_ip}
 undercloud_local_ip_simple = {undercloud_local_ip_simple}
+undercloud_local_ip = %(undercloud_local_ip_simple)s/{undercloud_netbits}
 undercloud_masquerade_network = {undercloud_masquerade_network}
 undercloud_dhcp_start = {undercloud_dhcp_start}
 undercloud_dhcp_end = {undercloud_dhcp_end}
-undercloud_network_gateway = {undercloud_network_gateway}
+undercloud_network_gateway = %(undercloud_local_ip_simple)s
 undercloud_discovery_iprange = {undercloud_discovery_start},{undercloud_discovery_end}
 undercloud_public_vip = {undercloud_public_vip}
 undercloud_admin_vip = {undercloud_admin_vip}
@@ -44,7 +44,8 @@ overcloud_ceph_storage_scale = {overcloud_ceph_storage_scale}
 # used in 'openstack overcloud deploy' for --neutron-public-interface and --hypervisor-neutron-public-interface
 single_nic = eth0
 
-overcloud_network_cidr = 20.0.0.0/24  # this network will be created as external in overcloud openstack
+# this network will be created as external in overcloud openstack
+overcloud_network_cidr = 20.0.0.0/24
 overcloud_floating_ip_cidr = 20.0.0.0/24
 overcloud_floating_ip_start = 20.0.0.10
 overcloud_floating_ip_end = 20.0.0.200

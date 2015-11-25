@@ -154,7 +154,7 @@ def configure_for_osp7(yaml_path):
                 else:
                     b_c_id = 'C0:{0:02}'.format(int(server_id))
 
-                profile = 'G{0}-{1}-{2}'.format(config['lab-id'], b_c_id, role)
+                profile = 'G{0}-{1}-{2}'.format(config['lab-id'], b_c_id.replace(':', '-'), role)
 
                 # add IPMI static ip:
                 addr = ipmi_net[description['ip-shift'][i]]
