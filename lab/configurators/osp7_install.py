@@ -14,7 +14,7 @@ def configure_for_osp7(yaml_path):
 
     mac_profiles = []
     nodes = []
-    counts = {'controller': 0, 'ceph': 0, 'compute': 0}
+    counts = {'control': 0, 'ceph': 0, 'compute': 0}
     for ucsm_profile, server in sorted(ucsm.read_config_ssh(yaml_path=yaml_path, is_director=False).iteritems()):
         if 'eth0' in server.ucsm['iface_mac']:
             mac_profiles.append('{0}:{1}'.format(server.ucsm['iface_mac']['eth0'], ucsm_profile))
@@ -35,19 +35,18 @@ def configure_for_osp7(yaml_path):
     cfg = osp7_install_template.format(director_node_hostname='g{0}-director.ctocllab.cisco.com'.format(lab_config['lab-id']),
                                        director_node_ssh_ip=user_net[lab_config['nodes']['director']['ip-shift'][0]],
                                        undercloud_network_cidr=undercloud_net,
-                                       undercloud_local_ip='{0}/{1}'.format(undercloud_net[1], undercloud_net.prefixlen),
+                                       undercloud_netbits=undercloud_net.prefixlen,
                                        undercloud_local_ip_simple=undercloud_net[1],
                                        undercloud_local_interface='pxe-int',
                                        undercloud_masquerade_network=undercloud_net,
                                        undercloud_dhcp_start=undercloud_net[100],
                                        undercloud_dhcp_end=undercloud_net[100 + 50],
-                                       undercloud_network_gateway=undercloud_net[1],
                                        undercloud_discovery_start=undercloud_net[200],
                                        undercloud_discovery_end=undercloud_net[200 + 50],
                                        undercloud_public_vip=undercloud_net[2],
                                        undercloud_admin_vip=undercloud_net[3],
                                        overcloud_nodes=nodes_string,
-                                       overcloud_control_scale=counts['controller'],
+                                       overcloud_control_scale=counts['control'],
                                        overcloud_ceph_storage_scale=counts['ceph'],
                                        overcloud_compute_scale=counts['compute'],
                                        ucsm_ip=lab_config['ucsm']['host'],
