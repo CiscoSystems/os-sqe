@@ -632,7 +632,7 @@ def configure_boto(conf, services):
 def configure_horizon(conf):
     """Derive the horizon URIs from the identity's URI."""
     uri = conf.get('identity', 'uri')
-    base = uri.rsplit(':', 1)[0] + '/dashboard'
+    base = uri.rsplit(':', 1)[0]
     assert base.startswith('http:') or base.startswith('https:')
     has_horizon = True
     try:
@@ -641,7 +641,7 @@ def configure_horizon(conf):
         has_horizon = False
     conf.set('service_available', 'horizon', str(has_horizon))
     conf.set('dashboard', 'dashboard_url', base + '/')
-    conf.set('dashboard', 'login_url', base + '/auth/login/')
+    conf.set('dashboard', 'login_url', base + '/dashboard' + '/auth/login/')
 
 
 def configure_discovered_services(conf, services):
