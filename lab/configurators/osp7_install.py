@@ -4,6 +4,7 @@ from fabric.api import task
 @task
 def configure_for_osp7(yaml_path):
     from netaddr import IPNetwork
+    import os
     from lab.WithConfig import read_config_from_file
     from lab.providers import ucsm
 
@@ -21,6 +22,7 @@ def configure_for_osp7(yaml_path):
         pxe_mac = server.ucsm['iface_mac']['pxe-int']
 
         descriptor = {'"arch"': '"x86_64"', '"cpu"': '"2"', '"memory"': '"8256"', '"disk"': '"1112"',
+                      '"name"': '"{0}-{1}"'.format(server.role, counts[server.role]),
                       '"capabilities"':  '"profile:{0},boot_option:local"'.format(server.role),
                       '"mac"': '["{0}"]'.format(pxe_mac),
                       '"pm_type"': '"pxe_ipmitool"',
@@ -37,7 +39,6 @@ def configure_for_osp7(yaml_path):
                                        undercloud_network_cidr=undercloud_net,
                                        undercloud_netbits=undercloud_net.prefixlen,
                                        undercloud_local_ip_simple=undercloud_net[1],
-                                       undercloud_local_interface='pxe-int',
                                        undercloud_masquerade_network=undercloud_net,
                                        undercloud_dhcp_start=undercloud_net[100],
                                        undercloud_dhcp_end=undercloud_net[100 + 50],
@@ -53,7 +54,25 @@ def configure_for_osp7(yaml_path):
                                        ucsm_username=lab_config['ucsm']['username'],
                                        ucsm_password=lab_config['ucsm']['password'],
                                        ucsm_mac_profile_list=','.join(mac_profiles),
+                                       n9k1_name='n9k-1',
+                                       n9k2_name='n9k-2',
+                                       n9k1_ip=lab_config['n9k']['host'],
+                                       n9k2_ip=lab_config['n9k']['host2'],
+                                       n9k_username=lab_config['n9k']['username'],
+                                       n9k_password=lab_config['n9k']['password'],
+                                       undercloud_lab_pxe_interface='pxe-ext',
+                                       undercloud_local_interface='pxe-int',
+                                       undercloud_fake_gateway_interface='pxe-int',
+                                       controller_floating_nic='eth1',
+                                       neutron_public_nic='eth3',
+                                       neutron_private_nic='eth0',
+                                       hypervisor_neutron_public_nic='eth0',
                                        cobbler_system='G{0}-DIRECTOR'.format(lab_config['lab-id']))
 
-    with open('osp7_install_config.conf', 'w') as f:
+    folder = 'artefacts'
+    file_path = os.path.join(folder, 'g{0}-osp7-install-config.conf'.format(lab_config['lab-id']))
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+    with open(file_path, 'w') as f:
         f.write(cfg)

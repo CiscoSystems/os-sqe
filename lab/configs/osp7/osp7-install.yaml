@@ -6,12 +6,8 @@ director_node_hostname = {director_node_hostname}
 director_node_ssh_ip = {director_node_ssh_ip}
 director_node_ssh_username = root
 
-rhel_pool = fake
-rhel_username = fake
-rhel_password = fake
-
 # used to create neutron ml2 config
-neutron_mechanism_drivers = openvswitch,cisco_ucsm
+neutron_mechanism_drivers = openvswitch,cisco_ucsm,cisco_nexus
 network_ucsm_ip = {ucsm_ip}
 network_ucsm_username = {ucsm_username}
 network_ucsm_password = {ucsm_password}
@@ -19,6 +15,9 @@ network_ucsm_host_list = {ucsm_mac_profile_list}
 
 # iface used for internal PXE network, usually pxe-int
 undercloud_local_interface = {undercloud_local_interface}
+# iface used for public overcloud api
+undercloud_fake_gateway_interface = {undercloud_fake_gateway_interface}
+
 # used to create undercloud.conf for 'openstack undercloud install'
 undercloud_network_cidr =  {undercloud_network_cidr}
 undercloud_local_ip_simple = {undercloud_local_ip_simple}
@@ -35,22 +34,66 @@ undercloud_admin_vip = {undercloud_admin_vip}
 # used to create overcloud.json for 'openstack baremetal import --json ~/overcloud.json'
 overcloud_nodes = {overcloud_nodes}
 
+# used to deploy director from external cobbler
+undercloud_lab_pxe_interface = {undercloud_lab_pxe_interface}
 # used in 'openstack overcloud deploy' for --control-scale
 overcloud_control_scale = {overcloud_control_scale}
 # used in 'openstack overcloud deploy' for --compute-scale
 overcloud_compute_scale = {overcloud_compute_scale}
 # used in 'openstack overcloud deploy' for --ceph-storage-scale
 overcloud_ceph_storage_scale = {overcloud_ceph_storage_scale}
-# used in 'openstack overcloud deploy' for --neutron-public-interface and --hypervisor-neutron-public-interface
-single_nic = eth0
+
+# used on controller for public network
+controller_floating_nic = {controller_floating_nic}
+# user on controller to get access to ucsm and n9k ifaces
+neutron_public_nic = {neutron_public_nic}
+# used on contoller for tenant traffic
+neutron_private_nic = {neutron_private_nic}
+# used on compute for tenant traffic
+hypervisor_neutron_public_nic = {hypervisor_neutron_public_nic}
+
 
 # this network will be created as external in overcloud openstack
 overcloud_network_cidr = 20.0.0.0/24
+overcloud_external_ip_cidr = 20.0.0.111/24
+overcloud_external_ip_start = 20.0.0.222
+overcloud_external_gateway = 20.0.0.1
+overcloud_external_ip_end = 20.0.0.233
 overcloud_floating_ip_cidr = 20.0.0.0/24
 overcloud_floating_ip_start = 20.0.0.10
 overcloud_floating_ip_end = 20.0.0.200
 overcloud_bm_network_gateway = 20.0.0.1
 overcloud_bm_network_mask = 24
+
+
+network_nexus_config = {{ "{n9k1_name}" : {{
+                        "ip_address": "{n9k1_ip}",
+                        "username": "{n9k_username}",
+                        "password": "{n9k_password}",
+                        "nve_src_intf": 2,
+                        "ssh_port": 22,
+                        "physnet": "datacentre",
+                        "servers": {{
+                           "10:25:B5:00:B3:02": {{"ports": "port-channel:47,port-channel:48,port-channel:1" }},
+                           "10:25:B5:00:C0:04":  {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
+                           "10:25:B5:00:C0:05":  {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
+
+                        }}
+                      }},
+                        "{n9k2_name}" : {{
+                        "ip_address": "{n9k2_ip}",
+                        "username": "{n9k_username}",
+                        "password": "{n9k_password}",
+                        "nve_src_intf": 2,
+                        "ssh_port": 22,
+                        "physnet": "datacentre",
+                        "servers": {{
+                            "10:25:B5:00:B3:02": {{"ports": "port-channel:47,port-channel:48,port-channel:1" }},
+                            "10:25:B5:00:C0:04": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
+                            "10:25:B5:00:C0:05":  {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
+                        }}
+                      }}
+                    }}
 
 [cobbler]
 osp_directory_node = {cobbler_system}
