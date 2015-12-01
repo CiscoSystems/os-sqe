@@ -65,6 +65,7 @@ def cleanup(host, username, password):
         for server_num in run('sh server status | no-more | egrep "Complete$" | cut -f 1 -d " "', shell=False).split():
             if run('scope server {0}; scope cimc; sh ext-static-ip'.format(server_num), shell=False):
                 run('scope server {0}; scope cimc; delete ext-static-ip; commit-buffer'.format(server_num), shell=False)
+            run('acknowledge server {0}  ;  commit-buffer'.format(server_num), shell=False)
         for block in run('scope org; scope ip-pool ext-mgmt; sh block | egrep [1-9] | cut -f 5-10 -d " "', shell=False).split('\n'):
             if block:
                 run('scope org; scope ip-pool ext-mgmt; delete block {0}; commit-buffer'.format(block), shell=False)
