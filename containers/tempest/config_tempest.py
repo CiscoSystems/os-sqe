@@ -710,13 +710,11 @@ def _upload_image(client, name, path, disk_format):
 
 def _find_image(client, image_id, image_name):
     """Find image by ID or name (the image client doesn't have this)."""
-    if image_id:
-        try:
-            return client.get_image(image_id)
-        except exceptions.NotFound:
-            pass
     images_list = client.list_images().get('images', [])
-    found = filter(lambda x: x['name'] == image_name, images_list)
+    if image_id:
+        found = filter(lambda image: image['id'] == image_id, images_list)
+    else:
+        found = filter(lambda image: image['name'] == image_name, images_list)
     if found:
         return found[0]
     else:
