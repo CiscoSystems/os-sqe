@@ -4,6 +4,7 @@ class Server(object):
         from lab.WithConfig import CONFIG_DIR
 
         self.private_key_path = os.path.join(CONFIG_DIR, 'keys', 'private')
+        self.public_key_path = os.path.join(CONFIG_DIR, 'keys', 'public')
 
         self.ip = ip
         self.ip_mac = 'UnknownInServer'
@@ -109,6 +110,29 @@ class Server(object):
                 with cd(in_directory):
                     return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)
 
+    def put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
+        """Put given string as file to remote server"""
+        from fabric.api import put, settings, cd, lcd, local
+        import os
+        from StringIO import StringIO
+
+        if '/' in file_name:
+            raise SyntaxError('file_name can not contain /, use in_directory instead')
+
+        use_sudo = True if in_directory.startswith('/') else False
+
+        if in_directory != '.':
+            self.run(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
+
+        if self.ip == 'localhost' or self.ip == '127.0.0.1':
+            with lcd(in_directory):
+                local('echo "{0}" > {1}'.format(string_to_put, file_name))
+                return os.path.abspath(os.path.join(in_directory, file_name))
+        else:
+            with settings(**self.construct_settings(warn_only=False)):
+                with cd(in_directory):
+                    return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)
+
     def get(self, remote_path, in_directory='.', local_path=None):
         """Get remote file as string or local file if local_path is specified"""
         from fabric.api import get, settings, cd
@@ -123,6 +147,24 @@ class Server(object):
                 get(remote_path=remote_path, local_path=local_path,  use_sudo=use_sudo)
 
         return local_path.getvalue() if isinstance(local_path, StringIO) else local_path
+
+    def get_file_from_dir(self, file_name, in_directory='.', local_path=None):
+        """Get remote file as string or local file if local_path is specified"""
+        from fabric.api import sudo, settings, cd
+
+        if '/' in file_name:
+            raise SyntaxError('file_name can not contain /, use in_directory instead')
+
+        with settings(**self.construct_settings(warn_only=False)):
+            with cd(in_directory):
+                body = sudo('cat {0}'.format(file_name))
+
+        if local_path:
+            with open(local_path, 'w') as f:
+                f.write(body)
+            return local_path
+        else:
+            return body
 
     def wget_file(self, url, to_directory, checksum):
         import os
@@ -159,3 +201,5 @@ class Server(object):
             self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
             self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
         self.username = new_username
+        with open(self.public_key_path) as f:
+            self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
