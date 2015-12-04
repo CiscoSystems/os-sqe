@@ -10,7 +10,7 @@ nets: {
   eth1:     {mac-tmpl: '{lab_id:02}:25:B5:11:{b_c_id}', vlan: 3001 }, # used for eth1 network - current restriction of ucsm plugin will be renamed to api
 }
 nodes: {
-  director: {server-id: ['3/1'],           ip-shift: [6],          is-sriov: False, nets: [user, pxe-ext, pxe-int]},
+  director: {server-id: ['3/1'],           ip-shift: [6],          is-sriov: False, nets: [user, eth0, pxe-ext, pxe-int]},
   ceph:     {server-id: ['1', '2', '3'],   ip-shift: [7, 8, 9],    is-sriov: False, nets: [user, pxe-int, ceph-int, ceph-ext]},
   control:  {server-id: ['3/2', '4', '5'], ip-shift: [10, 11, 12], is-sriov: False, nets: [eth0, eth1, user, pxe-int, ceph-ext]},
   compute:  {server-id: ['6', '7'],        ip-shift: [13, 14],     is-sriov: False, nets: [eth0, eth1, user, pxe-int, ceph-ext]}

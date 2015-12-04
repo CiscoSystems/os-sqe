@@ -27,6 +27,16 @@ def nxapi(n9k_creds, commands):
 
 
 @task
+def reboot(yaml_path):
+    from lab.WithConfig import read_config_from_file
+
+    config = read_config_from_file(yaml_path=yaml_path)
+    n9k_creds = config['n9k']
+
+    nxapi(n9k_creds=n9k_creds, commands=['reload force'])
+
+
+@task
 def configure_for_osp7(yaml_path):
     """configures n9k to run on top of UCSM"""
     from lab.WithConfig import read_config_from_file

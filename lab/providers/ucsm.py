@@ -2,6 +2,23 @@ from fabric.api import task
 
 
 @task
+def reboot(yaml_path):
+    from fabric.api import settings, run
+    from lab.WithConfig import read_config_from_file
+
+    config = read_config_from_file(yaml_path=yaml_path)
+    ucsm_ip = config['ucsm']['host']
+    ucsm_username = config['ucsm']['username']
+    ucsm_password = config['ucsm']['password']
+
+    prompt = {'Before rebooting, please take a configuration backup.\nDo you still want to reboot? (yes/no):': 'yes'}
+    with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
+        run('connect local-mgmt', shell=False)
+        with settings(prompts=prompt):
+            run('reboot', shell=False)
+
+
+@task
 def read_config_ssh(yaml_path, is_director=True):
     """Reads config needed for OSP7 via ssh to UCSM"""
     from lab.Server import Server
@@ -65,7 +82,7 @@ def cleanup(host, username, password):
         for server_num in run('sh server status | no-more | egrep "Complete$" | cut -f 1 -d " "', shell=False).split():
             if run('scope server {0}; scope cimc; sh ext-static-ip'.format(server_num), shell=False):
                 run('scope server {0}; scope cimc; delete ext-static-ip; commit-buffer'.format(server_num), shell=False)
-            run('acknowledge server {0}  ;  commit-buffer'.format(server_num), shell=False)
+#            run('acknowledge server {0}  ;  commit-buffer'.format(server_num), shell=False)
         for block in run('scope org; scope ip-pool ext-mgmt; sh block | egrep [1-9] | cut -f 5-10 -d " "', shell=False).split('\n'):
             if block:
                 run('scope org; scope ip-pool ext-mgmt; delete block {0}; commit-buffer'.format(block), shell=False)
@@ -100,6 +117,7 @@ def configure_for_osp7(yaml_path):
     ucsm_password = config['ucsm']['password']
 
     cleanup(host=ucsm_host, username=ucsm_user, password=ucsm_password)
+
     with settings(host_string='{user}@{ip}'.format(user=ucsm_user, ip=ucsm_host), password=ucsm_password, connection_attempts=50, warn_only=False):
         server_ids = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
         n_servers = len(server_ids)  # how many servers UCSM currently sees
