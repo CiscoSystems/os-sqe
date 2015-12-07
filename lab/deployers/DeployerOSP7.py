@@ -148,6 +148,13 @@ class DeployerOSP7(Deployer):
         self.director_server.put(string_to_put=command, file_name='RE-DEPLOY')
         self.director_server.run(command=command)
 
+    def __assign_ips_to_user(self):
+        for line in self.director_server.run(command='source stackrc && nova list').split('\n'):
+            ip_on_pxe_int = line
+            iface_on_user = self.director_server.run("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {print $2}'".format(ip_on_pxe_int=ip_on_pxe_int))
+            iface_on_user.strip(':')
+            self.director_server.run("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {iface_on_user}".format(ip_on_pxe_int=ip_on_pxe_int))
+
     def __create_overcloud_config_and_template(self, servers):
         import json
         import os

@@ -9,6 +9,14 @@ class RunnerCloud99(Runner):
     def __init__(self, config):
         pass
 
+    def __assign_ip_to_user_nic(self):
+        for line in self.director_server.run(command='source stackrc && nova list').split('\n'):
+            ip_on_pxe_int = line
+            iface_on_user = self.director_server.run("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {print $2}'".format(ip_on_pxe_int=ip_on_pxe_int))
+            iface_on_user.strip(':')
+            self.director_server.run("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {iface_on_user}".format(ip_on_pxe_int=ip_on_pxe_int))
+
+
     def run_on_director(self, director_ip):
         from lab.Server import Server
 
@@ -16,7 +24,7 @@ class RunnerCloud99(Runner):
 
         user = 'sqe'
 
-        cloud_rc_name = '~/over-cloud-rc'
+        cloud_rc_name = '~/overcloudrc'
         rally_venv = '~/VE/rally'
         cloud99_venv = '~/VE/cloud99'
 
@@ -26,10 +34,13 @@ class RunnerCloud99(Runner):
 
         director.create_user(new_username=user)
 
-        director.run(command='sudo cp /home/stack/overcloudrc {0}'.format(cloud_rc_name))
-        director.run(command='sudo cp /home/stack/stackrc ~/stackrc')
+        director.run(command='sudo cp /home/stack/overcloudrc .')
+        director.run(command='sudo cp /home/stack/stackrc .')
         director.run(command='sudo cp /home/stack/.ssh/id_rsa* .', in_directory='.ssh')
-        director.run(command='sudo chown {0} id_rsa*'.format(user), in_directory='.ssh')
+        director.run(command='sudo chown {0} *'.format(user))
+        director.run(command='sudo chown {0} *'.format(user), in_directory='.ssh')
+
+        os_password = director.run(command='grep PASSWORD {0}'.format(cloud_rc_name)).split('=')[-1]
 
         rally_repo = director.clone_repo(repo_url='https://git.openstack.org/openstack/rally.git')
         director.check_or_install_packages(package_names='libffi-devel gmp-devel postgresql-devel wget python-virtualenv xterm xauth')
@@ -42,6 +53,7 @@ class RunnerCloud99(Runner):
         if not director.run(command='git remote -v | grep gitlab', in_directory=cloud99_repo, warn_only=True):
             director.run(command='git remote add gitlab http://gitlab.cisco.com/kshileev/cloud99.git', in_directory=cloud99_repo)
 
+        director.run(command='git fetch -p gitlab', in_directory=cloud99_repo)
         director.run(command='git checkout -b nxos-ucsm gitlab/nxos-ucsm', in_directory=cloud99_repo)
 
 
@@ -102,12 +114,12 @@ monitors:
     # openrc_file and password: Specify pointer to openrc credentials or source openrc before running script
     healthapi:
         openstack_api:
-            openrc_file: {0}
-            password: 7ece5c821b6c2b1c888c58f59867f7a09be40c69
+            openrc_file: {cloud_rc_name}
+            password: {os_password}
             frequency: 5
             max_entries: 20
 
-'''.format(cloud_rc_name)
+'''.format(cloud_rc_name=cloud_rc_name, os_password=os_password)
 
         role_ip = []
         counts = {'controller': 0, 'compute': 0}
