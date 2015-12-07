@@ -4,36 +4,52 @@ from lab.runners import Runner
 class RunnerCloud9(Runner):
 
     def sample_config(self):
-        return {'cloud': 'cloud name', 'task-yaml': 'path to the valid task yaml file'}
+        return {'yaml_path': 'yaml path'}
 
     def __init__(self, config):
-        pass
+        from netaddr import IPNetwork
+        from lab.Server import Server
+        from lab.WithConfig import read_config_from_file
 
-    def __assign_ip_to_user_nic(self):
-        for line in self.director_server.run(command='source stackrc && nova list').split('\n'):
-            ip_on_pxe_int = line
-            iface_on_user = self.director_server.run("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {print $2}'".format(ip_on_pxe_int=ip_on_pxe_int))
-            iface_on_user.strip(':')
-            self.director_server.run("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {iface_on_user}".format(ip_on_pxe_int=ip_on_pxe_int))
+        super(RunnerCloud9, self).__init__(config=config)
 
-    def __copy_stack_files(self, server):
-        server.run(command='sudo cp /home/stack/overcloudrc .')
-        server.run(command='sudo cp /home/stack/stackrc .')
-        server.run(command='sudo cp /home/stack/.ssh/id_rsa* .', in_directory='.ssh')
-        server.run(command='sudo chown {0} *'.format(user))
-        server.run(command='sudo chown {0} *'.format(user), in_directory='.ssh')
-        return (server.run(command='ls ~/ovefcloudrc'), server.run(command='ls ~/stackrc'))
+        lab_cfg = read_config_from_file(yaml_path=config['yaml_path'])
+        user_net = IPNetwork(lab_cfg['nets']['user']['cidr'])
+        self.director = Server(ip=str(user_net[lab_cfg['nodes']['director']['ip-shift'][0]]), username='root', password='cisco123')
+        self.ips_on_user = {}
+        self.gw_on_user = str(user_net[1])
+        for role in ['ceph', 'control', 'compute']:
+            self.ips_on_user[role] = [str(user_net[x]) + '/' + str(user_net.prefixlen) for x in lab_cfg['nodes'][role]['ip-shift']]
 
-    def __prepare_sqe_repo(self, server):
-        server.check_or_install_packages(package_names='xterm xauth')
+    def __assign_ip_to_user_nic(self, undercloud):
+        ssh = 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no heat-admin@'
+        for role, ips in self.ips_on_user.iteritems():
+            for i, ip_on_user in enumerate(ips):
+                line = self.director.run(command='source {0} && nova list | grep {1} | grep "\-{2}"'.format(undercloud, role, i))
+                ip_on_pxe = line.split('=')[-1].replace(' |', '')
+                line = self.director.run("{s}{ip_on_pxe} /usr/sbin/ip -o l | awk '/:aa:/ {{print $2}}'".format(s=ssh, ip_on_pxe=ip_on_pxe))
+                if_on_user = line.split('\n')[-1].strip(':')
+                self.director.run('{s}{ip_on_pxe} sudo ip a flush dev {iface_on_user}'.format(s=ssh, ip_on_pxe=ip_on_pxe, iface_on_user=if_on_user))
+                self.director.run('{s}{ip_on_pxe} sudo ip a a {ip_on_user} dev {if_on_user}'.format(s=ssh, ip_on_pxe=ip_on_pxe, if_on_user=if_on_user, ip_on_user=ip_on_user))
+                self.director.run('{s}{ip_on_pxe} sudo ip r r default via {gw_on_user} dev {if_on_user}'.format(s=ssh, ip_on_pxe=ip_on_pxe, gw_on_user=self.gw_on_user, if_on_user=if_on_user))
 
-        sqe_repo = server.clone_repo(repo_url='https://github.com/cisco-openstack/openstack-sqe.git')
+    def __copy_stack_files(self, user):
+        self.director.run(command='sudo cp /home/stack/overcloudrc .')
+        self.director.run(command='sudo cp /home/stack/stackrc .')
+        self.director.run(command='sudo cp /home/stack/.ssh/id_rsa* .', in_directory='.ssh')
+        self.director.run(command='sudo chown {0}.{0} overcloudrc stackrc .ssh/*'.format(user))
+        return '~/overcloudrc', '~/stackrc'
+
+    def __prepare_sqe_repo(self):
+        self.director.check_or_install_packages(package_names='xterm xauth libvirt')
+
+        sqe_repo = self.director.clone_repo(repo_url='https://github.com/cisco-openstack/openstack-sqe.git')
         sqe_venv = '~/VE/sqe'
-        server.run(command='virtualenv {0}'.format(sqe_venv))
-        server.run(command='{0}/bin/pip install -r requirements.txt'.format(sqe_venv), in_directory=sqe_repo)
-        return (sqe_repo, server.run(command='ls {0}'.format(sqe_venv)))
+        self.director.run(command='virtualenv {0}'.format(sqe_venv))
+        self.director.run(command='{0}/bin/pip install -r requirements.txt'.format(sqe_venv), in_directory=sqe_repo)
+        return sqe_repo, self.director.run(command='ls {0}'.format(sqe_venv))
 
-    def __create_bashrc(self, server, undercloud, overcloud):
+    def __create_bashrc(self, undercloud, overcloud):
         bashrc = '''
 [ -f /etc/bashrc ] &&  . /etc/bashrc
 
@@ -61,31 +77,25 @@ function power-cycle()
     nova service-list
 }}
 '''.format(undercloud=undercloud, overcloud=overcloud)
-        server.put_string_as_file_in_dir(string_to_put=bashrc, file_name='.bashrc')
+        self.director.put_string_as_file_in_dir(string_to_put=bashrc, file_name='.bashrc')
 
-    def run_on_director(self, director_ip):
-        from lab.Server import Server
-
-        director = Server(ip=director_ip, username='root', password='cisco123')
-
+    def run_on_director(self):
         user = 'sqe'
-        director.run(command='sudo rm -f /home/{0}/.bashrc'.format(user), warn_only=True)
-        director.create_user(new_username=user)
+        self.director.run(command='sudo rm -f /home/{0}/.bashrc'.format(user), warn_only=True)
+        self.director.create_user(new_username=user)
 
+        overcloud, undercloud = self.__copy_stack_files(user=user)
 
-        overcloud, undercloud = self.__copy_stack_files(server=director)
-
-        self.__assign_ip_to_user_nic()
-        undercloud_nodes = director.run(command='source {0} && nova list'.format(undercloud))
-        os_password = director.run(command='grep PASSWORD {0}'.format(cloud_rc_name)).split('=')[-1]
-
+        self.__assign_ip_to_user_nic(undercloud=undercloud)
+        undercloud_nodes = self.director.run(command='source {0} && nova list'.format(undercloud))
+        os_password = self.director.run(command='grep PASSWORD {0}'.format(overcloud)).split('=')[-1]
 
         config_yaml = '''
-monitor: monitor_fi_vlan
-monitor: monitor_n9k_vlan
-load: networks
-disruptor: fi_reboot
-disruptor: n9k_reboot
+monitor_fi_vlan
+monitor_n9k_vlan
+networks
+fi_reboot
+n9k_reboot
 '''
         role_ip = []
         counts = {'controller': 0, 'compute': 0}
@@ -96,17 +106,14 @@ disruptor: n9k_reboot
                     counts[role] += 1
                     role_ip.append('{role}-{n}:\n   ip: {ip}\n   user: heat-admin\n   password: ""\n   role: {role}'.format(role=role, n=counts[role], ip=ip))
 
-        openstack_config_yaml = '\n\n'.join(role_ip) + '\n'
-
-
-        director.put_string_as_file_in_dir(string_to_put=config_yaml, file_name='executor.yaml')
-
-        #director.run(command='export PYTHONPATH=. && export HAPATH=. && {0}/bin/python ha_engine/ha_main.py -f configs/executor.yaml'.format(cloud99_venv), in_directory=cloud99_repo)
+        self.director.put_string_as_file_in_dir(string_to_put=config_yaml, file_name='ha.yaml')
+        self.__prepare_sqe_repo()
+        self.__create_bashrc(undercloud=undercloud, overcloud=overcloud)
 
     def execute(self, clouds, servers):
         super(RunnerCloud9, self).execute(clouds, servers)
 
 
 if __name__ == '__main__':
-    r = RunnerCloud9('aaa')
-    r.run_on_director('10.23.230.134')
+    r = RunnerCloud9(config={'yaml_path': 'lab/configs/labs/g10.yaml'})
+    r.run_on_director()
