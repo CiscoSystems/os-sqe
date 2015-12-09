@@ -18,7 +18,7 @@ def testr_run(args):
     return res
 
 
-def main(context, args):
+def main(context, log, args):
     test = args['test']
     processes = args['processes']
     etime = args['etime']
