@@ -13,8 +13,11 @@ def testr_run(args):
     res = list()
     time.sleep(delay)
     with cd(tempest_path):
-        while (datetime.datetime.now() - start_time).seconds < etime:
-            res.append(local('source ~/VE/tempest/bin/activate && testr run {0}'.format(test), capture=True))
+        if etime:
+            while (datetime.datetime.now() - start_time).seconds < etime:
+                res.append(local('source ~/VE/tempest/bin/activate && testr run {0}'.format(test), capture=True))
+        else:
+            return local('source ~/VE/tempest/bin/activate && testr run {0}'.format(test), capture=True)
     return res
 
 
@@ -26,7 +29,7 @@ def main(context, log, args):
 
     # Figure out execution time of a one test
     start_time = datetime.datetime.now()
-    testr_run((test, 0))
+    testr_run((test, 0, 0, tempest_path))
     execution_time = (datetime.datetime.now() - start_time).seconds
     print 'Single test takes {0} seconds'.format(execution_time)
 
