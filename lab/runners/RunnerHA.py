@@ -32,6 +32,9 @@ class RunnerContext(object):
     def ucsm_password(self):
         return self.lab_cfg['ucsm']['password']
 
+    def n9k_creds(self):
+        return self.lab_cfg['n9k']
+
 
 class RunnerHA(Runner):
     def sample_config(self):
