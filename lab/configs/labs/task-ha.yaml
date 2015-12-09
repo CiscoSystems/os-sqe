@@ -1,0 +1,5 @@
+lab.monitors.ucsm.monitor:
+  duration: 100
+  period: 5
+lab.scenarios.scenario1.main:
+  times: 2

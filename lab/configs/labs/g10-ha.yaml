@@ -1,0 +1,2 @@
+deployer:  {DeployerExistingOSP7: {cloud: g10, hardware-lab-config: g10.yaml}}
+runner:  {RunnerHA: {cloud: g10, hardware-lab-config: g10.yaml, task-yaml: task-ha.yaml}}

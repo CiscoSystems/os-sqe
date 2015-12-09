@@ -20,6 +20,10 @@ class WithConfig(object):
 
         verify_config(sample_config=sample_config, config=config, exception=self._exception)
 
+    @staticmethod
+    def read_config_from_file(config_path):
+        return read_config_from_file(yaml_path=config_path)
+
 
 class LabConfigException(Exception):
     def __init__(self,  lab_class, sample_config, config, message=''):

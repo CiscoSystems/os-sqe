@@ -1,18 +1,25 @@
 import logging
 
-lab_logger = logging.getLogger('LAB-LOG')
-lab_logger.setLevel(logging.DEBUG)
 
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s\n\n')
+formatter = logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s:  %(message)s')
 
-fh = logging.FileHandler('LAB-LOG.txt')
-fh.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+console_handler.setFormatter(formatter)
 
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+file_handler = logging.FileHandler('iron-lady.log')
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
 
-ch.setFormatter(formatter)
-fh.setFormatter(formatter)
 
-lab_logger.addHandler(ch)
-lab_logger.addHandler(fh)
+def create_logger(name=None):
+    import inspect
+
+    stack = inspect.stack()
+    logger = logging.getLogger(name or stack[1][3])
+    logger.setLevel(level=logging.DEBUG)
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    return logger
+
+lab_logger = create_logger(name='LAB-LOG')

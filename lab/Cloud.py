@@ -4,7 +4,7 @@ class Cloud:
     ROLE_NETWORK = 'network'
     ROLE_COMPUTE = 'compute'
 
-    def __init__(self, cloud, user, admin, tenant, password):
+    def __init__(self, cloud, user, admin, tenant, password, end_point=None):
         self.cloud = cloud
         self.user = user
         self.admin = admin
@@ -13,13 +13,13 @@ class Cloud:
         self.info = {'controller': [], 'ucsm': [], 'network': [], 'compute': []}
         self.mac_2_ip = {}
         self.hostname_2_ip = {}
+        self.end_point = end_point
 
     def __repr__(self):
-        return '--os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(u=self.user, t=self.tenant, p=self.password, a=self.end_point)
+        return '--os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(u=self.user, t=self.tenant, p=self.password, a=self.get_end_point())
 
-    @property
-    def end_point(self):
-        return 'http://{0}:5000/v2.0'.format(self.get_first(self.ROLE_CONTROLLER, 'ip'))
+    def get_end_point(self):
+        return self.end_point or 'http://{0}:5000/v2.0'.format(self.get_first(self.ROLE_CONTROLLER, 'ip'))
 
     def get(self, role, parameter):
         """

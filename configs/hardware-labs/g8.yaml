@@ -1,0 +1,20 @@
+lab-id: 8 # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools
+nets: {
+  mgmt:     {                                           vlan: 8,    cidr: 10.30.119.0/24}, # used for UCSM KVM IPMI
+  user:     {mac-tmpl: '{lab_id:02}:25:B5:AA:{b_c_id}', vlan: 174,  cidr: 10.23.230.64/27},   # used for normal user traffic
+  pxe-ext:  {mac-tmpl: '{lab_id:02}:25:B5:FF:{b_c_id}', vlan: 1,    cidr: 169.254.4.0/24,},   # used for external pxe bootstrapping of director
+  pxe-int:  {mac-tmpl: '{lab_id:02}:25:B5:EE:{b_c_id}', vlan: 3333, cidr: 10.11.12.0/24},     # used for internal pxe bootstrapping of overcloud-node
+  ceph-int: {mac-tmpl: '{lab_id:02}:25:B5:CC:{b_c_id}', vlan: 3100 }, # used for internal CEPH cluster
+  ceph-ext: {mac-tmpl: '{lab_id:02}:25:B5:CE:{b_c_id}', vlan: 3101 }, # used for access Ceph cluster from compute and control nodes
+  eth0:     {mac-tmpl: '{lab_id:02}:25:B5:00:{b_c_id}', vlan: 3000 }, # used for eth0 network - current restriction of ucsm plugin will be renamed to api
+  eth1:     {mac-tmpl: '{lab_id:02}:25:B5:11:{b_c_id}', vlan: 3001 }, # used for eth1 network - current restriction of ucsm plugin will be renamed to api
+}
+nodes: {
+  director: {server-id: ['1'],        ip-shift: [4],     is-sriov: False, nets: [user, pxe-ext, pxe-int]},
+  control:  {server-id: ['2', '3'],   ip-shift: [5, 6],  is-sriov: False, nets: [eth0, eth1, user, pxe-int, ceph-ext]},
+  compute:  {server-id: ['4'],        ip-shift: [7],     is-sriov: False, nets: [eth0, eth1, user, pxe-int, ceph-ext]}
+}
+ucsm: {host: 10.30.119.67, username: admin, password: cisco, uplink-ports: ['1/9', '1/10'], uplink-vpc-id: 81}
+n9k: {host: 172.31.229.207, username: admin, password: CTO1234!}
+cobbler: {host: 172.29.74.8, username: cobbler, password: cobbler}
+rh-secret: http://172.29.173.233/redhat/osp7/redhat-developers-account.yaml  # login-password info for RH dev account used in director's registration
