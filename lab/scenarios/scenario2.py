@@ -14,7 +14,7 @@ def testr_run(args):
     time.sleep(delay)
     with cd(tempest_path):
         while (datetime.datetime.now() - start_time).seconds < etime:
-            res.append(local('testr run {0}'.format(test), capture=True))
+            res.append(local('source ~/VE/tempest/bin/activate && testr run {0}'.format(test), capture=True))
     return res
 
 
