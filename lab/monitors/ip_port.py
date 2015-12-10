@@ -15,8 +15,11 @@ def start(context, log, args):
         try:
             s.connect((ip, port))
             res = 1
-        except socket.timeout:
+        except (socket.timeout, socket.error):
             res = 0
+        finally:
+            s.close()
+
         log.info('IP:port {0}:{1} Result {2}'.format(ip, port, res))
 
         time.sleep(args['period'])

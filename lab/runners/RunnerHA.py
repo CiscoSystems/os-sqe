@@ -55,7 +55,8 @@ class RunnerHA(Runner):
         import multiprocessing
 
         items_to_run = []
-        for module_path, arguments in self.task_body.iteritems():
+        for arguments in self.task_body:
+            module_path = arguments['method']
             try:
                 module = importlib.import_module(module_path)
                 func = getattr(module, 'start')
