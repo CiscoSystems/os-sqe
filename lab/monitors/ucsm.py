@@ -15,5 +15,19 @@ def monitor(context, log, args):
     while start_time + args['duration'] > time.time():
         for sp in service_profiles:
             if 'control' in sp or 'compute' in sp:
-                log.info('{0}: {1}'.format(sp, call_ucsm(command='scope org ; scope service-profile {0}; scope vnic eth0; sh eth-if | no-more | egrep "VLAN ID:" | cut -f 7 -d " "'.format(sp))))
+                vnic = 'eth0'
+                # Allowed vlans
+                cmd = 'scope org ; scope service-profile {0}; scope vnic {1}; sh eth-if | no-more | egrep "VLAN ID:" | cut -f 7 -d " "'.format(sp, vnic)
+                log.info('{0} {1} allowed vlans: {2}'.format(sp, vnic, call_ucsm(command=cmd)))
+
+
+        # Vlan profiles
+        cmd = 'scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "'
+        vlan_profiles = set(call_ucsm(command=cmd))
+        log.info('vlan profiles: {0}'.format(vlan_profiles))
+
+        # User sessions
+        cmd = 'scope security ; show user-sessions local detail | no-more | egrep "Pid:" | cut -f 6 -d " "'
+        log.info('User sessions: {0}'.format(call_ucsm(command=cmd)))
+
         time.sleep(args['period'])
