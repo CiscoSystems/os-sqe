@@ -1,0 +1,3 @@
+provider: {ProviderExisting: [{host: 10.86.7.199, username: root, password: openstack}]}
+deployer:  {DeployerExisting: {end_point: "http://172.17.35.2:5000/v2.0", cloud: bxb, user: admin, tenant: admin, admin: admin, password: 9788841d9bc3408a836966f43266dc777b2561be}}
+runner:  {RunnerRally: {cloud: bxb, task-yaml: task-rally.yaml}}
