@@ -41,10 +41,12 @@ class RunnerCloud9(Runner):
         return '~/overcloudrc', '~/stackrc'
 
     def __prepare_sqe_repo(self):
+        import os
+
         self.director.check_or_install_packages(package_names='xterm xauth libvirt')
 
         sqe_repo = self.director.clone_repo(repo_url='https://github.com/cisco-openstack/openstack-sqe.git')
-        sqe_venv = '~/VE/sqe'
+        sqe_venv = os.path.join('~/VE', os.path.basename(sqe_repo))
         self.director.run(command='virtualenv {0}'.format(sqe_venv))
         self.director.run(command='{0}/bin/pip install -r requirements.txt'.format(sqe_venv), in_directory=sqe_repo)
         return sqe_repo, self.director.run(command='ls {0}'.format(sqe_venv))
@@ -55,11 +57,12 @@ class RunnerCloud9(Runner):
 
 function venv()
 {{
-    local MY_ENV_DIR=~/VE
+    [ ! -d .git ] && echo "It's not git repo! aborting" && return
+    local MY_VENV_DIR=~/VE
     local venv=$(basename $(pwd))
-    [ -d ${{MY_ENV_DIR}}/${{venv}} ] || virtualenv ${{MY_VENV_DIR}}/${{venv}}
+    [ -d ${{MY_VENV_DIR}}/${{venv}} ] || virtualenv ${{MY_VENV_DIR}}/${{venv}}
     . ${{MY_VENV_DIR}}/${{venv}}/bin/activate
-    pip install -r requirements.txt
+    [ -f requirements.txt ] && pip install -r requirements.txt
 }}
 
 function power-cycle()
