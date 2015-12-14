@@ -22,7 +22,7 @@ class RunnerCloud9(Runner):
             self.ips_on_user[role] = [str(user_net[x]) + '/' + str(user_net.prefixlen) for x in lab_cfg['nodes'][role]['ip-shift']]
 
     def __assign_ip_to_user_nic(self, undercloud):
-        ssh = 'ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no heat-admin@'
+        ssh = 'ssh -o StrictHostKeyChecking=no heat-admin@'
         for role, ips in self.ips_on_user.iteritems():
             for i, ip_on_user in enumerate(ips):
                 line = self.director.run(command='source {0} && nova list | grep {1} | grep "\-{2}"'.format(undercloud, role, i))
@@ -53,6 +53,7 @@ class RunnerCloud9(Runner):
         return sqe_repo
 
     def __create_bashrc(self, sqe_repo):
+        self.director.run(command='rm -f ~/.bashrc')
         self.director.run(command='ln -s {0}/configs/bashrc ~/.bashrc'.format(sqe_repo))
 
     def run_on_director(self):
@@ -62,17 +63,12 @@ class RunnerCloud9(Runner):
 
         overcloud, undercloud = self.__copy_stack_files(user=user)
 
+        self.director.run(command='ssh -o StrictHostKeyChecking=no localhost hostname')
+
         self.__assign_ip_to_user_nic(undercloud=undercloud)
         undercloud_nodes = self.director.run(command='source {0} && nova list'.format(undercloud))
         os_password = self.director.run(command='grep PASSWORD {0}'.format(overcloud)).split('=')[-1]
 
-        config_yaml = '''
-monitor_fi_vlan
-monitor_n9k_vlan
-networks
-fi_reboot
-n9k_reboot
-'''
         role_ip = []
         counts = {'controller': 0, 'compute': 0}
         for line in undercloud_nodes.split('\n'):
@@ -82,7 +78,6 @@ n9k_reboot
                     counts[role] += 1
                     role_ip.append('{role}-{n}:\n   ip: {ip}\n   user: heat-admin\n   password: ""\n   role: {role}'.format(role=role, n=counts[role], ip=ip))
 
-        self.director.put_string_as_file_in_dir(string_to_put=config_yaml, file_name='ha.yaml')
         sqe_repo = self.__prepare_sqe_repo()
         self.__create_bashrc(sqe_repo=sqe_repo)
 
