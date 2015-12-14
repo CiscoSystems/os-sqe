@@ -9,7 +9,8 @@ def starter(item_description):
 
     context = RunnerContext(item_description.pop('lab-cfg'))
     delay = item_description.get('delay', 0)
-    log.info('Delaying start on {0} secs...'.format(delay))
+    if delay:
+        log.info('Delaying start by {0} secs...'.format(delay))
     time.sleep(delay)
     log.info('Start')
     func = item_description.pop('function')
@@ -38,7 +39,7 @@ class RunnerContext(object):
 
 class RunnerHA(Runner):
     def sample_config(self):
-        return {'cloud': 'cloud name', 'hardware-lab-config': 'path to valid hardware lab configuration', 'task-yaml': 'path to the valid task yaml file'}
+        return {'cloud': 'cloud name', 'hardware-lab-config': 'g10.yaml', 'task-yaml': 'task-ha.yaml'}
 
     def __init__(self, config):
         from lab.WithConfig import read_config_from_file
@@ -54,15 +55,14 @@ class RunnerHA(Runner):
         import multiprocessing
 
         items_to_run = []
-        for import_path, arguments in self.task_body.iteritems():
+        for module_path, arguments in self.task_body.iteritems():
             try:
-                module_path, func_name = import_path.rsplit('.', 1)
                 module = importlib.import_module(module_path)
-                func = getattr(module, func_name)
-                arguments.update({'function': func, 'log-name': import_path, 'lab-cfg': self.lab_cfg})
+                func = getattr(module, 'start')
+                arguments.update({'function': func, 'log-name': module_path, 'lab-cfg': self.lab_cfg})
                 items_to_run.append(arguments)
             except ImportError:
-                raise Exception('{0} failed to import'.format(import_path))
+                raise Exception('{0} failed to import'.format(module_path))
 
         pool = multiprocessing.Pool(len(items_to_run))
         pool.map(starter, items_to_run)

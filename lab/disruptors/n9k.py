@@ -1,4 +1,4 @@
-def reboot(context, log, args):
+def start(context, log, args):
     from lab.providers.n9k import nxapi
 
     log.ingo('Rebooting...')

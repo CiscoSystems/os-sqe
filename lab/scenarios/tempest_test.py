@@ -2,7 +2,7 @@ import datetime
 from fabric.api import local, cd
 
 
-def main(context, log, args):
+def start(context, log, args):
     test = args['test']
     etime = args['etime']
     tempest_path = args['tempest_path']

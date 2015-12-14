@@ -29,7 +29,7 @@ def test(iteration, log):
                 local('neutron net-delete {0}'.format(net_id))
 
 
-def main(context, log, args):
+def start(context, log, args):
     for id in xrange(0, args['times']):
         test(id, log)
 

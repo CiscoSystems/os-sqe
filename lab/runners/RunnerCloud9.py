@@ -49,38 +49,10 @@ class RunnerCloud9(Runner):
         sqe_venv = os.path.join('~/VE', os.path.basename(sqe_repo))
         self.director.run(command='virtualenv {0}'.format(sqe_venv))
         self.director.run(command='{0}/bin/pip install -r requirements.txt'.format(sqe_venv), in_directory=sqe_repo)
-        return sqe_repo, self.director.run(command='ls {0}'.format(sqe_venv))
+        return sqe_repo
 
-    def __create_bashrc(self, undercloud, overcloud):
-        bashrc = '''
-[ -f /etc/bashrc ] &&  . /etc/bashrc
-
-function venv()
-{{
-    [ ! -d .git ] && echo "It's not git repo! aborting" && return
-    local MY_VENV_DIR=~/VE
-    local venv=$(basename $(pwd))
-    [ -d ${{MY_VENV_DIR}}/${{venv}} ] || virtualenv ${{MY_VENV_DIR}}/${{venv}}
-    . ${{MY_VENV_DIR}}/${{venv}}/bin/activate
-    [ -f requirements.txt ] && pip install -r requirements.txt
-}}
-
-function power-cycle()
-{{
-    local what=${{1}}
-
-    source {undercloud}
-    for uuid in $(nova list | grep ${{what}} | awk '{{print $2}}') ;  do
-        node=$(ironic node-list | grep ${{uuid}} | awk '{{print $2}}')
-        echo Re-booting ${{node}}
-        ironic node-set-power-state ${{node}} reboot
-    done
-    ironic node-list
-    source {overcloud}
-    nova service-list
-}}
-'''.format(undercloud=undercloud, overcloud=overcloud)
-        self.director.put_string_as_file_in_dir(string_to_put=bashrc, file_name='.bashrc')
+    def __create_bashrc(self, sqe_repo):
+        self.director.run(command='ln -s {0}/configs/bashrc ~/.bashrc'.format(sqe_repo))
 
     def run_on_director(self):
         user = 'sqe'
@@ -110,8 +82,8 @@ n9k_reboot
                     role_ip.append('{role}-{n}:\n   ip: {ip}\n   user: heat-admin\n   password: ""\n   role: {role}'.format(role=role, n=counts[role], ip=ip))
 
         self.director.put_string_as_file_in_dir(string_to_put=config_yaml, file_name='ha.yaml')
-        self.__prepare_sqe_repo()
-        self.__create_bashrc(undercloud=undercloud, overcloud=overcloud)
+        sqe_repo = self.__prepare_sqe_repo()
+        self.__create_bashrc(sqe_repo=sqe_repo)
 
     def execute(self, clouds, servers):
         super(RunnerCloud9, self).execute(clouds, servers)

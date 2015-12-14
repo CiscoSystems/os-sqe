@@ -1,4 +1,4 @@
-def monitor(context, log, args):
+def start(context, log, args):
     from fabric.api import run, settings
     import time
 
