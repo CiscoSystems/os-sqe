@@ -15,7 +15,6 @@
 import os
 from fabric.api import local, settings
 from fabs import REPO_DIR, HOME_DIR
-from fabs import decorators
 
 TOPOLOGIES_DIR = os.path.abspath(os.path.join(REPO_DIR, 'fabs/lab/topologies'))
 DEVSTACK_CONF_DIR = os.path.abspath(os.path.join(TOPOLOGIES_DIR, 'devstack'))
@@ -42,16 +41,6 @@ def wget_file(local_dir, file_url):
         make_tmp_dir(local_dir=local_dir)
         local('test -e  {file_local} || wget -nv {url} -O {file_local}'.format(url=file_url, file_local=file_local))
         return file_local
-
-
-@decorators.repeat_until_not_false(n_repetitions=50, time_between_repetitions=5)
-def ip_for_mac_by_looking_at_libvirt_leases(net, mac):
-    with settings(warn_only=True):
-        ans = local('sudo grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), capture=True)
-        if ans:
-            return ans.split(' ')[2]
-        else:
-            return ans
 
 
 def ip_for_mac_and_prefix(mac, prefix):
