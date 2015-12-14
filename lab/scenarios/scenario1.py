@@ -15,7 +15,7 @@ def test(iteration, log):
         net_id = id(res)
         res = local('neutron subnet-create {0} 10.0.100.0/24'.format(net_id), capture=True)
         subnet_id = id(res)
-        res = local('neutron port-create {0}'.format(net_id), capture=True)
+        res = local('neutron port-create --name={0} {1}'.format(name, net_id), capture=True)
         port_id = id(res)
         local('neutron port-delete {0}'.format(port_id))
         local('neutron subnet-delete {0}'.format(subnet_id))

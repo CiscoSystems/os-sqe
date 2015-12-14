@@ -5,8 +5,8 @@ def monitor(context, log, args):
     ucsm_name = 'UCSM-G{0}'.format(context.lab_id())
 
     def call_ucsm(command):
-        with settings(host_string='{user}@{ip}'.format(user=context.ucsm_username(), ip=context.ucsm_ip()), password=context.ucsm_password(), connection_attempts=50, warn_only=False):
-            return run(command, shell=False).split()
+        with settings(host_string='{user}@{ip}'.format(user=context.ucsm_username(), ip=context.ucsm_ip()), password=context.ucsm_password(), connection_attempts=50, warn_only=True):
+            return run(command, shell=False, quiet=True).split()
 
     log.info('Starting UCSM monitoring {0}'.format(ucsm_name))
     start_time = time.time()
@@ -24,7 +24,7 @@ def monitor(context, log, args):
         # Vlan profiles
         cmd = 'scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "'
         vlan_profiles = set(call_ucsm(command=cmd))
-        log.info('vlan profiles: {0}'.format(vlan_profiles))
+        log.info('{0} VLANS: {1}'.format(len(vlan_profiles), vlan_profiles))
 
         # User sessions
         cmd = 'scope security ; show user-sessions local detail | no-more | egrep "Pid:" | cut -f 6 -d " "'
