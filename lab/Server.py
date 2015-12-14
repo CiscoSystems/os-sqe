@@ -203,3 +203,5 @@ class Server(object):
         self.username = new_username
         with open(self.public_key_path) as f:
             self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
+        self.run(command='sudo chmod 700 .ssh')
+        self.run(command='sudo chmod 600 .ssh/authorized_keys')

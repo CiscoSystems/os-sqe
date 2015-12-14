@@ -18,10 +18,10 @@ function sqe-ip()
     ip=$(echo $OS_AUTH_URL | cut -d : -f2)
     export SQE_IP_HORIZON=${ip#//}
     ip=$(ip -4 -o a s user | cut -d ' ' -f 7 | cut -d / -f 1)
-    export SQE_IP=$(ip)
+    export SQE_IP=${ip}
 }
 
-function power-cycle()
+function sqe-power()
 {
     source ~/stackrc
 
@@ -38,11 +38,17 @@ function power-cycle()
     ironic node-list
 }
 
+function sqe-tunnel()
+{
+    ps -U sqe -u | grep ${SQE_IP} | grep -v grep  || ssh -2NfL ${SQE_IP}:8888:${SQE_IP_HORIZON}:80 localhost
+}
+
 alias gs='git status'
 alias gd='git diff'
 alias gr='git remote -v'
 alias gre='git checkout -- . && git clean -f'
-
+alias p='ps -U $USER -u'
+alias pk='pkill -U $USER python'
 alias src='. ~/.bashrc'
 
-#sshpass -p cisco123 ssh -2NfL ${IP}:8888:${IP_HORIZON}:80 localhost
+sqe-ip

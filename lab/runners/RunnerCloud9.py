@@ -38,6 +38,7 @@ class RunnerCloud9(Runner):
         self.director.run(command='sudo cp /home/stack/stackrc .')
         self.director.run(command='sudo cp /home/stack/.ssh/id_rsa* .', in_directory='.ssh')
         self.director.run(command='sudo chown {0}.{0} overcloudrc stackrc .ssh/*'.format(user))
+        self.director.run(command='cat id_rsa.pub >> authorized_keys', in_directory='.ssh')
         return '~/overcloudrc', '~/stackrc'
 
     def __prepare_sqe_repo(self):
