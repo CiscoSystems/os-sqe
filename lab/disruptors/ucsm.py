@@ -1,4 +1,4 @@
-def reboot(context, log, args):
+def start(context, log, args):
     from fabric.api import settings, run
 
     log.info('Rebooting...')
