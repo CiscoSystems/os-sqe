@@ -1,5 +1,6 @@
-lab.monitors.ucsm.monitor:
+lab.monitors.ucsm:
+  duration: 100
+  period: 20
+lab.monitors.ping:
   duration: 100
   period: 5
-lab.scenarios.scenario1.main:
-  times: 2

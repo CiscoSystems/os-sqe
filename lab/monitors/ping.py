@@ -1,5 +1,5 @@
 def start(context, log, args):
-    from fabric.api import local
+    from fabric.api import local, settings
     import time
 
     down_start = down_end = None
@@ -7,7 +7,8 @@ def start(context, log, args):
     while start_time + args['duration'] > time.time():
         ucsm_ip = context.ucsm_ip()
         try:
-            local('ping -c 1 -W 1 {0}'.format(ucsm_ip))
+            with settings(warn_only=False):
+                local('ping -c 1 -W 1 {0}'.format(ucsm_ip))
             if down_start:
                 down_end = time.time()
             log.info('{0} is alive'.format(ucsm_ip))
