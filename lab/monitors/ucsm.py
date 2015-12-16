@@ -4,8 +4,11 @@ def start(context, log, args):
 
     def call_ucsm(command):
         with settings(host_string='{user}@{ip}'.format(user=context.ucsm_username(), ip=context.ucsm_ip()), password=context.ucsm_password(),
-                      connection_attempts=50, warn_only=True):
-            return run(command, shell=False, quiet=True).split()
+                      connection_attempts=1, warn_only=False, timeout=1):
+            try:
+                return run(command, shell=False, quiet=True).split()
+            except:
+                return []
 
     start_time = time.time()
 
@@ -16,7 +19,7 @@ def start(context, log, args):
                 if 'control' in sp or 'compute' in sp:
                     vnic = 'eth0'
                     # Allowed vlans
-                    cmd = 'scope org ; scope service-profile {0}; scope vnic {1}; sh eth-if | no-more | egrep "VLAN ID:" | cut -f 7 -d " "'.format(sp, vnic)
+                    cmd = 'scope org ; scope service-profile {0}; scope vnic {1}; sh eth-if | no-more | egrep "Name:" | cut -f 6 -d " "'.format(sp, vnic)
                     log.info('{0} {1} allowed vlans: {2}'.format(sp, vnic, call_ucsm(command=cmd)))
 
         # Vlan profiles
