@@ -1,4 +1,4 @@
-def test(iteration, log):
+def test(iteration, log, is_cleanup):
     from fabric.api import local, settings
     import datetime
     import re
@@ -17,9 +17,10 @@ def test(iteration, log):
         subnet_id = id(res)
         res = local('neutron port-create --name={0} {1}'.format(name, net_id), capture=True)
         port_id = id(res)
-        local('neutron port-delete {0}'.format(port_id))
-        local('neutron subnet-delete {0}'.format(subnet_id))
-        local('neutron net-delete {0}'.format(net_id))
+        if is_cleanup:
+            local('neutron port-delete {0}'.format(port_id))
+            local('neutron subnet-delete {0}'.format(subnet_id))
+            local('neutron net-delete {0}'.format(net_id))
         log.info("######### End time: " + str(datetime.datetime.now()))
     except:
         with settings(warn_only=False):
@@ -31,5 +32,5 @@ def test(iteration, log):
 
 def start(context, log, args):
     for id in xrange(0, args['times']):
-        test(id, log)
+        test(id, log, is_cleanup=args.get('cleanup', True))
 
