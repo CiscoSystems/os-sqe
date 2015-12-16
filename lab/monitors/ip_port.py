@@ -8,7 +8,8 @@ def start(context, log, args):
 
     log.info('Starting monitoring ip: {0} port: {1}'.format(ip, port))
 
-    while True:
+    start_time = time.time()
+    while start_time + args['duration'] > time.time():
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(period/2)
         try:
