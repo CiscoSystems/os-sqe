@@ -197,7 +197,7 @@ class Server(object):
     def create_user(self, new_username):
         if not self.run(command='grep {0} /etc/passwd'.format(new_username), warn_only=True):
             encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(self.password))
-            self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password, new_username))
+            self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
             self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
             self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
         self.username = new_username
