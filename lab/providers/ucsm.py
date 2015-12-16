@@ -149,9 +149,12 @@ def configure_for_osp7(yaml_path):
         #    run('scope org; create mac-pool {0}; set assignment-order sequential; create block {1}; commit-buffer'.format(if_name, mac_range), shell=False)
 
         # VLANs
-        for name, value in config['nets'].iteritems():
-            vlan = value['vlan']
-            run('scope eth-uplink; create vlan {0} {1}; set sharing none; commit-buffer'.format(name, vlan), shell=False)
+        vlans = []
+        map(lambda x: vlans.extend(x['vlan']), config['nets'].values())
+        vlans = set(vlans)
+
+        for vlan in vlans:
+            run('scope eth-uplink; create vlan {0} {0}; set sharing none; commit-buffer'.format(vlan), shell=False)
 
         # IPMI ip pool
         # ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[config['mgmt-net']['start']]), last=str(ipmi_net[config['mgmt-net']['end']]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
@@ -193,7 +196,10 @@ def configure_for_osp7(yaml_path):
                     # add VNIC
                     run('scope org; scope service-profile {0}; create vnic {1} fabric a-b; set identity dynamic-mac {2}; set order {3}; commit-buffer'.format(profile, vnic, mac, order), shell=False)
                     # add VLAN to vNIC
-                    run('scope org; scope service-profile {0}; scope vnic {1}; create eth-if {1}; set default-net yes; commit-buffer'.format(profile, vnic), shell=False)
+                    default_vlan =  config['nets'][net_name]['vlan'][0]
+                    run('scope org; scope service-profile {0}; scope vnic {1}; create eth-if {2}; set default-net yes; commit-buffer'.format(profile, vnic, default_vlan), shell=False)
+                    for vlan in config['nets'][net_name]['vlan'][1:]:
+                        run('scope org; scope service-profile {0}; scope vnic {1}; create eth-if {2}; set default-net no; commit-buffer'.format(profile, vnic, vlan), shell=False)
                     # remove default VLAN
                     run('scope org; scope service-profile {0}; scope vnic {1}; delete eth-if default; commit-buffer'.format(profile, vnic), shell=False)
                     if is_sriov and vnic in ['eth1']:

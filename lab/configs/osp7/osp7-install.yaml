@@ -18,17 +18,6 @@ undercloud_local_interface = {undercloud_local_interface}
 # iface used for public overcloud api
 undercloud_fake_gateway_interface = {undercloud_fake_gateway_interface}
 
-# used to create undercloud.conf for 'openstack undercloud install'
-undercloud_network_cidr =  {undercloud_network_cidr}
-undercloud_local_ip_simple = {undercloud_local_ip_simple}
-undercloud_local_ip = %(undercloud_local_ip_simple)s/{undercloud_netbits}
-undercloud_masquerade_network = {undercloud_masquerade_network}
-undercloud_dhcp_start = {undercloud_dhcp_start}
-undercloud_dhcp_end = {undercloud_dhcp_end}
-undercloud_network_gateway = %(undercloud_local_ip_simple)s
-undercloud_discovery_iprange = {undercloud_discovery_start},{undercloud_discovery_end}
-undercloud_public_vip = {undercloud_public_vip}
-undercloud_admin_vip = {undercloud_admin_vip}
 
 
 # used to create overcloud.json for 'openstack baremetal import --json ~/overcloud.json'
@@ -43,27 +32,43 @@ overcloud_compute_scale = {overcloud_compute_scale}
 # used in 'openstack overcloud deploy' for --ceph-storage-scale
 overcloud_ceph_storage_scale = {overcloud_ceph_storage_scale}
 
-# used on controller for public network
-controller_floating_nic = {controller_floating_nic}
-# user on controller to get access to ucsm and n9k ifaces
-neutron_public_nic = {neutron_public_nic}
-# used on contoller for tenant traffic
-neutron_private_nic = {neutron_private_nic}
-# used on compute for tenant traffic
-hypervisor_neutron_public_nic = {hypervisor_neutron_public_nic}
+#Interface to have all control traffic: internalAPI, storage vlan, etc
+controller_provisioning_nic = {provisioning_nic}
+compute_provisioning_nic = {provisioning_nic}
+#Interface to have external IP for overcloud
+controller_external_nic = {external_nic}
+# used for tenant traffic
+controller_tenant_nic = {tenant_nic}
+compute_tenant_nic = {tenant_nic}
+
+
+network_isolation = true
+neutron_flat_networks = datacentre,external
+neutron_tenant_bridge = br-tenant
+neutron_external_bridge = br-ex
+deploy_with_flavors = true
+network_nexus_provider_vlan_auto_create = false
+network_nexus_provider_vlan_auto_trunk = false
+network_nexus_vlan_range = datacentre:3010:3250,external
 
 
 # this network will be created as external in overcloud openstack
-overcloud_network_cidr = 20.0.0.0/24
-overcloud_external_ip_cidr = 20.0.0.111/24
-overcloud_external_ip_start = 20.0.0.222
-overcloud_external_gateway = 20.0.0.1
-overcloud_external_ip_end = 20.0.0.233
+overcloud_external_vlan = {overcloud_external_vlan}
+overcloud_network_cidr = {overcloud_network_cidr}
+overcloud_external_ip_cidr = {overcloud_network_cidr}
+overcloud_external_ip_start = {overcloud_external_ip_start}
+overcloud_external_gateway = {overcloud_external_gateway}
+overcloud_external_ip_end = {overcloud_external_ip_end}
+
+
+# IMPORTNANT: Not-routed network
 overcloud_floating_ip_cidr = 20.0.0.0/24
 overcloud_floating_ip_start = 20.0.0.10
 overcloud_floating_ip_end = 20.0.0.200
-overcloud_bm_network_gateway = 20.0.0.1
-overcloud_bm_network_mask = 24
+overcloud_floating_ip_network_gateway = 20.0.0.1
+undercloud_fake_gw_ip = 20.0.0.1
+undercloud_fake_gw_ip_prefix = 24
+
 
 
 network_nexus_config = {{ "{n9k1_name}" : {{
