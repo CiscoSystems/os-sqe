@@ -31,7 +31,6 @@ class RunnerRally(Runner):
 
         repo_dir = server.clone_repo(repo_url='https://git.openstack.org/openstack/rally.git')
         server.check_or_install_packages(package_names='libffi-devel gmp-devel postgresql-devel wget python-virtualenv')
-        server.run(command='sudo easy_install pip')
         server.run(command='./install_rally.sh -y -d {0}'.format(venv_path), in_directory=repo_dir)
         server.run(command='source {0} && {1}/bin/rally deployment create --fromenv --name {2}'.format(open_rc_path, venv_path, self.cloud_name))
         server.run(command='{0}/bin/rally task start {1}'.format(venv_path, task_path))
