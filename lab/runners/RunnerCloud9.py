@@ -17,21 +17,32 @@ class RunnerCloud9(Runner):
         user_net = IPNetwork(lab_cfg['nets']['user']['cidr'])
         self.director = Server(ip=str(user_net[lab_cfg['nodes']['director']['ip-shift'][0]]), username='root', password='cisco123')
         self.ips_on_user = {}
-        self.gw_on_user = str(user_net[1])
+        self.user_gw = str(user_net[1])
         for role in ['ceph', 'control', 'compute']:
             self.ips_on_user[role] = [str(user_net[x]) + '/' + str(user_net.prefixlen) for x in lab_cfg['nodes'][role]['ip-shift']]
 
     def __assign_ip_to_user_nic(self, undercloud):
+        from lab.Server import Server
+
+        server = Server(ip=10)
+        with open(server.public_key_path) as f:
+            public_key_body = f.read()
+
         ssh = 'ssh -o StrictHostKeyChecking=no heat-admin@'
+        servers = []
         for role, ips in self.ips_on_user.iteritems():
-            for i, ip_on_user in enumerate(ips):
-                line = self.director.run(command='source {0} && nova list | grep {1} | grep "\-{2}"'.format(undercloud, role, i))
-                ip_on_pxe = line.split('=')[-1].replace(' |', '')
-                line = self.director.run("{s}{ip_on_pxe} /usr/sbin/ip -o l | awk '/:aa:/ {{print $2}}'".format(s=ssh, ip_on_pxe=ip_on_pxe))
-                if_on_user = line.split('\n')[-1].strip(':')
-                self.director.run('{s}{ip_on_pxe} sudo ip a flush dev {iface_on_user}'.format(s=ssh, ip_on_pxe=ip_on_pxe, iface_on_user=if_on_user))
-                self.director.run('{s}{ip_on_pxe} sudo ip a a {ip_on_user} dev {if_on_user}'.format(s=ssh, ip_on_pxe=ip_on_pxe, if_on_user=if_on_user, ip_on_user=ip_on_user))
-                self.director.run('{s}{ip_on_pxe} sudo ip r r default via {gw_on_user} dev {if_on_user}'.format(s=ssh, ip_on_pxe=ip_on_pxe, gw_on_user=self.gw_on_user, if_on_user=if_on_user))
+            for i, user_ip in enumerate(ips):
+                line = self.director.run(command='source {0} && nova list | grep -P "{1}.*?\-{2}"'.format(undercloud, role, i))
+                pxe_ip = line.split('=')[-1].replace(' |', '')
+                line = self.director.run("{s}{pxe_ip} /usr/sbin/ip -o l | awk '/:aa:/ {{print $2}}'".format(s=ssh, pxe_ip=pxe_ip))
+                user_if = line.split('\n')[-1].strip(':')
+                self.director.run('{s}{pxe_ip} sudo ip a flush dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_if=user_if))
+                self.director.run('{s}{pxe_ip} sudo ip a a {user_ip} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_if=user_if, user_ip=user_ip))
+                self.director.run('{s}{pxe_ip} sudo ip r r default via {user_gw} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_gw=self.user_gw, user_if=user_if))
+
+                self.director.run('{s}{pxe_ip} \'echo "{public}" >> .ssh/authorized_keys\''.format(s=ssh, pxe_ip=pxe_ip, public=public_key_body))
+                servers.append(Server(ip=user_ip.split('/')[0], role=role, username='heat-admin'))
+        return servers
 
     def __copy_stack_files(self, user):
         self.director.run(command='sudo cp /home/stack/overcloudrc .')
@@ -56,6 +67,24 @@ class RunnerCloud9(Runner):
         self.director.run(command='rm -f ~/.bashrc')
         self.director.run(command='ln -s {0}/configs/bashrc ~/.bashrc'.format(sqe_repo))
 
+    @staticmethod
+    def __install_filebeat(servers):
+        filebeat_config_body = '''
+filebeat:
+  prospectors:
+    -
+      paths:
+        - /var/log/neutron/server.log
+output:
+  logstash:
+    hosts: ["172.29.173.236:5044"]
+'''
+        for server in servers:
+            if server.role.startswith('control'):
+                server.run(command='curl -L -O http://172.29.173.233/filebeat-1.0.0-x86_64.rpm')
+                server.run(command='sudo rpm -vi filebeat-1.0.0-x86_64.rpm')
+                server.put_string_as_file_in_dir(string_to_put=filebeat_config_body, file_name='filebeat.yml', in_directory='/etc/filebeat')
+
     def run_on_director(self):
         user = 'sqe'
         self.director.run(command='sudo rm -f /home/{0}/.bashrc'.format(user), warn_only=True)
@@ -65,9 +94,9 @@ class RunnerCloud9(Runner):
 
         self.director.run(command='ssh -o StrictHostKeyChecking=no localhost hostname')
 
-        self.__assign_ip_to_user_nic(undercloud=undercloud)
+        servers = self.__assign_ip_to_user_nic(undercloud=undercloud)
+        self.__install_filebeat(servers=servers)
         undercloud_nodes = self.director.run(command='source {0} && nova list'.format(undercloud))
-        os_password = self.director.run(command='grep PASSWORD {0}'.format(overcloud)).split('=')[-1]
 
         role_ip = []
         counts = {'controller': 0, 'compute': 0}

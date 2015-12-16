@@ -1,5 +1,5 @@
 class Server(object):
-    def __init__(self, ip, username='UnknownInServer', password='ssh_key', hostname='UnknownInServer', ssh_public_key='N/A', ssh_port=22):
+    def __init__(self, ip, username='UnknownInServer', password='ssh_key', hostname='UnknownInServer', role='UnknonwInServer', ssh_public_key='N/A', ssh_port=22):
         import os
         from lab.WithConfig import CONFIG_DIR
 
@@ -8,6 +8,7 @@ class Server(object):
 
         self.ip = ip
         self.ip_mac = 'UnknownInServer'
+        self.role = role
         self.hostname = hostname
         self.username = username
         self.password = password
@@ -64,7 +65,12 @@ class Server(object):
         return kwargs
 
     def run(self, command, in_directory='.', warn_only=False):
-        """Do run with possible sudo on remote server"""
+        """Do run with possible sudo on remote server
+        :param command:
+        :param in_directory:
+        :param warn_only:
+        :return:
+        """
         from fabric.api import run, sudo, settings, cd
 
         if self.ip == 'localhost' or self.ip == '127.0.0.1':
@@ -91,7 +97,12 @@ class Server(object):
                 return local(command=command, capture=True)
 
     def put(self, string_to_put, file_name, in_directory='.'):
-        """Put given string as file to remote server"""
+        """Put given string as file to remote server
+        :param string_to_put:
+        :param file_name:
+        :param in_directory:
+        :return:
+        """
         from fabric.api import put, settings, cd, lcd, local
         import os
         from StringIO import StringIO
@@ -111,7 +122,12 @@ class Server(object):
                     return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)
 
     def put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
-        """Put given string as file to remote server"""
+        """Put given string as file to remote server
+        :param string_to_put:
+        :param file_name:
+        :param in_directory:
+        :return:
+        """
         from fabric.api import put, settings, cd, lcd, local
         import os
         from StringIO import StringIO
@@ -134,7 +150,12 @@ class Server(object):
                     return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)
 
     def get(self, remote_path, in_directory='.', local_path=None):
-        """Get remote file as string or local file if local_path is specified"""
+        """Get remote file as string or local file if local_path is specified
+        :param remote_path:
+        :param in_directory:
+        :param local_path:
+        :return:
+        """
         from fabric.api import get, settings, cd
         from StringIO import StringIO
 
@@ -149,7 +170,12 @@ class Server(object):
         return local_path.getvalue() if isinstance(local_path, StringIO) else local_path
 
     def get_file_from_dir(self, file_name, in_directory='.', local_path=None):
-        """Get remote file as string or local file if local_path is specified"""
+        """Get remote file as string or local file if local_path is specified
+        :param file_name:
+        :param in_directory:
+        :param local_path:
+        :return:
+        """
         from fabric.api import sudo, settings, cd
 
         if '/' in file_name:
