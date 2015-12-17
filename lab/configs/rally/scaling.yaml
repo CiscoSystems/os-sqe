@@ -4,7 +4,8 @@
     -
       args:
         image:
-          name: "^cirros"
+#          name: "^cirros"
+	  name: "cirros 0.3.4"
         flavor:
           name: "m1.tiny"
         count: 2
