@@ -66,9 +66,9 @@ class Cloud:
 export OS_USERNAME={user}
 export OS_TENANT_NAME={tenant}
 export OS_PASSWORD={password}
-#export OS_AUTH_URL=http://{ip}:5000/v2.0/
 export OS_AUTH_URL={end_point}
 """
+#export OS_AUTH_URL=http://{ip}:5000/v2.0/
 #        return open_rc.format(user=self.user, tenant=self.tenant, password=self.password, ip=self.get_first(self.ROLE_CONTROLLER, 'ip'))
 	return open_rc.format(user=self.user, tenant=self.tenant, password=self.password, end_point=self.get_end_point())
 
