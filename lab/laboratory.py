@@ -1,7 +1,11 @@
+import tempfile
 from lab import WithConfig
 
 
 class Laboratory(WithConfig.WithConfig):
+
+    temp_dir = tempfile.mkdtemp(prefix='runner-ha-')
+
     def sample_config(self):
         pass
 

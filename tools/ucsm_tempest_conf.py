@@ -1,11 +1,12 @@
 import ConfigParser
 import inspect
 from fabric.api import task, run, local, settings
+from lab.WithConfig import read_config_from_file
 
 
 @task
 def update_conf(original_tempest_conf, output_tempest_conf,
-                ucsm_ip, ucsm_user, ucsm_password, stackrc="/home/stack/stackrc"):
+                lab_config, stackrc="/home/stack/stackrc"):
     frame = inspect.currentframe()
     args, _, _, values = inspect.getargvalues(frame)
     if not all(args):
@@ -18,6 +19,10 @@ Ex:
     tempest_conf = ConfigParser.RawConfigParser()
     tempest_conf.read(original_tempest_conf)
 
+    config = read_config_from_file(yaml_path=lab_config)
+    ucsm_ip = config['ucsm']['host']
+    ucsm_user = config['ucsm']['username']
+    ucsm_password = config['ucsm']['password']
 
     ucsm_servers = list()
     nodes = list()
@@ -36,7 +41,7 @@ Ex:
     node_names = local("source {0} && nova list | grep ACTIVE | awk '{{print $4}}'".format(stackrc), capture=True).split()
     for node_name in node_names:
         ip = local("nova list | grep {0} | grep -o -P '(?<=ctlplane\=).*? '".format(node_name), capture=True)
-        with settings(host_string="{0}@{1}".format('heat-admin', ip)):
+        with settings(host_string="{0}@{1}".format('heat-admin', ip), disable_known_hosts=True):
             macs = set(run("ip -o link | grep -o -P '(?<=link\/ether )(.*?) '").split())
         for ucsm_server in ucsm_servers:
             if ucsm_server['macs'] & macs:
