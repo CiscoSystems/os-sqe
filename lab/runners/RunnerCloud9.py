@@ -4,43 +4,32 @@ from lab.runners import Runner
 class RunnerCloud9(Runner):
 
     def sample_config(self):
-        return {'yaml_path': 'yaml path'}
+        return {'yaml-path': 'yaml path'}
 
     def __init__(self, config):
-        from netaddr import IPNetwork
-        from lab.Server import Server
-        from lab.WithConfig import read_config_from_file
+        from lab.laboratory import Laboratory
 
         super(RunnerCloud9, self).__init__(config=config)
 
-        lab_cfg = read_config_from_file(yaml_path=config['yaml_path'])
-        user_net = IPNetwork(lab_cfg['nets']['user']['cidr'])
-        self.director = Server(ip=str(user_net[lab_cfg['nodes']['director']['ip-shift'][0]]), username='root', password='cisco123')
-        self.ips_on_user = {}
-        self.user_gw = str(user_net[1])
-        for role in ['ceph', 'control', 'compute']:
-            self.ips_on_user[role] = [str(user_net[x]) + '/' + str(user_net.prefixlen) for x in lab_cfg['nodes'][role]['ip-shift']]
+        self.lab = Laboratory(config_path=config['yaml-path'])
+        self.director = self.lab.director()
 
     def __assign_ip_to_user_nic(self, undercloud):
         from lab.Server import Server
 
-        server = Server(ip=10)
-        with open(server.public_key_path) as f:
-            public_key_body = f.read()
-
         ssh = 'ssh -o StrictHostKeyChecking=no heat-admin@'
         servers = []
-        for role, ips in self.ips_on_user.iteritems():
-            for i, user_ip in enumerate(ips):
-                line = self.director.run(command='source {0} && nova list | grep -P "{1}.*?\-{2}"'.format(undercloud, role, i))
+        for role, ip in self.lab.all_but_director():
+            line = self.director.run(command='source {0} && nova list | grep -P "{1}.*?\-{2}"'.format(undercloud, role))
+            for i, user_ip in enumerate():
                 pxe_ip = line.split('=')[-1].replace(' |', '')
                 line = self.director.run("{s}{pxe_ip} /usr/sbin/ip -o l | awk '/:aa:/ {{print $2}}'".format(s=ssh, pxe_ip=pxe_ip))
                 user_if = line.split('\n')[-1].strip(':')
                 self.director.run('{s}{pxe_ip} sudo ip a flush dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_if=user_if))
                 self.director.run('{s}{pxe_ip} sudo ip a a {user_ip} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_if=user_if, user_ip=user_ip))
-                self.director.run('{s}{pxe_ip} sudo ip r r default via {user_gw} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_gw=self.user_gw, user_if=user_if))
+                self.director.run('{s}{pxe_ip} sudo ip r r default via {user_gw} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_gw=self.lab.gw, user_if=user_if))
 
-                self.director.run('{s}{pxe_ip} \'echo "{public}" >> .ssh/authorized_keys\''.format(s=ssh, pxe_ip=pxe_ip, public=public_key_body))
+                self.director.run('{s}{pxe_ip} \'echo "{public}" >> .ssh/authorized_keys\''.format(s=ssh, pxe_ip=pxe_ip, public=self.lab.public_key()))
                 servers.append(Server(ip=user_ip.split('/')[0], role=role, username='heat-admin'))
         return servers
 
@@ -115,5 +104,5 @@ output:
 
 
 if __name__ == '__main__':
-    r = RunnerCloud9(config={'yaml_path': 'lab/configs/labs/g10.yaml'})
+    r = RunnerCloud9(config={'yaml-path': 'lab/configs/labs/g10.yaml'})
     r.run_on_director()

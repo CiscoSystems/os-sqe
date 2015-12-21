@@ -1,7 +1,11 @@
 import abc
 import os
 
+REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 CONFIG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'configs'))
+
+KEY_PUBLIC_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'public'))
+KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'public'))
 
 
 class WithConfig(object):
