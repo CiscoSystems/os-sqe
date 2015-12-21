@@ -1,12 +1,7 @@
 class Server(object):
-    def __init__(self, ip, username='UnknownInServer', password='ssh_key', hostname='UnknownInServer', role='UnknonwInServer', ssh_public_key='N/A', ssh_port=22):
-        import os
-        from lab.WithConfig import CONFIG_DIR
-
-        self.private_key_path = os.path.join(CONFIG_DIR, 'keys', 'private')
-        self.public_key_path = os.path.join(CONFIG_DIR, 'keys', 'public')
-
+    def __init__(self, ip, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', ssh_public_key='N/A', ssh_port=22):
         self.ip = ip
+        self.net = net
         self.ip_mac = 'UnknownInServer'
         self.role = role
         self.hostname = hostname
@@ -22,7 +17,10 @@ class Server(object):
         self.package_manager = None
 
     def __repr__(self):
-        return 'sshpass -p {0} ssh {1}@{2}'.format(self.password, self.username, self.ip)
+        return 'sshpass -p {0} ssh {1}@{2} {3}'.format(self.password, self.username, self.ip, self.role)
+
+    def ip_with_net(self):
+        return
 
     def set_ipmi(self, ip, username, password):
         self.ipmi['ip'] = ip
@@ -55,11 +53,13 @@ class Server(object):
         return self.package_manager
 
     def construct_settings(self, warn_only):
+        from lab import WithConfig
+
         kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
                   'connection_attempts': 100,
                   'warn_only': warn_only}
         if self.password == 'ssh_key':
-            kwargs['key_filename'] = self.private_key_path
+            kwargs['key_filename'] = WithConfig.KEY_PRIVATE_PATH
         else:
             kwargs['password'] = self.password
         return kwargs
@@ -221,13 +221,15 @@ class Server(object):
         return self.run(command='pwd', in_directory=local_repo_dir)
 
     def create_user(self, new_username):
+        from lab import WithConfig
+
         if not self.run(command='grep {0} /etc/passwd'.format(new_username), warn_only=True):
             encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(self.password))
             self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
             self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
             self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
         self.username = new_username
-        with open(self.public_key_path) as f:
+        with open(WithConfig.KEY_PUBLIC_PATH) as f:
             self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
         self.run(command='sudo chmod 700 .ssh')
         self.run(command='sudo chmod 600 .ssh/authorized_keys')
