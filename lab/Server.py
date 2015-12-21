@@ -1,4 +1,23 @@
 class Server(object):
+
+    _temp_dir = None
+
+    @property
+    def temp_dir(self):
+        if not self._temp_dir:
+            import os
+            import random
+
+            chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
+            self._temp_dir = os.path.join('/tmp', 'server-tmp-' + ''.join(random.sample(chars, 10)))
+
+        if not self._tmp_dir_exists:
+            from fabric.api import settings
+
+            if self.run('test -d {0}'.format(self._temp_dir), warn_only=True).return_code:
+                self._tmp_dir_exists = self.run('mkdir -p {0}'.format(self._temp_dir)).return_code == 0
+        return self._temp_dir if self._tmp_dir_exists else None
+
     def __init__(self, ip, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', n_in_role=0, ssh_public_key='N/A', ssh_port=22):
         self.ip = ip
         self.net = net
@@ -10,6 +29,7 @@ class Server(object):
         self.password = password
         self.ssh_public_key = ssh_public_key
         self.ssh_port = ssh_port
+        self._tmp_dir_exists = False
 
         self.ipmi = {'ip': 'UnknownInServer', 'username': 'UnknownInServer', 'password': 'UnknownInServer'}
         self.ucsm = {'ip': 'UnknownInServer', 'username': 'UnknownInServer', 'password': 'UnknownInServer', 'service-profile': 'UnknownInServer',
