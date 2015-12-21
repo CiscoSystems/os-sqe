@@ -10,6 +10,7 @@ from lab import BaseLab
 from lab.providers import cobbler, ucsm, n9k
 from lab.runners import rally
 from lab.configurators import osp7_install
+from tools import ucsm_tempest_conf
 
 @timed
 def venv(private=False):
