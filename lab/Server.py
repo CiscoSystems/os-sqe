@@ -14,32 +14,44 @@ class Server(object):
         self.ucsm = {'ip': 'UnknownInServer', 'username': 'UnknownInServer', 'password': 'UnknownInServer', 'service-profile': 'UnknownInServer',
                      'iface_mac': {'UnknownInServer': 'UnknownInServer'}}
 
+        self.nics = []
         self.package_manager = None
 
     def __repr__(self):
         return 'sshpass -p {0} ssh {1}@{2} {3}'.format(self.password, self.username, self.ip, self.role)
-
-    def ip_with_net(self):
-        return
 
     def set_ipmi(self, ip, username, password):
         self.ipmi['ip'] = ip
         self.ipmi['username'] = username
         self.ipmi['password'] = password
 
-    def set_ucsm(self, ip, username, password, service_profile, server_id, iface_mac):
+    def ipmi_creds(self):
+        return self.ipmi['ip'], self.ipmi['username'], self.ipmi['password']
+
+    def set_ucsm(self, ip, username, password, service_profile, server_id, iface_mac, is_sriov):
         self.ucsm['ip'] = ip
         self.ucsm['username'] = username
         self.ucsm['password'] = password
         self.ucsm['service-profile'] = service_profile
         self.ucsm['iface_mac'] = iface_mac
         self.ucsm['server-id'] = server_id
+        self.ucsm['is-sriov'] = is_sriov
 
-    def get_mac(self, iface_name):
-        if iface_name in self.ucsm['iface_mac']:
-            return self.ucsm['iface_mac'].get(iface_name, 'UnknownInServer')
-        else:
-            return self.ucsm['iface_mac']
+    def add_if(self, nic_name, nic_mac, nic_order, nic_vlans):
+        self.nics.append([nic_name, nic_mac, nic_order, nic_vlans])
+
+    def ucsm_profile(self):
+        return self.ucsm['service-profile']
+
+    def ucsm_is_sriov(self):
+        return self.ucsm['is-sriov']
+
+    def ucsm_server_id(self):
+        return self.ucsm['server-id']
+
+    def nic_mac(self, nic_name):
+        nic = [x for x in self.nics if x[0] == nic_name]
+        return nic[0][1]
 
     def get_package_manager(self):
         if not self.package_manager:

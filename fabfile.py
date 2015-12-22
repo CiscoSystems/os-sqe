@@ -4,6 +4,7 @@ from fabric.api import task, local
 from fabs.common import timed, virtual
 from fabs.common import logger as log
 from fabs import LVENV, CVENV, LAB
+from lab import decorators
 from fabs import coi, tempest, snap, devstack, redhat, coverage, cirros, cimc
 from fabs import jenkins_reports
 from lab import BaseLab
@@ -64,3 +65,16 @@ def destroy():
     """ Destroying all lab machines and networks """
     log.info("Destroying lab {lab}".format(lab=LAB))
     local("python ./tools/cloud/create.py -l {lab} -x".format(lab=LAB))
+
+
+@task
+@decorators.print_time
+def g10():
+    """ (Re)deploy  G10 lab"""
+    from lab.providers import ucsm
+    from lab.providers import cobbler
+    from lab.configurators import osp7_install
+
+    #cobbler.configure_for_osp7(yaml_path='configs/g10.yaml')
+    #ucsm.configure_for_osp7(yaml_path='configs/g10.yaml')
+    osp7_install.configure_for_osp7(yaml_path='configs/g10.yaml')
