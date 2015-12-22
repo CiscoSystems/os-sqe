@@ -42,7 +42,7 @@ class Laboratory(WithConfig.WithConfig):
                     profile = 'G{0}-{1}-{2}'.format(self.cfg['lab-id'], b_c_id.replace(':', '-'), role)
 
                     server.set_ucsm(ip=self.cfg['ucsm']['host'], username=self.cfg['ucsm']['username'], password=self.cfg['ucsm']['password'],
-                                    service_profile=profile, server_id=server_id, iface_mac='??', is_sriov=val.get('is-sriov', False))
+                                    service_profile=profile, server_id=server_id, is_sriov=val.get('is-sriov', False))
                     server.set_ipmi(ip=ipmi_net[shift_ipmi], username=self.cfg['cobbler']['username'], password=self.cfg['cobbler']['password'])
                     for order, nic_name in enumerate(val['nets']):
                         mac = self.cfg['nets'][nic_name]['mac-tmpl'].format(lab_id=self.cfg['lab-id'], b_c_id=b_c_id)

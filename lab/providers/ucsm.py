@@ -27,13 +27,11 @@ def read_config_ssh(yaml_path, is_director=True):
     """
     from lab.Server import Server
     from fabric.api import settings, run
-    from lab.WithConfig import read_config_from_file
+    from lab.laboratory import Laboratory
 
-    config = read_config_from_file(yaml_path=yaml_path)
+    l = Laboratory(config_path=yaml_path)
 
-    ucsm_ip = config['ucsm']['host']
-    ucsm_username = config['ucsm']['username']
-    ucsm_password = config['ucsm']['password']
+    ucsm_ip, ucsm_username, ucsm_password = l.ucsm_creds()
 
     servers = {}
     with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
@@ -51,12 +49,13 @@ def read_config_ssh(yaml_path, is_director=True):
                 continue
             ipmi_ip = run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_id), shell=False, quiet=True)
             if_mac = {}
-            for line in run('scope org; scope service-profile {0}; sh vnic | i {1}:'.format(profile_name, config['lab-id']), shell=False, quiet=True).split('\n'):
+            for line in run('scope org; scope service-profile {0}; sh vnic | i {1}:'.format(profile_name, l.id), shell=False, quiet=True).split('\n'):
                 split = line.split()
                 if_mac[split[0]] = split[3]
+            dynamic_policy_line = run('scope org; scope service-profile {0}; sh dynamic-vnic-conn-policy'.format(profile_name), shell=False, quiet=True)
             server = Server(ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM')
             server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
-            server.set_ucsm(ip=ucsm_ip, username=ucsm_username, password=ucsm_password, service_profile=profile_name, server_id=server_id, iface_mac=if_mac)
+            server.set_ucsm(ip=ucsm_ip, username=ucsm_username, password=ucsm_password, service_profile=profile_name, server_id=server_id, is_sriov=len(dynamic_policy_line) != 0)
             server.role = profile_name.split('-')[-1]
             if 'director' in profile_name:
                 profile_name = 'director'
@@ -104,8 +103,11 @@ def cleanup(host, username, password):
 
 def configure_for_osp7(yaml_path):
     from fabric.api import settings, run
+    import time
     from lab.laboratory import Laboratory
+    from lab.logger import lab_logger
 
+    lab_logger.info('Configuring UCSM ' + yaml_path)
     lab = Laboratory(config_path=yaml_path)
 
     server_pool_name = 'QA-SERVERS'
@@ -150,8 +152,7 @@ def configure_for_osp7(yaml_path):
 
         # VLANs
         for vlan in lab.ucsm_vlans():
-            if vlan != 1:
-                run('scope eth-uplink; create vlan {0} {0}; set sharing none; commit-buffer'.format(vlan), shell=False)
+            run('scope eth-uplink; create vlan {0} {0}; set sharing none; commit-buffer'.format(vlan), shell=False)
 
         # IPMI ip pool
         # ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[config['mgmt-net']['start']]),
@@ -214,9 +215,20 @@ def configure_for_osp7(yaml_path):
                     boot_policy_name='pxe-ext' if 'director' in server.role else 'pxe-int'), shell=False)
 
             # main step - association - here server will be rebooted
-            # run('scope org; scope service-profile {profile}; associate server {server_id}; commit-buffer'.format(
-            #         profile=server.ucsm_profile(),
-            #         server_id=server.ucsm_server_id()), shell=False)
+            run('scope org; scope service-profile {profile}; associate server {server_id}; commit-buffer'.format(
+                    profile=server.ucsm_profile(),
+                    server_id=server.ucsm_server_id()), shell=False)
+
+        count_attempts = 0
+
+        while count_attempts < 50:
+            lines = run('scope org; show service-profile | egrep Associated', shell=False).split('\n')
+            if len(lines) == len(lab.servers):
+                lab_logger.info('finished UCSM ' + yaml_path)
+                return
+            time.sleep(10)
+            count_attempts += 1
+        raise RuntimeError('failed to associated all service profiles')
 
 
 # @task

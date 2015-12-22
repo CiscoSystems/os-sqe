@@ -28,12 +28,11 @@ class Server(object):
     def ipmi_creds(self):
         return self.ipmi['ip'], self.ipmi['username'], self.ipmi['password']
 
-    def set_ucsm(self, ip, username, password, service_profile, server_id, iface_mac, is_sriov):
+    def set_ucsm(self, ip, username, password, service_profile, server_id, is_sriov):
         self.ucsm['ip'] = ip
         self.ucsm['username'] = username
         self.ucsm['password'] = password
         self.ucsm['service-profile'] = service_profile
-        self.ucsm['iface_mac'] = iface_mac
         self.ucsm['server-id'] = server_id
         self.ucsm['is-sriov'] = is_sriov
 
