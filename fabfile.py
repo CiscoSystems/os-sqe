@@ -5,13 +5,14 @@ from fabs.common import timed, virtual
 from fabs.common import logger as log
 from fabs import LVENV, CVENV, LAB
 from lab import decorators
-from fabs import coi, tempest, snap, devstack, redhat, coverage, cirros, cimc
+from fabs import tempest, snap, coverage
 from fabs import jenkins_reports
 from lab import BaseLab
 from lab.providers import cobbler, ucsm, n9k
 from lab.runners import rally
 from lab.configurators import osp7_install
 from tools import ucsm_tempest_conf
+
 
 @timed
 def venv(private=False):
@@ -42,15 +43,6 @@ def flake8():
 
 
 @task
-@virtual
-def test():
-    """ For testing purposes only """
-    log.info("Testing something")
-    a = local("which python")
-    print a.real_command
-
-
-@task
 @timed
 def init(private=False):
     """ Prepare virtualenv and install all requirements """
@@ -67,14 +59,25 @@ def destroy():
     local("python ./tools/cloud/create.py -l {lab} -x".format(lab=LAB))
 
 
-@task
-@decorators.print_time
-def g10():
-    """ (Re)deploy  G10 lab"""
+def deploy_lab(config_path):
     from lab.providers import ucsm
     from lab.providers import cobbler
     from lab.configurators import osp7_install
 
-    #cobbler.configure_for_osp7(yaml_path='configs/g10.yaml')
-    #ucsm.configure_for_osp7(yaml_path='configs/g10.yaml')
-    osp7_install.configure_for_osp7(yaml_path='configs/g10.yaml')
+    cobbler.configure_for_osp7(yaml_path=config_path)
+    ucsm.configure_for_osp7(yaml_path=config_path)
+    osp7_install.configure_for_osp7(yaml_path=config_path)
+
+
+@task
+@decorators.print_time
+def g10():
+    """ (Re)deploy  G10 lab"""
+    deploy_lab(config_path='configs/g10.yaml')
+
+
+@task
+@decorators.print_time
+def g8():
+    """ (Re)deploy  G8 lab"""
+    deploy_lab(config_path='configs/g8.yaml')
