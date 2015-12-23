@@ -40,7 +40,7 @@ def configure_for_osp7(yaml_path):
                                        overcloud_external_gateway=overcloud_external_gateway,
                                        overcloud_external_ip_end=overcloud_external_ip_end,
                                        overcloud_nodes=nodes_string,
-                                       overcloud_control_scale=lab.count_role(role_name='controller'),
+                                       overcloud_control_scale=lab.count_role(role_name='control'),
                                        overcloud_ceph_storage_scale=lab.count_role(role_name='ceph'),
                                        overcloud_compute_scale=lab.count_role(role_name='compute'),
                                        ucsm_ip=ucsm_ip,
