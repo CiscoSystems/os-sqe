@@ -31,6 +31,7 @@ class Laboratory(WithConfig.WithConfig):
                 for role_counter, server_id in enumerate(val['server-id']):
                     server = Server(ip=user_net[shift_user],
                                     hostname='g{0}-director.ctocllab.cisco.com'.format(self.cfg['lab-id']),
+                                    username=self.cfg['username'],
                                     net=user_net,
                                     role=role,
                                     n_in_role=role_counter)
@@ -58,6 +59,12 @@ class Laboratory(WithConfig.WithConfig):
 
     def all_but_director(self):
         return self.servers[1:]
+
+    def _servers_for_role(self, role):
+        return [x for x in self.servers[1:] if x.role == role]
+
+    def controllers(self):
+        return self._servers_for_role(role='control')
 
     def ucsm_uplink_ports(self):
         return self.cfg['ucsm']['uplink-ports']
@@ -96,3 +103,6 @@ class Laboratory(WithConfig.WithConfig):
 
     def count_role(self, role_name):
         return len([x for x in self.servers if role_name in x.role])
+
+    def logstash_creds(self):
+        return self.cfg['logstash']
