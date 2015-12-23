@@ -32,7 +32,8 @@ class Laboratory(WithConfig.WithConfig):
                     server = Server(ip=user_net[shift_user],
                                     hostname='g{0}-director.ctocllab.cisco.com'.format(self.cfg['lab-id']),
                                     net=user_net,
-                                    role='{0}-{1}'.format(role, role_counter))
+                                    role=role,
+                                    n_in_role=role_counter)
 
                     if '/' in server_id:
                         b_c_id = 'B{0}:{1:02}'.format(int(server_id.split('/')[0]), int(server_id.split('/')[1]))

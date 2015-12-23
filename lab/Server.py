@@ -1,9 +1,10 @@
 class Server(object):
-    def __init__(self, ip, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', ssh_public_key='N/A', ssh_port=22):
+    def __init__(self, ip, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', n_in_role=0, ssh_public_key='N/A', ssh_port=22):
         self.ip = ip
         self.net = net
         self.ip_mac = 'UnknownInServer'
         self.role = role
+        self.n_in_role = n_in_role
         self.hostname = hostname
         self.username = username
         self.password = password
@@ -18,7 +19,10 @@ class Server(object):
         self.package_manager = None
 
     def __repr__(self):
-        return 'sshpass -p {0} ssh {1}@{2} {3}'.format(self.password, self.username, self.ip, self.role)
+        return 'sshpass -p {0} ssh {1}@{2} {3}'.format(self.password, self.username, self.ip, self.name())
+
+    def name(self):
+        return '{0}-{1}'.format(self.role, self.n_in_role)
 
     def set_ipmi(self, ip, username, password):
         self.ipmi['ip'] = ip
