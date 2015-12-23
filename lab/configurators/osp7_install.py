@@ -20,7 +20,7 @@ def configure_for_osp7(yaml_path):
         pxe_mac = server.nic_mac(nic_name='pxe-int')
         ipmi_ip, ipmi_username, ipmi_password = server.ipmi_creds()
         descriptor = {'"arch"': '"x86_64"', '"cpu"': '"2"', '"memory"': '"8256"', '"disk"': '"1112"',
-                      '"name"': '"{0}"'.format(server.role),
+                      '"name"': '"{0}"'.format(server.name()),
                       '"capabilities"':  '"profile:{0},boot_option:local"'.format(server.role),
                       '"mac"': '["{0}"]'.format(pxe_mac),
                       '"pm_type"': '"pxe_ipmitool"',
