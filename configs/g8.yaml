@@ -10,9 +10,9 @@ nets: {
   eth1:     {mac-tmpl: '{lab_id:02}:25:B5:11:{b_c_id}', vlan: [3000, 174] }, # used for eth1 network - external API network, FIP network
 }
 nodes: [
-  director:   {server-id: ['1'],                         nets: [eth1, pxe-ext, pxe-int, user]},
-  controller: {server-id: ['2', '3'],   is-sriov: False, nets: [eth0, eth1, pxe-int, user]},
-  compute:    {server-id: ['4'],        is-sriov: False, nets: [eth0, eth1, pxe-int, user]}
+  director: {server-id: ['1'],                         nets: [eth1, pxe-ext, pxe-int, user]},
+  control:  {server-id: ['2', '3'],   is-sriov: False, nets: [eth0, eth1, pxe-int, user]},
+  compute:  {server-id: ['4'],        is-sriov: False, nets: [eth0, eth1, pxe-int, user]}
 ]
 ucsm: {host: 10.30.119.67, username: admin, password: cisco, uplink-ports: ['1/9', '1/10'], uplink-vpc-id: 81}
 n9k: {host: 172.31.229.207, host2: 172.31.230.234, username: admin, password: CTO1234!}

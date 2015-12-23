@@ -11,9 +11,9 @@ nets: {
   eth1:     {mac-tmpl: '{lab_id:02}:25:B5:11:{b_c_id}', vlan: [3007, 177] }, # used for eth1 network - current restriction of ucsm plugin will be renamed to api
 }
 nodes: [
-  director:   {server-id: ['3/1'],                                nets: [user, eth1, pxe-ext, pxe-int]},
-  controller: {server-id: ['1', '2', '3'],       is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
-  compute:    {server-id: ['4', '5', '6', '7'],  is-sriov: False, nets: [eth0, eth1, user, pxe-int]}
+  director: {server-id: ['3/1'],                                nets: [user, eth1, pxe-ext, pxe-int]},
+  control:  {server-id: ['1', '2', '3'],       is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
+  compute:  {server-id: ['4', '5', '6', '7'],  is-sriov: False, nets: [eth0, eth1, user, pxe-int]}
 ]
 ucsm: {host: 10.23.228.253, username: admin, password: cisco, uplink-ports: ['1 47', '1 48'], uplink-vpc-id: 81}
 n9k: {host1: 10.30.119.100, host2: 10.30.119.101, username: admin, password: CTO1234!}
