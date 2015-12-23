@@ -17,9 +17,9 @@ class DeployerExistingOSP7(Deployer):
 
     def wait_for_cloud(self, list_of_servers):
         from lab.Cloud import Cloud
-        from lab.lab_server import LabServer
+        from lab.laboratory import Laboratory
 
-        director = LabServer.director(cfg_path=self.lab_cfg)
+        director = Laboratory(config_path=self.lab_cfg).director()
         rc = director.run(command='cat /home/stack/overcloudrc')
         user = tenant = password = end_point = None
         for line in rc.split('\n'):

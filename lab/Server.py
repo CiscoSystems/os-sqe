@@ -238,13 +238,16 @@ class Server(object):
     def create_user(self, new_username):
         from lab import WithConfig
 
+        password = 'cisco123'
         if not self.run(command='grep {0} /etc/passwd'.format(new_username), warn_only=True):
-            encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(self.password))
+            encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(password))
             self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
             self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
             self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
         self.username = new_username
+        self.password = 'cisco123'
         with open(WithConfig.KEY_PUBLIC_PATH) as f:
             self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
         self.run(command='sudo chmod 700 .ssh')
         self.run(command='sudo chmod 600 .ssh/authorized_keys')
+        self.password = 'ssh_key'
