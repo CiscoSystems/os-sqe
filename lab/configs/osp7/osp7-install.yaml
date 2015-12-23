@@ -49,7 +49,7 @@ neutron_external_bridge = br-ex
 deploy_with_flavors = true
 network_nexus_provider_vlan_auto_create = false
 network_nexus_provider_vlan_auto_trunk = false
-network_nexus_vlan_range = datacentre:3010:3250,external
+network_nexus_vlan_range = datacentre:1000:2999,external
 
 
 # this network will be created as external in overcloud openstack
