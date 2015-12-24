@@ -47,7 +47,7 @@ class RunnerHA(Runner):
         super(RunnerHA, self).__init__(config=config)
         self.cloud_name = config['cloud']
         self.task_yaml_path = config['task-yaml']
-        self.task_body = read_config_from_file(yaml_path=self.task_yaml_path)
+        self.task_body = read_config_from_file(yaml_path=self.task_yaml_path, directory='ha')
         self.lab_cfg = read_config_from_file(yaml_path=config['hardware-lab-config'])
 
     def execute(self, clouds, servers):

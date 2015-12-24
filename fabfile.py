@@ -81,3 +81,24 @@ def g10():
 def g8():
     """ (Re)deploy  G8 lab"""
     deploy_lab(config_path='configs/g8.yaml')
+
+
+@task
+@decorators.print_time
+def ha(test_case=None):
+    """ Run HA specific test cases
+    :param test_case: test case yaml file, if not specified all TCs from configs/ha will be executed
+    """
+    deploy_lab(config_path='configs/g8.yaml')
+
+
+@task
+@decorators.print_time
+def run(config_path):
+    """ Run HA specific test cases
+    :param config_path: specify what to run
+    """
+    from lab.BaseLab import BaseLab
+
+    l = BaseLab(yaml_name=config_path)
+    l.run()
