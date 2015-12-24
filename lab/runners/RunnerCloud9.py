@@ -24,8 +24,8 @@ class RunnerCloud9(Runner):
             self.director.run('{s}{pxe_ip} sudo ip a flush dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_if=user_if))
             self.director.run('{s}{pxe_ip} sudo ip a a {user_ip}/{bits} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_if=user_if, user_ip=server.ip, bits=server.net.prefixlen))
             self.director.run('{s}{pxe_ip} sudo ip r r default via {user_gw} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_gw=self.lab.user_gw, user_if=user_if))
-
-            self.director.run('{s}{pxe_ip} \'echo "{public}" >> .ssh/authorized_keys\''.format(s=ssh, pxe_ip=pxe_ip, public=self.lab.public_key))
+        for server in self.lab.all_but_director():
+            self.director.run('{s}{ip} \'echo "{public}" >> .ssh/authorized_keys\''.format(s=ssh, ip=server.ip, public=self.lab.public_key))
 
     def __copy_stack_files(self, user):
         self.director.run(command='sudo cp /home/stack/overcloudrc .')
@@ -64,7 +64,7 @@ output:
 
         for server in self.lab.controllers():
             server.run(command='curl -L -O http://172.29.173.233/filebeat-1.0.0-x86_64.rpm')
-            server.run(command='sudo rpm -vi filebeat-1.0.0-x86_64.rpm')
+            server.run(command='sudo rpm --force -vi filebeat-1.0.0-x86_64.rpm')
             server.put_string_as_file_in_dir(string_to_put=filebeat_config_body, file_name='filebeat.yml', in_directory='/etc/filebeat')
 
     def run_on_director(self):
