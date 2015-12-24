@@ -30,8 +30,7 @@ class ProviderLibvirt(Provider):
         self.dir_for_backing_disks = os.path.abspath(os.path.join('/tmp', 'libvirt', 'backing_images'))
         self.dir_for_main_disks = os.path.abspath(os.path.join('/tmp', 'libvirt', 'main_disks'))
         self.dir_for_saved_xml = os.path.abspath(os.path.join('/tmp', 'libvirt', 'saved_xml'))
-        with open(self.CONFIG_DIR + '/libvirt/domain_template.txt') as f:
-            self.domain_tmpl = f.read()
+        self.domain_tmpl = self.read_config_from_file(config_path='domain_template.txt', directory='libvirt', is_as_string=True)
         self.connection = libvirt.open()
         self.servers = []
         self.local = Server(ip='localhost')
@@ -91,14 +90,11 @@ class ProviderLibvirt(Provider):
         return os.path.abspath(os.path.join(where, str(self.lab_id) + name + '.' + extension))
 
     def create_cloud_init_disk(self, hostname):
-        import os
         import uuid
 
-        with open(os.path.join(self.CONFIG_DIR, 'keys', 'public')) as f:
-            public_key = f.read()
+        public_key = self.read_config_from_file(config_path='public', directory='keys', is_as_string=True)
 
-        with open(os.path.join(self.CONFIG_DIR, 'libvirt', 'cloud_init_user_data.txt')) as f:
-            user_data = f.read()
+        user_data = self.read_config_from_file(config_path='cloud_init_user_data.txt', directory='libvirt', is_as_string=True)
 
         user_data = user_data.replace('{username}', self.username)
         user_data = user_data.replace('{password}', self.password)
