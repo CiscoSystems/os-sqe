@@ -24,12 +24,12 @@ class Laboratory(WithConfig.WithConfig):
         self.ipmi_netmask = ipmi_net.netmask
 
         self.servers = []
-        shift_user = -2  # need to start from -2 due to IPNetwork[-1] is broadcast address
+        shift_user = 4  # need to start from -2 due to IPNetwork[-1] is broadcast address
         shift_ipmi = 4  # need to start from 4 due to IPNetwork[0-1-2-3] are network and gw addresses
         for x in self.cfg['nodes']:
             for role, val in x.iteritems():
                 for role_counter, server_id in enumerate(val['server-id']):
-                    server = Server(ip=user_net[shift_user],
+                    server = Server(ip=user_net[-2] if 'director' in role else user_net[shift_user],
                                     hostname='g{0}-director.ctocllab.cisco.com'.format(self.cfg['lab-id']),
                                     username=self.cfg['username'],
                                     net=user_net,
@@ -50,9 +50,9 @@ class Laboratory(WithConfig.WithConfig):
                         mac = self.cfg['nets'][nic_name]['mac-tmpl'].format(lab_id=self.cfg['lab-id'], b_c_id=b_c_id)
                         server.add_if(nic_name=nic_name, nic_mac=mac, nic_order=order, nic_vlans=self.cfg['nets'][nic_name]['vlan'])
                     self.servers.append(server)
-                    shift_user -= 1
+                    shift_user += 1
                     shift_ipmi += 1
-        self._user_net_free_range = user_net[4], user_net[shift_user]
+        self._user_net_range = user_net[4], user_net[-3]  # will be provided to OSP7 deployer as a range for vip and controllers -2 is director
 
     def director(self):
         return self.servers[0]
@@ -65,6 +65,9 @@ class Laboratory(WithConfig.WithConfig):
 
     def controllers(self):
         return self._servers_for_role(role='control')
+
+    def computes(self):
+        return self._servers_for_role(role='compute')
 
     def ucsm_uplink_ports(self):
         return self.cfg['ucsm']['uplink-ports']
@@ -99,7 +102,7 @@ class Laboratory(WithConfig.WithConfig):
         return self.cfg['nets']['user']['cidr']
 
     def user_net_free_range(self):
-        return self._user_net_free_range
+        return self._user_net_range
 
     def count_role(self, role_name):
         return len([x for x in self.servers if role_name in x.role])
