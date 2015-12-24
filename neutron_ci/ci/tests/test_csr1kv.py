@@ -52,6 +52,8 @@ NETWORK_GATEWAY=10.11.12.1
 FLOATING_RANGE=10.0.197.0/24
 PUBLIC_NETWORK_GATEWAY=10.0.197.1
 LIBVIRT_FIREWALL_DRIVER=nova.virt.firewall.NoopFirewallDriver
+#Added according example
+NOVA_USE_QUANTUM_API=v2
 
 # Use br-int as bridge to reach external networks
 PUBLIC_BRIDGE=br-int
@@ -80,6 +82,12 @@ enable_service n-novnc
 
 enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
 enable_service net-cisco
+
+# Enable CSR
+enable_service cisco-csr
+
+# Default routertype for Neutron routers
+Q_CISCO_DEFAULT_ROUTER_TYPE=CSR1kv_router
 
 # Destination path for installation of the OpenStack components.
 # There is no need to specify it unless you want the code in
