@@ -12,6 +12,7 @@ from lab.providers import cobbler, ucsm, n9k
 from lab.runners import rally
 from lab.configurators import osp7_install
 from tools import ucsm_tempest_conf
+from tools import osp_net_cisco
 
 
 @timed
