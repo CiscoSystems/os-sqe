@@ -1,0 +1,55 @@
+{
+  "CinderVolumes.create_and_attach_volume": [
+    {
+      "args": {
+        "flavor": {
+          "name": "m1.small"
+        },
+        "image": {
+          "name": "^Ubuntu*"
+        },
+        "size": 3
+      },
+      "context": {
+        "users": {
+          "project_domain": "default",
+          "static_tenant_match": "ctx_rally",
+          "static_username_match": "ctx_rally",
+          "use_static_tenants": false,
+          "use_static_users": false,
+          "user_domain": "default",
+          "user_password": "password",
+          "users_per_tenant": 3,
+          "tenants": 60,
+          "resource_management_workers": 30
+
+        },
+        "quotas": {
+          "cinder": {
+            "gigabytes": -1,
+            "snapshots": -1,
+            "volumes": -1
+          },
+          "neutron": {
+            "network": -1,
+            "port": -1,
+            "router": -1,
+            "security_group": -1,
+            "subnet": -1
+          },
+          "nova": {
+            "metadata_items": -1,
+            "instances": -1,
+            "ram": -1,
+            "cores": -1
+          }
+
+      },
+      "runner": {
+        "concurrency": 25,
+        "times": 700,
+        "type": "constant"
+      }
+    }
+  ]
+}

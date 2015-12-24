@@ -1,0 +1,41 @@
+{
+  "NeutronNetworks.create_and_delete_routers": [
+    {
+      "args": {
+        "network_create_args": {},
+        "router_create_args": {},
+        "subnet_cidr_start": "1.1.0.0/16",
+        "subnet_create_args": {},
+        "subnets_per_network": 1
+      },
+      "context": {
+        "quotas": {
+          "neutron": {
+            "network": -1,
+            "port": -1,
+            "router": -1,
+            "security_group": -1,
+            "subnet": -1
+          }
+        },
+        "users": {
+          "project_domain": "default",
+          "resource_management_workers": 30,
+          "static_tenant_match": "ctx_rally",
+          "static_username_match": "ctx_rally",
+          "tenants": 250,
+          "use_static_tenants": false,
+          "use_static_users": false,
+          "user_domain": "default",
+          "user_password": "password",
+          "users_per_tenant": 3
+        }
+      },
+      "runner": {
+        "concurrency": 6,
+        "times": 1000,
+        "type": "constant"
+      }
+    }
+  ]
+}
