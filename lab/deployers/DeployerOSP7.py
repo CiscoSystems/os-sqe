@@ -184,7 +184,7 @@ class DeployerOSP7(Deployer):
         self.director_server.get(remote_path='overcloud.json', local_path='overcloud.json')
 
         yaml_name = 'networking-cisco-environment.yaml'
-        config_tmpl = read_config_from_file(yaml_path=os.path.join(CONFIG_DIR, 'osp7', yaml_name), is_as_string=True)
+        config_tmpl = read_config_from_file(yaml_path=yaml_name, directory='osp7', is_as_string=True)
         config = config_tmpl.format(network_ucsm_ip=ucsm_ip, network_ucsm_username=ucsm_username, network_ucsm_password=ucsm_password,
                                     network_ucsm_host_list=','.join(mac_profiles))
         self.director_server.put(string_to_put=config, file_name=yaml_name, in_directory='templates')
