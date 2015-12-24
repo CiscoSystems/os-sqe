@@ -1,31 +1,30 @@
 ---
 # Test Case TC812: Reboot N9k and FI Measure replay time
 
-- method: lab.monitors.service_endpoint
-  service: neutron
-  duration: 100
-  period: 0.25
-
-## Neutron-server on all control nodes
-#- method: lab.monitors.ip_port
-#  duration: 100
-#  period: 2
-#  server: controller-0
-#  port: 9696
-#- method: lab.monitors.ip_port
-#  duration: 100
-#  period: 2
-#  server: controller-1
-#  port: 9696
-#- method: lab.monitors.ip_port
-#  duration: 100
-#  period: 2
-#  server: controller-2
-#  port: 9696
-#
-## Virtual IP.
-#- method: lab.monitors.ip_port
-#  duration: 100
-#  period: 2
-#  ip: 10.11.12.101
-#  port: 9696
+- method: lab.monitors.ip_port
+  duration: 10
+  period: 2
+  name_or_ip: ucsm-0
+- method: lab.monitors.ip_port
+  duration: 10
+  period: 2
+  name_or_ip: n9k-1
+- method: lab.monitors.ip_port
+  duration: 10
+  period: 2
+  name_or_ip: n9k-2
+- method: lab.monitors.ip_port
+  duration: 10
+  period: 2
+  name_or_ip: control-0
+  port: 9696
+- method: lab.monitors.ip_port
+  duration: 10
+  period: 2
+  name_or_ip: control-1
+  port: 9696
+- method: lab.monitors.ip_port
+  duration: 10
+  period: 2
+  name_or_ip: control-2
+  port: 9696

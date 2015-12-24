@@ -52,6 +52,10 @@ class Laboratory(WithConfig.WithConfig):
                     self.servers.append(server)
                     shift_user += 1
                     shift_ipmi += 1
+        self.net_nodes = [Server(ip=self.cfg['ucsm']['host'], username=self.cfg['ucsm']['username'], password=self.cfg['ucsm']['password'], role='ucsm', n_in_role=0),
+                          Server(ip=self.cfg['n9k']['host1'], username=self.cfg['ucsm']['username'], password=self.cfg['ucsm']['password'], role='n9k', n_in_role=1),
+                          Server(ip=self.cfg['n9k']['host2'], username=self.cfg['ucsm']['username'], password=self.cfg['ucsm']['password'], role='n9k', n_in_role=2)
+                          ]
         self._user_net_range = user_net[4], user_net[-3]  # will be provided to OSP7 deployer as a range for vip and controllers -2 is director
 
     def director(self):
@@ -64,7 +68,10 @@ class Laboratory(WithConfig.WithConfig):
         return [x for x in self.servers[1:] if x.role == role]
 
     def particular_node(self, name):
-        return [x for x in self.servers if name in x.name()]
+        for server in self.servers + self.net_nodes:
+            if name in server.name():
+                return server
+        raise RuntimeError('No server {0}'.format(name))
 
     def controllers(self):
         return self._servers_for_role(role='control')
