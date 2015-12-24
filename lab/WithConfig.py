@@ -23,8 +23,8 @@ class WithConfig(object):
         verify_config(sample_config=sample_config, config=config, exception=self._exception)
 
     @staticmethod
-    def read_config_from_file(config_path):
-        return read_config_from_file(yaml_path=config_path)
+    def read_config_from_file(config_path, directory='', is_as_string=False):
+        return read_config_from_file(yaml_path=config_path, directory=directory, is_as_string=is_as_string)
 
 
 class LabConfigException(Exception):
