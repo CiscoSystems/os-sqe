@@ -13,11 +13,11 @@ def starter(item_description):
         log.info('Delaying start by {0} secs...'.format(delay))
     time.sleep(delay)
 
-    log.info('Start')
     func = item_description.pop('function')
     lab = Laboratory(config_path=item_description.pop('lab_name'))
     lab.cloud = item_description.pop('cloud')
 
+    log.info('Start {0}'.format(item_description))
     func(lab, log, item_description)
 
 
@@ -38,7 +38,7 @@ class RunnerHA(Runner):
 
         items_to_run = []
         for arguments in self.task_body:
-            module_path = arguments['method']
+            module_path = arguments.pop('method')
             try:
                 module = importlib.import_module(module_path)
                 func = getattr(module, 'start')
