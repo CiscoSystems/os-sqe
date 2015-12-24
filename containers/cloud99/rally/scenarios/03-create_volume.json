@@ -1,0 +1,38 @@
+{
+  "CinderVolumes.create_volume": [
+    {
+      "args": {
+        "size": {
+          "max": 5,
+          "min": 3
+        }
+      },
+      "context": {
+        "quotas": {
+          "cinder": {
+            "gigabytes": -1,
+            "snapshots": -1,
+            "volumes": -1
+          }
+        },
+        "users": {
+          "project_domain": "default",
+          "resource_management_workers": 30,
+          "static_tenant_match": "ctx_rally",
+          "static_username_match": "ctx_rally",
+          "tenants": 60,
+          "use_static_tenants": false,
+          "use_static_users": false,
+          "user_domain": "default",
+          "user_password": "password",
+          "users_per_tenant": 3
+        }
+      },
+      "runner": {
+        "concurrency": 20,
+        "times": 1000,
+        "type": "constant"
+      }
+    }
+  ]
+}

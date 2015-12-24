@@ -1,0 +1,53 @@
+{
+  "VMBootPing.vm_boot_ping": [
+    {
+      "runner": {
+        "type": "constant",
+        "concurrency": 25,
+        "times": 700
+      },
+      "args": {
+        "floating_network": "ext-net",
+        "flavor": {
+          "name": "m1.small"
+        },
+        "use_floating_ip": false,
+        "image": {
+          "name": "^Ubuntu*"
+        },
+        "force_delete": false
+      },
+      "context": {
+        "users": {
+          "user_domain": "default",
+          "project_domain": "default",
+          "user_password": "password",
+          "static_tenant_match": "ctx_rally",
+          "use_static_users": false,
+          "static_username_match": "ctx_rally",
+          "use_static_tenants": false,
+          "users_per_tenant": 3,
+          "tenants": 60,
+          "resource_management_workers": 30,
+        },
+        "quotas": {
+          "nova": {
+            "metadata_items": -1,
+            "instances": -1,
+            "ram": -1,
+            "cores": -1
+          },
+          "neutron": {
+            "security_group_rule": -1,
+            "subnet": -1,
+            "network": -1,
+            "floatingip": -1,
+            "security_group": -1,
+            "router": -1,
+            "port": -1
+          }
+        }
+      }
+    }
+  ]
+}

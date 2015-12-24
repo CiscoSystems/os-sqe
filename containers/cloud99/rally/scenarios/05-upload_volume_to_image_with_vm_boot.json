@@ -1,0 +1,34 @@
+{
+  "CinderVolumes.upload_volume_to_image_with_vm_boot": [
+    {
+      "args": {
+        "flavor": {
+          "name": "m1.small"
+        },
+        "image": {
+          "name": "^Ubuntu*"
+        },
+        "size": 5
+      },
+      "context": {
+        "users": {
+          "project_domain": "default",
+          "resource_management_workers": 30,
+          "static_tenant_match": "ctx_rally",
+          "static_username_match": "ctx_rally",
+          "tenants": 10,
+          "use_static_tenants": false,
+          "use_static_users": false,
+          "user_domain": "default",
+          "user_password": "password",
+          "users_per_tenant": 3
+        }
+      },
+      "runner": {
+        "concurrency": 2,
+        "times": 100,
+        "type": "constant"
+      }
+    }
+  ]
+}
