@@ -16,16 +16,16 @@ class RunnerCloud9(Runner):
 
     def __assign_ip_to_user_nic(self, undercloud):
         ssh = 'ssh -o StrictHostKeyChecking=no heat-admin@'
-        for server in self.lab.all_but_director():
+        for server in self.lab.computes():
             line = self.director.run(command='source {rc} && nova list | grep {name}'.format(rc=undercloud, name=server.name()))
             pxe_ip = line.split('=')[-1].replace(' |', '')
             line = self.director.run("{s}{pxe_ip} /usr/sbin/ip -o l | awk '/:aa:/ {{print $2}}'".format(s=ssh, pxe_ip=pxe_ip))
             user_if = line.split('\n')[-1].strip(':')
             self.director.run('{s}{pxe_ip} sudo ip a flush dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_if=user_if))
-            self.director.run('{s}{pxe_ip} sudo ip a a {user_ip} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_if=user_if, user_ip=server.ip))
-            self.director.run('{s}{pxe_ip} sudo ip r r default via {user_gw} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_gw=self.lab.gw, user_if=user_if))
+            self.director.run('{s}{pxe_ip} sudo ip a a {user_ip}/{bits} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_if=user_if, user_ip=server.ip, bits=server.net.prefixlen))
+            self.director.run('{s}{pxe_ip} sudo ip r r default via {user_gw} dev {user_if}'.format(s=ssh, pxe_ip=pxe_ip, user_gw=self.lab.user_gw, user_if=user_if))
 
-            self.director.run('{s}{pxe_ip} \'echo "{public}" >> .ssh/authorized_keys\''.format(s=ssh, pxe_ip=pxe_ip, public=self.lab.public_key()))
+            self.director.run('{s}{pxe_ip} \'echo "{public}" >> .ssh/authorized_keys\''.format(s=ssh, pxe_ip=pxe_ip, public=self.lab.public_key))
 
     def __copy_stack_files(self, user):
         self.director.run(command='sudo cp /home/stack/overcloudrc .')
@@ -60,7 +60,7 @@ filebeat:
 output:
   logstash:
     hosts: ["{logstash}"]
-'''.format(self.lab.logstash_creds())
+'''.format(logstash=self.lab.logstash_creds())
 
         for server in self.lab.controllers():
             server.run(command='curl -L -O http://172.29.173.233/filebeat-1.0.0-x86_64.rpm')

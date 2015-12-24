@@ -58,7 +58,7 @@ def read_config_from_file(yaml_path, directory='', is_as_string=False):
     actual_path = yaml_path if os.path.isfile(yaml_path) else os.path.join(CONFIG_DIR, directory, yaml_path)
     print actual_path, REPO_DIR, CONFIG_DIR
     if not os.path.isfile(actual_path):
-        folder = os.path.abspath(os.path.join(CONFIG_DIR, 'labs'))
+        folder = os.path.abspath(os.path.join(CONFIG_DIR, directory))
         raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_path, '\n'.join(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))))
 
     with open(actual_path) as f:

@@ -85,15 +85,6 @@ def g8():
 
 @task
 @decorators.print_time
-def ha(test_case=None):
-    """ Run HA specific test cases
-    :param test_case: test case yaml file, if not specified all TCs from configs/ha will be executed
-    """
-    deploy_lab(config_path='configs/g8.yaml')
-
-
-@task
-@decorators.print_time
 def run(config_path):
     """ Run HA specific test cases
     :param config_path: specify what to run
