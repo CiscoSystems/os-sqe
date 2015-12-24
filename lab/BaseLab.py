@@ -18,7 +18,7 @@ class BaseLab(WithStatusMixIn):
         self.servers = []
         self.clouds = []
 
-        config = read_config_from_file(yaml_path=yaml_name)
+        config = read_config_from_file(yaml_path=yaml_name, directory='run')
         if not config:
             raise LabConfigException(lab_class=type(self), sample_config=self.sample_config, config=config, message='empty config')
         for section_name, class_name_vs_config in sorted(config.iteritems()):
