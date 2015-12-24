@@ -12,7 +12,7 @@ class DeployerExisting(Deployer):
                 'user': 'default user', 'tenant': 'tenant name', 'admin': 'admin username', 'password': 'password for both'}
 
     def __init__(self, config):
-        from lab.Cloud import Cloud
+        from lab.cloud import Cloud
 
         super(DeployerExisting, self).__init__(config=config)
         self.cloud_end_point_ip = config['end_point']

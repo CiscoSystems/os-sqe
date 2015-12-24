@@ -2,7 +2,7 @@
 # Test Case TC806: Kill neutron-server on any controller node
 
 - method: lab.monitors.service_endpoint
-  type: network
+  service: network
   duration: 100
   period: 0.25
 

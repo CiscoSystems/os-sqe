@@ -11,12 +11,17 @@ class Cloud:
         self.tenant = tenant
         self.password = password
         self.info = {'controller': [], 'ucsm': [], 'network': [], 'compute': []}
+        self.service_end_points = {x: {} for x in self.services()}
         self.mac_2_ip = {}
         self.hostname_2_ip = {}
         self.end_point = end_point
 
     def __repr__(self):
         return '--os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(u=self.user, t=self.tenant, p=self.password, a=self.get_end_point())
+
+    @staticmethod
+    def services():
+        return ['nova', 'neutron']
 
     def get_end_point(self):
         return self.end_point or 'http://{0}:5000/v2.0'.format(self.get_first(self.ROLE_CONTROLLER, 'ip'))
@@ -42,7 +47,10 @@ class Cloud:
             return 'NoValueFor' + role + parameter
 
     def add_server(self, config_name, server):
-        """ Set all parameters for the given server"""
+        """ Set all parameters for the given server
+        :param config_name:
+        :param server:
+        """
         if config_name.startswith('aio'):
             role = self.ROLE_CONTROLLER
         else:
@@ -60,6 +68,12 @@ class Cloud:
         _info = {'ip': server.ip, 'mac': server.ip_mac, 'username': server.username, 'hostname': server.hostname, 'password': server.password}
         self.info[role].append(_info)
 
+    def add_service_end_point(self, service, url, end_point):
+        self.service_end_points[service].update({url: end_point})
+
+    def get_service_end_point(self, service, url):
+        return self.service_end_points[service][url]
+
     def create_open_rc(self):
         """ Creates open_rc for the given cloud"""
         open_rc = """
@@ -68,9 +82,7 @@ export OS_TENANT_NAME={tenant}
 export OS_PASSWORD={password}
 export OS_AUTH_URL={end_point}
 """
-#export OS_AUTH_URL=http://{ip}:5000/v2.0/
-#        return open_rc.format(user=self.user, tenant=self.tenant, password=self.password, ip=self.get_first(self.ROLE_CONTROLLER, 'ip'))
-	return open_rc.format(user=self.user, tenant=self.tenant, password=self.password, end_point=self.get_end_point())
+        return open_rc.format(user=self.user, tenant=self.tenant, password=self.password, end_point=self.get_end_point())
 
     def log(self):
         from lab.logger import lab_logger

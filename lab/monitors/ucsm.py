@@ -3,8 +3,8 @@ def start(context, log, args):
     import time
 
     def call_ucsm(command):
-        with settings(host_string='{user}@{ip}'.format(user=context.ucsm_username(), ip=context.ucsm_ip()), password=context.ucsm_password(),
-                      connection_attempts=1, warn_only=False, timeout=1):
+        ip, user, password = context.ucsm_creds()
+        with settings(host_string='{user}@{ip}'.format(user=user, ip=ip), password=password, connection_attempts=1, warn_only=False, timeout=1):
             try:
                 return run(command, shell=False, quiet=True).split()
             except:

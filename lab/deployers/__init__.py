@@ -15,4 +15,8 @@ class Deployer(WithConfig):
         from_server.run(command='neutron subnet-list {cloud}'.format(cloud=cloud))
         from_server.run(command='neutron router-list {cloud}'.format(cloud=cloud))
         from_server.run(command='openstack server list {cloud}'.format(cloud=cloud))
+        for service in cloud.services():
+            for url in ['publicURL', 'internalURL', 'adminURL']:
+                end_point = from_server.run(command='openstack catalog show {service} {cloud} | grep {url} | awk \'{{print $4}}\''.format(cloud=cloud, service=service, url=url))
+                cloud.add_service_end_point(service=service, url=url, end_point=end_point)
         return cloud

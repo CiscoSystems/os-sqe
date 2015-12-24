@@ -63,6 +63,9 @@ class Laboratory(WithConfig.WithConfig):
     def _servers_for_role(self, role):
         return [x for x in self.servers[1:] if x.role == role]
 
+    def particular_node(self, name):
+        return [x for x in self.servers if name in x.name()]
+
     def controllers(self):
         return self._servers_for_role(role='control')
 

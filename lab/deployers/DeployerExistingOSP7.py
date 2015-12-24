@@ -16,7 +16,7 @@ class DeployerExistingOSP7(Deployer):
         self.cloud_name = config['cloud']
 
     def wait_for_cloud(self, list_of_servers):
-        from lab.Cloud import Cloud
+        from lab.cloud import Cloud
         from lab.laboratory import Laboratory
 
         director = Laboratory(config_path=self.lab_cfg).director()

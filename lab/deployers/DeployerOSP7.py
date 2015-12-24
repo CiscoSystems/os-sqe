@@ -190,7 +190,7 @@ class DeployerOSP7(Deployer):
         self.director_server.put(string_to_put=config, file_name=yaml_name, in_directory='templates')
 
     def deploy_cloud(self, list_of_servers):
-        from lab.Cloud import Cloud
+        from lab.cloud import Cloud
 
         servers = []
         for server in list_of_servers:
