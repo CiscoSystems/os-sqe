@@ -1,0 +1,4 @@
+export OS_AUTH_URL=http://<ip_addr>:5000/v2.0
+export OS_USERNAME=admin
+export OS_PASSWORD=
+export OS_TENANT_NAME=admin

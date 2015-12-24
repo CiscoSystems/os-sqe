@@ -1,0 +1,26 @@
+# Define your openstack VM nodes with ip and password info
+control-1:
+    ip: 21.0.0.10
+    user: root
+    password: 'cisco123'
+    role: controller
+control-2:
+    ip: 21.0.0.12
+    user: root
+    password: 'cisco123'
+    role: controller
+control-3:
+    ip: 21.0.0.11
+    user: root
+    password: 'cisco123'
+    role: controller
+compute-1:
+    ip: 21.0.0.9
+    user: root
+    password: 'cisco123'
+    role: compute
+compute-2:
+    ip: 21.0.0.8
+    user: root
+    password: 'cisco123'
+    role: compute
