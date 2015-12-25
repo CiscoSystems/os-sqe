@@ -11,6 +11,7 @@ def starter(item_description):
     delay = item_description.get('delay', 0)
     if delay:
         log.info('Delaying start by {0} secs...'.format(delay))
+        item_description.pop('delay')
     time.sleep(delay)
 
     func = item_description.pop('function')
