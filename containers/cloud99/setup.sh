@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 yum -y update; yum clean all
+yum -y install redhat-rpm-config
+
 yum install -y git python-setuptools
+
 easy_install pip
 
 # Install dependencies
