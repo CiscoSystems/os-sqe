@@ -6,10 +6,10 @@ monitors:
     # Example config for nagios monitor
     # type: denotes monitoring openstack hosts vs applicationvm
     # Use keyword "openstackvm" to denote monitoring existing cloud resources.
-    # List of floatingips for cloud resources in file appvmlist       
+    # List of floatingips for cloud resources in file appvmlist
     nagiosmonitor:
         nagios:
-            type: openstackvm 
+            type: openstackvm
     nagioscfgset:
         nagioscfg:
 
@@ -24,10 +24,10 @@ monitors:
             frequency: 5
             max_hist: 25
             sudo: False
-            dockerized: True 
+            dockerized: True
             mariadb:
               user: root
-              password:
+              password: vaAomCYIOmKZy2Ay
 
 
     # Example config for Openstack endpoint and service monitor
