@@ -9,20 +9,18 @@ def once(command, log):
 def start(lab, log, args):
     import time
     import re
-    import paramiko
 
-    paramiko.util.log_to_file('paramiko.log')
     how_many = args['how_many']
-    unique_partern_in_name = args.get('unique_partern_in_name', 'sqe-test')
+    unique_pattern_in_name = args.get('unique_pattern_in_name', 'sqe-test')
 
-    server = lab.director()
+    server = lab.controllers()[0]
 
     def command(cmd):
-        name_part = '{0}-{1}'.format(unique_partern_in_name, i)
-        if 'net-create' in cmd:
-            name_part += '-net'
-        elif 'subnet-create' in cmd:
+        name_part = '{0}-{1}'.format(unique_pattern_in_name, i)
+        if 'subnet-create' in cmd:  # subnet-create needs to be before net-create since net-create is a substring of subnet-create
             name_part = '--name ' + name_part + '-subnet'
+        elif 'net-create' in cmd:
+            name_part += '-net'
         elif 'port-create' in cmd:
             name_part = '--name ' + name_part + '-port'
 
