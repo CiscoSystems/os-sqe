@@ -2,30 +2,37 @@
 # Test Case TC806: Kill neutron-server on any controller node
 
 - method: lab.monitors.service_endpoint
-  service: network
-  duration: 100
+  service: neutron
+  duration: 500
   period: 0.25
 
 # Neutron-server on all control nodes
 - method: lab.monitors.ip_port
-  duration: 100
+  duration: 500
   period: 2
-  ip: 10.11.12.107
+  name_or_ip: control-0
   port: 9696
 - method: lab.monitors.ip_port
-  duration: 100
+  duration: 500
   period: 2
-  ip: 10.11.12.109
+  name_or_ip: control-1
   port: 9696
 - method: lab.monitors.ip_port
-  duration: 100
+  duration: 500
   period: 2
-  ip: 10.11.12.104
+  name_or_ip: control-2
   port: 9696
 
-# Virtual IP.
-- method: lab.monitors.ip_port
-  duration: 100
-  period: 2
-  ip: 10.11.12.101
-  port: 9696
+# Kill neutron-server on a controll
+- method: lab.disruptors.pkill
+  node_name: control-0
+  process: neutron-server
+  delay: 100
+- method: lab.disruptors.pkill
+  node_name: control-1
+  process: neutron-server
+  delay: 200
+- method: lab.disruptors.pkill
+  node_name: control-2
+  process: neutron-server
+  delay: 300
