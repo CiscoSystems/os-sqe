@@ -1,6 +1,6 @@
 from fabric.api import task
 from lab import decorators
-from lab.WithStatusMixin import WithStatusMixIn
+from lab.with_status import WithStatusMixIn
 
 
 class BaseLab(WithStatusMixIn):
