@@ -6,7 +6,7 @@ def configure_for_osp7(yaml_path):
 
     lab_logger.info('Creating config for osp7_bootstrap')
     lab = Laboratory(config_path=yaml_path)
-    osp7_install_template = read_config_from_file(yaml_path='./lab/configs/osp7/osp7-install.yaml', is_as_string=True)
+    osp7_install_template = read_config_from_file(yaml_path='./configs/osp7/osp7-install.yaml', is_as_string=True)
 
     # Calculate IPs for user net, VIPs and director IP
     overcloud_network_cidr = lab.user_net_cidr()
