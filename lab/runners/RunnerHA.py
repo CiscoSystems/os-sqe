@@ -36,6 +36,7 @@ class RunnerHA(Runner):
     def execute(self, clouds, servers):
         import importlib
         import multiprocessing
+        import fabric.network
 
         items_to_run = []
         for arguments in self.task_body:
@@ -47,6 +48,17 @@ class RunnerHA(Runner):
                 items_to_run.append(arguments)
             except ImportError:
                 raise Exception('{0} failed to import'.format(module_path))
+
+        """
+        Below line was added because of:
+        When the connection is established within another process,
+        what happens is that the child process gets a copy of the socket
+        associated with the channel. What happens is we get two objects
+        trying to communicate with single socket and the session gets corrupted
+
+        URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
+        """
+        fabric.network.disconnect_all()
 
         pool = multiprocessing.Pool(len(items_to_run))
         pool.map(starter, items_to_run)
