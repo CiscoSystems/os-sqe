@@ -1,6 +1,7 @@
 lab-id: 8 # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools
+username: root # base username which is to be used as root access to cloud nodes
 nets: {
-  mgmt:     {                                           vlan: [8],    cidr: 10.30.119.0/24}, # used for UCSM KVM IPMI
+  ipmi:     {                                           vlan: [8],    cidr: 10.30.119.0/24}, # used for UCSM KVM IPMI
   user:     {mac-tmpl: '{lab_id:02}:25:B5:AA:{b_c_id}', vlan: [174],  cidr: 10.23.230.64/27},   # used for normal user traffic
   pxe-ext:  {mac-tmpl: '{lab_id:02}:25:B5:FF:{b_c_id}', vlan: [1],    cidr: 169.254.4.0/24,},   # used for external pxe bootstrapping of director
   pxe-int:  {mac-tmpl: '{lab_id:02}:25:B5:EE:{b_c_id}', vlan: [3009, 3001, 3002, 3003, 3004], cidr: 10.11.12.0/24},     # used for internal pxe bootstrapping of overcloud-node
@@ -10,11 +11,10 @@ nets: {
   eth1:     {mac-tmpl: '{lab_id:02}:25:B5:11:{b_c_id}', vlan: [3000, 174] }, # used for eth1 network - external API network, FIP network
 }
 nodes: [
-  director: {server-id: ['1'],                         nets: [eth1, pxe-ext, pxe-int, user]},
-  control:  {server-id: ['2', '3'],   is-sriov: False, nets: [eth0, eth1, pxe-int, user]},
-  compute:  {server-id: ['4'],        is-sriov: False, nets: [eth0, eth1, pxe-int, user]}
+  director: {server-id: ['1'],                         nets: [user, eth1, pxe-ext, pxe-int]},
+  control:  {server-id: ['2', '3', '4'],   is-sriov: False, nets: [eth0, eth1, user, pxe-int]}
 ]
-ucsm: {host: 10.30.119.67, username: admin, password: cisco, uplink-ports: ['1/9', '1/10'], uplink-vpc-id: 81}
-n9k: {host: 172.31.229.207, host2: 172.31.230.234, username: admin, password: CTO1234!}
+ucsm: {host: 10.30.119.67, username: admin, password: cisco, uplink-ports: ['1 9', '1 10'], uplink-vpc-id: 81}
+n9k: {host1: 172.31.229.207, host2: 172.31.230.234, username: admin, password: CTO1234!}
 cobbler: {host: 172.29.74.8, username: cobbler, password: cobbler}
 rh-secret: http://172.29.173.233/redhat/osp7/redhat-developers-account.yaml  # login-password info for RH dev account used in director's registration

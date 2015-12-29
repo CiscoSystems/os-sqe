@@ -221,7 +221,7 @@ def configure_for_osp7(yaml_path):
 
         count_attempts = 0
 
-        while count_attempts < 50:
+        while count_attempts < 100:
             lines = run('scope org; show service-profile | egrep Associated', shell=False).split('\n')
             if len(lines) == len(lab.servers):
                 lab_logger.info('finished UCSM ' + yaml_path)

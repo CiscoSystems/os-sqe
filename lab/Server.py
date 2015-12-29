@@ -91,7 +91,7 @@ class Server(object):
         from lab import WithConfig
 
         kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
-                  'connection_attempts': 100,
+                  'connection_attempts': 10,
                   'warn_only': warn_only}
         if self.password == 'ssh_key':
             kwargs['key_filename'] = WithConfig.KEY_PRIVATE_PATH
@@ -120,6 +120,14 @@ class Server(object):
             with cd(in_directory):
                 result = run_or_sudo(command)
                 return result
+
+    def reboot(self, wait=120):
+        """Reboot this server
+        :param wait: wait for the server to come up
+        """
+        from fabric.api import reboot, settings
+        with settings(**self.construct_settings(warn_only=True)):
+            reboot(wait=wait)
 
     @staticmethod
     def run_local(command, in_directory='.', warn_only=False):
