@@ -3,7 +3,6 @@ def once(command, log):
     net_id = command('neutron net-create')
     command('neutron subnet-create {net_id} 10.0.100.0/24'.format(net_id=net_id))
     command('neutron port-create {net_id}'.format(net_id=net_id))
-    log.info('net-subnet-port created')
 
 
 def start(lab, log, args):
@@ -31,4 +30,5 @@ def start(lab, log, args):
     start_time = time.time()
     for i in xrange(0, how_many):
         once(command=command, log=log)
+        log.info('{0} net-subnet-port created'.format(i+1))
     log.info('{0} net-subnet-ports created in {1} secs'.format(how_many, time.time()-start_time))
