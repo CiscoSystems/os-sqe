@@ -1,5 +1,5 @@
 FROM registry.access.redhat.com/rhel
-MAINTAINER Clifford Baeseman <cbaesema@cisco.com>
+MAINTAINER Dmitry Ratushnyy <dratushn@cisco.com>
 RUN yum-config-manager --enable rhel-7-server-optional-rpms
 RUN subscription-manager status
 RUN yum -y update; yum clean all
@@ -39,8 +39,6 @@ RUN pip install -r /tempest/test-requirements.txt
 RUN mkdir /etc/tempest
 RUN cp /tempest/etc/accounts.yaml.sample  /etc/tempest/accounts.yaml
 
-COPY ./config_tempest.py /tempest/tools/config_tempest.py
-COPY ./api_discovery.py /tempest/tempest/common/api_discovery.py
 COPY ./default-overrides.conf  /tempest/etc/default-overrides.conf
 WORKDIR /tempest
 RUN python tools/config_tempest.py --create
