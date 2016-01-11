@@ -13,17 +13,19 @@
 
 * Build container with 
 ```sh  
-$ docker build -t tempest:proposed .
+$ docker build -t tempest:proposed  --name tempest .
 ```
 * Run container with: 
 ```sh    
-$ docker run tempest:proposed --regex  '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario))'
+$ docker run -d -P --name tempest tempest:proposed 
 ```
+* SSH\attach\exec to container
+
 ## Pitfals
 * If your subnet for external network  floating ip pool is small set --concurrency param to 2 or 1 
    i.e:
 ```sh  
-$  docker run tempest:proposed --regex  '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario))' --parallel --concurrency 1 
+$  ostestr --regex  '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario))' --parallel --concurrency 1 
 ```
         This will help you to avoid "No more IP addresses available on network tempest" fails, but this will dramatically slowdown test execution 
 
