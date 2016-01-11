@@ -1,12 +1,10 @@
----
 # Test Case TC812: Reboot N9k and FI Measure replay time
-- method: lab.scenarios.delete
 - method: lab.monitors.ucsm
-  duration: 2000
+  duration: 6000
   period: 10
 - method: lab.scenarios.net_subnet_port
-  delay: 100
+  delay: 10
   how_many: 200
 - method: lab.scenarios.delete
-  delay: 1000
-
+  delay: 2200
+  how_many: 200
