@@ -19,6 +19,6 @@ def start(lab, log, args):
         except requests.exceptions.ConnectionError:
             res = 0
 
-        log.info('Service {0}, endpoint {1}. Status {2}'.format(service, endpoint, res))
+        log.info('service={0}, endpoint={1}, status={2}'.format(service, endpoint, res))
 
         time.sleep(period)
