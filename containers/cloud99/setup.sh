@@ -19,7 +19,7 @@ yum -y install openssh-server
 yum -y install screen
 
 #User configs
-USER_PASSWORD='cisco123'
+USER_PASSWORD='cloud99'
 echo 'root:'$USER_PASSWORD | chpasswd
 useradd cloud99
 echo 'cloud99:'$USER_PASSWORD | chpasswd
@@ -30,7 +30,7 @@ sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_c
 sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 /usr/bin/ssh-keygen -A
 
-#SETUP Cloud99
+#SETUP cloud99
 su cloud99
 git clone https://cloud-review.cisco.com/mercury/cloud99
 pip install -r cloud99/requirements.txt
