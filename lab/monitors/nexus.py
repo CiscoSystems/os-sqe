@@ -63,7 +63,7 @@ def start(context, log, args):
 
         # Vlans
         vlans = _get_item(_nxapi(['show vlan']), ['result', 'body', 'TABLE_vlanbrief', 'ROW_vlanbrief'], [])
-        log.info('{0} Vlans: {1}'.format(nexus_name, vlans))
+        log.info('nexus={0} vlans:={1}'.format(nexus_name, vlans))
 
         # User sessions
         users = _get_item(_nxapi(['show users']), ['result', 'body', 'TABLE_sessions', 'ROW_sessions'], [])

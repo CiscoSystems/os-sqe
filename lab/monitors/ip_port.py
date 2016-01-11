@@ -30,14 +30,14 @@ def start(context, log, args):
                 down_start = time.time()
         finally:
             s.close()
-        log.info('{name}:{port} ({ip}) is {status}'.format(name=name_or_ip, port=port, ip=ip, status=res))
+        log.info('host={name}:{port} ip={ip} status={status}'.format(name=name_or_ip, port=port, ip=ip, status=res))
 
         time.sleep(period)
 
     if down_start:
         if down_end:
-            log.info('{0}:{1} -> downtime is {2} secs from {3} to {4}'.format(name_or_ip, port, down_end - down_start, down_start, down_end))
+            log.info('host={0}:{1} -> downtime={2} secs from={3} to={4}'.format(name_or_ip, port, down_end - down_start, down_start, down_end))
         else:
-            log.info('{0}:{1} -> downtime from {2} and still down when monitor is finished'.format(name_or_ip, port, down_start))
+            log.info('host={0}:{1} -> downtime from={2} and still down when monitor is finished'.format(name_or_ip, port, down_start))
     else:
-        log.info('{0}:{1} -> always up'.format(name_or_ip, port))
+        log.info('host={0}:{1} -> status=always_up'.format(name_or_ip, port))

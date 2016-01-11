@@ -30,5 +30,5 @@ def start(lab, log, args):
     start_time = time.time()
     for i in xrange(0, how_many):
         once(command=command, log=log)
-        log.info('{0} net-subnet-port created'.format(i+1))
-    log.info('{0} net-subnet-ports created in {1} secs'.format(how_many, time.time()-start_time))
+        log.info('n_ports={0} status=created'.format(i+1))
+    log.info('n_ports={0} status=created in time={1} secs'.format(how_many, time.time()-start_time))

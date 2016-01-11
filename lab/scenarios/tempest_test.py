@@ -31,4 +31,4 @@ def start(lab, log, args):
         lab.director().run('source venv/bin/activate && testr init')
         while (datetime.datetime.now() - start_time).seconds < etime:
             res = lab.director().run('source venv/bin/activate && testr run {0}'.format(test))
-            log.info('Tempest run {0}, Result {1}'.format(test, res.return_code))
+            log.info('run={0}, result={1}'.format(test, res.return_code))

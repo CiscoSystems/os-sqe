@@ -26,12 +26,12 @@ def start(context, log, args):
                     vnic = 'eth0'
                     # Allowed vlans
                     cmd = 'scope org ; scope service-profile {0}; scope vnic {1}; sh eth-if | no-more | egrep "Name:" | cut -f 6 -d " "'.format(sp, vnic)
-                    log.info('{0} {1} allowed vlans: {2}'.format(sp, vnic, call_ucsm(command=cmd)))
+                    log.info('profile={0} {1} allowed_vlans={2}'.format(sp, vnic, call_ucsm(command=cmd)))
 
         # Vlan profiles
         cmd = 'scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "'
         vlan_profiles = set(call_ucsm(command=cmd))
-        log.info('{0} VLANS: {1}'.format(len(vlan_profiles), vlan_profiles if is_print_vlans else ''))
+        log.info('n_vlans={0} {1}'.format(len(vlan_profiles), 'ids={0}'.format(vlan_profiles) if is_print_vlans else ''))
 
         # User sessions
         if is_user_profile:

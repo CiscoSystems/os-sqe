@@ -10,6 +10,6 @@ def start(context, log, args):
     start_time = time.time()
     while start_time + duration > time.time():
         res = server.run('pgrep {0}'.format(process), warn_only=True)
-        log.info('Node name {0}. Found {1} processes.'.format(node_name, len(res.split())))
+        log.info('node={0} n_processes={1}'.format(node_name, len(res.split())))
         time.sleep(period)
 
