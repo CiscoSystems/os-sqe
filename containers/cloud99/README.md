@@ -1,5 +1,5 @@
 #RUN Cloud99 container
-CLOUD99_CONTAINER_ID=$(docker run -d -P cloud99)
+CLOUD99_CONTAINER_ID=$(docker run -d -P --name cloud99 cloud99)
 echo $(docker logs $CLOUD99_CONTAINER_ID | sed -n 1p)
 docker port $CLOUD99_CONTAINER_ID 22
 
