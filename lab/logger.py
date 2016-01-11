@@ -24,6 +24,7 @@ class JsonFormatter(logging.Formatter):
             if '=' in key_value:
                 key, value = key_value.split('=')
                 value = value.strip()
+                value = value.replace('-', '')
                 key = key.strip()
                 if not key:
                     continue
