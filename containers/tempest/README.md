@@ -13,7 +13,7 @@
 
 * Build container with 
 ```sh  
-$ docker build -t tempest:proposed  --name tempest .
+$ docker build -t tempest:proposed  .
 ```
 * Run container with: 
 ```sh    
