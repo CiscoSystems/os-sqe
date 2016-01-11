@@ -60,6 +60,7 @@ def destroy():
     local("python ./tools/cloud/create.py -l {lab} -x".format(lab=LAB))
 
 
+@decorators.print_time
 def deploy_lab(config_path):
     from lab.providers import ucsm
     from lab.providers import cobbler
@@ -71,17 +72,29 @@ def deploy_lab(config_path):
 
 
 @task
-@decorators.print_time
 def g10():
     """ (Re)deploy  G10 lab"""
     deploy_lab(config_path='configs/g10.yaml')
 
 
 @task
-@decorators.print_time
 def g8():
     """ (Re)deploy  G8 lab"""
     deploy_lab(config_path='configs/g8.yaml')
+
+
+@task
+def log():
+    """ Test log subsystem"""
+    from lab.logger import create_logger
+    from time import sleep
+
+    l = create_logger()
+    l.info('x = 4.15')
+    l.info('y=4.15')
+    for x in xrange(10):
+        l.info('n_vlans={0}'.format(x))
+        sleep(1)
 
 
 @task
