@@ -6,7 +6,7 @@ from fabs.common import logger as log
 from fabs import LVENV, CVENV, LAB
 from lab import decorators
 from fabs import tempest, snap, coverage
-from fabs import jenkins_reports
+from fabs import jenkins_reports, elk
 from lab import BaseLab
 from lab.providers import cobbler, ucsm, n9k
 from lab.runners import rally

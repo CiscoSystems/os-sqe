@@ -13,10 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from datetime import datetime
-from fabric.api import local, lcd, settings
 import hashlib
-from fabs import lab
+from datetime import datetime
+
+from fabric.api import local, lcd, settings
+
+from tools import lab
 
 
 def build_new(config_file):
@@ -75,7 +77,7 @@ def build_old():
         local('ln -nsf ../{0} buildroot'.format(build_root_local.strip('.tar.gz')))
         local('ln -sf ../{0} {0}'.format(kernel_local))
     with lcd(lab.CIRROS_BLD_DIR + '/cirros/buildroot'):
-        local('QUILT_PATCHES={0}/patches-buildroot quilt push -a'.format(lab.CIRROS_BLD_DIR+'/cirros'))
+        local('QUILT_PATCHES={0}/patches-buildroot quilt push -a'.format(lab.CIRROS_BLD_DIR + '/cirros'))
 
     with lcd(lab.CIRROS_BLD_DIR + '/cirros'):
         local('patch -p0 < {0} && rm {0}'.format(ipv6_patch(lab.CIRROS_BLD_DIR + '/cirros')))
