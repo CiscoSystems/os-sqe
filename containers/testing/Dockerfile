@@ -1,46 +1,43 @@
 FROM registry.access.redhat.com/rhel
 MAINTAINER Dmitry Ratushnyy <dratushn@cisco.com>
-RUN yum-config-manager --enable rhel-7-server-optional-rpms
-RUN subscription-manager status
+
 RUN yum -y update; yum clean all
-
-# Install git, python and essential tools
-RUN yum install -y git python-setuptools curl ftp
-RUN easy_install pip
-
+RUN yum -y install git python-setuptools curl ftp
 # Install dependencies
 RUN yum -y install automake make autoconfi gcc gcc-c++
 RUN yum -y install libxml2-devel libxslt-devel lib32z1-devel
 RUN yum -y install python2.7-devel python-devel libssl-devel
 RUN yum -y install libxml2-python libxslt1-devel libsasl2-devel
 RUN yum -y install libsqlite3-devel libldap2-devel libffi-devel
-RUN yum -y install openssl-devel
-RUN yum -y install vim
-RUN yum install -y iputils
-RUN yum -y install openssh-server
+RUN yum -y install openssl-devel openssh-server
+RUN yum -y install gmp-devel postgresql-devel wget
+RUN yum -y install redhat-rpm-config
+RUN yum -y install iputils
+RUN yum -y install screen vim
 
-RUN useradd tempest
-RUN echo 'tempest:tempest'| chpasswd
-RUN echo 'root:tempest'| chpasswd
+RUN echo 'root:toor'| chpasswd
+#ssh config
 RUN mkdir /var/run/sshd
 RUN sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 RUN /usr/bin/ssh-keygen -A
 
-RUN git clone https://github.com/cisco-openstack/tempest.git
-WORKDIR /tempest
-RUN git checkout proposed
-
-# installing tempest dependencies
+#setup tempest
+RUN useradd tempest
+RUN echo 'tempest:tempest'| chpasswd
+RUN git clone -b proposed  https://github.com/cisco-openstack/tempest.git
+RUN easy_install pip
 RUN pip install -r /tempest/requirements.txt
 RUN pip install -r /tempest/test-requirements.txt
-
-# Copy sample configuration
 RUN mkdir /etc/tempest
 RUN cp /tempest/etc/accounts.yaml.sample  /etc/tempest/accounts.yaml
 
-COPY ./default-overrides.conf  /tempest/etc/default-overrides.conf
-WORKDIR /tempest
-RUN python tools/config_tempest.py --create
+#settup cloud99
+RUN git clone https://cloud-review.cisco.com/mercury/cloud99
+RUN pip install -r cloud99/requirements.txt
+RUN curl https://raw.githubusercontent.com/openstack/rally/master/install_rally.sh | bash
+
+#cloud99 charts
+EXPOSE 8090
 EXPOSE 22
 CMD [ "/usr/sbin/sshd", "-D"]
