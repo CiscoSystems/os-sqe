@@ -12,18 +12,18 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from fabric.api import local, settings, sudo, put, get, run, cd, lcd
-from fabric.context_managers import shell_env, warn_only
-import yaml
 import exceptions
-import re
-import os
 import sys
 from StringIO import StringIO
 
+import os
+import re
+import yaml
+from fabric.api import local, settings, sudo, put, get, run, cd, lcd
+from fabric.context_managers import shell_env
 
-from fabs import lab
 from fabs.common import logger as log
+from tools import lab
 
 CONN = None
 
