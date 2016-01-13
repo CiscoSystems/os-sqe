@@ -100,10 +100,16 @@ def log():
 @task
 @decorators.print_time
 def run(config_path):
-    """ Run HA specific test cases
+    """ Run any lab specified by yaml
     :param config_path: specify what to run
     """
     from lab.BaseLab import BaseLab
 
     l = BaseLab(yaml_name=config_path)
     l.run()
+
+
+@task
+def hag10():
+    """ Run G10 HA"""
+    run(config_path='g10-ha.yaml')
