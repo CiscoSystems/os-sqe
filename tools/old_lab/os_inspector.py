@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import os
-from keystoneclient.client import Client as Keystone
 from glanceclient.client import Client as Glance
-from fabs import lab
+from keystoneclient.client import Client as Keystone
+
+from tools import lab
 
 
 class OS:

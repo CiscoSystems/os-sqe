@@ -62,3 +62,13 @@ class RunnerHA(Runner):
 
         pool = multiprocessing.Pool(len(items_to_run))
         pool.map(starter, items_to_run)
+        self.feed_kibana()
+
+    @staticmethod
+    def feed_kibana():
+        from lab.Server import Server
+
+        Server.run_local('echo { "index" : { "_index" : "test", "_type" : "type1", "_id" : "1" } } > elk')
+        Server.run_local('cat json.log >> elk')
+        Server.run_local('curl -s -XPOST 172.29.173.236:9999/_bulk --data-binary @elk')
+

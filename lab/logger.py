@@ -33,7 +33,7 @@ class JsonFormatter(logging.Formatter):
                 except ValueError:
                     pass
                 d[key] = value
-        d['timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%d %H:%M:%S")
+        d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
         d['name'] = record.name
         return json.dumps(d)
 
