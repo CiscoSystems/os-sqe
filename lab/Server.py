@@ -121,7 +121,7 @@ class Server(object):
                 result = run_or_sudo(command)
                 return result
 
-    def reboot(self, wait=120):
+    def reboot(self, wait=300):
         """Reboot this server
         :param wait: wait for the server to come up
         """
