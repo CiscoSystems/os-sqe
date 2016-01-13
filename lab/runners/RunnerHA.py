@@ -17,6 +17,7 @@ def starter(item_description):
     func = item_description.pop('function')
     lab = Laboratory(config_path=item_description.pop('lab_name'))
     lab.cloud = item_description.pop('cloud')
+    item_description.setdefault('period', 1)
 
     log.info('Start {0}'.format(item_description))
     func(lab, log, item_description)
@@ -37,6 +38,7 @@ class RunnerHA(Runner):
         import importlib
         import multiprocessing
         import fabric.network
+        from fabs import elk
 
         items_to_run = []
         for arguments in self.task_body:
@@ -62,13 +64,4 @@ class RunnerHA(Runner):
 
         pool = multiprocessing.Pool(len(items_to_run))
         pool.map(starter, items_to_run)
-        self.feed_kibana()
-
-    @staticmethod
-    def feed_kibana():
-        from lab.Server import Server
-
-        Server.run_local('echo { "index" : { "_index" : "test", "_type" : "type1", "_id" : "1" } } > elk')
-        Server.run_local('cat json.log >> elk')
-        Server.run_local('curl -s -XPOST 172.29.173.236:9999/_bulk --data-binary @elk')
-
+        elk.json_to_es()
