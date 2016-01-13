@@ -1,0 +1,13 @@
+---
+# Test Case TC786: Reboot compute node
+
+- method: lab.disruptors.reboot_node
+  node_name: compute-0
+  delay: 20
+
+- method: lab.monitors.ip_port
+  duration: 310
+  period: 2
+  name_or_ip: compute-0
+  port: 22
+
