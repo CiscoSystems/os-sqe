@@ -11,7 +11,7 @@ class Laboratory(WithConfig.WithConfig):
 
     def __init__(self, config_path):
         from netaddr import IPNetwork
-        from lab.Server import Server
+        from lab.server import Server
 
         super(Laboratory, self).__init__(config=None)
 

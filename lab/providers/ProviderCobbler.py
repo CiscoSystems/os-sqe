@@ -68,7 +68,7 @@ class ProviderCobbler(Provider):
         return rendered_system['mgmt_parameters']['username']
 
     def reboot_system(self, system_name):
-        from lab.Server import Server
+        from lab.server import Server
         from lab.logger import lab_logger
 
         token = self.__cobbler.login(self.user, self.password)

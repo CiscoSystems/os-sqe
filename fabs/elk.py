@@ -13,7 +13,7 @@ def run_elk():
 @task
 def json_to_es():
     """Push json.log to our ES and index it """
-    from lab.Server import Server
+    from lab.server import Server
 
     with open('json.log') as f:
         log = f.read()
@@ -31,6 +31,6 @@ def kill_index(index):
     """Kill given index in ES
     :param index: name of index to delete
     """
-    from lab.Server import Server
+    from lab.server import Server
 
     Server.run_local('curl -s -XDELETE 172.29.173.236:9999/{index}'.format(index=index))
