@@ -19,6 +19,14 @@ def reboot(yaml_path):
 
 
 @task
+def cmd(ucsm_ip, ucsm_username, ucsm_password, command):
+    from fabric.api import settings, run
+
+    with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
+        return run(command, shell=False)
+
+
+@task
 def read_config_ssh(yaml_path, is_director=True):
     """Reads config needed for OSP7 via ssh to UCSM
     :param yaml_path:
