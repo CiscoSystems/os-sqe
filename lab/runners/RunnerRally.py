@@ -7,7 +7,7 @@ class RunnerRally(Runner):
         return {'cloud': 'cloud name', 'task-yaml': 'path to the valid task yaml file'}
 
     def __init__(self, config):
-        from lab.WithConfig import read_config_from_file
+        from lab.with_config import read_config_from_file
 
         super(RunnerRally, self).__init__(config=config)
         self.cloud_name = config['cloud']

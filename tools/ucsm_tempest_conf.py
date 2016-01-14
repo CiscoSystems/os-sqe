@@ -1,7 +1,7 @@
 import ConfigParser
 import inspect
 from fabric.api import task, run, local, settings
-from lab.WithConfig import read_config_from_file
+from lab.with_config import read_config_from_file
 
 
 @task

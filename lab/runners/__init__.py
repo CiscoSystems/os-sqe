@@ -1,5 +1,5 @@
 import abc
-from lab.WithConfig import WithConfig
+from lab.with_config import WithConfig
 
 
 class Runner(WithConfig):

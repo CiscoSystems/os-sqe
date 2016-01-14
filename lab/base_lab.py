@@ -9,7 +9,7 @@ class BaseLab(WithStatusMixIn):
     def __init__(self, yaml_name):
         import importlib
         import os
-        from lab.WithConfig import read_config_from_file, LabConfigException
+        from lab.with_config import read_config_from_file, LabConfigException
 
         self.providers = []
         self.deployers = []

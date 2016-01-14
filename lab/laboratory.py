@@ -1,8 +1,8 @@
 import tempfile
-from lab import WithConfig
+from lab import with_config
 
 
-class Laboratory(WithConfig.WithConfig):
+class Laboratory(with_config.WithConfig):
 
     temp_dir = tempfile.mkdtemp(prefix='runner-ha-')
 
@@ -17,7 +17,7 @@ class Laboratory(WithConfig.WithConfig):
 
         self.cfg = self.read_config_from_file(config_path=config_path)
         self.id = self.cfg['lab-id']
-        with open(WithConfig.KEY_PUBLIC_PATH) as f:
+        with open(with_config.KEY_PUBLIC_PATH) as f:
             self.public_key = f.read()
 
         user_net = IPNetwork(self.cfg['nets']['user']['cidr'])

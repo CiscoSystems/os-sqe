@@ -88,13 +88,13 @@ class Server(object):
         return self.package_manager
 
     def construct_settings(self, warn_only):
-        from lab import WithConfig
+        from lab import with_config
 
         kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
                   'connection_attempts': 10,
                   'warn_only': warn_only}
         if self.password == 'ssh_key':
-            kwargs['key_filename'] = WithConfig.KEY_PRIVATE_PATH
+            kwargs['key_filename'] = with_config.KEY_PRIVATE_PATH
         else:
             kwargs['password'] = self.password
         return kwargs
@@ -264,7 +264,7 @@ class Server(object):
         return self.run(command='pwd', in_directory=local_repo_dir)
 
     def create_user(self, new_username):
-        from lab import WithConfig
+        from lab import with_config
 
         password = 'cisco123'
         if not self.run(command='grep {0} /etc/passwd'.format(new_username), warn_only=True):
@@ -274,7 +274,7 @@ class Server(object):
             self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
         self.username = new_username
         self.password = 'cisco123'
-        with open(WithConfig.KEY_PUBLIC_PATH) as f:
+        with open(with_config.KEY_PUBLIC_PATH) as f:
             self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
         self.run(command='sudo chmod 700 .ssh')
         self.run(command='sudo chmod 600 .ssh/authorized_keys')

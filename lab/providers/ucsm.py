@@ -4,7 +4,7 @@ from fabric.api import task
 @task
 def reboot(yaml_path):
     from fabric.api import settings, run
-    from lab.WithConfig import read_config_from_file
+    from lab.with_config import read_config_from_file
 
     config = read_config_from_file(yaml_path=yaml_path)
     ucsm_ip = config['ucsm']['host']
