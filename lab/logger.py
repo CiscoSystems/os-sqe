@@ -23,15 +23,15 @@ class JsonFormatter(logging.Formatter):
         for key_value in re.split(pattern='[ ,]', string=record.message):
             if '=' in key_value:
                 key, value = key_value.split('=')
-                value = value.strip()
-                value = value.replace('-', '')
                 key = key.strip()
                 if not key:
                     continue
                 try:
                     value = int(value)
                 except ValueError:
-                    pass
+                    value = value.strip()
+                    value = value.replace('-', '')
+                    value = value.replace(':', '')
                 d[key] = value
         d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
         d['name'] = record.name
