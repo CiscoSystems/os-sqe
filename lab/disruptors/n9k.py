@@ -1,5 +1,7 @@
-def start(context, log, args):
-    from lab.providers.n9k import nxapi
+def start(lab, log, args):
+    from lab.providers.n9k import Nexus
 
-    log.ingo('Rebooting...')
-    nxapi(n9k_creds=context.n9k_creds(), commands=['reload force'])
+    ip, _, username, password = lab.n9k_creds()
+    nx = Nexus(ip, username, password)
+    log.ingo('ip={ip} status=rebooting'.format())
+    nx.cmd(commands=['reload force'])
