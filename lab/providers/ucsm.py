@@ -25,7 +25,7 @@ def read_config_ssh(yaml_path, is_director=True):
     :param is_director:
     :return:
     """
-    from lab.Server import Server
+    from lab.server import Server
     from fabric.api import settings, run
     from lab.laboratory import Laboratory
 

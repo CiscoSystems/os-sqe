@@ -10,7 +10,7 @@ class ProviderExistingOSP7(Provider):
 
     def __init__(self, config):
         from netaddr import IPNetwork
-        from lab.Server import Server
+        from lab.server import Server
 
         super(ProviderExistingOSP7, self).__init__(config=config)
 
