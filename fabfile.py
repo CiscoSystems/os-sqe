@@ -113,3 +113,14 @@ def run(config_path):
 def hag10():
     """ Run G10 HA"""
     run(config_path='g10-ha.yaml')
+
+
+@task
+def ucsmg10(cmd):
+    """ Run single command on G10 UCSM
+    :param cmd: command to be executed
+    """
+    from lab.laboratory import Laboratory
+    l = Laboratory(config_path='g10.yaml')
+    ucsm_ip, ucsm_username, ucsm_password = l.ucsm_creds()
+    ucsm.cmd(ucsm_ip, ucsm_username, ucsm_password, cmd)
