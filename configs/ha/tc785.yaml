@@ -25,16 +25,11 @@
   tempest_config_dir: /home/stack
 
 - method: lab.disruptors.reboot_node
-  node_name: controller-0
-  delay: 100
+  node_name: control-0
+  delay: 10
 
 - method: lab.monitors.ip_port
-  duration: 500
+  duration: 200
   period: 2
-  name_or_ip: controller-0
-  port: 9696
-
-- method: lab.monitors.service_endpoint
-  service: neutron
-  duration: 390
-  period: 0.25
+  name_or_ip: control-0
+  port: 22
