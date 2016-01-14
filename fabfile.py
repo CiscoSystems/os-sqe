@@ -7,7 +7,7 @@ from fabs import LVENV, CVENV, LAB
 from lab import decorators
 from fabs import tempest, snap, coverage
 from fabs import jenkins_reports, elk
-from lab import BaseLab
+from lab import base_lab
 from lab.providers import cobbler, ucsm, n9k
 from lab.runners import rally
 from lab.configurators import osp7_install
@@ -103,7 +103,7 @@ def run(config_path):
     """ Run any lab specified by yaml
     :param config_path: specify what to run
     """
-    from lab.BaseLab import BaseLab
+    from lab.base_lab import BaseLab
 
     l = BaseLab(yaml_name=config_path)
     l.run()

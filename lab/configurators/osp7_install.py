@@ -1,7 +1,7 @@
 def configure_for_osp7(yaml_path):
     import os
     from lab.laboratory import Laboratory
-    from lab.WithConfig import read_config_from_file
+    from lab.with_config import read_config_from_file
     from lab.logger import lab_logger
 
     lab_logger.info('Creating config for osp7_bootstrap')

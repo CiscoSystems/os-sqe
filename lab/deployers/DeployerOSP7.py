@@ -19,7 +19,7 @@ class DeployerOSP7(Deployer):
         import os
         from netaddr import IPNetwork
         import requests
-        from lab.WithConfig import CONFIG_DIR
+        from lab.with_config import CONFIG_DIR
 
         super(DeployerOSP7, self).__init__(config=config)
 
@@ -158,7 +158,7 @@ class DeployerOSP7(Deployer):
     def __create_overcloud_config_and_template(self, servers):
         import json
         import os
-        from lab.WithConfig import read_config_from_file, CONFIG_DIR
+        from lab.with_config import read_config_from_file, CONFIG_DIR
 
         config = {'nodes': []}
         mac_profiles = []
