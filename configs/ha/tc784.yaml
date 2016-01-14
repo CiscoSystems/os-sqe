@@ -1,15 +1,15 @@
 # Test Case TC784: Power off undercloud node All OS services are operational while the node is offline
 - method: lab.monitors.service_endpoint
   service: neutron
-  duration: 1000
+  duration: 300
 
 - method: lab.monitors.service_endpoint
   service: nova
-  duration: 1000
+  duration: 300
 
 - method: lab.monitors.ip_port
   name_or_ip: director
-  duration: 1000
+  duration: 300
 
 - method: lab.disruptors.reboot_node
   node_name: director
