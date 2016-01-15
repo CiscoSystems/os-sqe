@@ -1,29 +1,29 @@
 from fabric.api import task
 
 
-@task
-def reboot(yaml_path):
-    from fabric.api import settings, run
-    from lab.with_config import read_config_from_file
+class Ucsm(object):
+    def __init__(self, ucsm_ip, ucsm_username, ucsm_password):
+        self.ucsm_ip = ucsm_ip
+        self.ucsm_username = ucsm_username
+        self.ucsm_password = ucsm_password
 
-    config = read_config_from_file(yaml_path=yaml_path)
-    ucsm_ip = config['ucsm']['host']
-    ucsm_username = config['ucsm']['username']
-    ucsm_password = config['ucsm']['password']
+    def cmd(self, command):
+        from fabric.api import settings, run
+    
+        with settings(host_string='{user}@{ip}'.format(user=self.ucsm_username, ip=self.ucsm_ip), password=self.ucsm_password, connection_attempts=50, warn_only=False):
+            return run(command, shell=False).split()
 
-    prompt = {'Before rebooting, please take a configuration backup.\nDo you still want to reboot? (yes/no):': 'yes'}
-    with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
-        run('connect local-mgmt', shell=False)
-        with settings(prompts=prompt):
-            run('reboot', shell=False)
+    def service_profiles(self):
+        return self.cmd(command='scope org; sh service-profile status | no-more | egrep -V "Service|----" | cut -f 1 -d " "')
 
+    def allowed_vlans(self, profile, vnic):
+        return self.cmd('scope org ; scope service-profile {0}; scope vnic {1}; sh eth-if | no-more | egrep "Name:" | cut -f 6 -d " "'.format(profile, vnic))
 
-@task
-def cmd(ucsm_ip, ucsm_username, ucsm_password, command):
-    from fabric.api import settings, run
+    def vlans(self):
+        return self.cmd('scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "')
 
-    with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
-        return run(command, shell=False)
+    def user_sessions(self):
+        return self.cmd('scope security ; show user-sessions local detail | no-more | egrep "Pid:" | cut -f 6 -d " "')
 
 
 @task
