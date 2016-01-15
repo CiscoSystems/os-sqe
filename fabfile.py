@@ -124,3 +124,14 @@ def ucsmg10(cmd):
     l = Laboratory(config_path='g10.yaml')
     ucsm_ip, ucsm_username, ucsm_password = l.ucsm_creds()
     ucsm.cmd(ucsm_ip, ucsm_username, ucsm_password, cmd)
+
+
+@task
+def n9kg10(cmd):
+    """ Run single command on G10 N9K
+    :param cmd: command to be executed
+    """
+    from lab.laboratory import Laboratory
+    l = Laboratory(config_path='g10.yaml')
+    n9k_ip, _, n9k_username, n9k_password = l.n9k_creds()
+    print n9k.cmd(n9k_ip, n9k_username, n9k_password, cmd)
