@@ -10,5 +10,6 @@
   how_many: 20
 - method: lab.disruptors.n9k
   delay: 1000
+  name_or_ip: from_lab
 - method: lab.scenarios.delete
   delay: 2200
