@@ -57,7 +57,7 @@ class Nexus(object):
 
     def show_vlan(self):
         res = self.cmd(['show vlan'])
-        vlans = [x['vlanshowbr-vlanid-utf'] for x in res[0]['result']['body']['TABLE_vlanbrief']['ROW_vlanbrief']]
+        vlans = [x['vlanshowbr-vlanname'] for x in res[0]['result']['body']['TABLE_vlanbrief']['ROW_vlanbrief']]
         return vlans
 
     def show_users(self):
@@ -66,6 +66,11 @@ class Nexus(object):
             return res['body']
         else:
             return res
+
+    def no_vlans(self, pattern):
+        vlans = filter(lambda x: pattern in x, self.show_vlan())
+        vlan_ids = [x.strip('pattern') for x in vlans]
+        self.cmd(['conf t', 'no vlan {0}'.format(','.join(vlan_ids))])
 
     def execute_on_given_n9k(self, user_vlan):
         from lab.logger import lab_logger

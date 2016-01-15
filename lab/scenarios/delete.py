@@ -1,6 +1,6 @@
 def start(lab, log, args):
     import time
-    from lab.providers import ucsm
+    from lab.providers import ucsm, n9k
 
     unique_pattern_in_name = args.get('unique_pattern_in_name', 'sqe-test')
     server = lab.controllers()[0]
@@ -23,5 +23,11 @@ def start(lab, log, args):
     vlan_names = ucsm.cmd(ucsm_ip, ucsm_username, ucsm_password, 'scope eth-uplink; sh vlan|no-more| egrep "OS-" | cut -f 5 -d " "')
     for vlan_name in vlan_names.split():
         ucsm.cmd(ucsm_ip, ucsm_username, ucsm_password, 'scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan_name))
+
+    n9k_ip1, n9k_ip2, n9k_username, n9k__password = lab.n9k_creds()
+    nx1 = n9k.Nexus(n9k_ip1, n9k_username, n9k__password)
+    nx2 = n9k.Nexus(n9k_ip1, n9k_username, n9k__password)
+    nx1.no_vlans('q-')
+    nx2.no_vlans('q-')
 
     log.info('status=all_deleted in time={0} secs'.format(time.time()-start_time))
