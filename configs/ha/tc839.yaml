@@ -1,0 +1,59 @@
+---
+# Test Case TC839: Change "Fabric ID" of a one controller node
+
+- method: lab.disruptors.ucsm_change_vnic_fabric_id
+  service_profile: G10-C0-01-control
+  delay: 100
+
+- method: lab.disruptors.ucsm_change_vnic_fabric_id
+  service_profile: G10-C0-02-control
+  delay: 700
+
+- method: lab.disruptors.ucsm_change_vnic_fabric_id
+  service_profile: G10-C0-03-control
+  delay: 1300
+
+- method: lab.monitors.service_endpoint
+  service: neutron
+  duration: 2000
+  period: 0.25
+
+# Neutron-server on all control nodes
+- method: lab.monitors.pgrep
+  duration: 2000
+  period: 0.5
+  node_name: control-0
+  process: neutron-server
+- method: lab.monitors.pgrep
+  duration: 2000
+  period: 0.5
+  node_name: control-1
+  process: neutron-server
+- method: lab.monitors.pgrep
+  duration: 2000
+  period: 0.5
+  node_name: control-2
+  process: neutron-server
+#
+- method: lab.scenarios.tempest_test
+  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
+  etime: 2000
+  git: https://github.com/cisco-openstack/tempest.git
+  branch: proposed
+  tempest_config_dir: /home/stack
+
+- method: lab.scenarios.tempest_test
+  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
+  etime: 2000
+  ramp_up_time: 6
+  git: https://github.com/cisco-openstack/tempest.git
+  branch: proposed
+  tempest_config_dir: /home/stack
+
+- method: lab.scenarios.tempest_test
+  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
+  etime: 2000
+  ramp_up_time: 12
+  git: https://github.com/cisco-openstack/tempest.git
+  branch: proposed
+  tempest_config_dir: /home/stack
