@@ -2,9 +2,13 @@
 - method: lab.monitors.ucsm
   duration: 6000
   period: 10
+- method: lab.monitors.nexus
+  duration: 6000
+  period: 10
 - method: lab.scenarios.net_subnet_port
   delay: 10
-  how_many: 200
+  how_many: 20
+- method: lab.disruptors.n9k
+  delay: 1000
 - method: lab.scenarios.delete
   delay: 2200
-  how_many: 200
