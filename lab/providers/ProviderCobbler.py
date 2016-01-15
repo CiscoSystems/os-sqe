@@ -68,7 +68,7 @@ class ProviderCobbler(Provider):
         return rendered_system['mgmt_parameters']['username']
 
     def reboot_system(self, system_name):
-        from lab.Server import Server
+        from lab.server import Server
         from lab.logger import lab_logger
 
         token = self.__cobbler.login(self.user, self.password)
@@ -104,8 +104,8 @@ class ProviderCobbler(Provider):
         servers = self.create_servers()
         for server in servers:
             if self.force_pxe_boot:
-                when_provided = self.run(command='cat ProvTime', server=server)
+                when_provided = server.run(command='cat ProvTime')
                 if when_provided != self.prov_time:
                     raise CobblerError('Wrong provisioning attempt- timestamps are not matched')
-            server.hostname = self.run(command='hostname', server=server)
+            server.hostname = server.run(command='hostname')
         return servers

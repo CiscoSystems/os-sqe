@@ -17,7 +17,7 @@
     - name: create port-channels
       nxos_portchannel:
         group: "{{ item.1 }}"
-        members: "{{ item.0 }}"
+        members:  "['{{ item.0 }}']"
         mode: active
         host: "{{ inventory_hostname }}"
         state: "{{ state }}"
@@ -57,3 +57,10 @@
         state: "{{ state }}"
       with_items:
         "{{ server_vpcs }}"
+
+    - name: config server ports
+      nxos_interface:
+        interface:  "Po{{ peer_link_channel }}"
+        host: "{{ inventory_hostname }}"
+        admin_state: up
+        state: present

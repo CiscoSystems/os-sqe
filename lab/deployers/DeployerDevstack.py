@@ -80,7 +80,7 @@ class DeployerDevstack(Deployer):
         self.run(command='./stack.sh', in_directory=repo, server=server)
 
     def deploy_cloud(self, servers):
-        from lab.Cloud import Cloud
+        from lab.cloud import Cloud
 
         cloud = Cloud(cloud=self.cloud, user=self.user, tenant=self.tenant, admin='admin', password=self.password)
         hostname_vs_server = {server.hostname: server for server in servers}  # {aio: server_obj, ...}

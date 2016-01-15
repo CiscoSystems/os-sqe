@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import abc
-from lab.WithConfig import WithConfig
+from lab.with_config import WithConfig
 
 
 class Configurator(WithConfig):

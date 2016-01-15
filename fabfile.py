@@ -4,11 +4,16 @@ from fabric.api import task, local
 from fabs.common import timed, virtual
 from fabs.common import logger as log
 from fabs import LVENV, CVENV, LAB
-from fabs import coi, tempest, snap, devstack, redhat, coverage, cirros, special, verify, cimc
-from fabs import jenkins_reports
-from lab import BaseLab
+from lab import decorators
+from fabs import tempest, snap, coverage
+from fabs import jenkins_reports, elk
+from lab import base_lab
 from lab.providers import cobbler, ucsm, n9k
 from lab.runners import rally
+from lab.configurators import osp7_install
+from tools import ucsm_tempest_conf
+from tools import osp_net_cisco
+
 
 @timed
 def venv(private=False):
@@ -39,15 +44,6 @@ def flake8():
 
 
 @task
-@virtual
-def test():
-    """ For testing purposes only """
-    log.info("Testing something")
-    a = local("which python")
-    print a.real_command
-
-
-@task
 @timed
 def init(private=False):
     """ Prepare virtualenv and install all requirements """
@@ -62,3 +58,82 @@ def destroy():
     """ Destroying all lab machines and networks """
     log.info("Destroying lab {lab}".format(lab=LAB))
     local("python ./tools/cloud/create.py -l {lab} -x".format(lab=LAB))
+
+
+@decorators.print_time
+def deploy_lab(config_path):
+    from lab.providers import ucsm
+    from lab.providers import cobbler
+    from lab.configurators import osp7_install
+
+    cobbler.configure_for_osp7(yaml_path=config_path)
+    ucsm.configure_for_osp7(yaml_path=config_path)
+    osp7_install.configure_for_osp7(yaml_path=config_path)
+
+
+@task
+def g10():
+    """ (Re)deploy  G10 lab"""
+    deploy_lab(config_path='configs/g10.yaml')
+
+
+@task
+def g8():
+    """ (Re)deploy  G8 lab"""
+    deploy_lab(config_path='configs/g8.yaml')
+
+
+@task
+def log():
+    """ Test log subsystem"""
+    from lab.logger import create_logger
+    from time import sleep
+
+    l = create_logger()
+    l.info('x = 4.15')
+    l.info('y=4.15')
+    for x in xrange(10):
+        l.info('n_vlans={0}'.format(x))
+        sleep(1)
+
+
+@task
+@decorators.print_time
+def run(config_path):
+    """ Run any lab specified by yaml
+    :param config_path: specify what to run
+    """
+    from lab.base_lab import BaseLab
+
+    l = BaseLab(yaml_name=config_path)
+    l.run()
+
+
+@task
+def hag10():
+    """ Run G10 HA"""
+    run(config_path='g10-ha.yaml')
+
+
+@task
+def ucsmg10(cmd):
+    """ Run single command on G10 UCSM
+    :param cmd: command to be executed
+    """
+    from lab.laboratory import Laboratory
+    l = Laboratory(config_path='g10.yaml')
+    ucsm_ip, ucsm_username, ucsm_password = l.ucsm_creds()
+    ucsm.cmd(ucsm_ip, ucsm_username, ucsm_password, cmd)
+
+
+@task
+def n9kg10(cmd):
+    """ Run single command on G10 N9K
+    :param cmd: command to be executed
+    """
+    from lab.laboratory import Laboratory
+    from lab.providers.n9k import Nexus
+    l = Laboratory(config_path='g10.yaml')
+    n9k_ip, _, n9k_username, n9k_password = l.n9k_creds()
+    nx = Nexus(n9k_ip, n9k_username, n9k_password)
+    print nx.cmd(cmd)
