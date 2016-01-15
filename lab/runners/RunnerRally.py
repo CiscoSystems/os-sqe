@@ -7,12 +7,12 @@ class RunnerRally(Runner):
         return {'cloud': 'cloud name', 'task-yaml': 'path to the valid task yaml file'}
 
     def __init__(self, config):
-        from lab.WithConfig import read_config_from_file
+        from lab.with_config import read_config_from_file
 
         super(RunnerRally, self).__init__(config=config)
         self.cloud_name = config['cloud']
         self.task_yaml_path = config['task-yaml']
-        self.task_body = read_config_from_file(yaml_path=self.task_yaml_path, is_as_string=True)
+        self.task_body = read_config_from_file(yaml_path=self.task_yaml_path, directory='rally', is_as_string=True)
 
     def execute(self, clouds, servers):
 

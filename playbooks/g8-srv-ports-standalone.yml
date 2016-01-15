@@ -18,9 +18,16 @@
       nxos_switchport:
         interface: "{{ item }}"
         mode: trunk
-        trunk_vlans: "{{ server_vlans }}"
+        trunk_vlans: none
         host: "{{ inventory_hostname }}"
         state: "{{ state }}"
       when: state == "present"
       with_items:
         "{{ server_ports }}"
+
+    - name: config server ports
+      nxos_interface:
+        interface:  "Po{{ peer_link_channel }}"
+        host: "{{ inventory_hostname }}"
+        admin_state: down
+        state: present

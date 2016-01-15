@@ -19,7 +19,7 @@ class DeployerOSP7(Deployer):
         import os
         from netaddr import IPNetwork
         import requests
-        from lab.WithConfig import CONFIG_DIR
+        from lab.with_config import CONFIG_DIR
 
         super(DeployerOSP7, self).__init__(config=config)
 
@@ -112,19 +112,18 @@ class DeployerOSP7(Deployer):
         self.director_server.run(command='source stackrc && openstack baremetal list')
 
     def __deploy_overcloud(self):
-        if not self.run(command='source stackrc &&  openstack flavor list | grep baremetal', server=self.director_server, warn_only=True):
-            self.run(command='source stackrc && openstack flavor create --id auto --ram 4096 --disk 40 --vcpus 1 baremetal', server=self.director_server)
-            self.run(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" baremetal',
-                     server=self.director_server)
+        if not self.director_server.run(command='source stackrc &&  openstack flavor list | grep baremetal', warn_only=True):
+            self.director_server.run(command='source stackrc && openstack flavor create --id auto --ram 4096 --disk 40 --vcpus 1 baremetal')
+            self.director_server.run(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" baremetal')
         for x in ['control', 'compute']:
-            if not self.run(command='source stackrc &&  openstack flavor list | grep {0}'.format(x), server=self.director_server, warn_only=True):
-                self.run(command='source stackrc && openstack flavor create --id auto --ram 128 --disk 500 --vcpus 2 {0}'.format(x), server=self.director_server)
-                self.run(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" '
-                                 '--property "capabilities:profile"="{0}" {0}'.format(x), server=self.director_server)
+            if not self.director_server.run(command='source stackrc &&  openstack flavor list | grep {0}'.format(x), warn_only=True):
+                self.director_server.run(command='source stackrc && openstack flavor create --id auto --ram 128 --disk 500 --vcpus 2 {0}'.format(x))
+                self.director_server.run(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" '
+                                                 '--property "capabilities:profile"="{0}" {0}'.format(x))
 
         n_controls = 3
 
-        results = self.run(command='source stackrc && ironic node-list', server=self.director_server).split('\n')
+        results = self.director_server.run(command='source stackrc && ironic node-list').split('\n')
         uuids = [line.split()[1] for line in results if line.startswith('+') or line.startswith('| UUID')]
         if len(uuids) < n_controls:
             raise ErrorDeployerOSP7('not enough bare-metal nodes to deploy {0} controllers'.format(n_controls))
@@ -132,8 +131,8 @@ class DeployerOSP7(Deployer):
         n_computes = len(uuids) - n_controls
 
         cmd = 'source stackrc && ironic node-update {0} replace properties/capabilities=profile:{1},boot_option:local'
-        map(lambda uuid: self.run(command=cmd.format(uuid, 'control'), server=self.director_server), uuids[:n_controls])
-        map(lambda uuid: self.run(command=cmd.format(uuid, 'compute'), server=self.director_server), uuids[n_controls:])
+        map(lambda uuid: self.director_server.run(command=cmd.format(uuid, 'control')), uuids[:n_controls])
+        map(lambda uuid: self.director_server.run(command=cmd.format(uuid, 'compute')), uuids[n_controls:])
 
         command = 'source stackrc && openstack overcloud deploy --templates ' \
                   '-e /usr/share/openstack-tripleo-heat-templates/overcloud-resource-registry-puppet.yaml ' \
@@ -149,10 +148,17 @@ class DeployerOSP7(Deployer):
         self.director_server.put(string_to_put=command, file_name='RE-DEPLOY')
         self.director_server.run(command=command)
 
+    def __assign_ips_to_user(self):
+        for line in self.director_server.run(command='source stackrc && nova list').split('\n'):
+            ip_on_pxe_int = line
+            iface_on_user = self.director_server.run("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {print $2}'".format(ip_on_pxe_int=ip_on_pxe_int))
+            iface_on_user.strip(':')
+            self.director_server.run("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {iface_on_user}".format(ip_on_pxe_int=ip_on_pxe_int))
+
     def __create_overcloud_config_and_template(self, servers):
         import json
         import os
-        from lab.WithConfig import read_config_from_file, CONFIG_DIR
+        from lab.with_config import read_config_from_file, CONFIG_DIR
 
         config = {'nodes': []}
         mac_profiles = []
@@ -178,13 +184,13 @@ class DeployerOSP7(Deployer):
         self.director_server.get(remote_path='overcloud.json', local_path='overcloud.json')
 
         yaml_name = 'networking-cisco-environment.yaml'
-        config_tmpl = read_config_from_file(yaml_path=os.path.join(CONFIG_DIR, 'osp7', yaml_name), is_as_string=True)
+        config_tmpl = read_config_from_file(yaml_path=yaml_name, directory='osp7', is_as_string=True)
         config = config_tmpl.format(network_ucsm_ip=ucsm_ip, network_ucsm_username=ucsm_username, network_ucsm_password=ucsm_password,
                                     network_ucsm_host_list=','.join(mac_profiles))
         self.director_server.put(string_to_put=config, file_name=yaml_name, in_directory='templates')
 
     def deploy_cloud(self, list_of_servers):
-        from lab.Cloud import Cloud
+        from lab.cloud import Cloud
 
         servers = []
         for server in list_of_servers:

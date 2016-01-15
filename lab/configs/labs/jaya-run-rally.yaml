@@ -1,3 +1,0 @@
-provider: {ProviderExisting: [{host: 172.29.86.178, username: root, password: cisco123}]}
-deployer:  {DeployerExisting: {end_point: 172.29.86.178 , cloud: jaya, user: admin, tenant: admin, admin: admin, password: lab}}
-runner:  {RunnerRally: {cloud: jaya, task-yaml: task-rally.yaml}}

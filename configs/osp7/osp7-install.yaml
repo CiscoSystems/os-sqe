@@ -1,0 +1,110 @@
+[DEFAULT]
+# switch on/off time consuming operation - openstack baremetal introspection bulk start
+node_discovery = false
+
+director_node_hostname = {director_node_hostname}
+director_node_ssh_ip = {director_node_ssh_ip}
+director_node_ssh_username = root
+
+# used to create neutron ml2 config
+neutron_mechanism_drivers = openvswitch,cisco_ucsm,cisco_nexus
+network_ucsm_ip = {ucsm_ip}
+network_ucsm_username = {ucsm_username}
+network_ucsm_password = {ucsm_password}
+network_ucsm_host_list = {ucsm_mac_profile_list}
+
+# iface used for internal PXE network, usually pxe-int
+undercloud_local_interface = {undercloud_local_interface}
+# iface used for public overcloud api
+undercloud_fake_gateway_interface = {undercloud_fake_gateway_interface}
+
+
+
+# used to create overcloud.json for 'openstack baremetal import --json ~/overcloud.json'
+overcloud_nodes = {overcloud_nodes}
+
+# used to deploy director from external cobbler
+undercloud_lab_pxe_interface = {undercloud_lab_pxe_interface}
+# used in 'openstack overcloud deploy' for --control-scale
+overcloud_control_scale = {overcloud_control_scale}
+# used in 'openstack overcloud deploy' for --compute-scale
+overcloud_compute_scale = {overcloud_compute_scale}
+# used in 'openstack overcloud deploy' for --ceph-storage-scale
+overcloud_ceph_storage_scale = {overcloud_ceph_storage_scale}
+
+#Interface to have all control traffic: internalAPI, storage vlan, etc
+controller_provisioning_nic = {provisioning_nic}
+compute_provisioning_nic = {provisioning_nic}
+#Interface to have external IP for overcloud
+controller_external_nic = {external_nic}
+# used for tenant traffic
+controller_tenant_nic = {tenant_nic}
+compute_tenant_nic = {tenant_nic}
+
+
+network_isolation = true
+neutron_flat_networks = datacentre,external
+neutron_tenant_bridge = br-tenant
+neutron_external_bridge = br-ex
+deploy_with_flavors = true
+network_nexus_provider_vlan_auto_create = false
+network_nexus_provider_vlan_auto_trunk = false
+network_nexus_vlan_range = datacentre:1000:2999,external
+
+
+# this network will be created as external in overcloud openstack
+overcloud_external_vlan = {overcloud_external_vlan}
+overcloud_network_cidr = {overcloud_network_cidr}
+overcloud_external_ip_cidr = {overcloud_network_cidr}
+overcloud_external_ip_start = {overcloud_external_ip_start}
+overcloud_external_gateway = {overcloud_external_gateway}
+overcloud_external_ip_end = {overcloud_external_ip_end}
+
+
+# IMPORTNANT: Not-routed network
+overcloud_floating_ip_cidr = 20.0.0.0/24
+overcloud_floating_ip_start = 20.0.0.10
+overcloud_floating_ip_end = 20.0.0.200
+overcloud_floating_ip_network_gateway = 20.0.0.1
+undercloud_fake_gw_ip = 20.0.0.1
+undercloud_fake_gw_ip_prefix = 24
+
+
+
+network_nexus_config = {{ "{n9k1_name}" : {{
+                        "ip_address": "{n9k1_ip}",
+                        "username": "{n9k_username}",
+                        "password": "{n9k_password}",
+                        "nve_src_intf": 2,
+                        "ssh_port": 22,
+                        "physnet": "datacentre",
+                        "servers": {{
+                           "10:25:B5:00:B3:02": {{"ports": "port-channel:47,port-channel:48,port-channel:1" }},
+                           "10:25:B5:00:C0:04":  {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
+                           "10:25:B5:00:C0:05":  {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
+
+                        }}
+                      }},
+                        "{n9k2_name}" : {{
+                        "ip_address": "{n9k2_ip}",
+                        "username": "{n9k_username}",
+                        "password": "{n9k_password}",
+                        "nve_src_intf": 2,
+                        "ssh_port": 22,
+                        "physnet": "datacentre",
+                        "servers": {{
+                            "10:25:B5:00:B3:02": {{"ports": "port-channel:47,port-channel:48,port-channel:1" }},
+                            "10:25:B5:00:C0:04": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
+                            "10:25:B5:00:C0:05":  {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
+                        }}
+                      }}
+                    }}
+
+[cobbler]
+osp_directory_node = {cobbler_system}
+skip = False
+;skip = True
+
+[switch_config]
+skip = true
+#overcloud_vlan = ...  # used only if N9K config is requested
