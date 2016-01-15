@@ -68,9 +68,20 @@ class Nexus(object):
             return res
 
     def no_vlans(self, pattern):
-        vlans = filter(lambda x: pattern in x, self.show_vlan())
-        vlan_ids = [x.strip('pattern') for x in vlans]
-        self.cmd(['conf t', 'no vlan {0}'.format(','.join(vlan_ids))])
+        vlans = filter(lambda name: pattern in name, self.show_vlan())
+        vlan_ids = [x.strip(pattern) for x in vlans]
+
+        def chunks(l, n):
+            """Yield successive chunks from list.
+            :param n: size of the chunk
+            :param l: list to be split
+            """
+            for i in xrange(0, len(l), n):
+                yield l[i:i+n]
+
+        for chunk in chunks(vlan_ids, 64):
+            part_of_vlans = ','.join(chunk)
+            self.cmd(['conf t', 'no vlan {0}'.format(part_of_vlans)])
 
     def execute_on_given_n9k(self, user_vlan):
         from lab.logger import lab_logger
