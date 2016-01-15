@@ -20,10 +20,8 @@ def start(lab, log, args):
                 log.info("n_{0}s={1} status=deleted".format(ob_type, i))
                 i -= 1
     ucsm_ip, ucsm_username, ucsm_password = lab.ucsm_creds()
-    vlan_names = ucsm.cmd(ucsm_ip, ucsm_username, ucsm_password, 'scope eth-uplink; sh vlan|no-more| egrep "OS-" | cut -f 5 -d " "')
-    for vlan_name in vlan_names.split():
-        ucsm.cmd(ucsm_ip, ucsm_username, ucsm_password, 'scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan_name))
-
+    fi = ucsm.Ucsm(ucsm_ip, ucsm_username, ucsm_password)
+    fi.delete_vlans('OS-')
     n9k_ip1, n9k_ip2, n9k_username, n9k__password = lab.n9k_creds()
     nx1 = n9k.Nexus(n9k_ip1, n9k_username, n9k__password)
     nx2 = n9k.Nexus(n9k_ip1, n9k_username, n9k__password)

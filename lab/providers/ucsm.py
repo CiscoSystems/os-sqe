@@ -22,6 +22,11 @@ class Ucsm(object):
     def vlans(self):
         return self.cmd('scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "')
 
+    def delete_vlans(self, pattern):
+        vlan_names = self.cmd('scope eth-uplink; sh vlan|no-more| egrep "{0}" | cut -f 5 -d " "'.format(pattern))
+        for vlan_name in vlan_names:
+            self.cmd('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan_name))
+
     def user_sessions(self):
         return self.cmd('scope security ; show user-sessions local detail | no-more | egrep "Pid:" | cut -f 6 -d " "')
 
