@@ -36,6 +36,7 @@ class Server(object):
                      'iface_mac': {'UnknownInServer': 'UnknownInServer'}}
 
         self.nics = []
+        self.cimc = {'pci_port': 'UnknownInServer', 'uplink_port': 'UnknownInServer'}
         self.package_manager = None
 
     def __repr__(self):
@@ -60,8 +61,19 @@ class Server(object):
         self.ucsm['server-id'] = server_id
         self.ucsm['is-sriov'] = is_sriov
 
+    def set_cimc(self, pci_port, uplink_port='0'):
+        self.cimc['pci_port'] = pci_port
+        self.cimc['uplink_port'] = uplink_port
+
+    def get_cimc(self):
+        return self.cimc
+
     def add_if(self, nic_name, nic_mac, nic_order, nic_vlans):
-        self.nics.append([nic_name, nic_mac, nic_order, nic_vlans])
+        interface = {"nic_name": nic_name, "nic_mac": nic_mac, "nic_order": nic_order, "nic_vlans": nic_vlans}
+        self.nics.append(interface)
+
+    def get_nics(self):
+        return self.nics
 
     def ucsm_profile(self):
         return self.ucsm['service-profile']
@@ -73,8 +85,8 @@ class Server(object):
         return self.ucsm['server-id']
 
     def nic_mac(self, nic_name):
-        nic = [x for x in self.nics if x[0] == nic_name]
-        return nic[0][1]
+        nic = [x for x in self.nics if x["nic_name"] == nic_name]
+        return nic[0]["nic_mac"]
 
     def get_package_manager(self):
         if not self.package_manager:

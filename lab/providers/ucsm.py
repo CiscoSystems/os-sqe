@@ -175,7 +175,7 @@ def configure_for_osp7(yaml_path):
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
 
-        for server in lab.servers:
+        for server in lab.nodes_controlled_by_ucsm():
             server_id = server.ucsm_server_id()
 
             # add IPMI static ip:
@@ -236,7 +236,7 @@ def configure_for_osp7(yaml_path):
 
         while count_attempts < 100:
             lines = run('scope org; show service-profile | egrep Associated', shell=False).split('\n')
-            if len(lines) == len(lab.servers):
+            if len(lines) == len(lab.nodes_controlled_by_ucsm()):
                 lab_logger.info('finished UCSM ' + yaml_path)
                 return
             time.sleep(10)

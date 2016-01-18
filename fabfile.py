@@ -4,6 +4,7 @@ from lab import decorators
 from fabs import jenkins_reports, elk
 from lab.providers import cobbler, n9k
 from lab.runners import rally
+from lab import cimc
 from lab.configurators import osp7_install
 from tools import ucsm_tempest_conf
 
