@@ -2,34 +2,51 @@
 # Test Case TC785: Reboot controller node
 
 - method: lab.scenarios.tempest_test
-  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
-  etime: 300
+  test: test_connectivity_between_vms_on_different_networks
+  etime: 3000
   git: https://github.com/cisco-openstack/tempest.git
   branch: proposed
-  tempest_config_dir: /home/stack
 
 - method: lab.scenarios.tempest_test
-  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
-  etime: 294
-  ramp_up_time: 6
-  git: https://github.com/cisco-openstack/tempest.git
-  branch: proposed
-  tempest_config_dir: /home/stack
-
-- method: lab.scenarios.tempest_test
-  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
-  etime: 288
+  test: test_connectivity_between_vms_on_different_networks
+  etime: 3000
   ramp_up_time: 12
   git: https://github.com/cisco-openstack/tempest.git
   branch: proposed
-  tempest_config_dir: /home/stack
+
+- method: lab.scenarios.tempest_test
+  test: test_connectivity_between_vms_on_different_networks
+  etime: 3000
+  ramp_up_time: 24
+  git: https://github.com/cisco-openstack/tempest.git
+  branch: proposed
+
+- method: lab.disruptors.reboot_node
+  node_name: control-1
+  delay: 900
 
 - method: lab.disruptors.reboot_node
   node_name: control-0
-  delay: 10
+  delay: 1800
+
+- method: lab.disruptors.reboot_node
+  node_name: control-2
+  delay: 2700
 
 - method: lab.monitors.ip_port
-  duration: 200
+  duration: 3000
   period: 2
   name_or_ip: control-0
+  port: 22
+
+- method: lab.monitors.ip_port
+  duration: 3000
+  period: 2
+  name_or_ip: control-1
+  port: 22
+
+- method: lab.monitors.ip_port
+  duration: 3000
+  period: 2
+  name_or_ip: control-2
   port: 22
