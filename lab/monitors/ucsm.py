@@ -18,9 +18,10 @@ def start(lab, log, args):
     fi = ucsm.Ucsm(ucsm_ip, ucsm_username, ucsm_password)
 
     start_time = time.time()
+    finish_time = start_time + duration
 
     service_profiles = fi.service_profiles()
-    while start_time + duration > time.time():
+    while time.time() < finish_time:
         # Vlan profiles
         vlan_profiles = set(fi.vlans())
         log.info('n_vlans={0} {1}'.format(len(vlan_profiles), 'details={0}'.format(vlan_profiles) if is_print_vlans else ''))
@@ -32,5 +33,5 @@ def start(lab, log, args):
 
             user_sessions = fi.user_sessions()
             log.info('n_sessions={0} details={1}'.format(len(user_sessions), user_sessions))
-
         time.sleep(period)
+        log.info('will finish in {0} secs'. format(finish_time - time.time()))

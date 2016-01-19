@@ -5,7 +5,7 @@ def start(lab, log, args):
 
     duration = args['duration']
     period = args['period']
-    name_or_ip = args['name_or_ip']
+    name_or_ip = args.get('name_or_ip', 'from_lab')
     is_show_details = args.get('is_show_details', False)
 
     if validators.ipv4(name_or_ip):
@@ -20,7 +20,8 @@ def start(lab, log, args):
     port_channels = nx.show_port_channel_summary()
 
     start_time = time.time()
-    while start_time + duration > time.time():
+    finish_time = start_time + duration
+    while time.time() < finish_time:
         # Allowed vlans
         for port_channel in port_channels:
             allowed_vlans = nx.show_interface_switchport(name=port_channel)
@@ -36,3 +37,5 @@ def start(lab, log, args):
         users = nx.show_users()
         log.info('ip={ip} sessions={s}'.format(ip=n9k_ip, s=users))
         time.sleep(period)
+        log.info('will finish in {0} secs'. format(finish_time - time.time()))
+
