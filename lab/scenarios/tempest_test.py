@@ -3,7 +3,7 @@ def start(lab, log, args):
     import datetime
     import time
     from fabric.api import settings
-    from fabric.context_managers import cd, shell_env
+    from fabric.context_managers import cd
 
     test = args['test']
     etime = args['etime']
@@ -41,13 +41,13 @@ def start(lab, log, args):
             lab.director().run('source venv/bin/activate && pip install --upgrade setuptools funcsigs functools32 docutils jinja2 pytz UcsSdk')
             lab.director().run('source venv/bin/activate && pip install -r requirements.txt')
             lab.director().run('source venv/bin/activate && pip install -r test-requirements.txt')
+            lab.director().run('cp {tempest}/tempest.conf etc/'.format(tempest=tempest_config_dir))
             # Remove lock file
             lab.director().run('rm {0}'.format(lock_file))
 
-
     start_time = datetime.datetime.now()
-    with cd(tempest_path), shell_env(TEMPEST_CONFIG_DIR=tempest_config_dir):
+    with cd(tempest_path):
         lab.director().run('source venv/bin/activate && testr init')
         while (datetime.datetime.now() - start_time).seconds < etime:
-            res = lab.director().run('source venv/bin/activate && testr run {0}'.format(test))
+            res = lab.director().run('source venv/bin/activate && testr run {0}'.format(test), warn_only=True)
             log.info('run={0}, result={1}'.format(test, res.return_code))

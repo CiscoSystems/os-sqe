@@ -32,6 +32,8 @@ class RunnerHA(Runner):
         self.cloud_name = config['cloud']
         self.task_yaml_path = config['task-yaml']
         self.task_body = self.read_config_from_file(config_path=self.task_yaml_path, directory='ha')
+        if not self.task_body:
+            raise Exception('Empty Test task list. Please check the file: {0}'.format(self.task_yaml_path))
         self.lab_name = config['hardware-lab-config']
 
     def execute(self, clouds, servers):
