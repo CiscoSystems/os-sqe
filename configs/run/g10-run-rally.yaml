@@ -1,2 +1,3 @@
+provider:  {ProviderExistingOSP7: {hardware-lab-config: g10.yaml }}
 deployer:  {DeployerExistingOSP7: {cloud: g10, hardware-lab-config: g10.yaml }}
 runner:  {RunnerRally: {cloud: g10, task-yaml: task-rally.yaml}}
