@@ -9,14 +9,12 @@ class ProviderExistingOSP7(Provider):
         return {'hardware-lab-config': 'g10.yaml'}
 
     def __init__(self, config):
-        from netaddr import IPNetwork
-        from lab.server import Server
+        from lab.laboratory import Laboratory
 
         super(ProviderExistingOSP7, self).__init__(config=config)
 
-        lab_cfg = self.read_config_from_file(config_path=config['hardware-lab-config'])
-        user_net = IPNetwork(lab_cfg['nets']['user']['cidr'])
-        self.servers = [Server(ip=str(user_net[lab_cfg['nodes']['director']['ip-shift'][0]]), username='root', password='cisco123')]
+        director = Laboratory(config_path=config['hardware-lab-config']).director()
+        self.servers = [director]
 
     def create_servers(self):
         return self.servers
