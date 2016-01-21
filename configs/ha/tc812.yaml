@@ -2,10 +2,12 @@
 - method: lab.monitors.ucsm
   duration: 6000
   period: 10
+  is_show_details: True
 
 - method: lab.monitors.nexus
   duration: 6000
   period: 10
+  is_show_details: True
 
 - method: lab.scenarios.net_subnet_port
   delay: 10

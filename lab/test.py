@@ -7,4 +7,4 @@ if __name__ == '__main__':
     cloud = Cloud(cloud='g10', user='admin', admin='admin', tenant='admin', password='w32utrzAEaJJHZZqpr6VRPKaZ', end_point='http://10.23.230.132:5000/v2.0/')
     lab = Laboratory('g10.yaml')
     lab.cloud = cloud
-    tst.start(lab=lab, log=create_logger('test'), args={'name_or_ip': 'heh', 'duration': 20, 'period': 2})
+    tst.start(lab=lab, log=create_logger('test'), args={'is_show_details': True, 'username': 'a', 'password': 'b', 'duration': 20, 'period': 2})

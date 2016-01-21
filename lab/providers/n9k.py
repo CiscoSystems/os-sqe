@@ -21,10 +21,12 @@ class Nexus(object):
         body = [{"jsonrpc": "2.0", "method": "cli", "params": {"cmd": command, "version": 1}, "id": 1} for command in commands]
         try:
             return requests.post('http://{0}/ins'.format(self.n9k_ip), auth=(self.n9k_username, self.n9k_password),
-                                 headers={'content-type': 'application/json-rpc'}, data=json.dumps(body)).json()
+                                 headers={'content-type': 'application/json-rpc'}, data=json.dumps(body), timeout=2).json()
         except requests.exceptions.ConnectionError:
             self._allow_feature_nxapi()
             return self._rest_api(commands=commands)
+        except requests.exceptions.ReadTimeout:
+            return 'timeout' if len(commands) == 1 else ['timeout'] * len(commands)
 
     def cmd(self, commands):
         if isinstance(commands, basestring):  # it might be provided as a string where commands are separated by ','
@@ -41,10 +43,14 @@ class Nexus(object):
 
     def show_port_channel_summary(self):
         res = self.cmd(['show port-channel summary'])
+        if res[0] == 'timeout':
+            return []
         return [x['port-channel'] for x in res[0]['result']['body']['TABLE_channel']['ROW_channel']]
 
     def show_interface_switchport(self, name):
         res = self.cmd(['show interface {0} switchport'.format(name)])
+        if res[0] == 'timeout':
+            return []
         vlans_str = res[0]['result']['body']['TABLE_interface']['ROW_interface']['trunk_vlans']
         vlans = set()
         for vlan_range in vlans_str.split(','):  # from  1,2,5-7  to (1, 2, 5, 6, 7)
@@ -57,13 +63,17 @@ class Nexus(object):
 
     def show_vlan(self):
         res = self.cmd(['show vlan'])
+        if res[0] == 'timeout':
+            return []
         vlans = [x['vlanshowbr-vlanname'] for x in res[0]['result']['body']['TABLE_vlanbrief']['ROW_vlanbrief']]
         return vlans
 
     def show_users(self):
-        res = self.cmd(['show users'])[0]['result']
+        res = self.cmd(['show users'])
+        if res[0] == 'timeout':
+            return []
         if res:
-            return res['body']
+            return res[0]['result']['body']['TABLE_sessions']['ROW_sessions']
         else:
             return res
 
