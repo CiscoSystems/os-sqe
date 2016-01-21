@@ -1,0 +1,25 @@
+---
+# Test Case TC805: Reboot secondary fabric interconnect
+
+- method: lab.scenarios.two_instances
+  time_to_ping: 600
+
+- method: lab.disruptors.ucsm
+  delay: 150
+  role: SUBORDINATE
+
+- method: lab.monitors.ucsm_cluster_state
+  duration: 600
+  period: 1
+
+- method: lab.monitors.ucsm_cluster_state
+  name: UCSM_A
+  duration: 600
+  period: 1
+  ip: 10.23.228.251
+
+- method: lab.monitors.ucsm_cluster_state
+  name: UCSM_B
+  duration: 600
+  period: 1
+  ip: 10.23.228.252

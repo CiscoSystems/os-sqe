@@ -30,10 +30,12 @@ class JsonFormatter(logging.Formatter):
                     value = int(value)
                 except ValueError:
                     value = value.strip()
-                    value = value.replace('-', '')
-                    value = value.replace(':', '')
+                    if '@timestamp' not in key:
+                        value = value.replace('-', '')
+                        value = value.replace(':', '')
                 d[key] = value
-        d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
+        if '@timestamp' not in d:
+            d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
         d['name'] = record.name
         return json.dumps(d)
 
