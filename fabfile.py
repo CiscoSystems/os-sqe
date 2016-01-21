@@ -1,63 +1,11 @@
 #!/usr/bin/env python
-import os
-from fabric.api import task, local
-from fabs.common import timed, virtual
-from fabs.common import logger as log
-from fabs import LVENV, CVENV, LAB
+from fabric.api import task
 from lab import decorators
-from fabs import tempest, snap, coverage
 from fabs import jenkins_reports, elk
-from lab import base_lab
-from lab.providers import cobbler, ucsm, n9k
+from lab.providers import cobbler, n9k
 from lab.runners import rally
 from lab.configurators import osp7_install
 from tools import ucsm_tempest_conf
-from tools import osp_net_cisco
-
-
-@timed
-def venv(private=False):
-    log.info("Installing packages from requirements")
-    # local("sudo apt-get install -y $(cat requirements_packages)")
-    venv_path = CVENV
-    if private:
-        venv_path = LVENV
-    if not os.path.exists(venv_path):
-        log.info("Creating virtual environment in {dir}".format(dir=venv_path))
-        local("virtualenv --setuptools %s" % venv_path)
-    else:
-        log.info("Virtual environment in {dir} already exists".format(dir=venv_path))
-
-
-@timed
-@virtual
-def requirements():
-    log.info("Installing python modules from requirements")
-    local("pip install -Ur requirements")
-
-
-@task
-@virtual
-def flake8():
-    """ Make a PEP8 check for code """
-    local("flake8 --max-line-length=120 --show-source --exclude=.env1 . || echo")
-
-
-@task
-@timed
-def init(private=False):
-    """ Prepare virtualenv and install all requirements """
-    venv(private=private)
-    requirements()
-
-
-@task
-@timed
-@virtual
-def destroy():
-    """ Destroying all lab machines and networks """
-    log.info("Destroying lab {lab}".format(lab=LAB))
-    local("python ./tools/cloud/create.py -l {lab} -x".format(lab=LAB))
 
 
 @decorators.print_time
@@ -110,9 +58,23 @@ def run(config_path):
 
 
 @task
-def hag10():
-    """ Run G10 HA"""
-    run(config_path='g10-ha.yaml')
+def hag10(test_name, do_not_clean=False):
+    """ Run G10 HA, please
+    :param test_name: test name to run - some file from configs/ha folder
+    :param do_not_clean: if True then the lab will not be cleaned before running test
+    """
+    from lab.with_config import actual_path_to_config
+
+    test_config_yaml = actual_path_to_config(yaml_path=test_name, directory='ha')
+
+    run_config_yaml = 'g10-ha-{0}.yaml'.format(test_name)
+    with open(run_config_yaml, 'w') as f:
+        f.write('deployer:  {DeployerExistingOSP7: {cloud: g10, hardware-lab-config: g10.yaml}}\n')
+        if not do_not_clean:
+            f.write('runner1:  {RunnerHA: {cloud: g10, hardware-lab-config: g10.yaml, task-yaml: clean.yaml}}\n')
+        f.write('runner2:  {RunnerHA: {cloud: g10, hardware-lab-config: g10.yaml, task-yaml: %s}}\n' % test_config_yaml)
+
+    run(config_path=run_config_yaml)
 
 
 @task
@@ -121,9 +83,12 @@ def ucsmg10(cmd):
     :param cmd: command to be executed
     """
     from lab.laboratory import Laboratory
+    from lab.providers.ucsm import Ucsm
+
     l = Laboratory(config_path='g10.yaml')
     ucsm_ip, ucsm_username, ucsm_password = l.ucsm_creds()
-    ucsm.cmd(ucsm_ip, ucsm_username, ucsm_password, cmd)
+    ucsm = Ucsm(ucsm_ip, ucsm_username, ucsm_password)
+    ucsm.cmd(cmd)
 
 
 @task
