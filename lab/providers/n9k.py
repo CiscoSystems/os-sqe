@@ -72,10 +72,10 @@ class Nexus(object):
         res = self.cmd(['show users'])
         if res[0] == 'timeout':
             return []
-        if res:
+        if res[0]['result']:
             return res[0]['result']['body']['TABLE_sessions']['ROW_sessions']
         else:
-            return res
+            return []  # no current session
 
     def no_vlans(self, pattern):
         vlans = filter(lambda name: pattern in name, self.show_vlan())
