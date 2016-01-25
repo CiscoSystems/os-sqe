@@ -1,0 +1,2 @@
+- method: lab.scenarios.net_subnet_port
+  how_many: 3
