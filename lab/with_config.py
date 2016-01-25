@@ -70,5 +70,11 @@ def actual_path_to_config(yaml_path, directory=''):
     if os.path.isfile(actual_path):
         return actual_path
 
+    raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_path, '\n'.join(ls_configs(directory=directory))))
+
+
+def ls_configs(directory=''):
+    import os
+
     folder = os.path.abspath(os.path.join(CONFIG_DIR, directory))
-    raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_path, '\n'.join(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))))
+    return filter(lambda name: name.endswith('.yaml'), os.listdir(folder))
