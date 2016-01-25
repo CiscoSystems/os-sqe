@@ -1,0 +1,55 @@
+---
+# Test Case TC789: Reboot N9k while doing OS networking operations
+
+- method: lab.monitors.service_endpoint
+  service: neutron
+  duration: 500
+  period: 0.25
+
+# Neutron-server on all control nodes
+- method: lab.monitors.pgrep
+  duration: 500
+  period: 0.5
+  node_name: control-0
+  process: neutron-server
+- method: lab.monitors.pgrep
+  duration: 500
+  period: 0.5
+  node_name: control-1
+  process: neutron-server
+- method: lab.monitors.pgrep
+  duration: 500
+  period: 0.5
+  node_name: control-2
+  process: neutron-server
+#
+- method: lab.scenarios.tempest_test
+  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
+  etime: 500
+  git: https://github.com/cisco-openstack/tempest.git
+  branch: proposed
+  tempest_config_dir: /home/stack
+
+- method: lab.scenarios.tempest_test
+  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
+  etime: 500
+  ramp_up_time: 6
+  git: https://github.com/cisco-openstack/tempest.git
+  branch: proposed
+  tempest_config_dir: /home/stack
+
+- method: lab.scenarios.tempest_test
+  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
+  etime: 500
+  ramp_up_time: 12
+  git: https://github.com/cisco-openstack/tempest.git
+  branch: proposed
+  tempest_config_dir: /home/stack
+
+- method: lab.scenarios.ucsm_create_vlan_profile
+  duration: 500
+  period: 1
+
+
+- method: lab.disruptors.n9k
+  delay: 180
