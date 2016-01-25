@@ -8,7 +8,7 @@
   username: a
   password: b
 
-#- method: lab.monitors.nexus # try to test non existing n9k
-#  duration: 20
-#  period: 2
-#  is_show_details: True
+- method: lab.monitors.nexus # try to test non existing n9k
+  duration: 20
+  period: 2
+  is_show_details: True
