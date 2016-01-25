@@ -1,8 +1,12 @@
-def once(command, log):
+def once(command, number):
 
     net_id = command('neutron net-create')
-    command('neutron subnet-create {net_id} 10.0.100.0/24'.format(net_id=net_id))
+    command('neutron subnet-create {net_id} {cidr}'.format(net_id=net_id, cidr=cidr4(number)))
     command('neutron port-create {net_id}'.format(net_id=net_id))
+
+
+def cidr4(i):
+    return '10.{0}.{1}.0/24'.format(i / 256, i % 256)
 
 
 def start(lab, log, args):
@@ -28,7 +32,10 @@ def start(lab, log, args):
             return re.search('id\s+\|\s+([-\w]+)', ''.join(res.stdout)).group(1)
 
     start_time = time.time()
+
+    quota = 20 + how_many
+    server.run(command='neutron quota-update --network {n} --subnet {n} --port {n} {lab_creds}'.format(n=quota, lab_creds=lab.cloud))
     for i in xrange(0, how_many):
-        once(command=command, log=log)
+        once(command=command, number=i)
         log.info('n_ports={0} status=created'.format(i+1))
     log.info('n_ports={0} status=created in time={1} secs'.format(how_many, time.time()-start_time))
