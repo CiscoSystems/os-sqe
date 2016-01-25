@@ -41,6 +41,14 @@ class Nexus(object):
                 raise NameError('{cmd} : {msg}'.format(msg=x['error']['data']['msg'].strip('%\n'), cmd=commands[i]))
         return results
 
+    def change_port_state(self, port_no, port_state="no shut"):
+        """
+        Change port state of the port
+        :param port_no: should be in full format like e1/3 or po1
+        :param port_state: 'shut' or 'no shut'
+        """
+        self.cmd(['conf t', 'int {port}'.format(port=port_no), '{0}'.format(port_state)])
+
     def show_port_channel_summary(self):
         res = self.cmd(['show port-channel summary'])
         if res[0] == 'timeout':
