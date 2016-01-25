@@ -79,10 +79,9 @@ network_nexus_config = {{ "{n9k1_name}" : {{
                         "ssh_port": 22,
                         "physnet": "datacentre",
                         "servers": {{
-                           "10:25:B5:00:B3:02": {{"ports": "port-channel:47,port-channel:48,port-channel:1" }},
-                           "10:25:B5:00:C0:04":  {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
-                           "10:25:B5:00:C0:05":  {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
-
+                           "{controller0_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
+                           "{controller1_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
+                           "{controller2_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
                         }}
                       }},
                         "{n9k2_name}" : {{
@@ -93,9 +92,9 @@ network_nexus_config = {{ "{n9k1_name}" : {{
                         "ssh_port": 22,
                         "physnet": "datacentre",
                         "servers": {{
-                            "10:25:B5:00:B3:02": {{"ports": "port-channel:47,port-channel:48,port-channel:1" }},
-                            "10:25:B5:00:C0:04": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
-                            "10:25:B5:00:C0:05":  {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
+                           "{controller0_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
+                           "{controller1_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
+                           "{controller2_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
                         }}
                       }}
                     }}
