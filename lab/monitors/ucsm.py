@@ -8,7 +8,7 @@ def start(lab, log, args):
     is_print_vlans = args.get('is-print-vlans', False)
     is_show_details = args.get('is_show_details', False)
     name_or_ip = args.get('name_or_ip', 'from_lab')
-    if validators.ipv4():
+    if validators.ipv4(name_or_ip):
         ucsm_ip = name_or_ip
         ucsm_username = args['username']
         ucsm_password = args['password']
