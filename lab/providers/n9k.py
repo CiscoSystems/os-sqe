@@ -179,8 +179,8 @@ class Nexus(object):
 
 @task
 def configure_for_osp7(yaml_path):
-    """configures n9k to run on top of UCSM
-    :param yaml_path: lab configuration file
+    """fab n9k.configure_for_osp7:g10 \t\t Configure all N9K for the given lab.
+        :param yaml_path: Valid hardware lab config, usually yaml from $REPO/configs
     """
     from lab.laboratory import Laboratory
 
