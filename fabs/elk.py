@@ -3,7 +3,7 @@ from fabric.api import task
 
 @task
 def run_elk():
-    """ Deploy elk stack as container """
+    """fab elk.run_elk \t\t\t\t Deploy elk stack as docker container."""
     from fabric.api import sudo
 
     sudo('docker pull sebp/elk')
@@ -12,7 +12,7 @@ def run_elk():
 
 @task
 def json_to_es():
-    """Push json.log to our ES and index it """
+    """fab elk.json_to_es \t\t\t\t Push json.log to our ES and index it."""
     from lab.server import Server
 
     with open('json.log') as l:
@@ -25,8 +25,8 @@ def json_to_es():
 
 @task
 def kill_index(index):
-    """Kill given index in ES
-    :param index: name of index to delete
+    """fab elk.kill_index:index_name \t\t Kill given index in ES.
+        :param index: name of index to delete
     """
     from lab.server import Server
 

@@ -85,8 +85,11 @@ class Server(object):
         return self.ucsm['server-id']
 
     def nic_mac(self, nic_name):
-        nic = [x for x in self.nics if x["nic_name"] == nic_name]
-        return nic[0]["nic_mac"]
+        nic = filter(lambda x: x["nic_name"] == nic_name, self.nics)
+        if nic:
+            return nic[0]["nic_mac"]
+        else:
+            raise ValueError('Nic {0} does not exist on this server'.format(nic_name))
 
     def get_package_manager(self):
         if not self.package_manager:

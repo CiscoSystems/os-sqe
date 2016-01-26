@@ -61,9 +61,9 @@ def configure_for_osp7(yaml_path):
                                        tenant_nic='nic1',
                                        external_nic='nic2',
                                        cobbler_system='G{0}-DIRECTOR'.format(lab.id),
-                                       controller0_eth0_mac=lab.controllers()[0].nics[0][1],
-                                       controller1_eth0_mac=lab.controllers()[1].nics[0][1],
-                                       controller2_eth0_mac=lab.controllers()[2].nics[0][1])
+                                       controller0_eth0_mac=lab.controllers()[0].nic_mac('eth0'),
+                                       controller1_eth0_mac=lab.controllers()[1].nic_mac('eth0'),
+                                       controller2_eth0_mac=lab.controllers()[2].nic_mac('eth0'))
 
     folder = 'artefacts'
     file_path = os.path.join(folder, 'g{0}-osp7-install-config.conf'.format(lab.id))

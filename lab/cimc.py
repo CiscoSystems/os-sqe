@@ -53,11 +53,17 @@ class LabCimces(object):
 
 @task
 def cleanup(yaml_path):
+    """fab cimc.cleanup:g10 \t\t\t Cleanup all UCSs controlled by CIMC for the given lab.
+        :param yaml_path: Valid hardware lab config, usually yaml from $REPO/configs
+    """
     cimces = LabCimces(yaml_path)
     cimces.cleanup()
 
 
 @task
 def configure_for_osp7(yaml_path):
+    """fab cimc.configure_for_osp7:g10 \t\t Configure all UCSs controlled by CIMC for the given lab.
+        :param yaml_path: Valid hardware lab config, usually yaml from $REPO/configs
+    """
     cimces = LabCimces(yaml_path)
     cimces.configure_for_osp7()

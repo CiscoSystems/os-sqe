@@ -9,8 +9,12 @@ from lab.configurators import osp7_install
 from tools import ucsm_tempest_conf
 
 
+@task
 @decorators.print_time
 def deploy_lab(config_path):
+    """fab deploy_lab:g10 \t\t\t\t Deploy the given lab from scratch including FI&N9K configuration.
+        :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
+    """
     from lab.providers import ucsm
     from lab.providers import cobbler
     from lab.configurators import osp7_install
@@ -21,36 +25,33 @@ def deploy_lab(config_path):
 
 
 @task
+@decorators.print_time
+def osp7_config(config_path):
+    """fab osp7_config:g10 \t\t\t\t Create configuration for osp7_bootstrap.
+        :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
+    """
+    from lab.configurators import osp7_install
+
+    osp7_install.configure_for_osp7(yaml_path=config_path)
+
+
+@task
 def g10():
-    """ (Re)deploy  G10 lab"""
+    """fab g10 \t\t\t\t\t Shortcut for fab deploy_lab:g10"""
     deploy_lab(config_path='configs/g10.yaml')
 
 
 @task
 def g8():
-    """ (Re)deploy  G8 lab"""
+    """fab g8 \t\t\t\t\t Shortcut for fab deploy_lab:g8"""
     deploy_lab(config_path='configs/g8.yaml')
-
-
-@task
-def log():
-    """ Test log subsystem"""
-    from lab.logger import create_logger
-    from time import sleep
-
-    l = create_logger()
-    l.info('x = 4.15')
-    l.info('y=4.15')
-    for x in xrange(10):
-        l.info('n_vlans={0}'.format(x))
-        sleep(1)
 
 
 @task
 @decorators.print_time
 def run(config_path):
-    """ Run any lab specified by yaml
-    :param config_path: specify what to run
+    """fab run:bxb-run-rally \t\t\t Run any job specified by yaml.
+        :param config_path: path to valid run specification, usually one of yaml from $REPO/configs/run
     """
     from lab.base_lab import BaseLab
 
@@ -60,28 +61,32 @@ def run(config_path):
 
 @task
 def hag10(test_name, do_not_clean=False):
-    """ Run G10 HA, please
-    :param test_name: test name to run - some file from configs/ha folder
-    :param do_not_clean: if True then the lab will not be cleaned before running test
+    """fab hag10:tc812,no_clean \t\t\t Run G10 HA. fab hag10:all will run all tests.
+        :param test_name: test name to run - some yaml from configs/ha folder
+        :param do_not_clean: if True then the lab will not be cleaned before running test
     """
-    from lab.with_config import actual_path_to_config
+    from lab.with_config import actual_path_to_config, ls_configs
 
-    test_config_yaml = actual_path_to_config(yaml_path=test_name, directory='ha')
+    if test_name == 'all':
+        tests = sorted(filter(lambda x: x.startswith('tc'), ls_configs(directory='ha')))
+    else:
+        tests = [actual_path_to_config(yaml_path=test_name, directory='ha')]
 
     run_config_yaml = 'g10-ha-{0}.yaml'.format(test_name)
     with open(run_config_yaml, 'w') as f:
         f.write('deployer:  {DeployerExistingOSP7: {cloud: g10, hardware-lab-config: g10.yaml}}\n')
-        if not do_not_clean:
-            f.write('runner1:  {RunnerHA: {cloud: g10, hardware-lab-config: g10.yaml, task-yaml: clean.yaml}}\n')
-        f.write('runner2:  {RunnerHA: {cloud: g10, hardware-lab-config: g10.yaml, task-yaml: %s}}\n' % test_config_yaml)
+        for i, test in enumerate(tests, start=1):
+            if not do_not_clean:
+                f.write('runner%s:  {RunnerHA: {cloud: g10, hardware-lab-config: g10.yaml, task-yaml: clean.yaml}}\n' % (10*i))
+            f.write('runner%s:  {RunnerHA: {cloud: g10, hardware-lab-config: g10.yaml, task-yaml: %s}}\n' % (10*i + 1,  test))
 
     run(config_path=run_config_yaml)
 
 
 @task
 def ucsmg10(cmd):
-    """ Run single command on G10 UCSM
-    :param cmd: command to be executed
+    """fab ucsmg10:'scope org; sh service-profile' \t Run single command on G10 UCSM.
+        :param cmd: command to be executed
     """
     from lab.laboratory import Laboratory
     from lab.providers.ucsm import Ucsm
@@ -94,8 +99,8 @@ def ucsmg10(cmd):
 
 @task
 def n9kg10(cmd):
-    """ Run single command on G10 N9K
-    :param cmd: command to be executed
+    """fab n9kg10:'sh cdp nei' \t\t\t Run single command on G10 N9K.
+        :param cmd: command to be executed
     """
     from lab.laboratory import Laboratory
     from lab.providers.n9k import Nexus
