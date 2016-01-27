@@ -9,7 +9,7 @@ def start(lab, log, args):
     time_to_ping = args['time_to_ping']
     public_net = args.get('public_net', 'nova')
     flavor_name = args.get('flavor_name', 'm1.nano')
-    image_name = args.get('image_name', 'cirros 0')
+    image_name = args.get('image_name', 'cirros')
     image_user = args.get('image_user', 'cirros')
     image_password = args.get('image_password', 'cubswin:)')
 

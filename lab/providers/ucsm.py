@@ -194,7 +194,7 @@ def configure_for_osp7(yaml_path):
                     profile=server.ucsm_profile(),
                     sriov_policy='set bios-policy SRIOV;' if server.ucsm_is_sriov() else ''), shell=False)
 
-            for nic in server.nics:
+            for nic in server.get_nics():
                 # create vNIC
                 run('scope org; scope service-profile {profile}; create vnic {nic_name} fabric a-b; set identity dynamic-mac {nic_mac}; set order {order}; commit-buffer'.format(
                         profile=server.ucsm_profile(),
