@@ -58,7 +58,7 @@ class Laboratory(with_config.WithConfig):
                                         service_profile=profile, server_id=server_id, is_sriov=val.get('is-sriov', False))
                         server.set_ipmi(ip=ipmi_net[shift_ipmi], username=self.cfg['cobbler']['username'], password=self.cfg['cobbler']['password'])
                         self.servers_controlled_by_ucsm.append(server)
-                    for order, nic_name in enumerate(val['nets'], start=0):
+                    for order, nic_name in enumerate(val['nets'], start=1):
                         mac = self.cfg['nets'][nic_name]['mac-tmpl'].format(lab_id=self.cfg['lab-id'], b_c_id=b_c_id)
                         server.add_if(nic_name=nic_name, nic_mac=mac, nic_order=order, nic_vlans=self.cfg['nets'][nic_name]['vlan'])
                     shift_user += 1
