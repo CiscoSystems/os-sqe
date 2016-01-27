@@ -36,7 +36,7 @@ class Server(object):
                      'iface_mac': {'UnknownInServer': 'UnknownInServer'}}
 
         self.nics = []
-        self.cimc = {'pci_port': 'UnknownInServer', 'uplink_port': 'UnknownInServer'}
+        self.cimc = {'n9k': 'UnknownInServer', 'n9k_port': 'UnknownInServer', 'pci_port': 'UnknownInServer', 'uplink_port': 'UnknownInServer'}
         self.package_manager = None
 
     def __repr__(self):
@@ -61,7 +61,9 @@ class Server(object):
         self.ucsm['server-id'] = server_id
         self.ucsm['is-sriov'] = is_sriov
 
-    def set_cimc(self, pci_port, uplink_port='0'):
+    def set_cimc(self, n9k, n9k_port, pci_port, uplink_port):
+        self.cimc['n9k'] = n9k
+        self.cimc['n9k_port'] = n9k_port
         self.cimc['pci_port'] = pci_port
         self.cimc['uplink_port'] = uplink_port
 
