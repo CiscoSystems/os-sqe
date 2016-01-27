@@ -1,5 +1,14 @@
 [DEFAULT]
 # switch on/off time consuming operation - openstack baremetal introspection bulk start
+
+testbed_vlan = {testbed_vlan}
+storage_vlan = {storage_vlan}
+storage_mgmt_vlan = {storage_mgmt_vlan}
+tenant_network_vlan = {tenant_network_vlan}
+overcloud_floating_vlan = {overcloud_floating_vlan}
+overcloud_external_vlan = {overcloud_external_vlan}
+
+
 node_discovery = false
 
 director_node_hostname = {director_node_hostname}
@@ -49,7 +58,7 @@ neutron_external_bridge = br-ex
 deploy_with_flavors = true
 network_nexus_provider_vlan_auto_create = false
 network_nexus_provider_vlan_auto_trunk = false
-network_nexus_vlan_range = datacentre:1000:2999,external
+network_nexus_vlan_range = datacentre:{vlan_range},external
 
 
 # this network will be created as external in overcloud openstack
@@ -71,33 +80,10 @@ undercloud_fake_gw_ip_prefix = 24
 
 
 
-network_nexus_config = {{ "{n9k1_name}" : {{
-                        "ip_address": "{n9k1_ip}",
-                        "username": "{n9k_username}",
-                        "password": "{n9k_password}",
-                        "nve_src_intf": 2,
-                        "ssh_port": 22,
-                        "physnet": "datacentre",
-                        "servers": {{
-                           "{controller0_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
-                           "{controller1_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
-                           "{controller2_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
-                        }}
-                      }},
-                        "{n9k2_name}" : {{
-                        "ip_address": "{n9k2_ip}",
-                        "username": "{n9k_username}",
-                        "password": "{n9k_password}",
-                        "nve_src_intf": 2,
-                        "ssh_port": 22,
-                        "physnet": "datacentre",
-                        "servers": {{
-                           "{controller0_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
-                           "{controller1_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}},
-                           "{controller2_eth0_mac}": {{"ports": "port-channel:47,port-channel:48,port-channel:1"}}
-                        }}
-                      }}
-                    }}
+network_nexus_config = {{
+  {n9k1},
+  {n9k2}
+  }}
 
 [cobbler]
 osp_directory_node = {cobbler_system}

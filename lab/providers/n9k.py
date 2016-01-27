@@ -2,10 +2,14 @@ from fabric.api import task
 
 
 class Nexus(object):
-    def __init__(self, n9k_ip, n9k_username, n9k_password):
+
+    def __init__(self, n9k_ip, n9k_username, n9k_password, ucsm_ports=None, peer_link=None):
         self.n9k_ip = n9k_ip
         self.n9k_username = n9k_username
         self.n9k_password = n9k_password
+        self.ucsm_ports = ucsm_ports
+        self.peer_link = peer_link
+        self.osp_ports = set(self.ucsm_ports + self.peer_link)
 
     def _allow_feature_nxapi(self):
         from fabric.api import settings, run
@@ -27,6 +31,10 @@ class Nexus(object):
             return self._rest_api(commands=commands)
         except requests.exceptions.ReadTimeout:
             return 'timeout' if len(commands) == 1 else ['timeout'] * len(commands)
+
+    def get_hostname(self):
+        res = self.cmd(['sh switchname'])
+        return res[0]['result']['body']['hostname']
 
     def cmd(self, commands):
         if isinstance(commands, basestring):  # it might be provided as a string where commands are separated by ','
@@ -54,6 +62,22 @@ class Nexus(object):
         if res[0] == 'timeout':
             return []
         return [x['port-channel'] for x in res[0]['result']['body']['TABLE_channel']['ROW_channel']]
+
+    def get_pc_for_osp(self):
+        res = self.cmd(['show port-channel summary'])
+        pc = []
+        all_pc_w_ports = [x for x in res[0]['result']['body']['TABLE_channel']['ROW_channel'] if 'TABLE_member' in x]
+        for entry in all_pc_w_ports:
+            ports = entry['TABLE_member']['ROW_member']
+            if isinstance(ports, list):
+                port_list = set([x['port'].split('Ethernet')[1] for x in ports])
+                if port_list.issubset(self.osp_ports):
+                    pc.append(entry['port-channel'])
+            else:
+                port = ports['port']
+                if port.split('Ethernet')[1] in self.osp_ports:
+                     pc.append(entry['port-channel'])
+        return pc
 
     def show_interface_switchport(self, name):
         res = self.cmd(['show interface {0} switchport'.format(name)])

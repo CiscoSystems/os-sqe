@@ -12,6 +12,8 @@ class Laboratory(with_config.WithConfig):
     def __init__(self, config_path):
         from netaddr import IPNetwork
         from lab.server import Server
+        from lab.providers.n9k import Nexus
+
         import validators
 
         super(Laboratory, self).__init__(config=None)
@@ -46,7 +48,10 @@ class Laboratory(with_config.WithConfig):
                         b_c_id = 'A0:{0}'.format(int(server_id_short))
                         server.set_ipmi(ip=server_id, username=self.cfg['cimc'][server_id]['username'],
                                         password=self.cfg['cimc'][server_id]['password'])
-                        server.set_cimc(self.cfg['cimc'][server_id]['pci_slot'])
+                        server.set_cimc(self.cfg['cimc'][server_id]['n9k'],
+                                        self.cfg['cimc'][server_id]['n9k_port'],
+                                        self.cfg['cimc'][server_id]['pci_slot'],
+                                        self.cfg['cimc'][server_id]['uplink_port'])
                         self.servers_controlled_by_cimc.append(server)
                     else:
                         if '/' in server_id:
@@ -64,9 +69,14 @@ class Laboratory(with_config.WithConfig):
                     shift_user += 1
                     shift_ipmi += 1
         self.net_nodes = [Server(ip=self.cfg['ucsm']['host'], username=self.cfg['ucsm']['username'], password=self.cfg['ucsm']['password'], role='ucsm', n_in_role=0),
-                          Server(ip=self.cfg['n9k']['host1'], username=self.cfg['ucsm']['username'], password=self.cfg['ucsm']['password'], role='n9k', n_in_role=1),
-                          Server(ip=self.cfg['n9k']['host2'], username=self.cfg['ucsm']['username'], password=self.cfg['ucsm']['password'], role='n9k', n_in_role=2)
+                          Server(ip=self.cfg['n9k']['host1'], username=self.cfg['n9k']['username'], password=self.cfg['n9k']['password'], role='n9k', n_in_role=1),
+                          Server(ip=self.cfg['n9k']['host2'], username=self.cfg['n9k']['username'], password=self.cfg['n9k']['password'], role='n9k', n_in_role=2)
                           ]
+        self.n9ks = {self.cfg['n9k']['host1']: Nexus(self.cfg['n9k']['host1'], self.cfg['n9k']['username'], self.cfg['n9k']['password'],
+                                                     [self.cfg['n9k_fi']['n9k1_ucsm1'][0], self.cfg['n9k_fi']['n9k1_ucsm2'][0]], self.cfg['n9k']['peer_int']),
+                     self.cfg['n9k']['host2']: Nexus(self.cfg['n9k']['host2'], self.cfg['n9k']['username'], self.cfg['n9k']['password'],
+                                                     [self.cfg['n9k_fi']['n9k1_ucsm1'][0], self.cfg['n9k_fi']['n9k2_ucsm2'][0]], self.cfg['n9k']['peer_int'])}
+
         self._user_net_range = user_net[4], user_net[-3]  # will be provided to OSP7 deployer as a range for vip and controllers -2 is director
 
     def director(self):
@@ -74,6 +84,16 @@ class Laboratory(with_config.WithConfig):
 
     def all_but_director(self):
         return self.servers()[1:]
+
+    def return_all_vlans(self):
+        vlan_set = set()
+        vlan_set.update([interface['vlan'] for interface in self.cfg['nets'].itervalues()])
+        return vlan_set
+
+    def return_vlans_by_server(self, server):
+        vlan_set = set()
+        [vlan_set.update(y) for y in [self.cfg['nets'][x['nic_name']]['vlan'] for x in server.get_nics()]]
+        return vlan_set
 
     def _servers_for_role(self, role):
         return [x for x in self.servers()[1:] if x.role == role]
@@ -123,7 +143,25 @@ class Laboratory(with_config.WithConfig):
         return self.cfg['cobbler']['host'], self.cfg['cobbler']['username'], self.cfg['cobbler']['password']
 
     def external_vlan(self):
-        return self.cfg['nets']['user']['vlan'][0]
+        return self.cfg['nets']['eth1']['vlan'][1]
+
+    def testbed_vlan(self):
+        return self.cfg['nets']['eth1']['vlan'][1]
+
+    def storage_vlan(self):
+        return self.cfg['nets']['pxe-int']['vlan'][2]
+
+    def storage_mgmt_vlan(self):
+        return self.cfg['nets']['pxe-int']['vlan'][3]
+
+    def tenant_network_vlan(self):
+        return self.cfg['nets']['pxe-int']['vlan'][4]
+
+    def overcloud_floating_vlan(self):
+        return self.cfg['nets']['eth1']['vlan'][0]
+
+    def vlan_range(self):
+        return self.cfg['vlan_range']
 
     def n9k_creds(self):
         return self.cfg['n9k']['host1'], self.cfg['n9k']['host2'], self.cfg['n9k']['username'], self.cfg['n9k']['password']

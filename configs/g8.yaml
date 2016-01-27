@@ -15,13 +15,14 @@ nodes: [
   control:  {server-id: ['2', '3', '4'],   is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
   compute:  {server-id: ['10.30.119.93', '10.30.119.94'], nets: [eth0, eth1, user, pxe-int]}
 ]
+vlan_range: "1000:2000"
 ucsm: {host: 10.30.119.67, username: admin, password: cisco, uplink-ports: ['1 9', '1 10'], uplink-vpc-id: 81}
-n9k: {host1: 172.31.229.207, host2: 172.31.230.234, username: admin, password: CTO1234!}
+n9k: {host1: 172.31.229.207, host2: 172.31.230.234, username: admin, password: CTO1234!, peer_int: ['1/31', '1/33', '1/35']}
 cobbler: {host: 172.29.74.8, username: cobbler, password: cobbler}
 rh-secret: http://172.29.173.233/redhat/osp7/redhat-developers-account.yaml  # login-password info for RH dev account used in director's registration
-
+n9k_fi: {n9k1_ucsm1: ['1/9','1/9'], n9k1_ucsm2: ['1/10','1/10'], n9k2_ucsm1: ['1/9','1/10'], n9k2_ucsm2: ['1/10','1/9'],}
 cimc: {
-10.30.119.93: {n9k: host1, port: 1/3, username: admin, password: password, pci_slot: 3},
-10.30.119.94: {n9k: host2, port: 1/4, username: admin, password: password, pci_slot: 3}
+10.30.119.93: {n9k: 172.31.229.207, n9k_port: 1/3, username: admin, password: password, uplink_port: 0, pci_slot: 3},
+10.30.119.94: {n9k: 172.31.230.234, n9k_port: 1/4, username: admin, password: password, uplink_port: 0, pci_slot: 3}
 }
 logstash: "172.29.173.236:9999"
