@@ -194,32 +194,32 @@ def configure_for_osp7(yaml_path):
                     profile=server.ucsm_profile(),
                     sriov_policy='set bios-policy SRIOV;' if server.ucsm_is_sriov() else ''), shell=False)
 
-            for nic_name, nic_mac, nic_order, nic_vlans in server.nics:
+            for nic in server.nics:
                 # create vNIC
                 run('scope org; scope service-profile {profile}; create vnic {nic_name} fabric a-b; set identity dynamic-mac {nic_mac}; set order {order}; commit-buffer'.format(
                         profile=server.ucsm_profile(),
-                        nic_name=nic_name,
-                        nic_mac=nic_mac,
-                        order=nic_order), shell=False)
+                        nic_name=nic['nic_name'],
+                        nic_mac=nic['nic_mac'],
+                        order=nic['nic_order']), shell=False)
                 # add default VLAN to vNIC
                 run('scope org; scope service-profile {profile}; scope vnic {nic_name}; create eth-if {vlan}; set default-net yes; commit-buffer'.format(
                         profile=server.ucsm_profile(),
-                        nic_name=nic_name,
-                        vlan=nic_vlans[0]), shell=False)
-                for vlan in nic_vlans[1:]:
+                        nic_name=nic['nic_name'],
+                        vlan=nic['nic_vlans'][0]), shell=False)
+                for vlan in nic['nic_vlans'][1:]:
                     run('scope org; scope service-profile {profile}; scope vnic {nic_name}; create eth-if {vlan}; set default-net no; commit-buffer'.format(
                             profile=server.ucsm_profile(),
-                            nic_name=nic_name,
+                            nic_name=nic['nic_name'],
                             vlan=vlan), shell=False)
                 # remove default VLAN
                 run('scope org; scope service-profile {profile}; scope vnic {nic_name}; delete eth-if default; commit-buffer'.format(
                         profile=server.ucsm_profile(),
-                        nic_name=nic_name), shell=False)
+                        nic_name=nic['nic_name']), shell=False)
                 # set dynamic vnic connection policy
-                if server.ucsm_is_sriov() and nic_name in ['eth1']:
+                if server.ucsm_is_sriov() and nic['nic_name'] in ['eth1']:
                     run('scope org; scope service-profile {profile}; scope vnic {nic_name}; set adapter-policy Linux; enter dynamic-conn-policy-ref {pn}; commit-buffer'.format(
                             profile=server.ucsm_profile(),
-                            nic_name=nic_name,
+                            nic_name=nic['nic_name'],
                             pn=dynamic_vnic_policy_name), shell=False)
 
             # boot-policy
