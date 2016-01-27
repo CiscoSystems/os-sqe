@@ -20,7 +20,10 @@ def starter(item_description):
     item_description.setdefault('period', 1)
 
     log.info('Start {0}'.format(item_description))
-    func(lab, log, item_description)
+    try:
+        func(lab, log, item_description)
+    except Exception as ex:
+        log.error('error={0}'.format(ex.message))
 
 
 class RunnerHA(Runner):
