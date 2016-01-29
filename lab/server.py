@@ -294,3 +294,17 @@ class Server(object):
         self.run(command='sudo chmod 700 .ssh')
         self.run(command='sudo chmod 600 .ssh/authorized_keys')
         self.password = 'ssh_key'
+
+    def ping(self, port=22):
+        import socket
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        try:
+            s.connect((str(self.ip), port))
+            res = True
+        except (socket.timeout, socket.error):
+            res = False
+        finally:
+            s.close()
+        return res
