@@ -1,3 +1,3 @@
-provider: {ProviderExisting: [{host: 10.23.230.134, username: root, password: cisco123}]}
-deployer:  {DeployerExisting: {end_point: "http://10.11.12.101:5000/v2.0", cloud: g10, user: admin, tenant: admin, admin: admin, password: 7ece5c821b6c2b1c888c58f59867f7a09be40c69}}
+provider:  {ProviderExistingOSP7: {hardware-lab-config: g10.yaml }}
+deployer:  {DeployerExistingOSP7: {cloud: g10, hardware-lab-config: g10.yaml }}
 runner:  {RunnerRally: {cloud: g10, task-yaml: task-rally.yaml}}

@@ -15,8 +15,10 @@ nodes: [
   control:  {server-id: ['1', '2', '3'],       is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
   compute:  {server-id: ['4', '5', '6', '7'],  is-sriov: False, nets: [eth0, eth1, user, pxe-int]}
 ]
+vlan_range: "1000:2999"
 ucsm: {host: 10.23.228.253, username: admin, password: cisco, uplink-ports: ['1 47', '1 48'], uplink-vpc-id: 81}
-n9k: {host1: 10.30.119.100, host2: 10.30.119.101, username: admin, password: CTO1234!}
+n9k: {host1: 10.30.119.100, host2: 10.30.119.101, username: admin, password: CTO1234! , peer_int: ['1/16', '1/17']}
 cobbler: {host: 172.29.74.8, username: cobbler, password: cobbler}
 logstash: "172.29.173.236:5044"
 rh-secret: http://172.29.173.233/redhat/osp7/redhat-developers-account.yaml  # login-password info for RH dev account used in director's registration
+n9k_fi: {n9k1_ucsm1: ['1/47','1/48'], n9k1_ucsm2: ['1/48','1/48'], n9k2_ucsm1: ['1/47','1/47'], n9k2_ucsm2: ['1/48','1/47'],}

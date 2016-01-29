@@ -1,6 +1,7 @@
 from lab.runners import Runner
 
 
+# noinspection PyBroadException
 def starter(item_description):
     import time
     from lab import logger
@@ -9,18 +10,28 @@ def starter(item_description):
     log = logger.create_logger(item_description.pop('log-name'))
 
     delay = item_description.get('delay', 0)
+    duration = item_description.get('duration', 3)
+    period = item_description.get('period', 0)
+
     if delay:
         log.info('Delaying start by {0} secs...'.format(delay))
         item_description.pop('delay')
     time.sleep(delay)
 
     func = item_description.pop('function')
-    lab = Laboratory(config_path=item_description.pop('lab_name'))
-    lab.cloud = item_description.pop('cloud')
-    item_description.setdefault('period', 1)
+    cloud = item_description.pop('cloud')
+    lab = Laboratory(config_path=cloud.name)
+    lab.cloud = cloud
 
-    log.info('Start {0}'.format(item_description))
-    func(lab, log, item_description)
+    log.info('status=Start arguments={0}'.format(item_description))
+    start_time = time.time()
+    end_time = start_time + duration
+    try:
+        while time.time() < end_time:
+            func(lab, log, item_description)
+            time.sleep(period)
+    except:
+        log.exception('EXCEPTION')
 
 
 class RunnerHA(Runner):
@@ -32,6 +43,8 @@ class RunnerHA(Runner):
         self.cloud_name = config['cloud']
         self.task_yaml_path = config['task-yaml']
         self.task_body = self.read_config_from_file(config_path=self.task_yaml_path, directory='ha')
+        if not self.task_body:
+            raise Exception('Empty Test task list. Please check the file: {0}'.format(self.task_yaml_path))
         self.lab_name = config['hardware-lab-config']
 
     def execute(self, clouds, servers):
@@ -40,13 +53,17 @@ class RunnerHA(Runner):
         import fabric.network
         from fabs import elk
 
+        cloud = filter(lambda x: x.name == self.cloud_name, clouds)
+        if not cloud:
+            raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self.cloud_name))
+
         items_to_run = []
         for arguments in self.task_body:
             module_path = arguments.pop('method')
             try:
                 module = importlib.import_module(module_path)
                 func = getattr(module, 'start')
-                arguments.update({'function': func, 'log-name': module_path, 'lab_name': self.lab_name, 'cloud': clouds[0]})
+                arguments.update({'function': func, 'log-name': module_path, 'cloud': cloud[0]})
                 items_to_run.append(arguments)
             except ImportError:
                 raise Exception('{0} failed to import'.format(module_path))

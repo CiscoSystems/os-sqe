@@ -2,10 +2,14 @@ from fabric.api import task
 
 
 class Nexus(object):
-    def __init__(self, n9k_ip, n9k_username, n9k_password):
+
+    def __init__(self, n9k_ip, n9k_username, n9k_password, ucsm_ports=None, peer_link=None):
         self.n9k_ip = n9k_ip
         self.n9k_username = n9k_username
         self.n9k_password = n9k_password
+        self.ucsm_ports = ucsm_ports
+        self.peer_link = peer_link
+        self.osp_ports = set(self.ucsm_ports + self.peer_link)
 
     def _allow_feature_nxapi(self):
         from fabric.api import settings, run
@@ -21,10 +25,16 @@ class Nexus(object):
         body = [{"jsonrpc": "2.0", "method": "cli", "params": {"cmd": command, "version": 1}, "id": 1} for command in commands]
         try:
             return requests.post('http://{0}/ins'.format(self.n9k_ip), auth=(self.n9k_username, self.n9k_password),
-                                 headers={'content-type': 'application/json-rpc'}, data=json.dumps(body)).json()
+                                 headers={'content-type': 'application/json-rpc'}, data=json.dumps(body), timeout=2).json()
         except requests.exceptions.ConnectionError:
             self._allow_feature_nxapi()
             return self._rest_api(commands=commands)
+        except requests.exceptions.ReadTimeout:
+            return 'timeout' if len(commands) == 1 else ['timeout'] * len(commands)
+
+    def get_hostname(self):
+        res = self.cmd(['sh switchname'])
+        return res[0]['result']['body']['hostname']
 
     def cmd(self, commands):
         if isinstance(commands, basestring):  # it might be provided as a string where commands are separated by ','
@@ -39,12 +49,40 @@ class Nexus(object):
                 raise NameError('{cmd} : {msg}'.format(msg=x['error']['data']['msg'].strip('%\n'), cmd=commands[i]))
         return results
 
+    def change_port_state(self, port_no, port_state="no shut"):
+        """
+        Change port state of the port
+        :param port_no: should be in full format like e1/3 or po1
+        :param port_state: 'shut' or 'no shut'
+        """
+        self.cmd(['conf t', 'int {port}'.format(port=port_no), '{0}'.format(port_state)])
+
     def show_port_channel_summary(self):
         res = self.cmd(['show port-channel summary'])
+        if res[0] == 'timeout':
+            return []
         return [x['port-channel'] for x in res[0]['result']['body']['TABLE_channel']['ROW_channel']]
+
+    def get_pc_for_osp(self):
+        res = self.cmd(['show port-channel summary'])
+        pc = []
+        all_pc_w_ports = [x for x in res[0]['result']['body']['TABLE_channel']['ROW_channel'] if 'TABLE_member' in x]
+        for entry in all_pc_w_ports:
+            ports = entry['TABLE_member']['ROW_member']
+            if isinstance(ports, list):
+                port_list = set([x['port'].split('Ethernet')[1] for x in ports])
+                if port_list.issubset(self.osp_ports):
+                    pc.append(entry['port-channel'])
+            else:
+                port = ports['port']
+                if port.split('Ethernet')[1] in self.osp_ports:
+                     pc.append(entry['port-channel'])
+        return pc
 
     def show_interface_switchport(self, name):
         res = self.cmd(['show interface {0} switchport'.format(name)])
+        if res[0] == 'timeout':
+            return []
         vlans_str = res[0]['result']['body']['TABLE_interface']['ROW_interface']['trunk_vlans']
         vlans = set()
         for vlan_range in vlans_str.split(','):  # from  1,2,5-7  to (1, 2, 5, 6, 7)
@@ -57,20 +95,35 @@ class Nexus(object):
 
     def show_vlan(self):
         res = self.cmd(['show vlan'])
+        if res[0] == 'timeout':
+            return []
         vlans = [x['vlanshowbr-vlanname'] for x in res[0]['result']['body']['TABLE_vlanbrief']['ROW_vlanbrief']]
         return vlans
 
     def show_users(self):
-        res = self.cmd(['show users'])[0]['result']
-        if res:
-            return res['body']
+        res = self.cmd(['show users'])
+        if res[0] == 'timeout':
+            return []
+        if res[0]['result']:
+            return res[0]['result']['body']['TABLE_sessions']['ROW_sessions']
         else:
-            return res
+            return []  # no current session
 
     def no_vlans(self, pattern):
-        vlans = filter(lambda x: pattern in x, self.show_vlan())
-        vlan_ids = [x.strip('pattern') for x in vlans]
-        self.cmd(['conf t', 'no vlan {0}'.format(','.join(vlan_ids))])
+        vlans = filter(lambda name: pattern in name, self.show_vlan())
+        vlan_ids = [x.strip(pattern) for x in vlans]
+
+        def chunks(l, n):
+            """Yield successive chunks from list.
+            :param n: size of the chunk
+            :param l: list to be split
+            """
+            for i in xrange(0, len(l), n):
+                yield l[i:i+n]
+
+        for chunk in chunks(vlan_ids, 64):
+            part_of_vlans = ','.join(chunk)
+            self.cmd(['conf t', 'no vlan {0}'.format(part_of_vlans)])
 
     def execute_on_given_n9k(self, user_vlan):
         from lab.logger import lab_logger
@@ -150,8 +203,8 @@ class Nexus(object):
 
 @task
 def configure_for_osp7(yaml_path):
-    """configures n9k to run on top of UCSM
-    :param yaml_path: lab configuration file
+    """fab n9k.configure_for_osp7:g10 \t\t Configure all N9K for the given lab.
+        :param yaml_path: Valid hardware lab config, usually yaml from $REPO/configs
     """
     from lab.laboratory import Laboratory
 

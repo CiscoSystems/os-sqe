@@ -52,13 +52,29 @@ class LabConfigException(Exception):
 
 
 def read_config_from_file(yaml_path, directory='', is_as_string=False):
-    import os
     import yaml
 
-    actual_path = yaml_path if os.path.isfile(yaml_path) else os.path.join(CONFIG_DIR, directory, yaml_path)
-    if not os.path.isfile(actual_path):
-        folder = os.path.abspath(os.path.join(CONFIG_DIR, directory))
-        raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_path, '\n'.join(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))))
-
+    actual_path = actual_path_to_config(yaml_path=yaml_path, directory=directory)
     with open(actual_path) as f:
         return f.read() if is_as_string else yaml.load(f)
+
+
+def actual_path_to_config(yaml_path, directory=''):
+    import os
+
+    if os.path.isfile(yaml_path):
+        return yaml_path
+
+    actual_path = yaml_path if yaml_path.endswith('.yaml') else yaml_path + '.yaml'
+    actual_path = os.path.join(CONFIG_DIR, directory, actual_path)
+    if os.path.isfile(actual_path):
+        return actual_path
+
+    raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_path, '\n'.join(ls_configs(directory=directory))))
+
+
+def ls_configs(directory=''):
+    import os
+
+    folder = os.path.abspath(os.path.join(CONFIG_DIR, directory))
+    return filter(lambda name: name.endswith('.yaml'), os.listdir(folder))

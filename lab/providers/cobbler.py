@@ -20,7 +20,9 @@ def configure_for_osp7(yaml_path):
     cobbler.modify_system(handle, 'hostname', director.hostname, token)
     cobbler.modify_system(handle, 'gateway', str(lab.user_gw), token)
 
-    for if_name, mac, _, _ in director.nics:
+    for nic in director.get_nics():
+        if_name = nic['nic_name']
+        mac = nic['nic_mac']
         cobbler.modify_system(handle, 'modify_interface', {'macaddress-{0}'.format(if_name): mac}, token)
         if if_name == 'user':
             cobbler.modify_system(handle, 'modify_interface', {'ipaddress-{0}'.format(if_name): str(director.ip),
