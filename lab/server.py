@@ -310,3 +310,6 @@ class Server(object):
         finally:
             s.close()
         return res
+    
+     def actual_hostname(self):
+       return self.run('hostname').stdout.strip()
