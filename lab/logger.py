@@ -37,6 +37,8 @@ class JsonFormatter(logging.Formatter):
         if '@timestamp' not in d:
             d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
         d['name'] = record.name
+        if record.exc_text:
+            d['EXCEPTION'] = record.exc_text.replace('\n', '')
         return json.dumps(d)
 
 
