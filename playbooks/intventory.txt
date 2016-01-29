@@ -31,6 +31,32 @@ server_vpcs='[3, 4]'
 router_ospf=111
 router_area=0.0.0.0
 
+[g10]
+# Add lines to /etc/hosts
+# 10.30.119.100 g10-N9k1
+# 10.30.119.101 g10-N9k2
+g10-N9k1 ansible_connection=local
+g10-N9k2 ansible_connection=local
+
+
+[g10:vars]
+state=present
+uplink_vlans='177'
+server_vlans='1, 177, 3000, 3001, 3101, 3333'
+
+uplink_ports='["Eth1/2"]'
+uplink_port_channel=177
+
+peer_link_ports='["Eth1/16", "Eth1/17"]'
+peer_link_channel=1
+
+fabric_a_ports='["Eth1/47"]'
+fabric_a_port_channel=47
+
+fabric_b_ports='["Eth1/48"]'
+fabric_b_port_channel=48
+
+
 [ucsm]
 localhost ansible_connection=local
 

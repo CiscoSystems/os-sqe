@@ -1,41 +1,37 @@
-def start(context, log, args):
-    from fabric.api import run, settings
+def start(lab, log, args):
     import time
+    import validators
+    from lab.providers import ucsm
 
     duration = args['duration']
     period = args['period']
     is_print_vlans = args.get('is-print-vlans', False)
-    is_allowed_vlans = args.get('is-allowed-vlans', False)
-    is_user_profile = args.get('is-user-profile', False)
+    is_show_details = args.get('is_show_details', False)
+    name_or_ip = args.get('name_or_ip', 'from_lab')
+    if validators.ipv4(name_or_ip):
+        ucsm_ip = name_or_ip
+        ucsm_username = args['username']
+        ucsm_password = args['password']
+    else:
+        ucsm_ip, ucsm_username, ucsm_password = lab.ucsm_creds()
 
-    def call_ucsm(command):
-        ip, user, password = context.ucsm_creds()
-        with settings(host_string='{user}@{ip}'.format(user=user, ip=ip), password=password, connection_attempts=1, warn_only=False, timeout=1):
-            try:
-                return run(command, shell=False, quiet=True).split()
-            except:
-                return []
+    fi = ucsm.Ucsm(ucsm_ip, ucsm_username, ucsm_password)
 
     start_time = time.time()
+    finish_time = start_time + duration
 
-    service_profiles = call_ucsm(command='scope org; sh service-profile status | no-more | egrep -V "Service|----" | cut -f 1 -d " "')
-    while start_time + duration > time.time():
-        if is_allowed_vlans:
+    service_profiles = fi.service_profiles()
+    while time.time() < finish_time:
+        # Vlan profiles
+        vlan_profiles = set(fi.vlans())
+        log.info('n_vlans={0} {1}'.format(len(vlan_profiles), 'details={0}'.format(vlan_profiles) if is_print_vlans else ''))
+
+        if is_show_details:
             for sp in service_profiles:
                 if 'control' in sp or 'compute' in sp:
-                    vnic = 'eth0'
-                    # Allowed vlans
-                    cmd = 'scope org ; scope service-profile {0}; scope vnic {1}; sh eth-if | no-more | egrep "Name:" | cut -f 6 -d " "'.format(sp, vnic)
-                    log.info('profile={0} {1} allowed_vlans={2}'.format(sp, vnic, call_ucsm(command=cmd)))
+                    log.info('profile={0} {1} allowed_vlans={2}'.format(sp, 'eth0', fi.allowed_vlans(sp, 'eth0')))
 
-        # Vlan profiles
-        cmd = 'scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "'
-        vlan_profiles = set(call_ucsm(command=cmd))
-        log.info('n_vlans={0} {1}'.format(len(vlan_profiles), 'ids={0}'.format(vlan_profiles) if is_print_vlans else ''))
-
-        # User sessions
-        if is_user_profile:
-            user_session = call_ucsm(command='scope security ; show user-sessions local detail | no-more | egrep "Pid:" | cut -f 6 -d " "')
-            log.info('{0} user sessions: {1}'.format(len(user_session), user_session))
-
+            user_sessions = fi.user_sessions()
+            log.info('n_sessions={0} details={1}'.format(len(user_sessions), user_sessions))
         time.sleep(period)
+        log.info('will finish in {0} secs'. format(finish_time - time.time()))

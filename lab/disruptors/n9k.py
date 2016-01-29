@@ -3,5 +3,5 @@ def start(lab, log, args):
 
     ip, _, username, password = lab.n9k_creds()
     nx = Nexus(ip, username, password)
-    log.ingo('ip={ip} status=rebooting'.format())
+    log.info('ip={ip} status=rebooting'.format(ip=ip))
     nx.cmd(commands=['reload force'])

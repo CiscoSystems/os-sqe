@@ -1,29 +1,34 @@
 from fabric.api import task
 
 
-@task
-def reboot(yaml_path):
-    from fabric.api import settings, run
-    from lab.with_config import read_config_from_file
+class Ucsm(object):
+    def __init__(self, ucsm_ip, ucsm_username, ucsm_password):
+        self.ucsm_ip = ucsm_ip
+        self.ucsm_username = ucsm_username
+        self.ucsm_password = ucsm_password
 
-    config = read_config_from_file(yaml_path=yaml_path)
-    ucsm_ip = config['ucsm']['host']
-    ucsm_username = config['ucsm']['username']
-    ucsm_password = config['ucsm']['password']
+    def cmd(self, command):
+        from fabric.api import settings, run
+    
+        with settings(host_string='{user}@{ip}'.format(user=self.ucsm_username, ip=self.ucsm_ip), password=self.ucsm_password, connection_attempts=50, warn_only=False):
+            return run(command, shell=False).split()
 
-    prompt = {'Before rebooting, please take a configuration backup.\nDo you still want to reboot? (yes/no):': 'yes'}
-    with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
-        run('connect local-mgmt', shell=False)
-        with settings(prompts=prompt):
-            run('reboot', shell=False)
+    def service_profiles(self):
+        return self.cmd(command='scope org; sh service-profile status | no-more | egrep -V "Service|----" | cut -f 1 -d " "')
 
+    def allowed_vlans(self, profile, vnic):
+        return self.cmd('scope org ; scope service-profile {0}; scope vnic {1}; sh eth-if | no-more | egrep "Name:" | cut -f 6 -d " "'.format(profile, vnic))
 
-@task
-def cmd(ucsm_ip, ucsm_username, ucsm_password, command):
-    from fabric.api import settings, run
+    def vlans(self):
+        return self.cmd('scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "')
 
-    with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
-        return run(command, shell=False)
+    def delete_vlans(self, pattern):
+        vlan_names = self.cmd('scope eth-uplink; sh vlan|no-more| egrep "{0}" | cut -f 5 -d " "'.format(pattern))
+        for vlan_name in vlan_names:
+            self.cmd('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan_name))
+
+    def user_sessions(self):
+        return self.cmd('scope security ; show user-sessions local detail | no-more | egrep "Pid:" | cut -f 6 -d " "')
 
 
 @task
@@ -170,7 +175,7 @@ def configure_for_osp7(yaml_path):
         # Server pool
         run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
 
-        for server in lab.servers:
+        for server in lab.nodes_controlled_by_ucsm():
             server_id = server.ucsm_server_id()
 
             # add IPMI static ip:
@@ -189,32 +194,32 @@ def configure_for_osp7(yaml_path):
                     profile=server.ucsm_profile(),
                     sriov_policy='set bios-policy SRIOV;' if server.ucsm_is_sriov() else ''), shell=False)
 
-            for nic_name, nic_mac, nic_order, nic_vlans in server.nics:
+            for nic in server.get_nics():
                 # create vNIC
                 run('scope org; scope service-profile {profile}; create vnic {nic_name} fabric a-b; set identity dynamic-mac {nic_mac}; set order {order}; commit-buffer'.format(
                         profile=server.ucsm_profile(),
-                        nic_name=nic_name,
-                        nic_mac=nic_mac,
-                        order=nic_order), shell=False)
+                        nic_name=nic['nic_name'],
+                        nic_mac=nic['nic_mac'],
+                        order=nic['nic_order']), shell=False)
                 # add default VLAN to vNIC
                 run('scope org; scope service-profile {profile}; scope vnic {nic_name}; create eth-if {vlan}; set default-net yes; commit-buffer'.format(
                         profile=server.ucsm_profile(),
-                        nic_name=nic_name,
-                        vlan=nic_vlans[0]), shell=False)
-                for vlan in nic_vlans[1:]:
+                        nic_name=nic['nic_name'],
+                        vlan=nic['nic_vlans'][0]), shell=False)
+                for vlan in nic['nic_vlans'][1:]:
                     run('scope org; scope service-profile {profile}; scope vnic {nic_name}; create eth-if {vlan}; set default-net no; commit-buffer'.format(
                             profile=server.ucsm_profile(),
-                            nic_name=nic_name,
+                            nic_name=nic['nic_name'],
                             vlan=vlan), shell=False)
                 # remove default VLAN
                 run('scope org; scope service-profile {profile}; scope vnic {nic_name}; delete eth-if default; commit-buffer'.format(
                         profile=server.ucsm_profile(),
-                        nic_name=nic_name), shell=False)
+                        nic_name=nic['nic_name']), shell=False)
                 # set dynamic vnic connection policy
-                if server.ucsm_is_sriov() and nic_name in ['eth1']:
+                if server.ucsm_is_sriov() and nic['nic_name'] in ['eth1']:
                     run('scope org; scope service-profile {profile}; scope vnic {nic_name}; set adapter-policy Linux; enter dynamic-conn-policy-ref {pn}; commit-buffer'.format(
                             profile=server.ucsm_profile(),
-                            nic_name=nic_name,
+                            nic_name=nic['nic_name'],
                             pn=dynamic_vnic_policy_name), shell=False)
 
             # boot-policy
@@ -231,7 +236,7 @@ def configure_for_osp7(yaml_path):
 
         while count_attempts < 100:
             lines = run('scope org; show service-profile | egrep Associated', shell=False).split('\n')
-            if len(lines) == len(lab.servers):
+            if len(lines) == len(lab.nodes_controlled_by_ucsm()):
                 lab_logger.info('finished UCSM ' + yaml_path)
                 return
             time.sleep(10)

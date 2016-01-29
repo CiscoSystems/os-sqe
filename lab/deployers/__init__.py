@@ -12,7 +12,7 @@ class Deployer(WithConfig):
 
     def verify_cloud(self, cloud, from_server):
         from_server.run(command='neutron net-list {cloud}'.format(cloud=cloud))
-        from_server.run(command='neutron subnet-list {cloud}'.format(cloud=cloud))
+        from_server.run(command='neutron port-list {cloud}'.format(cloud=cloud))
         from_server.run(command='neutron router-list {cloud}'.format(cloud=cloud))
         from_server.run(command='openstack server list {cloud}'.format(cloud=cloud))
         for service in cloud.services():

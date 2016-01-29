@@ -36,6 +36,7 @@ class Server(object):
                      'iface_mac': {'UnknownInServer': 'UnknownInServer'}}
 
         self.nics = []
+        self.cimc = {'n9k': 'UnknownInServer', 'n9k_port': 'UnknownInServer', 'pci_port': 'UnknownInServer', 'uplink_port': 'UnknownInServer'}
         self.package_manager = None
 
     def __repr__(self):
@@ -60,8 +61,21 @@ class Server(object):
         self.ucsm['server-id'] = server_id
         self.ucsm['is-sriov'] = is_sriov
 
+    def set_cimc(self, n9k, n9k_port, pci_port, uplink_port):
+        self.cimc['n9k'] = n9k
+        self.cimc['n9k_port'] = n9k_port
+        self.cimc['pci_port'] = pci_port
+        self.cimc['uplink_port'] = uplink_port
+
+    def get_cimc(self):
+        return self.cimc
+
     def add_if(self, nic_name, nic_mac, nic_order, nic_vlans):
-        self.nics.append([nic_name, nic_mac, nic_order, nic_vlans])
+        interface = {"nic_name": nic_name, "nic_mac": nic_mac, "nic_order": nic_order, "nic_vlans": nic_vlans}
+        self.nics.append(interface)
+
+    def get_nics(self):
+        return self.nics
 
     def ucsm_profile(self):
         return self.ucsm['service-profile']
@@ -73,8 +87,11 @@ class Server(object):
         return self.ucsm['server-id']
 
     def nic_mac(self, nic_name):
-        nic = [x for x in self.nics if x[0] == nic_name]
-        return nic[0][1]
+        nic = filter(lambda x: x["nic_name"] == nic_name, self.nics)
+        if nic:
+            return nic[0]["nic_mac"]
+        else:
+            raise ValueError('Nic {0} does not exist on this server'.format(nic_name))
 
     def get_package_manager(self):
         if not self.package_manager:
@@ -279,3 +296,20 @@ class Server(object):
         self.run(command='sudo chmod 700 .ssh')
         self.run(command='sudo chmod 600 .ssh/authorized_keys')
         self.password = 'ssh_key'
+
+    def ping(self, port=22):
+        import socket
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        try:
+            s.connect((str(self.ip), port))
+            res = True
+        except (socket.timeout, socket.error):
+            res = False
+        finally:
+            s.close()
+        return res
+    
+     def actual_hostname(self):
+       return self.run('hostname').stdout.strip()

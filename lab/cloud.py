@@ -1,11 +1,15 @@
+from fabric.api import task
+
+
 class Cloud:
     ROLE_CONTROLLER = 'controller'
     ROLE_UCSM = 'ucsm'
     ROLE_NETWORK = 'network'
     ROLE_COMPUTE = 'compute'
+    ROLE_MEDIATOR = 'mediator'
 
-    def __init__(self, cloud, user, admin, tenant, password, end_point=None):
-        self.cloud = cloud
+    def __init__(self, cloud, user, admin, tenant, password, end_point=None, mediator=None):
+        self.name = cloud
         self.user = user
         self.admin = admin
         self.tenant = tenant
@@ -15,6 +19,7 @@ class Cloud:
         self.mac_2_ip = {}
         self.hostname_2_ip = {}
         self.end_point = end_point
+        self.mediator = mediator  # special server to be used to execute CLI commands for this cloud
 
     def __repr__(self):
         return '--os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(u=self.user, t=self.tenant, p=self.password, a=self.get_end_point())
@@ -93,3 +98,79 @@ export OS_AUTH_URL={end_point}
         lab_logger.info('\n')
         for role in sorted(self.info.keys()):
             lab_logger.info(role + ' ip: ' + ' '.join(self.get(role=role, parameter='ip')))
+
+    def cmd(self, cmd, server=None):
+        """Execute a single command versus this cloud
+        :param cmd: string with command to be executed
+        :param server: optional server on which this command to be executed
+        """
+
+        server = server or self.mediator
+        return server.run(command='{cmd} {creds}'.format(cmd=cmd, creds=self))
+
+    def list_networks(self):
+        output = []
+
+        for net in self._parse_cli_output(self.cmd('openstack network list')):
+            net_show = self._parse_cli_output(self.cmd('openstack network show {0}'.format(net['ID'])))
+            output += net_show
+        return output
+
+    @staticmethod
+    def _parse_cli_output(output_lines):
+        """Borrowed from tempest-lib. Parse single table from cli output.
+        :param output_lines:
+        :returns: dict with list of column names in 'headers' key and rows in 'values' key.
+        """
+
+        if not isinstance(output_lines, list):
+            output_lines = output_lines.split('\n')
+
+        if not output_lines[-1]:
+            output_lines = output_lines[:-1]  # skip last line if empty (just newline at the end)
+
+        columns = Cloud._table_columns(output_lines[2])
+        is_2_values = len(columns) == 2
+
+        def line_to_row(input_line):
+            return [input_line[col[0]:col[1]].strip() for col in columns]
+
+        headers = None
+        d2 = {}
+        output_list = []
+        for line in output_lines[3:-1]:
+            row = line_to_row(line)
+            if is_2_values:
+                d2[row[0]] = row[1]
+            else:
+                headers = headers or line_to_row(output_lines[1])
+                output_list.append({headers[i]: row[i] for i in xrange(len(columns))})
+
+        return output_list if output_list else [d2]
+
+    @staticmethod
+    def _table_columns(first_table_row):
+        """Borrowed from tempest-lib. Find column ranges in output line.
+        :returns: list of tuples (start,end) for each column detected by plus (+) characters in delimiter line.
+        """
+        positions = []
+        start = 1  # there is '+' at 0
+        while start < len(first_table_row):
+            end = first_table_row.find('+', start)
+            if end == -1:
+                break
+            positions.append((start, end))
+            start = end + 1
+        return positions
+
+
+@task
+def g10(cmd):
+    """fab cloud.g10:'neutron net-list' \t\t Run single command on G10 cloud.
+        :param cmd: command to be executed
+    """
+    from lab.deployers.DeployerExistingOSP7 import DeployerExistingOSP7
+
+    d = DeployerExistingOSP7(config={'cloud': 'g10', 'hardware-lab-config': 'g10'})
+    cloud = d.deploy_cloud([])
+    cloud.cmd(cmd=cmd)
