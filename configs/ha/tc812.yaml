@@ -11,10 +11,10 @@
 
 - method: lab.scenarios.net_subnet_port
   delay: 10
-  how_many: 20
+  how_many: 200
 
 - method: lab.disruptors.n9k
-  delay: 1000
+  delay: 2400
 
 - method: lab.scenarios.delete
-  delay: 2200
+  delay: 2600
