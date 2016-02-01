@@ -1,20 +1,27 @@
 from fabric.api import task
+from lab.lab_node import LabNode
 
 
-class Nexus(object):
+class Nexus(LabNode):
 
-    def __init__(self, n9k_ip, n9k_username, n9k_password, ucsm_ports=None, peer_link=None):
-        self.n9k_ip = n9k_ip
-        self.n9k_username = n9k_username
-        self.n9k_password = n9k_password
-        self.ucsm_ports = ucsm_ports
-        self.peer_link = peer_link
-        self.osp_ports = set((self.ucsm_ports or []) + (self.peer_link or []))
+    def __init__(self, ip, username, password, lab, ports=None):
+        # self.ucsm_ports = ucsm_ports
+        # self.peer_link = peer_link
+        self.version = None
+        self.hostname = None
+        # self.osp_ports = set((self.ucsm_ports or []) + (self.peer_link or []))
+        self.cimc_ports = []
+        super(Nexus, self).__init__(ip, username, password, lab, ports)
+
+    def net_initialize(self):
+        res = self.cmd(["sh version"])[0]['result']['body']
+        self.hostname = res['host_name']
+        self.version = res['rr_sys_ver']
 
     def _allow_feature_nxapi(self):
         from fabric.api import settings, run
 
-        with settings(host_string='{user}@{ip}'.format(user=self.n9k_username, ip=self.n9k_ip), password=self.n9k_password):
+        with settings(host_string='{user}@{ip}'.format(user=self.username, ip=self.ip), password=self.password):
             if 'disabled'in run('sh feature | i nxapi', shell=False):
                 run('conf t ; feature nxapi', shell=False)
 
@@ -24,7 +31,7 @@ class Nexus(object):
 
         body = [{"jsonrpc": "2.0", "method": "cli", "params": {"cmd": command, "version": 1}, "id": 1} for command in commands]
         try:
-            return requests.post('http://{0}/ins'.format(self.n9k_ip), auth=(self.n9k_username, self.n9k_password),
+            return requests.post('http://{0}/ins'.format(self.ip), auth=(self.username, self.password),
                                  headers={'content-type': 'application/json-rpc'}, data=json.dumps(body), timeout=timeout).json()
         except requests.exceptions.ConnectionError:
             self._allow_feature_nxapi()
@@ -66,7 +73,7 @@ class Nexus(object):
     def get_pc_for_osp(self):
         res = self.cmd(['show port-channel summary'], timeout=15)
         if res[0] == 'timeout':
-            raise Exception('Connection to N9K {ip} timed out.'.format(ip=self.n9k_ip))
+            raise Exception('Connection to N9K {ip} timed out.'.format(ip=self.ip))
         pc = []
         try:
             all_pc_w_ports = [x for x in res[0]['result']['body']['TABLE_channel']['ROW_channel'] if 'TABLE_member' in x]
@@ -81,7 +88,7 @@ class Nexus(object):
                     if port.split('Ethernet')[1] in self.osp_ports:
                          pc.append(entry['port-channel'])
         except Exception:
-            raise Exception('Error in parsing response from N9K {ip}. Response: {res}'.format(ip=self.n9k_ip, res=res))
+            raise Exception('Error in parsing response from N9K {ip}. Response: {res}'.format(ip=self.ip, res=res))
         return pc
 
     def show_interface_switchport(self, name):
@@ -137,7 +144,7 @@ class Nexus(object):
         ports_fi_a = []
         ports_fi_b = []
         ports_tor = []
-        peer_n9k_ip = None
+        peer_ip = None
 
         cdp_neis = self.cmd(['sh cdp nei det'])
         for nei in cdp_neis[0]['result']['body'][u'TABLE_cdp_neighbor_detail_info'][u'ROW_cdp_neighbor_detail_info']:
@@ -155,9 +162,9 @@ class Nexus(object):
 
         def print_or_raise(title, ports_lst):
             if ports:
-                lab_logger.info('{0} connected to {1} on {2}'.format(title, ports_lst, self.n9k_ip))
+                lab_logger.info('{0} connected to {1} on {2}'.format(title, ports_lst, self.ip))
             else:
-                raise Exception('No ports connected to {0} on {1} found!'.format(title, self.n9k_ip))
+                raise Exception('No ports connected to {0} on {1} found!'.format(title, self.ip))
 
         print_or_raise(title='FI-A', ports_lst=ports_fi_a)
         print_or_raise(title='FI-B', ports_lst=ports_fi_b)
@@ -195,7 +202,7 @@ class Nexus(object):
                       'channel-group {0} mode active'.format(pc_id)])
 
         self.cmd(['conf t', 'feature vpc'])
-        self.cmd(['conf t', 'vpc domain 1', 'peer-keepalive destination {0}'.format(peer_n9k_ip)])
+        self.cmd(['conf t', 'vpc domain 1', 'peer-keepalive destination {0}'.format(peer_ip)])
         self.cmd(['conf t', 'int port-channel {0}'.format(pc_n9k), 'vpc peer-link'])
 
         for pc_id in [pc_fi_a, pc_fi_b, pc_tor]:
@@ -203,7 +210,10 @@ class Nexus(object):
 
         self.cmd(['copy run start'])
 
-        return peer_n9k_ip
+        return peer_ip
+
+    def configure_for_osp7(yaml_path):
+        return None
 
 
 @task
@@ -214,10 +224,10 @@ def configure_for_osp7(yaml_path):
     from lab.laboratory import Laboratory
 
     l = Laboratory(yaml_path)
-    n9k_ip1, n9k_ip2, n9k_username, n9k_password = l.n9k_creds()
+    ip1, ip2, username, password = l.n9k_creds()
     user_vlan = l.external_vlan()
-    n1 = Nexus(n9k_ip1, n9k_username, n9k_password)
-    n2 = Nexus(n9k_ip2, n9k_username, n9k_password)
+    n1 = Nexus(ip1, username, password)
+    n2 = Nexus(ip2, username, password)
 
-    assert n9k_ip2, n1.execute_on_given_n9k(user_vlan=user_vlan)
-    assert n9k_ip1, n2.execute_on_given_n9k(user_vlan=user_vlan)
+    assert ip2, n1.execute_on_given_n9k(user_vlan=user_vlan)
+    assert ip1, n2.execute_on_given_n9k(user_vlan=user_vlan)
