@@ -2,7 +2,7 @@ lab-id: 8 # integer in ranage (0,99). supposed to be unique in current L2 domain
 username: root # base username which is to be used as root access to cloud nodes
 nets: {
   ipmi:     {                                           vlan: [8],    cidr: 10.30.119.0/24}, # used for UCSM KVM IPMI
-  user:     {mac-tmpl: '{lab_id:02}:25:B5:AA:{b_c_id}', vlan: [174],  cidr: 10.23.230.64/27},   # used for normal user traffic
+  user:     {mac-tmpl: '{lab_id:02}:25:B5:AA:{b_c_id}', vlan: [174],  cidr: 10.23.230.64/27},   # used for normal user trafFIc
   pxe-ext:  {mac-tmpl: '{lab_id:02}:25:B5:FF:{b_c_id}', vlan: [1],    cidr: 169.254.4.0/24,},   # used for external pxe bootstrapping of director
   pxe-int:  {mac-tmpl: '{lab_id:02}:25:B5:EE:{b_c_id}', vlan: [3009, 3000, 3001, 3002, 3003], cidr: 10.11.12.0/24},     # used for internal pxe bootstrapping of overcloud-node
 #  ceph-int: {mac-tmpl: '{lab_id:02}:25:B5:CC:{b_c_id}', vlan: [3100] }, # used for internal CEPH cluster
@@ -10,23 +10,67 @@ nets: {
   eth0:     {mac-tmpl: '{lab_id:02}:25:B5:00:{b_c_id}', vlan: [3999] }, # used for eth0 network - tenant network
   eth1:     {mac-tmpl: '{lab_id:02}:25:B5:11:{b_c_id}', vlan: [3007, 174] }, # used for eth1 network - external API network, FIP network
 }
-nodes: [
-  director: {server-id: ['1'],                         nets: [user, eth1, pxe-ext, pxe-int]},
-  control:  {server-id: ['2', '3', '4'],   is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
-  compute:  {server-id: ['10.30.119.93', '10.30.119.94'], nets: [eth0, eth1, user, pxe-int]}
-]
+nodes: {
+#  tor1:  {ip: 172.31.229.204, username: openstack-read, password: CTO1234!,
+#                                                                  ports: {1/1 : {node: n9k1,    port:  1/1 },
+#                                                                          1/4 : {node: n9k2,    port:  1/1 }
+#                                                                          }
+#        },
+
+  Nexus1: {ip: 172.31.229.207, username: admin, password: CTO1234!,
+                                                                  ports: {1/9 : {node: FI1,     port:  1/9 },
+                                                                          1/10: {node: FI2,     port:  1/10},
+                                                                          1/31: {node: Nexus2,    port:  1/31},
+                                                                          1/33: {node: Nexus2,    port:  1/33},
+                                                                          1/35: {node: Nexus2,    port:  1/35},
+                                                                          1/3:  {node: compute1,port:  3/0 },
+                                                                          1/4:  {node: compute2,port:  3/1 }
+                                                                          }
+        },
+  Nexus2: {ip: 172.31.230.234, username: admin, password: CTO1234!,
+                                                                  ports: {1/9 : {node: FI1,     port:  1/10},
+                                                                          1/10: {node: FI2,     port:  1/9 },
+                                                                          1/3:  {node: compute1,port:  3/1 },
+                                                                          1/4 : {node: compute2,port:  3/0 }
+                                                                          }
+        },
+
+#  cobbler1: {ip: 172.29.74.8, username: cobbler, password: cobbler},
+
+  compute1:  {cimc-ip: 10.30.119.93, username: admin, password: password, nets: [eth0, eth1, user, pxe-int]},
+  compute2:  {cimc-ip: 10.30.119.94, username: admin, password: password, nets: [eth0, eth1, user, pxe-int]},
+
+#  asr1k1:    {ip: 172.31.230.62,  username: admin, password:  CTO1234!, creds: {admin: {username: admin, password:  CTO1234!}, neutron: {username: neutron, password: cisco}}},
+
+  FI1: {ip: 10.30.119.67, vip: 10.30.119.66, username: admin, password: cisco, creds: {admin: {username: admin, password: cisco}, neutron: {username: neutron, password: cisco}},
+                                                                  ports: {  1 : {node: director1,port:  0 },
+                                                                            2 : {node: control1, port:  0 },
+                                                                            3 : {node: control2, port:  0 },
+                                                                            4 : {node: control3, port:  0 }
+                                                                          }
+  },
+  FI2: {ip: 10.30.119.68, vip: 10.30.119.66, username: admin, password: cisco, creds: {admin: {username: admin, password: cisco}, neutron: {username: neutron, password: cisco}}},
+
+
+
+  director1: {server-id: 1,  fi: 1,                  nets: [user, eth1, pxe-ext, pxe-int]},
+  control1:  {server-id: 2,  fi: 1, is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
+  control2:  {server-id: 3,  fi: 1, is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
+  control3:  {server-id: 4,  fi: 1, is-sriov: False, nets: [eth0, eth1, user, pxe-int]}
+}
+
 vlan_range: "1000:2000"
-ucsm: {host: 10.30.119.67, uplink-ports: ['1 9', '1 10'], uplink-vpc-id: 81, creds: {
-          admin: {username: admin, password: cisco},
-          neutron: {username: neutron, password: cisco},
-        }
-}
-n9k: {host1: 172.31.229.207, host2: 172.31.230.234, username: admin, password: CTO1234!, peer_int: ['1/31', '1/33', '1/35']}
-cobbler: {host: 172.29.74.8, username: cobbler, password: cobbler}
+
+
 rh-secret: http://172.29.173.233/redhat/osp7/redhat-developers-account.yaml  # login-password info for RH dev account used in director's registration
-n9k_fi: {n9k1_ucsm1: ['1/9','1/9'], n9k1_ucsm2: ['1/10','1/10'], n9k2_ucsm1: ['1/9','1/10'], n9k2_ucsm2: ['1/10','1/9'],}
+port_list: [  {"172.31.229.207": "1/9", "10.30.119.67": "1/9" }, {"172.31.229.207":"1/10", "10.30.119.68": "1/10"},
+              {"172.31.230.234": "1/9", "10.30.119.67": "1/10"}, {"172.31.230.234":"1/10", "10.30.119.68": "1/9" },
+              {"10.30.119.93": "3/0", "172.31.229.207": "1/3"}, {"10.30.119.94": "3/0", "172.31.230.234": "1/4"},
+              {"172.31.229.207": "1/31", "172.31.230.234": "1/31"},{"172.31.229.207": "1/33", "172.31.230.234": "1/33"},
+              {"172.31.229.207": "1/35", "172.31.230.234": "1/35"} ]
 cimc: {
-10.30.119.93: {n9k: 172.31.229.207, n9k_port: 1/3, username: admin, password: password, uplink_port: 0, pci_slot: 3},
-10.30.119.94: {n9k: 172.31.230.234, n9k_port: 1/4, username: admin, password: password, uplink_port: 0, pci_slot: 3}
+10.30.119.93: {n9k: 172.31.229.207, n9k_port: 1/3, username: admin, password: password, port: "3/0", pci_slot: 3},
+10.30.119.94: {n9k: 172.31.230.234, n9k_port: 1/4, username: admin, password: password, port: "3/0", pci_slot: 3}
 }
+connection_type: vlan
 logstash: "172.29.173.236:9999"

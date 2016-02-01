@@ -14,7 +14,7 @@ class ProviderUCSM(Provider):
 
     def create_servers(self):
         """They are not actually created, their properties are defined by UCSM"""
-        from lab.providers.ucsm import read_config_ssh
+        from lab.providers.fi import read_config_ssh
 
         return read_config_ssh(yaml_path=self.yaml_path, is_director=False).values()
 

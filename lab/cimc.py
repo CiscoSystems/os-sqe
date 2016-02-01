@@ -1,11 +1,16 @@
 from ImcSdk import *
 from fabric.api import task
+from lab.lab_node import LabNode
 
 
-class LabCimces(object):
-    def __init__(self, yaml_path):
-        from lab.laboratory import Laboratory
-        self.lab = Laboratory(config_path=yaml_path)
+class Cimc(LabNode):
+
+    def __init__(self, ip, username, password, lab):
+        self.managed_server = None
+        super(Cimc, self).__init__(ip, username, password, lab)
+
+    def add_managed_server(self, server):
+        self.managed_server = server
 
     def cleanup(self):
         from lab.logger import lab_logger
@@ -24,6 +29,9 @@ class LabCimces(object):
             params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': 'Enabled'}
             handle.set_imc_managedobject(None, class_id='BiosVfLOMPortOptionROM', params=params, dump_xml='true')
             handle.logout()
+
+    def cmd(self, cmd):
+        return NotImplementedError
 
     def configure_for_osp7(self):
         from lab.logger import lab_logger
@@ -56,7 +64,7 @@ def cleanup(yaml_path):
     """fab cimc.cleanup:g10 \t\t\t Cleanup all UCSs controlled by CIMC for the given lab.
         :param yaml_path: Valid hardware lab config, usually yaml from $REPO/configs
     """
-    cimces = LabCimces(yaml_path)
+    cimces = Cimc(yaml_path)
     cimces.cleanup()
 
 
@@ -65,5 +73,5 @@ def configure_for_osp7(yaml_path):
     """fab cimc.configure_for_osp7:g10 \t\t Configure all UCSs controlled by CIMC for the given lab.
         :param yaml_path: Valid hardware lab config, usually yaml from $REPO/configs
     """
-    cimces = LabCimces(yaml_path)
+    cimces = Cimc(yaml_path)
     cimces.configure_for_osp7()

@@ -1,6 +1,6 @@
 def start(lab, log, args):
     import time
-    from lab.providers import ucsm, n9k
+    from lab.providers import fi, n9k
 
     unique_pattern_in_name = args.get('unique_pattern_in_name', 'sqe-test')
     server = lab.controllers()[0]
@@ -20,7 +20,7 @@ def start(lab, log, args):
                 log.info("n_{0}s={1} status=deleted".format(ob_type, i))
                 i -= 1
     ucsm_ip, ucsm_username, ucsm_password = lab.ucsm_creds()
-    fi = ucsm.Ucsm(ucsm_ip, ucsm_username, ucsm_password)
+    fi = fi.FI(ucsm_ip, ucsm_username, ucsm_password)
     fi.delete_vlans('OS-')
     n9k_ip1, n9k_ip2, n9k_username, n9k__password = lab.n9k_creds()
     nx1 = n9k.Nexus(n9k_ip1, n9k_username, n9k__password)

@@ -1,16 +1,22 @@
 from fabric.api import task
+from lab.lab_node import LabNode
 
 
-class Ucsm(object):
-    def __init__(self, ucsm_ip, ucsm_username, ucsm_password):
-        self.ucsm_ip = ucsm_ip
-        self.ucsm_username = ucsm_username
-        self.ucsm_password = ucsm_password
+class FI(LabNode):
+    def __init__(self, ip, username, password, lab, vip):
+        self.version = None
+        self.hostname = None
+        self.servers = set()
+        self.vip = vip
+        super(FI, self).__init__(ip, username, password, lab)
+
+    def add_managed_server(self, server):
+        self.servers.add(server)
 
     def cmd(self, command):
         from fabric.api import settings, run
     
-        with settings(host_string='{user}@{ip}'.format(user=self.ucsm_username, ip=self.ucsm_ip), password=self.ucsm_password, connection_attempts=50, warn_only=False):
+        with settings(host_string='{user}@{ip}'.format(user=self.username, ip=self.vip), password=self.password, connection_attempts=50, warn_only=False):
             return run(command, shell=False).split()
 
     def service_profiles(self):
@@ -44,10 +50,10 @@ def read_config_ssh(yaml_path, is_director=True):
 
     l = Laboratory(config_path=yaml_path)
 
-    ucsm_ip, ucsm_username, ucsm_password = l.ucsm_creds()
+    ip, username, password = l.ucsm_creds()
 
     servers = {}
-    with settings(host_string='{user}@{ip}'.format(user=ucsm_username, ip=ucsm_ip), password=ucsm_password, connection_attempts=50, warn_only=False):
+    with settings(host_string='{user}@{ip}'.format(user=username, ip=ip), password=password, connection_attempts=50, warn_only=False):
         ipmi_users = run('scope org; scope ipmi-access-profile IPMI; sh ipmi-user | egrep -v "Description|---|IPMI" | cut -f 5 -d " "', shell=False, quiet=True).split('\n')
         if 'cobbler' not in ipmi_users:
             raise Exception('No IPMI user "cobbler" in UCSM! Add it with password "cobbler" manually')
@@ -68,7 +74,7 @@ def read_config_ssh(yaml_path, is_director=True):
             dynamic_policy_line = run('scope org; scope service-profile {0}; sh dynamic-vnic-conn-policy'.format(profile_name), shell=False, quiet=True)
             server = Server(ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM')
             server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
-            server.set_ucsm(ip=ucsm_ip, username=ucsm_username, password=ucsm_password, service_profile=profile_name, server_id=server_id, is_sriov=len(dynamic_policy_line) != 0)
+            server.set_ucsm(ip=ip, username=username, password=password, service_profile=profile_name, server_id=server_id, is_sriov=len(dynamic_policy_line) != 0)
             server.role = profile_name.split('-')[-1]
             if 'director' in profile_name:
                 profile_name = 'director'

@@ -15,12 +15,12 @@ def deploy_lab(config_path):
     """fab deploy_lab:g10 \t\t\t\t Deploy the given lab from scratch including FI&N9K configuration.
         :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
     """
-    from lab.providers import ucsm
+    from lab.providers import fi
     from lab.providers import cobbler
     from lab.configurators import osp7_install
 
     cobbler.configure_for_osp7(yaml_path=config_path)
-    ucsm.configure_for_osp7(yaml_path=config_path)
+    fi.configure_for_osp7(yaml_path=config_path)
     osp7_install.configure_for_osp7(yaml_path=config_path)
 
 
@@ -89,11 +89,11 @@ def ucsmg10(cmd):
         :param cmd: command to be executed
     """
     from lab.laboratory import Laboratory
-    from lab.providers.ucsm import Ucsm
+    from lab.providers.fi import FI
 
     l = Laboratory(config_path='g10.yaml')
     ucsm_ip, ucsm_username, ucsm_password = l.ucsm_creds()
-    ucsm = Ucsm(ucsm_ip, ucsm_username, ucsm_password)
+    ucsm = FI(ucsm_ip, ucsm_username, ucsm_password)
     ucsm.cmd(cmd)
 
 

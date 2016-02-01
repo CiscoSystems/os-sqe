@@ -1,5 +1,11 @@
 import tempfile
 from lab import with_config
+from netaddr import IPNetwork
+from lab.server import Server
+from lab.providers.n9k import Nexus
+from lab.port import Port
+from lab.providers.fi import FI
+from lab.cimc import Cimc
 
 
 class Laboratory(with_config.WithConfig):
@@ -10,11 +16,7 @@ class Laboratory(with_config.WithConfig):
         pass
 
     def __init__(self, config_path):
-        from netaddr import IPNetwork
-        from lab.server import Server
-        from lab.providers.n9k import Nexus
 
-        import validators
 
         super(Laboratory, self).__init__(config=None)
 
@@ -31,54 +33,54 @@ class Laboratory(with_config.WithConfig):
         self.ipmi_netmask = ipmi_net.netmask
         self.servers_controlled_by_ucsm = []
         self.servers_controlled_by_cimc = []
+        self.all_nodes = dict()
         shift_user = 4  # need to start from -2 due to IPNetwork[-1] is broadcast address
         shift_ipmi = 4  # need to start from 4 due to IPNetwork[0-1-2-3] are network and gw addresses
-        ucsm_host, ucsm_user, ucsm_password = self.ucsm_creds()
-        for x in self.cfg['nodes']:
-            for role, val in x.iteritems():
-                for role_counter, server_id in enumerate(val['server-id']):
-                    server = Server(ip=user_net[-2] if 'director' in role else user_net[shift_user],
+        for name, value in self.cfg['nodes'].iteritems():
+            import re
+            role_counter = int(re.findall('\d+', name)[0])
+            role_name = name.split(str(role_counter))[0]
+
+            if role_name in ['control', 'compute', 'director', 'ceph']:
+                server = Server(ip=user_net[-2] if 'director' in role_name else user_net[shift_user],
+                                    lab=self,
                                     hostname='g{0}-director.ctocllab.cisco.com'.format(self.cfg['lab-id']),
                                     username=self.cfg['username'],
                                     net=user_net,
-                                    role=role,
+                                    role=role_name,
                                     n_in_role=role_counter)
-                    if validators.ipv4(server_id):
-                        server._tmp_dir_exists = True
-                        server_id_short = server_id.split('.')[-1]
-                        b_c_id = 'A0:{0}'.format(int(server_id_short))
-                        server.set_ipmi(ip=server_id, username=self.cfg['cimc'][server_id]['username'],
-                                        password=self.cfg['cimc'][server_id]['password'])
-                        server.set_cimc(self.cfg['cimc'][server_id]['n9k'],
-                                        self.cfg['cimc'][server_id]['n9k_port'],
-                                        self.cfg['cimc'][server_id]['pci_slot'],
-                                        self.cfg['cimc'][server_id]['uplink_port'])
-                        self.servers_controlled_by_cimc.append(server)
-                    else:
-                        if '/' in server_id:
-                            b_c_id = 'B{0}:{1:02}'.format(int(server_id.split('/')[0]), int(server_id.split('/')[1]))
-                        else:
-                            b_c_id = 'C0:{0:02}'.format(int(server_id))
-                        profile = 'G{0}-{1}-{2}'.format(self.cfg['lab-id'], b_c_id.replace(':', '-'), role)
-                        server.set_ucsm(ip=ucsm_host, username=ucsm_user, password=ucsm_password,
-                                        service_profile=profile, server_id=server_id, is_sriov=val.get('is-sriov', False))
-                        server.set_ipmi(ip=ipmi_net[shift_ipmi], username=self.cfg['cobbler']['username'], password=self.cfg['cobbler']['password'])
-                        self.servers_controlled_by_ucsm.append(server)
-                    for order, nic_name in enumerate(val['nets'], start=1):
-                        mac = self.cfg['nets'][nic_name]['mac-tmpl'].format(lab_id=self.cfg['lab-id'], b_c_id=b_c_id)
-                        server.add_if(nic_name=nic_name, nic_mac=mac, nic_order=order, nic_vlans=self.cfg['nets'][nic_name]['vlan'])
-                    shift_user += 1
-                    shift_ipmi += 1
-        self.net_nodes = [Server(ip=ucsm_host, username=ucsm_user, password=ucsm_password, role='ucsm', n_in_role=0),
-                          Server(ip=self.cfg['n9k']['host1'], username=self.cfg['n9k']['username'], password=self.cfg['n9k']['password'], role='n9k', n_in_role=1),
-                          Server(ip=self.cfg['n9k']['host2'], username=self.cfg['n9k']['username'], password=self.cfg['n9k']['password'], role='n9k', n_in_role=2)
-                          ]
-        self.n9ks = {self.cfg['n9k']['host1']: Nexus(self.cfg['n9k']['host1'], self.cfg['n9k']['username'], self.cfg['n9k']['password'],
-                                                     [self.cfg['n9k_fi']['n9k1_ucsm1'][0], self.cfg['n9k_fi']['n9k1_ucsm2'][0]], self.cfg['n9k']['peer_int']),
-                     self.cfg['n9k']['host2']: Nexus(self.cfg['n9k']['host2'], self.cfg['n9k']['username'], self.cfg['n9k']['password'],
-                                                     [self.cfg['n9k_fi']['n9k1_ucsm1'][0], self.cfg['n9k_fi']['n9k2_ucsm2'][0]], self.cfg['n9k']['peer_int'])}
+                self.all_nodes[name] = server
+                if value.get('cimc-ip', False):
+                    server_control = Cimc(value['cimc-ip'], value['username'], value['password'], self)
+                    self.all_nodes[value['cimc-ip']] = server_control
+                    server.set_cimc_or_ucsm(server_control)
+                    self.servers_controlled_by_cimc.append(server)
+                else:
+                    self.servers_controlled_by_ucsm.append(server)
+                shift_user += 1
+                shift_ipmi += 1
+            elif role_name == 'Nexus':
+                self.all_nodes[value['ip']] = Nexus(value['ip'], value['username'], value['password'], self)
+            elif role_name == 'FI':
+                self.all_nodes[value['ip']] = FI(value['ip'], value['username'], value['password'], self, value['vip'])
 
-        self._user_net_range = user_net[4], user_net[-3]  # will be provided to OSP7 deployer as a range for vip and controllers -2 is director
+        for node_name, node_entry in self.cfg['nodes'].iteritems():
+            if node_entry.get('ports', False):
+                node = self.all_nodes[node_entry['ip']]
+                for port_no, other_port in node_entry['ports'].iteritems():
+                    port = Port(node, port_no)
+                    another_node_name = self.cfg['nodes'][other_port['node']].get('ip', False) or other_port['node']
+                    another_node = self.all_nodes[another_node_name]
+                    port.connect_port(Port(another_node, other_port['port']))
+                    # Add node UCSM to control
+                    if isinstance(node, FI):
+                        [server.set_cimc_or_ucsm(node) for server in self.servers_controlled_by_ucsm]
+                        self.ucsm = node
+
+    def get_ucsm(self):
+        for node in self.all_nodes.itervalues():
+            if isinstance(node, FI):
+                return node
 
     def director(self):
         return self.servers()[0]

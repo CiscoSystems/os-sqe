@@ -1,4 +1,7 @@
-class Server(object):
+from lab.lab_node import LabNode
+
+
+class Server(LabNode):
 
     _temp_dir = None
 
@@ -14,22 +17,20 @@ class Server(object):
         if not self._tmp_dir_exists:
             from fabric.api import settings
 
-            if self.run('test -d {0}'.format(self._temp_dir), warn_only=True).return_code:
-                self._tmp_dir_exists = self.run('mkdir -p {0}'.format(self._temp_dir)).return_code == 0
+            # if self.run('test -d {0}'.format(self._temp_dir), warn_only=True).return_code:
+            #     self._tmp_dir_exists = self.run('mkdir -p {0}'.format(self._temp_dir)).return_code == 0
         return self._temp_dir if self._tmp_dir_exists else None
 
-    def __init__(self, ip, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', n_in_role=0, ssh_public_key='N/A', ssh_port=22):
-        self.ip = ip
+    def __init__(self, ip, lab, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', n_in_role=0, ssh_public_key='N/A', ssh_port=22):
         self.net = net
         self.ip_mac = 'UnknownInServer'
         self.role = role
         self.n_in_role = n_in_role
         self.hostname = hostname
-        self.username = username
-        self.password = password
         self.ssh_public_key = ssh_public_key
         self.ssh_port = ssh_port
         self._tmp_dir_exists = False
+        self.cimc_or_ucsm = None
 
         self.ipmi = {'ip': 'UnknownInServer', 'username': 'UnknownInServer', 'password': 'UnknownInServer'}
         self.ucsm = {'ip': 'UnknownInServer', 'username': 'UnknownInServer', 'password': 'UnknownInServer', 'service-profile': 'UnknownInServer',
@@ -38,6 +39,14 @@ class Server(object):
         self.nics = []
         self.cimc = {'n9k': 'UnknownInServer', 'n9k_port': 'UnknownInServer', 'pci_port': 'UnknownInServer', 'uplink_port': 'UnknownInServer'}
         self.package_manager = None
+        super(Server, self).__init__(ip, username, password, lab)
+
+    def set_cimc_or_ucsm(self, node):
+        self.cimc_or_ucsm = node
+        node.add_managed_server(self)
+
+    def add_port(self, port):
+        self.ports.append(port)
 
     def __repr__(self):
         return 'sshpass -p {0} ssh {1}@{2} {3}'.format(self.password, self.username, self.ip, self.name())
@@ -60,15 +69,6 @@ class Server(object):
         self.ucsm['service-profile'] = service_profile
         self.ucsm['server-id'] = server_id
         self.ucsm['is-sriov'] = is_sriov
-
-    def set_cimc(self, n9k, n9k_port, pci_port, uplink_port):
-        self.cimc['n9k'] = n9k
-        self.cimc['n9k_port'] = n9k_port
-        self.cimc['pci_port'] = pci_port
-        self.cimc['uplink_port'] = uplink_port
-
-    def get_cimc(self):
-        return self.cimc
 
     def add_if(self, nic_name, nic_mac, nic_order, nic_vlans):
         interface = {"nic_name": nic_name, "nic_mac": nic_mac, "nic_order": nic_order, "nic_vlans": nic_vlans}
@@ -115,6 +115,9 @@ class Server(object):
         else:
             kwargs['password'] = self.password
         return kwargs
+
+    def cmd(self, command, in_directory='.', warn_only=False):
+        self.run(command, in_directory, warn_only)
 
     def run(self, command, in_directory='.', warn_only=False):
         """Do run with possible sudo on remote server

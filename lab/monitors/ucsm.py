@@ -1,6 +1,6 @@
 def start(lab, log, args):
     import validators
-    from lab.providers import ucsm
+    from lab.providers import fi
 
     is_print_vlans = args.get('is-print-vlans', False)
     is_show_details = args.get('is_show_details', False)
@@ -12,7 +12,7 @@ def start(lab, log, args):
     else:
         ucsm_ip, ucsm_username, ucsm_password = lab.ucsm_creds()
 
-    fi = ucsm.Ucsm(ucsm_ip, ucsm_username, ucsm_password)
+    fi = fi.FI(ucsm_ip, ucsm_username, ucsm_password)
 
     service_profiles = fi.service_profiles()
     # Vlan profiles
