@@ -65,18 +65,23 @@ class Nexus(object):
 
     def get_pc_for_osp(self):
         res = self.cmd(['show port-channel summary'])
+        if res[0] == 'timeout':
+            raise Exception('Connection to N9K {ip} timed out. Response: {res}'.format(ip=self.n9k_ip, res=res[0]))
         pc = []
-        all_pc_w_ports = [x for x in res[0]['result']['body']['TABLE_channel']['ROW_channel'] if 'TABLE_member' in x]
-        for entry in all_pc_w_ports:
-            ports = entry['TABLE_member']['ROW_member']
-            if isinstance(ports, list):
-                port_list = set([x['port'].split('Ethernet')[1] for x in ports])
-                if port_list.issubset(self.osp_ports):
-                    pc.append(entry['port-channel'])
-            else:
-                port = ports['port']
-                if port.split('Ethernet')[1] in self.osp_ports:
-                     pc.append(entry['port-channel'])
+        try:
+            all_pc_w_ports = [x for x in res[0]['result']['body']['TABLE_channel']['ROW_channel'] if 'TABLE_member' in x]
+            for entry in all_pc_w_ports:
+                ports = entry['TABLE_member']['ROW_member']
+                if isinstance(ports, list):
+                    port_list = set([x['port'].split('Ethernet')[1] for x in ports])
+                    if port_list.issubset(self.osp_ports):
+                        pc.append(entry['port-channel'])
+                else:
+                    port = ports['port']
+                    if port.split('Ethernet')[1] in self.osp_ports:
+                         pc.append(entry['port-channel'])
+        except Exception:
+            raise Exception('Error in parsing response from N9K {ip}. Response: {res}'.format(ip=self.n9k_ip, res=res))
         return pc
 
     def show_interface_switchport(self, name):
