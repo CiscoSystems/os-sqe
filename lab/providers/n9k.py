@@ -9,7 +9,7 @@ class Nexus(object):
         self.n9k_password = n9k_password
         self.ucsm_ports = ucsm_ports
         self.peer_link = peer_link
-        self.osp_ports = set(self.ucsm_ports + self.peer_link)
+        self.osp_ports = set((self.ucsm_ports or []) + (self.peer_link or []))
 
     def _allow_feature_nxapi(self):
         from fabric.api import settings, run
