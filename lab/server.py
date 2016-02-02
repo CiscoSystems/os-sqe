@@ -311,5 +311,5 @@ class Server(object):
             s.close()
         return res
     
-     def actual_hostname(self):
-       return self.run('hostname').stdout.strip()
+    def actual_hostname(self):
+        return self.run('hostname').stdout.strip()
