@@ -18,17 +18,17 @@ class Nexus(object):
             if 'disabled'in run('sh feature | i nxapi', shell=False):
                 run('conf t ; feature nxapi', shell=False)
 
-    def _rest_api(self, commands):
+    def _rest_api(self, commands, timeout=2):
         import requests
         import json
 
         body = [{"jsonrpc": "2.0", "method": "cli", "params": {"cmd": command, "version": 1}, "id": 1} for command in commands]
         try:
             return requests.post('http://{0}/ins'.format(self.n9k_ip), auth=(self.n9k_username, self.n9k_password),
-                                 headers={'content-type': 'application/json-rpc'}, data=json.dumps(body), timeout=2).json()
+                                 headers={'content-type': 'application/json-rpc'}, data=json.dumps(body), timeout=timeout).json()
         except requests.exceptions.ConnectionError:
             self._allow_feature_nxapi()
-            return self._rest_api(commands=commands)
+            return self._rest_api(commands=commands, timeout=timeout)
         except requests.exceptions.ReadTimeout:
             return 'timeout' if len(commands) == 1 else ['timeout'] * len(commands)
 
@@ -36,12 +36,12 @@ class Nexus(object):
         res = self.cmd(['sh switchname'])
         return res[0]['result']['body']['hostname']
 
-    def cmd(self, commands):
+    def cmd(self, commands, timeout=2):
         if isinstance(commands, basestring):  # it might be provided as a string where commands are separated by ','
             commands = commands.strip('[]')
             commands = commands.split(',')
 
-        results = self._rest_api(commands=commands)
+        results = self._rest_api(commands=commands, timeout=timeout)
         if len(commands) == 1:
             results = [results]
         for i, x in enumerate(results, start=0):
@@ -64,9 +64,9 @@ class Nexus(object):
         return [x['port-channel'] for x in res[0]['result']['body']['TABLE_channel']['ROW_channel']]
 
     def get_pc_for_osp(self):
-        res = self.cmd(['show port-channel summary'])
+        res = self.cmd(['show port-channel summary'], timeout=15)
         if res[0] == 'timeout':
-            raise Exception('Connection to N9K {ip} timed out. Response: {res}'.format(ip=self.n9k_ip, res=res[0]))
+            raise Exception('Connection to N9K {ip} timed out.'.format(ip=self.n9k_ip))
         pc = []
         try:
             all_pc_w_ports = [x for x in res[0]['result']['body']['TABLE_channel']['ROW_channel'] if 'TABLE_member' in x]
