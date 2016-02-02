@@ -16,5 +16,5 @@ wget https://raw.githubusercontent.com/pypa/pip/develop/contrib/get-pip.py
 sudo python get-pip.py
 
 # Install packages
-sudo apt-get install -y openjdk-7-jre git python-dev libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev gzip
+sudo apt-get install -y openjdk-7-jre git python-dev libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev gzip pip
 sudo pip install ecdsa junitxml ncclient
