@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 from fabric.api import task
 from lab import decorators
-from fabs import jenkins_reports, elk
+
+from fabs import jenkins_reports, elk, test
 from lab.providers import cobbler, n9k
 from lab.runners import rally
 from lab import cimc, cloud
