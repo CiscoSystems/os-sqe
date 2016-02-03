@@ -156,30 +156,17 @@ class Server(object):
             with lcd(in_directory):
                 return local(command=command, capture=True)
 
-    def put(self, string_to_put, file_name, in_directory='.'):
-        """Put given string as file to remote server
-        :param string_to_put:
-        :param file_name:
-        :param in_directory:
+    def put(self, local_path, remote_path, is_sudo):
+        """Faced the normal fabric put to provide server details from the class
+        :param local_path:
+        :param remote_path:
+        :param is_sudo:
         :return:
         """
-        from fabric.api import put, settings, cd, lcd, local
-        import os
-        from StringIO import StringIO
+        from fabric.api import put, settings
 
-        use_sudo = True if in_directory.startswith('/etc') else False
-
-        if in_directory != '.':
-            self.run(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
-
-        if self.ip == 'localhost' or self.ip == '127.0.0.1':
-            with lcd(in_directory):
-                local('echo "{0}" > {1}'.format(string_to_put, file_name))
-                return os.path.abspath(os.path.join(in_directory, file_name))
-        else:
-            with settings(**self.construct_settings(warn_only=False)):
-                with cd(in_directory):
-                    return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)
+        with settings(**self.construct_settings(warn_only=False)):
+                return put(local_path=local_path, remote_path=remote_path, use_sudo=is_sudo)
 
     def put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
         """Put given string as file to remote server
