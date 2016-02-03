@@ -48,6 +48,7 @@ def configure_for_osp7(yaml_path):
                                             '"physnet": "datacentre",',
                                             '"servers": {',
                                             '\t' + ',\n\t\t'.join(n9k_servers[n9k.n9k_ip]),
+                                            '\t}',
                                             '}']
     nodes_string = '{{"nodes":[\n\t{{\n\t  {0}\n\t}}\n    ]\n }}'.format('\n\t},\n\t{\n\t  '.join(nodes))
     ucsm_ip, ucsm_username, ucsm_password = lab.ucsm_creds()
