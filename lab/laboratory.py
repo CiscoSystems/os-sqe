@@ -146,7 +146,7 @@ class Laboratory(with_config.WithConfig):
         return self.cfg['nets']['eth1']['vlan'][1]
 
     def testbed_vlan(self):
-        return self.cfg['nets']['eth1']['vlan'][1]
+        return self.cfg['nets']['pxe-int']['vlan'][1]
 
     def storage_vlan(self):
         return self.cfg['nets']['pxe-int']['vlan'][2]
