@@ -15,6 +15,14 @@ class DeployerExistingOSP7(Deployer):
         self.lab_cfg = config['hardware-lab-config']
         self.cloud_name = config['cloud']
 
+    @staticmethod
+    def get_deployment_info(director):
+        import json
+        import lab
+
+        body = director.get_file_from_dir('osp_install_run.json', '/etc')
+        lab.OSP7_INFO = json.loads(body)
+
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
         from lab.laboratory import Laboratory
@@ -23,6 +31,8 @@ class DeployerExistingOSP7(Deployer):
             director = list_of_servers[0]
         else:
             director = Laboratory(config_path=self.lab_cfg).director()
+
+        self.get_deployment_info(director=director)
         rc = director.run(command='cat /home/stack/overcloudrc')
         user = tenant = password = end_point = None
         for line in rc.split('\n'):
