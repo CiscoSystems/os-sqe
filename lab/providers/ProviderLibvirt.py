@@ -74,7 +74,7 @@ class ProviderLibvirt(Provider):
             lab_logger.info('Network {0} created'.format(name))
 
     def save_xml(self, name, xml):
-        self.local.put(string_to_put=xml, file_name=name, in_directory=self.dir_for_saved_xml)
+        self.local.put_string_as_file_in_dir(string_to_put=xml, file_name=name, in_directory=self.dir_for_saved_xml)
 
     @decorators.repeat_until_not_false(n_repetitions=50, time_between_repetitions=5)
     def ip_for_mac_by_looking_at_libvirt_leases(self, net, mac):

@@ -95,7 +95,7 @@ class DeployerOSP7(Deployer):
                                                                    cloud_password=self.cloud_password,
                                                                    images_dir=self.images_dir
                                                                    )
-        self.director_server.put(string_to_put=undercloud_config, file_name='undercloud.conf')
+        self.director_server.put_string_as_file_in_dir(string_to_put=undercloud_config, file_name='undercloud.conf')
         self.director_server.get(remote_path='undercloud.conf', local_path='undercloud.conf')
 
     def __deploy_undercloud(self):
@@ -145,7 +145,7 @@ class DeployerOSP7(Deployer):
                   '--neutron-network-vlan-ranges datacentre:10:2500 ' \
                   '--ntp-server 1.ntp.esl.cisco.com'.format(n_controls=n_controls, n_computes=n_computes)
 
-        self.director_server.put(string_to_put=command, file_name='RE-DEPLOY')
+        self.director_server.put_string_as_file_in_dir(string_to_put=command, file_name='RE-DEPLOY')
         self.director_server.run(command=command)
 
     def __assign_ips_to_user(self):
@@ -180,14 +180,14 @@ class DeployerOSP7(Deployer):
                                     'pm_user': server.ipmi['username'],
                                     'pm_password': server.ipmi['password'],
                                     'pm_addr': server.ipmi['ip']})
-        self.director_server.put(string_to_put=json.dumps(config), file_name='overcloud.json')
+        self.director_server.put_string_as_file_in_dir(string_to_put=json.dumps(config), file_name='overcloud.json')
         self.director_server.get(remote_path='overcloud.json', local_path='overcloud.json')
 
         yaml_name = 'networking-cisco-environment.yaml'
         config_tmpl = read_config_from_file(yaml_path=yaml_name, directory='osp7', is_as_string=True)
         config = config_tmpl.format(network_ucsm_ip=ucsm_ip, network_ucsm_username=ucsm_username, network_ucsm_password=ucsm_password,
                                     network_ucsm_host_list=','.join(mac_profiles))
-        self.director_server.put(string_to_put=config, file_name=yaml_name, in_directory='templates')
+        self.director_server.put_string_as_file_in_dir(string_to_put=config, file_name=yaml_name, in_directory='templates')
 
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
