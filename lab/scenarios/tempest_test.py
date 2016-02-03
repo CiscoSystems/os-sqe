@@ -6,7 +6,6 @@ def start(lab, log, args):
     from fabric.context_managers import cd
 
     test = args['test']
-    etime = args['etime']
     tempest_path = os.path.join(lab.director().temp_dir, 'tempest')
     git = args['git']
     branch = args.get('branch', 'proposed')
@@ -29,7 +28,6 @@ def start(lab, log, args):
         raise Exception('Lock file [{0}] exists. Another scenario is working with the directory.'.format(lock_file))
 
     # If there is no tempest yet run this scenario in the beginning of the test.
-    # Set etime to smallest value to let it run once or so.
     with settings(command_timeout=60 * 5), cd(tempest_path):
         if lab.director().run('git status', warn_only=True).return_code > 0:
             # Create lock file
@@ -45,9 +43,7 @@ def start(lab, log, args):
             # Remove lock file
             lab.director().run('rm {0}'.format(lock_file))
 
-    start_time = datetime.datetime.now()
     with cd(tempest_path):
         lab.director().run('source venv/bin/activate && testr init')
-        while (datetime.datetime.now() - start_time).seconds < etime:
-            res = lab.director().run('source venv/bin/activate && testr run {0}'.format(test), warn_only=True)
-            log.info('run={0}, result={1}'.format(test, res.return_code))
+        res = lab.director().run('source venv/bin/activate && testr run {0}'.format(test), warn_only=True)
+        log.info('run={0}, result={1}'.format(test, res.return_code))
