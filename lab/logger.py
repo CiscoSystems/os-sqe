@@ -18,6 +18,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record):
         import re
         import json
+        from lab import REPO_TAG
 
         d = {}
         for key_value in re.split(pattern='[ ,]', string=record.message):
@@ -37,6 +38,7 @@ class JsonFormatter(logging.Formatter):
         if '@timestamp' not in d:
             d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
         d['name'] = record.name
+        d['repo_tag'] = REPO_TAG
         if record.exc_text:
             d['EXCEPTION'] = record.exc_text.replace('\n', '')
         return json.dumps(d)
