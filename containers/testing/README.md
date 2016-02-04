@@ -63,4 +63,12 @@ in [compute] section of default-overrides.conf.
 
 
 ## Running cloud99
-    TODO
+    cd /cloud99
+    edit openrc 
+    source openrc
+    source install.sh
+    rally-manage db recreate
+    rally deployment create --fromenv --name=t3<deployment_name>
+    rally deployment check
+    
+Install sshpass
