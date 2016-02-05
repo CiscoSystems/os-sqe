@@ -37,7 +37,7 @@ exit
     director = context.director()
     script_path = os.path.join(director.temp_dir, script_name)
 
-    director.put(script, script_path, '/')
+    director.put_string_as_file_in_dir(script, script_path, '/')
     director.run('yum install -y expect')
     res = director.run('expect {0}'.format(script_path), warn_only=True)
     log.info('result={0}'.format(res.return_code))

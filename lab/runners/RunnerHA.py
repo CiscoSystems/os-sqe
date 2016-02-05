@@ -82,3 +82,5 @@ class RunnerHA(Runner):
         pool = multiprocessing.Pool(len(items_to_run))
         pool.map(starter, items_to_run)
         elk.json_to_es()
+        self.get_artefacts(server=cloud.mediator)
+        self.store_artefacts()
