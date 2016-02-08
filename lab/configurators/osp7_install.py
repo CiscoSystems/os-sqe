@@ -51,7 +51,7 @@ def configure_for_osp7(yaml_path):
                                             '\t}',
                                             '}']
     nodes_string = '{{"nodes":[\n\t{{\n\t  {0}\n\t}}\n    ]\n }}'.format('\n\t},\n\t{\n\t  '.join(nodes))
-    ucsm_ip, ucsm_username, ucsm_password = lab.ucsm_creds()
+    ucsm_ip, ucsm_username, ucsm_password = lab.ucsm_creds(user='neutron')
     cfg = osp7_install_template.format(director_node_hostname=lab.director().hostname,
                                        overcloud_external_vlan=lab.external_vlan(),
                                        testbed_vlan=lab.testbed_vlan(),
