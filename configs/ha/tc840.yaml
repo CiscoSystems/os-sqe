@@ -34,25 +34,11 @@
   node_name: control-2
   process: neutron-server
 
-- method: lab.scenarios.tempest_test
-  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
-  etime: 800
-  git: https://github.com/cisco-openstack/tempest.git
-  branch: proposed
-  tempest_config_dir: /home/stack
+- method: lab.scenarios.one_instance
+  duration: 800
 
-- method: lab.scenarios.tempest_test
-  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
-  etime: 800
-  ramp_up_time: 6
-  git: https://github.com/cisco-openstack/tempest.git
-  branch: proposed
-  tempest_config_dir: /home/stack
+- method: lab.scenarios.one_instance
+  duration: 800
 
-- method: lab.scenarios.tempest_test
-  test: tempest.thirdparty.cisco.cvd.UCSMTest.test_create_delete_networks
-  etime: 800
-  ramp_up_time: 12
-  git: https://github.com/cisco-openstack/tempest.git
-  branch: proposed
-  tempest_config_dir: /home/stack
+- method: lab.scenarios.one_instance
+  duration: 800
