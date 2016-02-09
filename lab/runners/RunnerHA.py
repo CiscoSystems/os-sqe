@@ -47,16 +47,20 @@ class RunnerHA(Runner):
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self.task_yaml_path))
         self.lab_name = config['hardware-lab-config']
 
+    def __repr__(self):
+        return self.lab_name + '-' + self.task_yaml_path
+
     def execute(self, clouds, servers):
         import importlib
         import multiprocessing
         import fabric.network
         from fabs import elk
+        from lab.logger import create_logger
 
         cloud = filter(lambda x: x.name == self.cloud_name, clouds)
         if not cloud:
             raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self.cloud_name))
-
+        log = create_logger(name=self)
         items_to_run = []
         for arguments in self.task_body:
             module_path = arguments.pop('method')
@@ -80,7 +84,10 @@ class RunnerHA(Runner):
         fabric.network.disconnect_all()
 
         pool = multiprocessing.Pool(len(items_to_run))
+
+        log.info('status=Start')
         pool.map(starter, items_to_run)
+        log.info('status=Finish')
         elk.json_to_es()
         self.get_artefacts(server=cloud.mediator)
         self.store_artefacts()
