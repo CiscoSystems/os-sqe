@@ -81,7 +81,14 @@ def configure_for_osp7(yaml_path):
                                        provisioning_nic='nic4',
                                        tenant_nic='nic1',
                                        external_nic='nic2',
-                                       cobbler_system='G{0}-DIRECTOR'.format(lab.id))
+                                       cobbler_system='G{0}-DIRECTOR'.format(lab.id),
+                                       sw_username=lab.n9ks[n9k1_ip].n9k_username,
+                                       sw_password=lab.n9ks[n9k1_ip].n9k_password,
+                                       sw_1_name=lab.n9ks[n9k1_ip].get_hostname(),
+                                       sw_1=n9k1_ip,
+                                       sw_2_name=lab.n9ks[n9k2_ip].get_hostname(),
+                                       sw_2=n9k2_ip
+                                       )
 
     folder = 'artefacts'
     file_path = os.path.join(folder, 'g{0}-osp7-install-config.conf'.format(lab.id))

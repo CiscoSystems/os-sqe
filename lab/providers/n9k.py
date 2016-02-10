@@ -36,7 +36,7 @@ class Nexus(object):
         res = self.cmd(['sh switchname'])
         return res[0]['result']['body']['hostname']
 
-    def cmd(self, commands, timeout=2):
+    def cmd(self, commands, timeout=15):
         if isinstance(commands, basestring):  # it might be provided as a string where commands are separated by ','
             commands = commands.strip('[]')
             commands = commands.split(',')

@@ -1,3 +1,12 @@
+[cobbler]
+osp_directory_node = {cobbler_system}
+skip = False
+;skip = True
+
+[switch_config]
+skip = true
+#overcloud_vlan = ...  # used only if N9K config is requested
+
 [DEFAULT]
 # switch on/off time consuming operation - openstack baremetal introspection bulk start
 
@@ -85,11 +94,9 @@ network_nexus_config = {{
   {n9k2}
   }}
 
-[cobbler]
-osp_directory_node = {cobbler_system}
-skip = False
-;skip = True
-
-[switch_config]
-skip = true
-#overcloud_vlan = ...  # used only if N9K config is requested
+sw_username = {sw_username}
+sw_password = {sw_password}
+sw_1_name = {sw_1_name}
+sw_1 = {sw_1}
+sw_2_name = {sw_2_name}
+sw_2 = {sw_2}
