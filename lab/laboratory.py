@@ -33,6 +33,7 @@ class Laboratory(with_config.WithConfig):
         self.servers_controlled_by_cimc = []
         shift_user = 4  # need to start from -2 due to IPNetwork[-1] is broadcast address
         shift_ipmi = 4  # need to start from 4 due to IPNetwork[0-1-2-3] are network and gw addresses
+        ucsm_host, ucsm_user, ucsm_password = self.ucsm_creds()
         for x in self.cfg['nodes']:
             for role, val in x.iteritems():
                 for role_counter, server_id in enumerate(val['server-id']):
@@ -59,7 +60,7 @@ class Laboratory(with_config.WithConfig):
                         else:
                             b_c_id = 'C0:{0:02}'.format(int(server_id))
                         profile = 'G{0}-{1}-{2}'.format(self.cfg['lab-id'], b_c_id.replace(':', '-'), role)
-                        server.set_ucsm(ip=self.cfg['ucsm']['host'], username=self.cfg['ucsm']['username'], password=self.cfg['ucsm']['password'],
+                        server.set_ucsm(ip=ucsm_host, username=ucsm_user, password=ucsm_password,
                                         service_profile=profile, server_id=server_id, is_sriov=val.get('is-sriov', False))
                         server.set_ipmi(ip=ipmi_net[shift_ipmi], username=self.cfg['cobbler']['username'], password=self.cfg['cobbler']['password'])
                         self.servers_controlled_by_ucsm.append(server)
@@ -68,7 +69,7 @@ class Laboratory(with_config.WithConfig):
                         server.add_if(nic_name=nic_name, nic_mac=mac, nic_order=order, nic_vlans=self.cfg['nets'][nic_name]['vlan'])
                     shift_user += 1
                     shift_ipmi += 1
-        self.net_nodes = [Server(ip=self.cfg['ucsm']['host'], username=self.cfg['ucsm']['username'], password=self.cfg['ucsm']['password'], role='ucsm', n_in_role=0),
+        self.net_nodes = [Server(ip=ucsm_host, username=ucsm_user, password=ucsm_password, role='ucsm', n_in_role=0),
                           Server(ip=self.cfg['n9k']['host1'], username=self.cfg['n9k']['username'], password=self.cfg['n9k']['password'], role='n9k', n_in_role=1),
                           Server(ip=self.cfg['n9k']['host2'], username=self.cfg['n9k']['username'], password=self.cfg['n9k']['password'], role='n9k', n_in_role=2)
                           ]
@@ -125,8 +126,9 @@ class Laboratory(with_config.WithConfig):
     def ucsm_uplink_vpc_id(self):
         return self.cfg['ucsm']['uplink-vpc-id']
 
-    def ucsm_creds(self):
-        return self.cfg['ucsm']['host'], self.cfg['ucsm']['username'], self.cfg['ucsm']['password']
+    def ucsm_creds(self, user='admin'):
+        user_creads = self.cfg['ucsm']['creds'][user]
+        return self.cfg['ucsm']['host'], user_creads['username'], user_creads['password']
 
     def ucsm_vlans(self):
         vlans = []
@@ -146,7 +148,7 @@ class Laboratory(with_config.WithConfig):
         return self.cfg['nets']['eth1']['vlan'][1]
 
     def testbed_vlan(self):
-        return self.cfg['nets']['eth1']['vlan'][1]
+        return self.cfg['nets']['pxe-int']['vlan'][1]
 
     def storage_vlan(self):
         return self.cfg['nets']['pxe-int']['vlan'][2]

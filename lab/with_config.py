@@ -77,4 +77,4 @@ def ls_configs(directory=''):
     import os
 
     folder = os.path.abspath(os.path.join(CONFIG_DIR, directory))
-    return filter(lambda name: name.endswith('.yaml'), os.listdir(folder))
+    return sorted(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))

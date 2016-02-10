@@ -47,13 +47,22 @@ class BaseLab(WithStatusMixIn):
                                          config=config, message='do not know what to do with section {0}'.format(section_name))
 
     def run(self):
+        import time
+
         self.status()
-        for provider in self.providers:
-            self.servers.extend(provider.wait_for_servers())
-        for deployer in self.deployers:
-            self.clouds.append(deployer.wait_for_cloud(self.servers))
-        for runner in self.runners:
-            runner.execute(self.clouds, self.servers)
+        with open('summary.log', 'w') as f:
+            for provider in self.providers:
+                start_time = time.time()
+                self.servers.extend(provider.wait_for_servers())
+                f.write('Provider {0} runs in {0} seconds'.format(provider, time.time() - start_time))
+            for deployer in self.deployers:
+                start_time = time.time()
+                self.clouds.append(deployer.wait_for_cloud(self.servers))
+                f.write('Deployer {0} runs in {0} seconds'.format(deployer, time.time() - start_time))
+            for runner in self.runners:
+                start_time = time.time()
+                runner.execute(self.clouds, self.servers)
+                f.write('Runner {0} runs in {0} seconds'.format(runner, time.time() - start_time))
 
 
 __all__ = ['run_lab']

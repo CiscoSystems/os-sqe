@@ -1,10 +1,7 @@
 def start(lab, log, args):
-    import time
     import validators
     from lab.providers import n9k
 
-    duration = args['duration']
-    period = args['period']
     name_or_ip = args.get('name_or_ip', 'from_lab')
     is_show_details = args.get('is_show_details', False)
 
@@ -19,25 +16,17 @@ def start(lab, log, args):
 
     port_channels = nx.show_port_channel_summary()
 
-    finish_time = time.time() + duration
-    while time.time() < finish_time:
-        # Vlans
-        vlans = nx.show_vlan()
-        log.info('ip={ip} n_vlans={n} {det}'.format(ip=n9k_ip, n=len(vlans),
-                                                    det='list={0}'.format(vlans) if is_show_details else ''))
+    # Vlans
+    vlans = nx.show_vlan()
+    log.info('ip={ip} n_vlans={n} {det}'.format(ip=n9k_ip, n=len(vlans),
+                                                det='list={0}'.format(vlans) if is_show_details else ''))
 
-        # Allowed vlans
-        for port_channel in port_channels:
-            allowed_vlans = nx.show_interface_switchport(name=port_channel)
-            log.info('ip={ip} service={srv} n_vlans={n} {det}'.format(ip=n9k_ip, srv=port_channel, n=len(allowed_vlans),
-                                                                      det='list={0}'.format(allowed_vlans) if is_show_details else ''))
-
-        # User sessions
-        if is_show_details:
-            users = nx.show_users()
-            log.info('ip={ip} n_user_sessions={n} list={l}'.format(ip=n9k_ip, n=len(users), l=users))
-
-        left_to_finish = finish_time - time.time()
-        if left_to_finish > 0:
-            log.info('will finish in {0:.0f} secs'.format(left_to_finish))
-        time.sleep(period)
+    # Allowed vlans
+    for port_channel in port_channels:
+        allowed_vlans = nx.show_interface_switchport(name=port_channel)
+        log.info('ip={ip} service={srv} n_vlans={n} {det}'.format(ip=n9k_ip, srv=port_channel, n=len(allowed_vlans),
+                                                                  det='list={0}'.format(allowed_vlans) if is_show_details else ''))
+    # User sessions
+    if is_show_details:
+        users = nx.show_users()
+        log.info('ip={ip} n_user_sessions={n} list={l}'.format(ip=n9k_ip, n=len(users), l=users))
