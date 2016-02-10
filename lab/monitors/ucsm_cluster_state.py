@@ -3,11 +3,8 @@ def start(context, log, args):
     from paramiko.ssh_exception import SSHException
     import re
     import socket
-    import time
 
     name = args.get('name', 'UCSM')
-    duration = args['duration']
-    period = args['period']
 
     states = {'UP': 1, 'DOWN': 0, 'UNRESPONSIVE': -1}
     ucsm_timeout = 5
@@ -43,22 +40,19 @@ def start(context, log, args):
         res = re.match('^(A|B):\s+(\w+),\s+(\w+)', raw_state)
         return res.group(1), res.group(2), res.group(3)
 
-    start_time = time.time()
-    while start_time + duration > time.time():
-        try:
-            res = ucsm_exec('show cluster state')
-            cluster_state = res.split('\n\n')
+    try:
+        res = ucsm_exec('show cluster state')
+        cluster_state = res.split('\n\n')
 
-            # Parse output
-            ha_ready = int('HA READY' in res)
-            raw_state1, raw_state2 = cluster_state[1].split('\n')
+        # Parse output
+        ha_ready = int('HA READY' in res)
+        raw_state1, raw_state2 = cluster_state[1].split('\n')
 
-            fi1_name, fi1_state, fi1_role = parse_state(raw_state1)
-            fi2_name, fi2_state, fi2_role = parse_state(raw_state2)
+        fi1_name, fi1_state, fi1_role = parse_state(raw_state1)
+        fi2_name, fi2_state, fi2_role = parse_state(raw_state2)
 
-            msg = 'ucsm_name={n} cluster_state={ha} state_{fi1n}={fi1s} role_{fi1n}={fi1r} state_{fi2n}={fi2s} role_b={fi1r} exception=0'.format(
-                n=name, ha=ha_ready, fi1n=fi1_name, fi1s=states[fi1_state], fi1r=fi1_role, fi2n=fi2_name, fi2s=states[fi2_state], fi2r=fi2_role)
-            log.info(msg)
-        except (SSHException, socket.timeout, IndexError) as ex:
-            log.info('ucsm_name={n} exception=1'.format(n=name))
-        time.sleep(period)
+        msg = 'ucsm_name={n} cluster_state={ha} state_{fi1n}={fi1s} role_{fi1n}={fi1r} state_{fi2n}={fi2s} role_b={fi1r} exception=0'.format(
+            n=name, ha=ha_ready, fi1n=fi1_name, fi1s=states[fi1_state], fi1r=fi1_role, fi2n=fi2_name, fi2s=states[fi2_state], fi2r=fi2_role)
+        log.info(msg)
+    except (SSHException, socket.timeout, IndexError) as ex:
+        log.info('ucsm_name={n} exception=1'.format(n=name))

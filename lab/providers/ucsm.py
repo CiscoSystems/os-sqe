@@ -82,6 +82,8 @@ def cleanup(host, username, password):
     from lab.logger import lab_logger
 
     with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
+        for username in run('scope security ; show local-user | egrep -V "User Name|----|admin" | cut -f 1 -d " "', shell=False).split():
+            run('scope security ; delete local-user {0} ; commit-buffer ;'.format(username), shell=False)
         for profile in run('scope org; sh service-profile status | no-more | egrep -V "Service|----" | cut -f 1 -d " "', shell=False).split():
             run('scope org; delete service-profile {0}; commit-buffer'.format(profile), shell=False)
         for mac_pool in run('scope org; sh mac-pool | no-more | egrep -V "Name|----|MAC" | cut -f 5 -d " "', shell=False).split():
@@ -115,8 +117,9 @@ def cleanup(host, username, password):
 
 
 def configure_for_osp7(yaml_path):
-    from fabric.api import settings, run
+    from fabric.api import settings, run, local
     import time
+    import tempfile
     from lab.laboratory import Laboratory
     from lab.logger import lab_logger
 
@@ -128,10 +131,43 @@ def configure_for_osp7(yaml_path):
     dynamic_vnic_policy_name = 'dvnic-4'
 
     ucsm_host, ucsm_user, ucsm_password = lab.ucsm_creds()
+    _, ucsm_neutron_user, ucsm_neutron_password = lab.ucsm_creds(user='neutron')
+
+    create_user_script = """#!/usr/bin/expect
+set admin_user {admin_user}
+set admin_password {admin_password}
+set ucsm_ip {ucsm_ip}
+
+set username {username}
+set password {password}
+
+spawn ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${{admin_user}}@${{ucsm_ip}}
+expect "Password:" {{send "$admin_password\r"}}
+
+expect "#" {{send "scope security\r"}}
+expect "/security #" {{send "create local-user $username\r"}}
+expect "/security/local-user* #" {{send "set account-status active\r"}}
+expect "/security/local-user* #" {{send "set password\r"}}
+expect "Enter a password:" {{send "$password\r"}}
+expect "Confirm the password:" {{send "$password\r"}}
+expect "/security/local-user* #" {{send "commit-buffer\r"}}
+expect "/security/local-user #"
+sleep 5
+exit
+    """.format(admin_user=ucsm_user, admin_password=ucsm_password, ucsm_ip=ucsm_host,
+               username=ucsm_neutron_user, password=ucsm_neutron_password)
 
     cleanup(host=ucsm_host, username=ucsm_user, password=ucsm_password)
 
     with settings(host_string='{user}@{ip}'.format(user=ucsm_user, ip=ucsm_host), password=ucsm_password, connection_attempts=50, warn_only=False):
+        # Create user
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(create_user_script)
+            f.flush()
+            local('expect {0}'.format(f.name))
+        # Add roles to the new user
+        run('scope security ; scope local-user {username} ; enter role admin ; commit-buffer ;'.format(username=ucsm_neutron_user), shell=False)
+
         server_ids = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
         n_servers = len(server_ids)  # how many servers UCSM currently sees
 

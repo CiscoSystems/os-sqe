@@ -19,3 +19,15 @@ class Runner(WithConfig):
 
         with open('configs-logs.txt', 'w') as f:
             f.write('\n\n'.join(configs))
+
+    @staticmethod
+    def store_artefacts():
+        """Store $REPO/*.log and $REPO/artefacts/* on file storage server"""
+        import lab
+        from lab.server import Server
+
+        destination_dir = '{0}-{1}'.format(lab.JENKINS_TAG, lab.REPO_TAG)
+        server = Server(ip='172.29.173.233', username='localadmin', password='ubuntu')
+        server.run(command='mkdir -p /var/www/logs/{0}'.format(destination_dir))
+        server.put(local_path='*.log', remote_path='/var/www/logs/' + destination_dir, is_sudo=False)
+        server.put(local_path='artefacts/*', remote_path='/var/www/logs/' + destination_dir, is_sudo=False)
