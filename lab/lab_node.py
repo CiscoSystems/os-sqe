@@ -4,7 +4,8 @@ import abc
 class LabNode(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, ip, username, password, lab, ports=None):
+    def __init__(self, lab_node_name, ip, username, password, lab, ports=None):
+        self.lab_node_name = lab_node_name
         self.ip = ip
         self.username = username
         self.password = password

@@ -4,14 +4,14 @@ from lab.lab_node import LabNode
 
 class Nexus(LabNode):
 
-    def __init__(self, ip, username, password, lab, ports=None):
+    def __init__(self, lab_node_name, ip, username, password, lab, ports=None):
         # self.ucsm_ports = ucsm_ports
         # self.peer_link = peer_link
         self.version = None
         self.hostname = None
         # self.osp_ports = set((self.ucsm_ports or []) + (self.peer_link or []))
         self.cimc_ports = []
-        super(Nexus, self).__init__(ip, username, password, lab, ports)
+        super(Nexus, self).__init__(lab_node_name, ip, username, password, lab, ports)
 
     def net_initialize(self):
         res = self.cmd(["sh version"])[0]['result']['body']

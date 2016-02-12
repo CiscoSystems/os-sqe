@@ -5,9 +5,9 @@ from lab.lab_node import LabNode
 
 class Cimc(LabNode):
 
-    def __init__(self, ip, username, password, lab):
+    def __init__(self, lab_node_name, ip, username, password, lab):
         self.managed_server = None
-        super(Cimc, self).__init__(ip, username, password, lab)
+        super(Cimc, self).__init__(lab_node_name, ip, username, password, lab)
 
     def add_managed_server(self, server):
         self.managed_server = server
