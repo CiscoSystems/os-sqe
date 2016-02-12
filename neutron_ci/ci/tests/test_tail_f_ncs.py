@@ -104,7 +104,7 @@ class TailFNCSTest(BaseTestCase):
         # Install NGINX
         nginx_conf = os.path.join(PARENT_FOLDER_PATH,
                                   'files/ncs/nginx-ncs.conf')
-        local('sudo apt-get install -y nginx')
+        local('sudo apt-get install -y --fix-missing nginx')
         local('sudo cp {0} /etc/nginx/sites-available/default'.format(nginx_conf))
         local('sudo service nginx restart')
 
