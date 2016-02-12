@@ -3,12 +3,12 @@ from lab.lab_node import LabNode
 
 
 class FI(LabNode):
-    def __init__(self, ip, username, password, lab, vip):
+    def __init__(self, lab_node_name, ip, username, password, lab, vip):
         self.version = None
         self.hostname = None
         self.servers = set()
         self.vip = vip
-        super(FI, self).__init__(ip, username, password, lab)
+        super(FI, self).__init__(lab_node_name, ip, username, password, lab)
 
     def add_managed_server(self, server):
         self.servers.add(server)

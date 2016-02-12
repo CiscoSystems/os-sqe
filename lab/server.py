@@ -21,7 +21,7 @@ class Server(LabNode):
             #     self._tmp_dir_exists = self.run('mkdir -p {0}'.format(self._temp_dir)).return_code == 0
         return self._temp_dir if self._tmp_dir_exists else None
 
-    def __init__(self, ip, lab, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', n_in_role=0, ssh_public_key='N/A', ssh_port=22):
+    def __init__(self, lab_node_name, ip, lab, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', n_in_role=0, ssh_public_key='N/A', ssh_port=22):
         self.net = net
         self.ip_mac = 'UnknownInServer'
         self.role = role
@@ -39,7 +39,7 @@ class Server(LabNode):
         self.nics = []
         self.cimc = {'n9k': 'UnknownInServer', 'n9k_port': 'UnknownInServer', 'pci_port': 'UnknownInServer', 'uplink_port': 'UnknownInServer'}
         self.package_manager = None
-        super(Server, self).__init__(ip, username, password, lab)
+        super(Server, self).__init__(lab_node_name, ip, username, password, lab)
 
     def set_cimc_or_ucsm(self, node):
         self.cimc_or_ucsm = node

@@ -37,12 +37,11 @@ class Laboratory(with_config.WithConfig):
         shift_user = 4  # need to start from -2 due to IPNetwork[-1] is broadcast address
         shift_ipmi = 4  # need to start from 4 due to IPNetwork[0-1-2-3] are network and gw addresses
         for name, value in self.cfg['nodes'].iteritems():
-            import re
-            role_counter = int(re.findall('\d+', name)[0])
-            role_name = name.split(str(role_counter))[0]
+            role_counter = name.split('-')[1]
+            role_name = name.split('-')[0]
 
             if role_name in ['control', 'compute', 'director', 'ceph']:
-                server = Server(ip=user_net[-2] if 'director' in role_name else user_net[shift_user],
+                server = Server(name, ip=user_net[-2] if 'director' in role_name else user_net[shift_user],
                                     lab=self,
                                     hostname='g{0}-director.ctocllab.cisco.com'.format(self.cfg['lab-id']),
                                     username=self.cfg['username'],
@@ -51,7 +50,7 @@ class Laboratory(with_config.WithConfig):
                                     n_in_role=role_counter)
                 self.all_nodes[name] = server
                 if value.get('cimc-ip', False):
-                    server_control = Cimc(value['cimc-ip'], value['username'], value['password'], self)
+                    server_control = Cimc(name, value['cimc-ip'], value['username'], value['password'], self)
                     self.all_nodes[value['cimc-ip']] = server_control
                     server.set_cimc_or_ucsm(server_control)
                     self.servers_controlled_by_cimc.append(server)
@@ -60,9 +59,9 @@ class Laboratory(with_config.WithConfig):
                 shift_user += 1
                 shift_ipmi += 1
             elif role_name == 'Nexus':
-                self.all_nodes[value['ip']] = Nexus(value['ip'], value['username'], value['password'], self)
+                self.all_nodes[value['ip']] = Nexus(name, value['ip'], value['username'], value['password'], self)
             elif role_name == 'FI':
-                self.all_nodes[value['ip']] = FI(value['ip'], value['username'], value['password'], self, value['vip'])
+                self.all_nodes[value['ip']] = FI(name, value['ip'], value['username'], value['password'], self, value['vip'])
 
         for node_name, node_entry in self.cfg['nodes'].iteritems():
             if node_entry.get('ports', False):
