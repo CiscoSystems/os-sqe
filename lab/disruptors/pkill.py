@@ -5,7 +5,7 @@ def start(context, log, args):
     process = args['process']
     signal = args.get('signal', 9)
 
-    server = context.particular_node(node_name)
+    server = context.get_node(node_name)
     with settings(warn_only=True):
         res = server.run('sudo pkill --signal {0} {1}'.format(signal, process))
 

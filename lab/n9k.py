@@ -1,27 +1,24 @@
-from fabric.api import task
 from lab.lab_node import LabNode
 
 
 class Nexus(LabNode):
 
-    def __init__(self, lab_node_name, ip, username, password, lab, ports=None):
-        # self.ucsm_ports = ucsm_ports
-        # self.peer_link = peer_link
-        self.version = None
-        self.hostname = None
-        # self.osp_ports = set((self.ucsm_ports or []) + (self.peer_link or []))
-        self.cimc_ports = []
-        super(Nexus, self).__init__(lab_node_name, ip, username, password, lab, ports)
+    def __repr__(self):
+        return u'{0} {1}'.format(self.lab(), self.name())
 
-    def net_initialize(self):
-        res = self.cmd(["sh version"])[0]['result']['body']
-        self.hostname = res['host_name']
-        self.version = res['rr_sys_ver']
+    def get_pcs_for_n9_and_fi(self):
+        """Returns a list of pcs used on connection to peer N9K and both FIs"""
+        wires = filter(lambda w: w.is_n9_n9() or w.is_n9_fi(), self._downstream_wires + self._upstream_wires)
+        return sorted(set([x.get_pc_id() for x in wires]))
+
+    def get_wires_to_servers(self):
+        """Returns a list wires connected servers"""
+        return filter(lambda w: w.is_n9_ucs(), self._downstream_wires)
 
     def _allow_feature_nxapi(self):
         from fabric.api import settings, run
 
-        with settings(host_string='{user}@{ip}'.format(user=self.username, ip=self.ip), password=self.password):
+        with settings(host_string='{user}@{ip}'.format(user=self._username, ip=self._ip), password=self._password):
             if 'disabled'in run('sh feature | i nxapi', shell=False):
                 run('conf t ; feature nxapi', shell=False)
 
@@ -31,8 +28,9 @@ class Nexus(LabNode):
 
         body = [{"jsonrpc": "2.0", "method": "cli", "params": {"cmd": command, "version": 1}, "id": 1} for command in commands]
         try:
-            return requests.post('http://{0}/ins'.format(self.ip), auth=(self.username, self.password),
-                                 headers={'content-type': 'application/json-rpc'}, data=json.dumps(body), timeout=timeout).json()
+            data = json.dumps(body)
+            result = requests.post('http://{0}/ins'.format(self._ip), auth=(self._username, self._password), headers={'content-type': 'application/json-rpc'}, data=data, timeout=timeout)
+            return result.json()
         except requests.exceptions.ConnectionError:
             self._allow_feature_nxapi()
             return self._rest_api(commands=commands, timeout=timeout)
@@ -88,7 +86,7 @@ class Nexus(LabNode):
                     if port.split('Ethernet')[1] in self.osp_ports:
                          pc.append(entry['port-channel'])
         except Exception:
-            raise Exception('Error in parsing response from N9K {ip}. Response: {res}'.format(ip=self.ip, res=res))
+            raise Exception('Error in parsing response from N9K {ip}. Response: {res}'.format(ip=self._ip, res=res))
         return pc
 
     def show_interface_switchport(self, name):
@@ -137,9 +135,10 @@ class Nexus(LabNode):
             part_of_vlans = ','.join(chunk)
             self.cmd(['conf t', 'no vlan {0}'.format(part_of_vlans)])
 
-    def execute_on_given_n9k(self, user_vlan):
+    def configure_for_osp7(self):
         from lab.logger import lab_logger
 
+        return  # TODO  Nikolay is to revisited here
         ports_n9k = []
         ports_fi_a = []
         ports_fi_b = []
@@ -211,23 +210,3 @@ class Nexus(LabNode):
         self.cmd(['copy run start'])
 
         return peer_ip
-
-    def configure_for_osp7(yaml_path):
-        return None
-
-
-@task
-def configure_for_osp7(yaml_path):
-    """fab n9k.configure_for_osp7:g10 \t\t Configure all N9K for the given lab.
-        :param yaml_path: Valid hardware lab config, usually yaml from $REPO/configs
-    """
-    from lab.laboratory import Laboratory
-
-    l = Laboratory(yaml_path)
-    ip1, ip2, username, password = l.n9k_creds()
-    user_vlan = l.external_vlan()
-    n1 = Nexus(ip1, username, password)
-    n2 = Nexus(ip2, username, password)
-
-    assert ip2, n1.execute_on_given_n9k(user_vlan=user_vlan)
-    assert ip1, n2.execute_on_given_n9k(user_vlan=user_vlan)

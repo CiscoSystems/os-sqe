@@ -56,7 +56,8 @@ def read_config_from_file(yaml_path, directory='', is_as_string=False):
 
     actual_path = actual_path_to_config(yaml_path=yaml_path, directory=directory)
     with open(actual_path) as f:
-        return f.read() if is_as_string else yaml.load(f)
+        body_or_yaml = f.read() if is_as_string else yaml.load(f)
+    return body_or_yaml
 
 
 def actual_path_to_config(yaml_path, directory=''):

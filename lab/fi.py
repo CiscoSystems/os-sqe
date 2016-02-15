@@ -1,23 +1,47 @@
-from fabric.api import task
 from lab.lab_node import LabNode
+from lab.server import Server
+
+
+class FiServer(Server):
+    _server_id = None
+    _service_profile_name = None
+
+    def set_ucsm_id(self, server_id):
+        self._server_id = str(server_id)
+        self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i=self._server_id, n=self.name(), bc='C' if '/' in self._server_id else 'B')
+
+        if '/' in self._server_id:
+            chasis, n_in_chasis = server_id.split('/')
+            self._mac_server_part = 'B{0}:{1:02}'.format(int(chasis), int(n_in_chasis))  # B3:01
+        else:
+            self._mac_server_part = 'B0:{0:02}'.format(int(self._server_id))  # B0:05
+        self._form_nics()
+
+    def get_ucsm_info(self):
+        return self._server_id, self._service_profile_name
 
 
 class FI(LabNode):
-    def __init__(self, lab_node_name, ip, username, password, lab, vip):
-        self.version = None
-        self.hostname = None
-        self.servers = set()
-        self.vip = vip
-        super(FI, self).__init__(lab_node_name, ip, username, password, lab)
+    def __init__(self, name, ip, username, password, lab, hostname):
+        self._version = None
+        self._vip = 'Not set in FI ctor'
+        self._is_sriov = False
+        super(FI, self).__init__(name=name, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
 
-    def add_managed_server(self, server):
-        self.servers.add(server)
+    def __repr__(self):
+        return u'{0} {1}'.format(self.lab(), self.name())
+
+    def set_vip(self, vip):
+        self._vip = vip
+
+    def set_sriov(self, sriov):
+        self._vip = sriov
 
     def cmd(self, command):
         from fabric.api import settings, run
     
-        with settings(host_string='{user}@{ip}'.format(user=self.username, ip=self.vip), password=self.password, connection_attempts=50, warn_only=False):
-            return run(command, shell=False).split()
+        with settings(host_string='{user}@{ip}'.format(user=self._username, ip=self._vip), password=self._password, connection_attempts=50, warn_only=False):
+            return run(command, shell=False)
 
     def service_profiles(self):
         return self.cmd(command='scope org; sh service-profile status | no-more | egrep -V "Service|----" | cut -f 1 -d " "')
@@ -28,6 +52,25 @@ class FI(LabNode):
     def vlans(self):
         return self.cmd('scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "')
 
+    @staticmethod
+    def _filter(flt):
+        return ' | no-more' + ' | egrep ' + flt if flt else ''
+
+    def list_users(self, flt=None):
+        line = self.cmd('scope security ; show local-user' + self._filter(flt=flt or '-V "User Name|-------"'))
+        return line.split('\n') if line else []
+
+    def list_servers(self, flt=None):
+        return self.cmd('sh server status' + self._filter(flt=flt)).split('\n')
+
+    def list_service_profiles(self, flt=None):
+        line = self.cmd(command='scope org; sh service-profile status' + self._filter(flt=flt or '-V "-----|Service Profile Name"'))
+        return line.split('\n') if line else []
+
+    def list_mac_pools(self, flt=None):
+        line = self.cmd('scope org; sh mac-pool' + self._filter(flt=flt or '-V "Name|----|MAC"'))
+        return line.split('\n') if line else []
+
     def delete_vlans(self, pattern):
         vlan_names = self.cmd('scope eth-uplink; sh vlan|no-more| egrep "{0}" | cut -f 5 -d " "'.format(pattern))
         for vlan_name in vlan_names:
@@ -36,110 +79,80 @@ class FI(LabNode):
     def user_sessions(self):
         return self.cmd('scope security ; show user-sessions local detail | no-more | egrep "Pid:" | cut -f 6 -d " "')
 
+    def create_uuid_pool(self, pool_name, n_uuids):
+        return self.cmd('scope org; create uuid-suffix-pool {name}; set assignment-order sequential; create block 1234-000000000001 1234-00000000000{n}; commit-buffer'.format(name=pool_name, n=n_uuids))
 
-@task
-def read_config_ssh(yaml_path, is_director=True):
-    """Reads config needed for OSP7 via ssh to UCSM
-    :param yaml_path:
-    :param is_director:
-    :return:
-    """
-    from lab.server import Server
-    from fabric.api import settings, run
-    from lab.laboratory import Laboratory
+    def create_uplink(self, wires):
+        for a_b in 'a', 'b':
+            created_vpc_ids = set()
+            for wire in wires:
+                vpc_id = wire.get_pc_id()
+                if vpc_id not in created_vpc_ids:
+                    self.cmd('scope eth-uplink; scope fabric {a_b}; create port-channel {vpc_id}; commit-buffer'.format(a_b=a_b, vpc_id=vpc_id))
+                    created_vpc_ids.add(vpc_id)
+                self.cmd('scope eth-uplink; scope fabric {a_b}; scope port-channel {vpc_id}; enter member-port {port_id}; commit-buffer'.format(a_b=a_b, vpc_id=vpc_id, port_id=wire.get_port_s().replace('/', ' ')))
 
-    l = Laboratory(config_path=yaml_path)
+    def create_boot_policies(self, vnics):
+        """Creates boot policy for all specified vNICs
+        :param vnics: list of vNIC names, e.g. ['pxe', 'eth0']
+        """
+        for name in vnics:
+            self.cmd('scope org; create boot-policy {0}; set boot-mode legacy; commit-buffer'.format(name))
+            self.cmd('scope org; scope boot-policy {0}; create lan; set order 1;  create path primary; set vnic {0}; commit-buffer'.format(name))
+            self.cmd('scope org; scope boot-policy {0}; create storage; create local; create local-any; set order 2; commit-buffer'.format(name))
 
-    ip, username, password = l.ucsm_creds()
+    def create_dynamic_vnic_connection_policy(self, policy_name):
+        return self.cmd('scope org; create dynamic-vnic-conn-policy {name}; set dynamic-eth 4; set adapter-policy Linux; commit-buffer'.format(name=policy_name))
 
-    servers = {}
-    with settings(host_string='{user}@{ip}'.format(user=username, ip=ip), password=password, connection_attempts=50, warn_only=False):
-        ipmi_users = run('scope org; scope ipmi-access-profile IPMI; sh ipmi-user | egrep -v "Description|---|IPMI" | cut -f 5 -d " "', shell=False, quiet=True).split('\n')
-        if 'cobbler' not in ipmi_users:
-            raise Exception('No IPMI user "cobbler" in UCSM! Add it with password "cobbler" manually')
+    def set_dynamic_vnic_connection_policy(self, profile, vnic, policy_name):
+        self.cmd('scope org; scope service-profile {profile}; scope vnic {vnic}; set adapter-policy Linux; enter dynamic-conn-policy-ref {name}; commit-buffer'.format(profile=profile, vnic=vnic, name=policy_name))
 
-        for profile in run('scope org; show service-profile | egrep Associated | cut -f 5-35 -d " "', shell=False, quiet=True).split('\n'):
-            if not profile:
-                return servers
-            split = profile.split()
-            profile_name = split[0]
-            server_id = split[2]
-            if not is_director and 'director' in profile_name:
-                continue
-            ipmi_ip = run('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_id), shell=False, quiet=True)
-            if_mac = {}
-            for line in run('scope org; scope service-profile {0}; sh vnic | i {1}:'.format(profile_name, l.id), shell=False, quiet=True).split('\n'):
-                split = line.split()
-                if_mac[split[0]] = split[3]
-            dynamic_policy_line = run('scope org; scope service-profile {0}; sh dynamic-vnic-conn-policy'.format(profile_name), shell=False, quiet=True)
-            server = Server(ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM')
-            server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
-            server.set_ucsm(ip=ip, username=username, password=password, service_profile=profile_name, server_id=server_id, is_sriov=len(dynamic_policy_line) != 0)
-            server.role = profile_name.split('-')[-1]
-            if 'director' in profile_name:
-                profile_name = 'director'
-            servers[profile_name] = server
-    return servers
+    def list_dynamic_vnic_policy(self, profile):
+        return self.cmd('scope org; scope service-profile {0}; sh dynamic-vnic-conn-policy'.format(profile))
 
+    def create_vlans(self, vlans):
+        for vlan in vlans:
+            self.cmd('scope eth-uplink; create vlan {0} {0}; set sharing none; commit-buffer'.format(vlan))
 
-@task
-def cleanup(host, username, password):
-    from fabric.api import settings, run
-    from lab.logger import lab_logger
+    def create_server_pool(self, name):
+        return self.cmd('scope org; create server-pool {0}; commit-buffer'.format(name))
 
-    with settings(host_string='{user}@{ip}'.format(user=username, ip=host), password=password, connection_attempts=50, warn_only=False):
-        for username in run('scope security ; show local-user | egrep -V "User Name|----|admin" | cut -f 1 -d " "', shell=False).split():
-            run('scope security ; delete local-user {0} ; commit-buffer ;'.format(username), shell=False)
-        for profile in run('scope org; sh service-profile status | no-more | egrep -V "Service|----" | cut -f 1 -d " "', shell=False).split():
-            run('scope org; delete service-profile {0}; commit-buffer'.format(profile), shell=False)
-        for mac_pool in run('scope org; sh mac-pool | no-more | egrep -V "Name|----|MAC" | cut -f 5 -d " "', shell=False).split():
-            run('scope org; delete mac-pool {0}; commit-buffer'.format(mac_pool), shell=False)
-        for server_pool in run('scope org; sh server-pool | no-more | egrep -V "Name|----|MAC" | cut -f 5 -d " "', shell=False).split():
-            run('scope org; delete server-pool {0}; commit-buffer'.format(server_pool), shell=False)
-        for uuid_pool in run('scope org; sh uuid-suffix-pool | no-more | egrep -V "Name|----|UUID" | cut -f 5 -d " "', shell=False).split():
-            run('scope org; delete uuid-suffix-pool {0}; commit-buffer'.format(uuid_pool), shell=False)
-        for boot_policy in run('scope org; sh boot-policy | no-more | egrep -V "Name|----|UUID" | cut -f 5 -d " "', shell=False).split():
-            run('scope org; delete boot-policy {0}; commit-buffer'.format(boot_policy), shell=False)
-        for dyn_vnic_policy in run('scope org; show dynamic-vnic-conn-policy detail | no-more | egrep "Name:" | cut -f 6 -d " "', shell=False).split():
-            run('scope org; delete dynamic-vnic-conn-policy {0}; commit-buffer'.format(dyn_vnic_policy), shell=False)
-        for vlan in run('scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "', shell=False).split():
-            run('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan), shell=False)
-        for server_num in run('sh server status | no-more | egrep "Complete$" | cut -f 1 -d " "', shell=False).split():
-            if run('scope server {0}; scope cimc; sh ext-static-ip'.format(server_num), shell=False):
-                run('scope server {0}; scope cimc; delete ext-static-ip; commit-buffer'.format(server_num), shell=False)
-#            run('acknowledge server {0}  ;  commit-buffer'.format(server_num), shell=False)
-        for block in run('scope org; scope ip-pool ext-mgmt; sh block | egrep [1-9] | cut -f 5-10 -d " "', shell=False).split('\n'):
-            if block:
-                run('scope org; scope ip-pool ext-mgmt; delete block {0}; commit-buffer'.format(block), shell=False)
-        for pp in run('scope system; scope vm-mgmt; scope profile-set; show port-profile detail | no-more | egrep "Name:" | cut -f 6 -d " "', shell=False).split('\n'):
-            if pp.strip():
-                run("end; scope system; scope vm-mgmt; scope profile-set; delete port-profile {0} ; commit-buffer".format(pp.strip()), shell=False)
-        for fabric in 'a', 'b':
-            for port_channel_id in run('scope eth-uplink; scope fabric {0}; show port-channel detail | egrep "Port Channel Id:" | cut -f 8 -d " "'.format(fabric),
-                                       shell=False).split():
-                if port_channel_id.strip():
-                    run('scope eth-uplink; scope fabric {0}; delete port-channel {1}; commit-buffer'.format(fabric, port_channel_id.strip()), shell=False)
-    lab_logger.info('finished')
+    def create_ipmi_static(self, server_id, ip, gw, netmask):
+        self.cmd('scope server {s_id}; scope cimc; create ext-static-ip; set addr {ip}; set default-gw {gw}; set subnet {netmask}; commit-buffer'.format(s_id=server_id, ip=ip, gw=gw, netmask=netmask))
 
+    def add_server_to_pool(self, server_id, server_pool_name):
+        self.cmd('scope org; scope server-pool {0}; create server {1}; commit-buffer'.format(server_pool_name, server_id))
 
-def configure_for_osp7(yaml_path):
-    from fabric.api import settings, run, local
-    import time
-    import tempfile
-    from lab.laboratory import Laboratory
-    from lab.logger import lab_logger
+    def create_service_profile(self, name, is_with_sriov):
+        self.cmd('scope org; create service-profile {0}; set ipmi-access-profile IPMI; {1} commit-buffer'.format(name, 'set bios-policy SRIOV;' if is_with_sriov else ''))
 
-    lab_logger.info('Configuring UCSM ' + yaml_path)
-    lab = Laboratory(config_path=yaml_path)
+    def create_vnic_with_vlans(self, profile, vnic, mac, order, vlans):
+        self.cmd('scope org; scope service-profile {profile}; create vnic {vnic} fabric a-b; set identity dynamic-mac {mac}; set order {order}; commit-buffer'.format(profile=profile, vnic=vnic, mac=mac, order=order))
+        for i, vlan in enumerate(vlans, start=1):
+            yes_no = 'yes' if i == 1 else 'no'  # first vlan in the list is a default
+            self.cmd('scope org; scope service-profile {profile}; scope vnic {vnic}; create eth-if {vlan}; set default-net {yes_no}; commit-buffer'.format(profile=profile, vnic=vnic, vlan=vlan, yes_no=yes_no))
+        self.cmd('scope org; scope service-profile {profile}; scope vnic {vnic}; delete eth-if default; commit-buffer'.format(profile=profile, vnic=vnic))  # remove default VLAN
 
-    server_pool_name = 'QA-SERVERS'
-    uuid_pool_name = 'QA'
-    dynamic_vnic_policy_name = 'dvnic-4'
+    def associate_server_with_profile(self, profile, server_id):
+        self.cmd('scope org; scope service-profile {profile}; associate server {server_id}; commit-buffer'.format(profile=profile, server_id=server_id))
 
-    ucsm_host, ucsm_user, ucsm_password = lab.ucsm_creds()
-    _, ucsm_neutron_user, ucsm_neutron_password = lab.ucsm_creds(user='neutron')
+    def set_boot_policy_to_service_profile(self, profile, policy_name):
+        self.cmd('scope org; scope service-profile {profile}; set boot-policy {policy_name}; commit-buffer'.format(profile=profile, policy_name=policy_name))
 
-    create_user_script = """#!/usr/bin/expect
+    def create_user(self, username, password, role='admin'):
+        import tempfile
+        import platform
+        from fabric.api import local
+        from lab.logger import lab_logger
+
+        if self.list_users(flt=username):
+            self.delete_users([username])
+
+        if platform.system() == 'Windows':
+            lab_logger.warning('expect does not work on Windows!')
+            return
+
+        create_user_script = """#!/usr/bin/expect
 set admin_user {admin_user}
 set admin_password {admin_password}
 set ucsm_ip {ucsm_ip}
@@ -160,130 +173,150 @@ expect "/security/local-user* #" {{send "commit-buffer\r"}}
 expect "/security/local-user #"
 sleep 5
 exit
-    """.format(admin_user=ucsm_user, admin_password=ucsm_password, ucsm_ip=ucsm_host,
-               username=ucsm_neutron_user, password=ucsm_neutron_password)
-
-    cleanup(host=ucsm_host, username=ucsm_user, password=ucsm_password)
-
-    with settings(host_string='{user}@{ip}'.format(user=ucsm_user, ip=ucsm_host), password=ucsm_password, connection_attempts=50, warn_only=False):
-        # Create user
+        """.format(admin_user=self._username, admin_password=self._password, ucsm_ip=self._ip,
+                   username=username, password=password)
         with tempfile.NamedTemporaryFile() as f:
             f.write(create_user_script)
-            f.flush()
-            local('expect {0}'.format(f.name))
-        # Add roles to the new user
-        run('scope security ; scope local-user {username} ; enter role admin ; commit-buffer ;'.format(username=ucsm_neutron_user), shell=False)
+        local('expect {0}'.format(f.name))
+        self.cmd('scope security; scope local-user {username}; enter role {role}; commit-buffer;'.format(username=username, role=role))
 
-        server_ids = run('sh server status | egrep "Complete$" | cut -f 1 -d " "', shell=False).split()
+    def delete_users(self, usernames):
+        for username in usernames:
+            self.cmd('scope security ; delete local-user {0} ; commit-buffer ;'.format(username))
+
+    def configure_for_osp7(self):
+        import time
+        from lab.logger import lab_logger
+
+        lab_logger.info('Configuring {}'.format(self))
+
+        server_pool_name = 'QA-SERVERS'
+        uuid_pool_name = 'QA'
+        dynamic_vnic_policy_name = 'dvnic-4'
+
+        self.cleanup()
+
+        server_ids = self.list_servers('Complete')
         n_servers = len(server_ids)  # how many servers UCSM currently sees
 
-        # Create up-links (port-channels)
-        for fabric in 'a', 'b':
-            run('scope eth-uplink; scope fabric {0}; create port-channel {1}; commit-buffer'.format(fabric, lab.ucsm_uplink_vpc_id()), shell=False)
-            for port_id in lab.ucsm_uplink_ports():
-                run('scope eth-uplink; scope fabric {fabric}; scope port-channel {vpc_id}; enter member-port {port_id}; commit-buffer'.format(
-                        fabric=fabric,
-                        vpc_id=lab.ucsm_uplink_vpc_id(),
-                        port_id=port_id), shell=False)
-
-        # UUID pool
-        run('scope org; create uuid-suffix-pool {name}; set assignment-order sequential; create block 1234-000000000001 1234-00000000000{n}; commit-buffer'.format(
-            name=uuid_pool_name, n=n_servers), shell=False)
-
-        # Boot policy
-        for if_name in lab.ucsm_nets_with_pxe():
-            run('scope org; create boot-policy {0}; set boot-mode legacy; commit-buffer'.format(if_name), shell=False)
-            run('scope org; scope boot-policy {0}; create lan; set order 1;  create path primary; set vnic {0}; commit-buffer'.format(if_name), shell=False)
-            run('scope org; scope boot-policy {0}; create storage; create local; create local-any; set order 2; commit-buffer'.format(if_name), shell=False)
-
-        # Dynamic vnic connection policy
-        if lab.ucsm_is_any_sriov():
-            run('scope org; create dynamic-vnic-conn-policy {name}; set dynamic-eth 4; set adapter-policy Linux; commit-buffer'.format(name=dynamic_vnic_policy_name), shell=False)
+        neutron_username, neutron_password = self.lab().get_neutron_creds()
+        self.create_user(username=neutron_username, password=self._password)  # special user to be used by neutron services
+        self.create_uplink(wires=self._upstream_wires)
+        self.create_uuid_pool(pool_name=uuid_pool_name, n_uuids=n_servers)
+        self.create_boot_policies(vnics=self._lab.ucsm_nets_with_pxe())
+        self.create_dynamic_vnic_connection_policy(policy_name=dynamic_vnic_policy_name)
+        self.create_vlans(vlans=self.lab().get_ucsm_vlans())
+        self.create_server_pool(name=server_pool_name)
 
         # MAC pools
         # for if_name, mac_value, _ in [config['pxe-int-net'], config['user-net'], config['eth0-net'], config['eth1-net']]:
         #    mac_range = '{0}:01 {0}:{1}'.format(mac_value, n_servers)
         #    run('scope org; create mac-pool {0}; set assignment-order sequential; create block {1}; commit-buffer'.format(if_name, mac_range), shell=False)
 
-        # VLANs
-        for vlan in lab.ucsm_vlans():
-            run('scope eth-uplink; create vlan {0} {0}; set sharing none; commit-buffer'.format(vlan), shell=False)
-
         # IPMI ip pool
         # ipmi_pool = '{first} {last} {gw} {mask}'.format(first=str(ipmi_net[config['mgmt-net']['start']]),
         # last=str(ipmi_net[config['mgmt-net']['end']]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
         # run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_pool), shell=False)
 
-        # Server pool
-        run('scope org; create server-pool {0}; commit-buffer'.format(server_pool_name), shell=False)
+        for wire in self._downstream_wires:
+            server = wire.get_node_s()
+            server_id, service_profile_name = server.ucsm_info()
+            is_sriov = self.lab().get_sriov()
+            ipmi_ip, _, _ = server.get_ipmi()
+            _, ipmi_gw, ipmi_netmask, _, _ = self.lab().get_ipmi_net_info()
+            self.create_ipmi_static(server_id=server_id, ip=ipmi_ip, gw=ipmi_gw, netmask=ipmi_netmask)
+            self.add_server_to_pool(server_id, server_pool_name)
 
-        for server in lab.nodes_controlled_by_ucsm():
-            server_id = server.ucsm_server_id()
+            self.create_service_profile(service_profile_name, server.is_sriov())
 
-            # add IPMI static ip:
-            ipmi_ip, _, _ = server.ipmi_creds()
-            run('scope server {server_id}; scope cimc; create ext-static-ip; set addr {ipmi_ip}; set default-gw {ipmi_gw}; set subnet {ipmi_net_mask}; commit-buffer'.format(
-                    server_id=server_id,
-                    ipmi_ip=ipmi_ip,
-                    ipmi_gw=lab.ipmi_gw,
-                    ipmi_net_mask=lab.ipmi_netmask), shell=False)
+            for order, vnic, mac in enumerate(server.get_nics(), start=1):
+                vlans = self.lab().get_net_vlans()[vnic]
+                self.create_vnic_with_vlans(profile=service_profile_name, vnic=vnic, mac=mac, order=order, vlans=vlans)
 
-            # add server to server pool
-            run('scope org; scope server-pool {0}; create server {1}; commit-buffer'.format(server_pool_name, server_id), shell=False)
+                if is_sriov and vnic in ['eth1']:
+                    self.set_dynamic_vnic_connection_policy(profile=service_profile_name, vnic=vnic, policy_name=dynamic_vnic_policy_name)
 
-            # create service profile
-            run('scope org; create service-profile {profile}; set ipmi-access-profile IPMI; {sriov_policy} commit-buffer'.format(
-                    profile=server.ucsm_profile(),
-                    sriov_policy='set bios-policy SRIOV;' if server.ucsm_is_sriov() else ''), shell=False)
+            self.set_boot_policy_to_service_profile(profile=service_profile_name, policy_name='pxe-ext' if 'director' in server.role else 'pxe-int')
 
-            for nic in server.get_nics():
-                # create vNIC
-                run('scope org; scope service-profile {profile}; create vnic {nic_name} fabric a-b; set identity dynamic-mac {nic_mac}; set order {order}; commit-buffer'.format(
-                        profile=server.ucsm_profile(),
-                        nic_name=nic['nic_name'],
-                        nic_mac=nic['nic_mac'],
-                        order=nic['nic_order']), shell=False)
-                # add default VLAN to vNIC
-                run('scope org; scope service-profile {profile}; scope vnic {nic_name}; create eth-if {vlan}; set default-net yes; commit-buffer'.format(
-                        profile=server.ucsm_profile(),
-                        nic_name=nic['nic_name'],
-                        vlan=nic['nic_vlans'][0]), shell=False)
-                for vlan in nic['nic_vlans'][1:]:
-                    run('scope org; scope service-profile {profile}; scope vnic {nic_name}; create eth-if {vlan}; set default-net no; commit-buffer'.format(
-                            profile=server.ucsm_profile(),
-                            nic_name=nic['nic_name'],
-                            vlan=vlan), shell=False)
-                # remove default VLAN
-                run('scope org; scope service-profile {profile}; scope vnic {nic_name}; delete eth-if default; commit-buffer'.format(
-                        profile=server.ucsm_profile(),
-                        nic_name=nic['nic_name']), shell=False)
-                # set dynamic vnic connection policy
-                if server.ucsm_is_sriov() and nic['nic_name'] in ['eth1']:
-                    run('scope org; scope service-profile {profile}; scope vnic {nic_name}; set adapter-policy Linux; enter dynamic-conn-policy-ref {pn}; commit-buffer'.format(
-                            profile=server.ucsm_profile(),
-                            nic_name=nic['nic_name'],
-                            pn=dynamic_vnic_policy_name), shell=False)
+            self.associate_server_with_profile(profile=service_profile_name, server_id=server_id)  # main step - association - here server will be rebooted
 
-            # boot-policy
-            run('scope org; scope service-profile {profile}; set boot-policy {boot_policy_name}; commit-buffer'.format(
-                    profile=server.ucsm_profile(),
-                    boot_policy_name='pxe-ext' if 'director' in server.role else 'pxe-int'), shell=False)
+            count_attempts = 0
+            while count_attempts < 100:
+                lines = self.list_service_profiles(flt='Associated').split('\n')
+                if len(lines) == n_servers:
+                    lab_logger.info('finished {0}'.format(self))
+                    return
+                time.sleep(10)
+                count_attempts += 1
+            raise RuntimeError('failed to associated all service profiles')
 
-            # main step - association - here server will be rebooted
-            run('scope org; scope service-profile {profile}; associate server {server_id}; commit-buffer'.format(
-                    profile=server.ucsm_profile(),
-                    server_id=server.ucsm_server_id()), shell=False)
+    def read_config_ssh(self):
+        servers = {}
+        ipmi_users = self.cmd('scope org; scope ipmi-access-profile IPMI; sh ipmi-user | egrep -v "Description|---|IPMI" | cut -f 5 -d " "').split('\n')
+        if 'cobbler' not in ipmi_users:
+            raise Exception('No IPMI user "cobbler" in UCSM! Add it with password "cobbler" manually')
 
-        count_attempts = 0
+        for profile in self.cmd('scope org; show service-profile | egrep Associated | cut -f 5-35 -d " "').split('\n'):
+            if not profile:
+                return servers
+            split = profile.split()
+            profile_name = split[0]
+            server_id = split[2]
+            ipmi_ip = self.cmd('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_id))
+            if_mac = {}
+            for line in self.cmd('scope org; scope service-profile {0}; sh vnic | i {1}:'.format(profile_name, self.lab().id)).split('\n'):
+                split = line.split()
+                if_mac[split[0]] = split[3]
+            server = FiServer(lab=self.lab(), name=profile_name, ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM', hostname='XXX')
+            server.set_ucsm_id(server_id=server_id)
+            server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
+            servers[profile_name] = server
+        return servers
 
-        while count_attempts < 100:
-            lines = run('scope org; show service-profile | egrep Associated', shell=False).split('\n')
-            if len(lines) == len(lab.nodes_controlled_by_ucsm()):
-                lab_logger.info('finished UCSM ' + yaml_path)
-                return
-            time.sleep(10)
-            count_attempts += 1
-        raise RuntimeError('failed to associated all service profiles')
+    def delete_service_profiles(self, flt=None):
+        for profile in self.list_service_profiles(flt):
+            profile_name = profile.split()[0]
+            self.cmd('scope org; delete service-profile {0}; commit-buffer'.format(profile_name))
+
+    def delete_mac_pools(self, flt=None):
+        for mac_pool in self.list_mac_pools(flt=flt):
+            mac_pool_name = mac_pool.split()[0]
+            self.cmd('scope org; delete mac-pool {0}; commit-buffer'.format(mac_pool_name))
+
+    def delete_static_cimc_ip(self, flt=None):
+        for server in self.list_servers(flt=flt):
+            server_id = server.split()[0]
+            if self.cmd('scope server {0}; scope cimc; sh ext-static-ip'.format(server_id)):
+                self.cmd('scope server {0}; scope cimc; delete ext-static-ip; commit-buffer'.format(server_id))
+
+    def cleanup(self):
+        from lab.logger import lab_logger
+
+        self.delete_service_profiles()
+        self.delete_mac_pools()
+        for server_pool in self.cmd('scope org; sh server-pool | no-more | egrep -V "Name|----|MAC" | cut -f 5 -d " "').split():
+            self.cmd('scope org; delete server-pool {0}; commit-buffer'.format(server_pool))
+        for uuid_pool in self.cmd('scope org; sh uuid-suffix-pool | no-more | egrep -V "Name|----|UUID" | cut -f 5 -d " "').split():
+            self.cmd('scope org; delete uuid-suffix-pool {0}; commit-buffer'.format(uuid_pool))
+        for boot_policy in self.cmd('scope org; sh boot-policy | no-more | egrep -V "Name|----|UUID" | cut -f 5 -d " "').split():
+            self.cmd('scope org; delete boot-policy {0}; commit-buffer'.format(boot_policy))
+        for dyn_vnic_policy in self.cmd('scope org; show dynamic-vnic-conn-policy detail | no-more | egrep "Name:" | cut -f 6 -d " "').split():
+            self.cmd('scope org; delete dynamic-vnic-conn-policy {0}; commit-buffer'.format(dyn_vnic_policy))
+        for vlan in self.cmd('scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "').split():
+            self.cmd('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan))
+        self.delete_static_cimc_ip()
+#            run('acknowledge server {0}  ;  commit-buffer'.format(server_num), shell=False)
+        for block in self.cmd('scope org; scope ip-pool ext-mgmt; sh block | egrep [1-9] | cut -f 5-10 -d " "').split('\n'):
+            if block:
+                self.cmd('scope org; scope ip-pool ext-mgmt; delete block {0}; commit-buffer'.format(block))
+        for pp in self.cmd('scope system; scope vm-mgmt; scope profile-set; show port-profile detail | no-more | egrep "Name:" | cut -f 6 -d " "').split('\n'):
+            if pp.strip():
+                self.cmd("end; scope system; scope vm-mgmt; scope profile-set; delete port-profile {0} ; commit-buffer".format(pp.strip()))
+        for fabric in 'a', 'b':
+            for port_channel_id in self.cmd('scope eth-uplink; scope fabric {0}; show port-channel detail | egrep "Port Channel Id:" | cut -f 8 -d " "'.format(fabric)).split():
+                if port_channel_id.strip():
+                    self.cmd('scope eth-uplink; scope fabric {0}; delete port-channel {1}; commit-buffer'.format(fabric, port_channel_id.strip()))
+        lab_logger.info('finished')
 
 
 # @task

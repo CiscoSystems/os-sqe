@@ -20,35 +20,44 @@ class JsonFormatter(logging.Formatter):
         import json
         import lab
 
+        def split_pairs():
+            for key_value in re.split(pattern='[ ,]', string=record.message):
+                if '=' in key_value:
+                    key, value = key_value.split('=')
+                    key = key.strip()
+                    if not key:
+                        continue
+                    try:
+                        value = int(value)
+                    except ValueError:
+                        value = value.strip()
+                        if '@timestamp' not in key:
+                            value = value.replace('-', '')
+                            value = value.replace(':', '')
+                    d[key] = value
+
         d = {}
-        for key_value in re.split(pattern='[ ,]', string=record.message):
-            if '=' in key_value:
-                key, value = key_value.split('=')
-                key = key.strip()
-                if not key:
-                    continue
-                try:
-                    value = int(value)
-                except ValueError:
-                    value = value.strip()
-                    if '@timestamp' not in key:
-                        value = value.replace('-', '')
-                        value = value.replace(':', '')
-                d[key] = value
+        if record.exc_text:
+            d['EXCEPTION'] = record.exc_text.replace('\n', '')
+        split_pairs()
         if '@timestamp' not in d:
             d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
         d['name'] = record.name
         d['repo_tag'] = lab.REPO_TAG
         d['osp7_info'] = lab.OSP7_INFO
         d['jenkins'] = lab.JENKINS_TAG
-        if record.exc_text:
-            d['EXCEPTION'] = record.exc_text.replace('\n', '')
         return json.dumps(d)
+
+
+class JsonFilter(logging.Filter):
+    def filter(self, record):
+        return record.exc_text or '=' in record.message
 
 
 json_handler = logging.FileHandler('json.log')
 json_handler.setLevel(logging.DEBUG)
 json_handler.setFormatter(JsonFormatter())
+json_handler.addFilter(JsonFilter())
 
 
 def create_logger(name=None):

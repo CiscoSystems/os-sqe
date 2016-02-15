@@ -1,6 +1,19 @@
 from lab.lab_node import LabNode
 
 
+class Nic(object):
+    def __init__(self, name, mac, node):
+        self._node = node  # nic belongs to the node
+        self._name = name
+        self._mac = mac
+
+    def get_mac(self):
+        return self._mac
+
+    def get_name(self):
+        return self._name
+
+
 class Server(LabNode):
 
     _temp_dir = None
@@ -21,99 +34,68 @@ class Server(LabNode):
             #     self._tmp_dir_exists = self.run('mkdir -p {0}'.format(self._temp_dir)).return_code == 0
         return self._temp_dir if self._tmp_dir_exists else None
 
-    def __init__(self, lab_node_name, ip, lab, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', n_in_role=0, ssh_public_key='N/A', ssh_port=22):
-        self.net = net
-        self.ip_mac = 'UnknownInServer'
-        self.role = role
-        self.n_in_role = n_in_role
-        self.hostname = hostname
-        self.ssh_public_key = ssh_public_key
-        self.ssh_port = ssh_port
+    def __init__(self, name, ip, lab, username='??InServer', password='ssh_key', hostname='??InServer'):
         self._tmp_dir_exists = False
-        self.cimc_or_ucsm = None
+        self._package_manager = None
+        self._ipmi_ip, self._ipmp_username, self._ipmi_password = None, None, None
+        self._mac_server_part = None
+        self._nics = list()  # list of NICs
+        self._is_nics_formed = False
 
-        self.ipmi = {'ip': 'UnknownInServer', 'username': 'UnknownInServer', 'password': 'UnknownInServer'}
-        self.ucsm = {'ip': 'UnknownInServer', 'username': 'UnknownInServer', 'password': 'UnknownInServer', 'service-profile': 'UnknownInServer',
-                     'iface_mac': {'UnknownInServer': 'UnknownInServer'}}
-
-        self.nics = []
-        self.cimc = {'n9k': 'UnknownInServer', 'n9k_port': 'UnknownInServer', 'pci_port': 'UnknownInServer', 'uplink_port': 'UnknownInServer'}
-        self.package_manager = None
-        super(Server, self).__init__(lab_node_name, ip, username, password, lab)
-
-    def set_cimc_or_ucsm(self, node):
-        self.cimc_or_ucsm = node
-        node.add_managed_server(self)
-
-    def add_port(self, port):
-        self.ports.append(port)
+        super(Server, self).__init__(name=name, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
 
     def __repr__(self):
-        return 'sshpass -p {0} ssh {1}@{2} {3}'.format(self.password, self.username, self.ip, self.name())
-
-    def name(self):
-        return '{0}-{1}'.format(self.role, self.n_in_role)
+        return '{n} sshpass -p {p} ssh {u}@{ip} ipmi: {ip2} {u2} {p2}'.format(p=self._password, u=self._username, ip=self._ip, n=self.name(), ip2=self._ipmi_ip, u2=self._ipmp_username, p2=self._ipmi_password)
 
     def set_ipmi(self, ip, username, password):
-        self.ipmi['ip'] = ip
-        self.ipmi['username'] = username
-        self.ipmi['password'] = password
+        self._ipmi_ip, self._ipmp_username, self._ipmi_password = ip, username, password
 
-    def ipmi_creds(self):
-        return self.ipmi['ip'], self.ipmi['username'], self.ipmi['password']
+    def get_ipmi(self):
+        return self._ipmi_ip, self._ipmp_username, self._ipmi_password
 
-    def set_ucsm(self, ip, username, password, service_profile, server_id, is_sriov):
-        self.ucsm['ip'] = ip
-        self.ucsm['username'] = username
-        self.ucsm['password'] = password
-        self.ucsm['service-profile'] = service_profile
-        self.ucsm['server-id'] = server_id
-        self.ucsm['is-sriov'] = is_sriov
+    def add_nics(self, nics):
+        """:param: nics is a list ['eth0', 'eth1', 'user', ''pxe'] """
+        self._nics.extend(nics)
 
-    def add_if(self, nic_name, nic_mac, nic_order, nic_vlans):
-        interface = {"nic_name": nic_name, "nic_mac": nic_mac, "nic_order": nic_order, "nic_vlans": nic_vlans}
-        self.nics.append(interface)
+    def _form_nics(self):
+        import validators
 
-    def get_nics(self):
-        return self.nics
+        if not self._is_nics_formed:
+            if not self._mac_server_part:
+                raise RuntimeError('{0} is not ready to form nics- character part of mac is not set!')
+            l = []
+            for nic_name, mac_net_part in self._nics:
+                mac = '{lab_id:02}:00:{srv_part}:00:{net_part}'.format(lab_id=self.lab().get_id(), srv_part=self._mac_server_part, net_part=mac_net_part)
+                if not validators.mac_address(mac):
+                    raise ValueError('{0} is not a MAC. Check node {1} and net {2}'.format(mac, self.name(), nic_name))
+                l.append(Nic(name=nic_name, mac=mac, node=self))
+            self._nics = l
+            self._is_nics_formed = True
 
-    def ucsm_profile(self):
-        return self.ucsm['service-profile']
-
-    def ucsm_is_sriov(self):
-        return self.ucsm['is-sriov']
-
-    def ucsm_server_id(self):
-        return self.ucsm['server-id']
-
-    def nic_mac(self, nic_name):
-        nic = filter(lambda x: x["nic_name"] == nic_name, self.nics)
-        if nic:
-            return nic[0]["nic_mac"]
-        else:
-            raise ValueError('Nic {0} does not exist on this server'.format(nic_name))
+    def get_nic(self, nic):
+        return filter(lambda x: x.get_name() == nic, self._nics)
 
     def get_package_manager(self):
-        if not self.package_manager:
+        if not self._package_manager:
             possible_packages = ['apt-get', 'dnf', 'yum']
             for x in possible_packages:
                 if self.run(command='whereis {0}'.format(x)) != x + ':':
-                    self.package_manager = x
+                    self._package_manager = x
                     break
-            if not self.package_manager:
+            if not self._package_manager:
                 raise RuntimeError('do not know which package manager to use: neither of {0} found'.format(possible_packages))
-        return self.package_manager
+        return self._package_manager
 
     def construct_settings(self, warn_only):
         from lab import with_config
 
-        kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
+        kwargs = {'host_string': '{user}@{ip}'.format(user=self._username, ip=self._ip),
                   'connection_attempts': 10,
                   'warn_only': warn_only}
-        if self.password == 'ssh_key':
+        if self._password == 'ssh_key':
             kwargs['key_filename'] = with_config.KEY_PRIVATE_PATH
         else:
-            kwargs['password'] = self.password
+            kwargs['password'] = self._password
         return kwargs
 
     def cmd(self, command, in_directory='.', warn_only=False):
@@ -128,7 +110,7 @@ class Server(LabNode):
         """
         from fabric.api import run, sudo, settings, cd
 
-        if self.ip == 'localhost' or self.ip == '127.0.0.1':
+        if self._ip == 'localhost' or self._ip == '127.0.0.1':
             return self.run_local(command, in_directory=in_directory, warn_only=warn_only)
 
         run_or_sudo = run
@@ -190,7 +172,7 @@ class Server(LabNode):
         if in_directory != '.':
             self.run(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
 
-        if self.ip == 'localhost' or self.ip == '127.0.0.1':
+        if self._ip == 'localhost' or self._ip == '127.0.0.1':
             with lcd(in_directory):
                 local('echo "{0}" > {1}'.format(string_to_put, file_name))
                 return os.path.abspath(os.path.join(in_directory, file_name))
@@ -279,13 +261,13 @@ class Server(LabNode):
             self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
             self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
             self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
-        self.username = new_username
-        self.password = 'cisco123'
+        self._username = new_username
+        self._password = 'cisco123'
         with open(with_config.KEY_PUBLIC_PATH) as f:
             self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
         self.run(command='sudo chmod 700 .ssh')
         self.run(command='sudo chmod 600 .ssh/authorized_keys')
-        self.password = 'ssh_key'
+        self._password = 'ssh_key'
 
     def ping(self, port=22):
         import socket
@@ -293,7 +275,7 @@ class Server(LabNode):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
         try:
-            s.connect((str(self.ip), port))
+            s.connect((str(self._ip), port))
             res = True
         except (socket.timeout, socket.error):
             res = False

@@ -4,16 +4,41 @@ import abc
 class LabNode(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, lab_node_name, ip, username, password, lab, ports=None):
-        self.lab_node_name = lab_node_name
-        self.ip = ip
-        self.username = username
-        self.password = password
-        self.lab = lab
-        self.ports = ports or []
+    def __init__(self, name, ip, username, password, lab, hostname):
+        self._lab = lab  # link to parent Laboratory object
+        self._name = name  # something which describes what this node is and how it will be used
+        self._hostname = hostname  # usually it's actual hostname as reported by operation system of the node
+        self._ip = ip
+        self._username = username
+        self._password = password
+        self._upstream_wires = []
+        self._downstream_wires = []
 
-    def add_port(self, port):
-        self.ports.append(port)
+    def wire_upstream(self, wire):
+        self._upstream_wires.append(wire)
+
+    def wire_downstream(self, wire):
+        self._downstream_wires.append(wire)
+
+    def name(self):
+        return self._name
+
+    def lab(self):
+        return self._lab
+
+    def get_ssh(self):
+        return self._ip, self._username, self._password, self._hostname
+
+    def hostname(self):
+        return self._hostname
+
+    def get_pcs(self):
+        """Returns all PC IDs found on all wires"""
+        return set(map(lambda x: x.get_pc_id(), self._downstream_wires + self._upstream_wires))
+
+    def get_all_wires(self):
+        """Returns all ires"""
+        return self._downstream_wires + self._upstream_wires
 
     @abc.abstractmethod
     def cmd(self, cmd):
