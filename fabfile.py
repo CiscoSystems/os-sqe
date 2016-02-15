@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from fabric.api import task
 
-from lab import decorators, fi
+from lab import decorators
 
 
 @task
@@ -10,24 +10,22 @@ def deploy_lab(config_path):
     """fab deploy_lab:g10 \t\t\t\t Deploy the given lab from scratch including FI&N9K configuration.
         :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
     """
-    from lab.providers import fi
-    from lab.providers import cobbler
-    from lab.configurators import osp7_install
+    from lab.laboratory import Laboratory
 
-    cobbler.configure_for_osp7(yaml_path=config_path)
-    fi.configure_for_osp7(yaml_path=config_path)
-    osp7_install.configure_for_osp7(yaml_path=config_path)
+    l = Laboratory(config_path=config_path)
+    l.configure_for_osp7()
 
 
 @task
 @decorators.print_time
 def osp7_config(config_path):
-    """fab osp7_config:g10 \t\t\t\t Create configuration for osp7_bootstrap.
+    """fab osp7_config:g10 \t\t\t\t Create configuration file for osp7_bootstrap. Nothing will be done with N9K and alike.
         :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
     """
-    from lab.configurators import osp7_install
+    from lab.laboratory import Laboratory
 
-    osp7_install.configure_for_osp7(yaml_path=config_path)
+    l = Laboratory(config_path=config_path)
+    l.create_config_file_for_osp7_install()
 
 
 @task
@@ -79,27 +77,27 @@ def hag10(test_name, do_not_clean=False):
 
 
 @task
-def ucsmg10(cmd):
-    """fab ucsmg10:'scope org; sh service-profile' \t Run single command on G10 UCSM.
-        :param cmd: command to be executed
+def cmd(config_path):
+    """fab cmd:g10 \t\t\t Run single command on G10 devices.
+        :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
     """
+    from fabric.operations import prompt
+    from time import sleep
     from lab.laboratory import Laboratory
-    from lab.fi import FI
 
-    l = Laboratory(config_path='g10.yaml')
-    ucsm_ip, ucsm_username, ucsm_password = l.ucsm_creds()
-    ucsm = FI(ucsm_ip, ucsm_username, ucsm_password)
-    ucsm.cmd(cmd)
+    l = Laboratory(config_path=config_path)
+    print l, ' has: ', sorted(l.get_nodes().keys())
+    device_name = prompt(text='On which device you want to execute the command?')
+    device = l.get_node(device_name)
+    method_names = [x for x in dir(device) if not x.startswith('_')]
+    print device,  ' has: \n', '\n'.join(method_names)
+    method_name = prompt(text='Which operation you wanna execute?')
+    if method_name == 'cmd':
+        command = prompt(text='cmd requires command, please enter something like sh cdp nei:')
+        results = device.cmd(command)
+    else:
+        method_to_execute = getattr(device, method_name)
+        results = method_to_execute()
 
-
-@task
-def n9kg10(cmd):
-    """fab n9kg10:'sh cdp nei' \t\t\t Run single command on G10 N9K.
-        :param cmd: command to be executed
-    """
-    from lab.laboratory import Laboratory
-    from lab.n9k import Nexus
-    l = Laboratory(config_path='g10.yaml')
-    n9k_ip, _, n9k_username, n9k_password = l.n9k_creds()
-    nx = Nexus(n9k_ip, n9k_username, n9k_password)
-    print nx.cmd(cmd)
+    sleep(1)
+    print 'RESULTS:\n', results

@@ -6,7 +6,7 @@ def start(context, log, args):
     cmd = args['cmd']
     name = args.get('name', '')
 
-    server = context.particular_node(node_name)
+    server = context.get_node(node_name)
     res = server.run(cmd, warn_only=True)
     log.info('node={0}, monitor={1}, result={2}'.format(node_name, name, ''.join(res)))
 

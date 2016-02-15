@@ -10,14 +10,6 @@ skip = true
 [DEFAULT]
 # switch on/off time consuming operation - openstack baremetal introspection bulk start
 
-testbed_vlan = {testbed_vlan}
-storage_vlan = {storage_vlan}
-storage_mgmt_vlan = {storage_mgmt_vlan}
-tenant_network_vlan = {tenant_network_vlan}
-overcloud_floating_vlan = {overcloud_floating_vlan}
-overcloud_external_vlan = {overcloud_external_vlan}
-
-
 node_discovery = false
 
 director_node_hostname = {director_node_hostname}
@@ -26,10 +18,10 @@ director_node_ssh_username = root
 
 # used to create neutron ml2 config
 neutron_mechanism_drivers = openvswitch,cisco_ucsm,cisco_nexus
-network_ucsm_ip = {ucsm_ip}
-network_ucsm_username = {ucsm_username}
-network_ucsm_password = {ucsm_password}
-network_ucsm_host_list = {ucsm_mac_profile_list}
+network_ucsm_ip = {network_ucsm_ip}
+network_ucsm_username = {network_ucsm_username}
+network_ucsm_password = {network_ucsm_password}
+network_ucsm_host_list = {network_ucsm_host_list}
 
 # iface used for internal PXE network, usually pxe-int
 undercloud_local_interface = {undercloud_local_interface}
@@ -71,7 +63,13 @@ network_nexus_vlan_range = datacentre:{vlan_range},external
 
 
 # this network will be created as external in overcloud openstack
-overcloud_external_vlan = {overcloud_external_vlan}
+testbed_vlan = {test_vlan}
+storage_vlan = {stor_vlan}
+storage_mgmt_vlan = {stor_mgmt_vlan}
+tenant_network_vlan = {tenant_vlan}
+
+overcloud_floating_vlan = {fip_vlan}
+overcloud_external_vlan = {ext_vlan}
 overcloud_network_cidr = {overcloud_network_cidr}
 overcloud_external_ip_cidr = {overcloud_network_cidr}
 overcloud_external_ip_start = {overcloud_external_ip_start}
@@ -87,16 +85,4 @@ overcloud_floating_ip_network_gateway = 20.0.0.1
 undercloud_fake_gw_ip = 20.0.0.1
 undercloud_fake_gw_ip_prefix = 24
 
-
-
-network_nexus_config = {{
-  {n9k1},
-  {n9k2}
-  }}
-
-sw_username = {sw_username}
-sw_password = {sw_password}
-sw_1_name = {sw_1_name}
-sw_1 = {sw_1}
-sw_2_name = {sw_2_name}
-sw_2 = {sw_2}
+network_nexus_config = {network_nexus_config}
