@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 from fabric.api import task
-from lab import decorators
 
-from fabs import jenkins_reports, elk, test
-from lab.providers import cobbler, n9k
-from lab.runners import rally
-from lab import cimc, cloud
-from tools import ucsm_tempest_conf
+from lab import decorators, fi
 
 
 @task
@@ -89,7 +84,7 @@ def ucsmg10(cmd):
         :param cmd: command to be executed
     """
     from lab.laboratory import Laboratory
-    from lab.providers.fi import FI
+    from lab.fi import FI
 
     l = Laboratory(config_path='g10.yaml')
     ucsm_ip, ucsm_username, ucsm_password = l.ucsm_creds()

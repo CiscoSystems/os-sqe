@@ -1,6 +1,7 @@
 def start(lab, log, args):
     import time
-    from lab.providers import fi, n9k
+    from lab.providers import n9k
+    from lab import fi
 
     unique_pattern_in_name = args.get('unique_pattern_in_name', 'sqe-test')
     server = lab.controllers()[0]

@@ -1,6 +1,6 @@
 def start(lab, log, args):
     import validators
-    from lab.providers import fi
+    from lab import fi
 
     is_print_vlans = args.get('is-print-vlans', False)
     is_show_details = args.get('is_show_details', False)

@@ -1,11 +1,13 @@
 import tempfile
-from lab import with_config
+
 from netaddr import IPNetwork
-from lab.server import Server
-from lab.providers.n9k import Nexus
-from lab.port import Port
-from lab.providers.fi import FI
+
+from lab import with_config
 from lab.cimc import Cimc
+from lab.fi import FI
+from lab.port import Port
+from lab.providers.n9k import Nexus
+from lab.server import Server
 
 
 class Laboratory(with_config.WithConfig):
