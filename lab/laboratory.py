@@ -5,8 +5,8 @@ from netaddr import IPNetwork
 from lab import with_config
 from lab.cimc import Cimc
 from lab.fi import FI
+from lab.n9k import Nexus
 from lab.port import Port
-from lab.providers.n9k import Nexus
 from lab.server import Server
 
 

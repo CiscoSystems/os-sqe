@@ -98,7 +98,7 @@ def n9kg10(cmd):
         :param cmd: command to be executed
     """
     from lab.laboratory import Laboratory
-    from lab.providers.n9k import Nexus
+    from lab.n9k import Nexus
     l = Laboratory(config_path='g10.yaml')
     n9k_ip, _, n9k_username, n9k_password = l.n9k_creds()
     nx = Nexus(n9k_ip, n9k_username, n9k_password)
