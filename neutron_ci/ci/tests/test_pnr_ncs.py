@@ -80,7 +80,7 @@ RECLONE=True
 '''
 
 
-class TailFNCSTest(BaseTestCase):
+class PNRFNCSTest(BaseTestCase):
 
     neutron_repo = os.environ.get('NEUTRON_REPO')
     neutron_ref = os.environ.get('NEUTRON_REF')
