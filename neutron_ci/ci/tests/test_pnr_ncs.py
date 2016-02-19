@@ -1,4 +1,4 @@
-# Copyright 2014 Cisco Systems, Inc.
+# Copyright 2016 Cisco Systems, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-# @author: Nikolay Fedotov, Cisco Systems, Inc.
+# @author: Yaroslav Morkovnikov, Cisco Systems, Inc.
 
 from fabric.operations import local
 import os
@@ -20,9 +20,6 @@ from ci import PARENT_FOLDER_PATH, WORKSPACE
 from ci.lib.test_case import BaseTestCase
 
 
-Q_PLUGIN_EXTRA_CONF_PATH = \
-    '/opt/stack/networking-cisco/etc/neutron/plugins/ml2'
-Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_ncs.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
 NEUTRON_REPO={neutron_repo}
@@ -80,16 +77,10 @@ LOGFILE=/opt/stack/screen-logs/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
-
-[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
-[ml2_ncs]
-url=http://127.0.0.1:8888/openstack/
-username=admin
-password=admin
 '''
 
 
-class TailFNCSTest(BaseTestCase):
+class PNRFNCSTest(BaseTestCase):
 
     neutron_repo = os.environ.get('NEUTRON_REPO')
     neutron_ref = os.environ.get('NEUTRON_REF')
@@ -100,13 +91,6 @@ class TailFNCSTest(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         BaseTestCase.setUpClass()
-
-        # Install NGINX
-        nginx_conf = os.path.join(PARENT_FOLDER_PATH,
-                                  'files/ncs/nginx-ncs.conf')
-        local('sudo apt-get install -y --fix-missing nginx')
-        local('sudo cp {0} /etc/nginx/sites-available/default'.format(nginx_conf))
-        local('sudo service nginx restart')
 
         local_conf = LOCAL_CONF.format(
             neutron_repo=cls.neutron_repo,
