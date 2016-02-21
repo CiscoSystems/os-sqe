@@ -19,7 +19,9 @@ import os
 from ci import PARENT_FOLDER_PATH, WORKSPACE
 from ci.lib.test_case import BaseTestCase
 
-
+Q_PLUGIN_EXTRA_CONF_PATH = \
+    '/opt/stack/networking-cisco/etc/neutron/plugins/ml2'
+Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_ncs.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
 NEUTRON_REPO={neutron_repo}
@@ -77,6 +79,12 @@ LOGFILE=/opt/stack/screen-logs/stack.sh.log
 USE_SCREEN=True
 SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
+
+[[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
+[ml2_ncs]
+url=http://127.0.0.1:8888/openstack/
+username=admin
+password=admin
 '''
 
 
