@@ -24,13 +24,13 @@ nodes: {
   fi-2:    {ip: 10.30.119.68, vip: 10.30.119.66, is-sriov: False, username: admin, password: cisco, hostname: g08-fi-B},
 
 # ips are shifts for user and ipmi nets, id is server_id for UCS connected to fi, also used in generating mac address, so be sure it's in 1-99 and unique
-  director-1: {ip: -2, hostname: g8-director.ctocllab.cisco.com,  nets: [user, eth1, pxe-ext, pxe-int]}, # ssh 10.23.230.94 user[-2] 08:25:B5:AA:C0:01  ipmi 10.30.119.5 ipmi[-2]
-  control-1:  {ip: 1,                                             nets: [eth0, eth1, user, pxe-int]},    # ssh 10.23.230.69 user[4+1]  ipmi 10.30.119.6 ipmi[4+1]
-  control-2:  {ip: 2,                                             nets: [eth0, eth1, user, pxe-int]},    # ssh 10.23.230.70 user[4+2]  ipmi 10.30.119.7 ipmi[4+2]
-  control-3:  {ip: 3,                                             nets: [eth0, eth1, user, pxe-int]},    # ssh 10.23.230.71 user[4+3]  ipmi 10.30.119.8 ipmi[4+3]
+  director-1: {ip: -2, hostname: g8-director.ctocllab.cisco.com,  nets: [user, eth1, pxe-ext, pxe-int]}, # ssh 10.23.230.94 ipmi 10.30.119.5
+  control-1:  {ip: 4,                                             nets: [eth0, eth1, user, pxe-int]},    # ssh 10.23.230.69 ipmi 10.30.119.6
+  control-2:  {ip: 5,                                             nets: [eth0, eth1, user, pxe-int]},    # ssh 10.23.230.70 ipmi 10.30.119.7
+  control-3:  {ip: 6,                                             nets: [eth0, eth1, user, pxe-int]},    # ssh 10.23.230.71 ipmi 10.30.119.8
 
-  compute-1:  {ip: 4, ipmi_ip: 10.30.119.93, ipmi_username: admin, ipmi_password: password, nets: [eth0, eth1, user, pxe-int]}, # 10.23.230.72 user[4+4]
-  compute-2:  {ip: 5, ipmi_ip: 10.30.119.94, ipmi_username: admin, ipmi_password: password, nets: [eth0, eth1, user, pxe-int]}, # 10.23.230.73 user[4+5]
+  compute-1:  {ip: 7, ipmi_ip: 10.30.119.93, ipmi_username: admin, ipmi_password: password, nets: [eth0, eth1, user, pxe-int]}, # 10.23.230.72
+  compute-2:  {ip: 8, ipmi_ip: 10.30.119.94, ipmi_username: admin, ipmi_password: password, nets: [eth0, eth1, user, pxe-int]}, # 10.23.230.73
 
   cobbler-1: {ip: 172.29.74.8, username: cobbler, password: cobbler}
 }

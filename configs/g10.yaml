@@ -23,7 +23,7 @@ nodes: {
 
 # ips are shifts for user and ipmi nets
   director-1:   {ip: -2, hostname: g10-director.ctocllab.cisco.com,                    nets: [user, eth1, pxe-ext, pxe-int]},
-  control-1:    {ip: 4,                                               is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
+  control-1:    {ip: 4,                                               is-sriov: False, nets: [eth0, eth1, user, pxe-int]}, #  10.23.230.128
   control-2:    {ip: 5,                                               is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
   control-3:    {ip: 6,                                               is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
   compute-1:    {ip: 7,                                               is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
