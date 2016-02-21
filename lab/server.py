@@ -2,6 +2,9 @@ from lab.lab_node import LabNode
 
 
 class Nic(object):
+    def __repr__(self):
+        return u'{0} {1}'.format(self._name, self._mac)
+
     def __init__(self, name, mac, node):
         self._node = node  # nic belongs to the node
         self._name = name
@@ -58,16 +61,13 @@ class Server(LabNode):
         self._nics.extend(nics)
 
     def _form_nics(self):
-        import validators
-
         if not self._is_nics_formed:
             if not self._mac_server_part:
                 raise RuntimeError('{0} is not ready to form nics- character part of mac is not set!')
             l = []
             for nic_name, mac_net_part in self._nics:
                 mac = '{lab_id:02}:00:{srv_part}:00:{net_part}'.format(lab_id=self.lab().get_id(), srv_part=self._mac_server_part, net_part=mac_net_part)
-                if not validators.mac_address(mac):
-                    raise ValueError('{0} is not a MAC. Check node {1} and net {2}'.format(mac, self.name(), nic_name))
+                self.lab().make_sure_that_object_is_unique(type_of_object='MAC', obj=mac, node_name=self.name())
                 l.append(Nic(name=nic_name, mac=mac, node=self))
             self._nics = l
             self._is_nics_formed = True

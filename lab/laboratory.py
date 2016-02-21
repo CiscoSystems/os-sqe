@@ -26,7 +26,7 @@ class Laboratory(with_config.WithConfig):
         self._ipmi_net = IPNetwork(self._cfg['nets']['ipmi']['cidr'])
         self._net_vlans = {net: val['vlan'] for net, val in self._cfg['nets'].iteritems()}
 
-        self._unique_dict = dict()  # to make sure that all cloud node numbers are unique
+        self._unique_dict = dict()  # to make sure that all needed objects are unique
 
         self._ssh_username, self._ssh_password = self._cfg['cred']['ssh_username'], self._cfg['cred']['ssh_password']
         self._ipmi_username, self._ipmi_password = self._cfg['cred']['ipmi_username'], self._cfg['cred']['ipmi_password']
@@ -34,6 +34,28 @@ class Laboratory(with_config.WithConfig):
 
         for pc_id, pc_description in self._cfg['wires'].iteritems():
             self._process_single_pc(pc_id=pc_id, pc_description=pc_description)
+
+    def make_sure_that_object_is_unique(self, type_of_object, obj, node_name):
+        """check that given object is valid and unique
+        :param type_of_object: IPv4 MAC service-profile
+        :param obj: object
+        :param node_name: node which tries to register the object
+        """
+        import validators
+
+        self._unique_dict.setdefault(type_of_object, set())
+        if obj in self._unique_dict[type_of_object]:
+            raise ValueError('{0} node is trying to use {1}={2} which is already in use by others'.format(node_name, type_of_object, obj))
+        else:
+            if type_of_object == 'MAC':
+                is_ok = validators.mac_address(obj)
+            elif type_of_object == 'IPv4':
+                is_ok = validators.ipv4(obj)
+            else:
+                is_ok = True
+            if not is_ok:
+                raise ValueError('{0} is not valid {1}'.format(obj, type_of_object))
+            self._unique_dict[type_of_object].add(obj)
 
     def _process_single_pc(self, pc_id, pc_description):
         from lab.wire import Wire
@@ -73,7 +95,6 @@ class Laboratory(with_config.WithConfig):
 
         if role in ['director', 'control', 'compute', 'ceph']:
             klass = FiServer if type(peer_device) is FI else CimcServer
-            is_server = True
         elif role == 'cobbler':
             klass = CobblerServer
         elif role == 'asr':
@@ -88,7 +109,7 @@ class Laboratory(with_config.WithConfig):
 
     def _get_or_create_node(self, node_port, peer_device=None):
         from lab.fi import FI, FiServer
-        from lab.server import Server
+        from lab.cimc import CimcServer
 
         try:
             role, id_in_role, port = node_port.split('-')
@@ -107,11 +128,6 @@ class Laboratory(with_config.WithConfig):
             node_description = self._cfg['nodes'][node_name]
         except KeyError:
             raise ValueError(node_name + ' is not found in section "nodes"')
-        self._unique_dict.setdefault(role, set())
-        if id_in_role in self._unique_dict[role]:
-            raise ValueError('{0} node use the number which is already used by other cloud node with the same role'.format(node_name))
-        else:
-            self._unique_dict[role].add(id_in_role)
 
         klass = self._get_role_class(role=role, peer_device=peer_device)
 
@@ -119,7 +135,7 @@ class Laboratory(with_config.WithConfig):
         ipmi_ip, ipmi_username, ipmi_password = 'No ipmi', node_description.get('ipmi_username', self._ipmi_username), node_description.get('ipmi_password', self._ipmi_password)
         hostname = node_description.get('hostname', 'NotConfiguredInYaml')
 
-        if klass == Server:
+        if klass in [FiServer, CimcServer]:
             def get_ip_in_net_by_index(net):
                 if ip_index_in_net in [0, 1, 2, 3, -1]:
                     raise ValueError('IP address index {0} is not possible since 0 is network , 1,2,3 are GWs and -1 is broadcast'.format(node_name))
@@ -136,7 +152,7 @@ class Laboratory(with_config.WithConfig):
 
         node = klass(lab=self, name=node_name, ip=ssh_ip, username=ssh_username, password=ssh_password, hostname=hostname)
 
-        if isinstance(node, Server):
+        if klass in [FiServer, CimcServer]:
             node.set_ipmi(ip=ipmi_ip, username=ipmi_username, password=ipmi_password)
 
             nics = node_description['nets']
@@ -238,7 +254,7 @@ class Laboratory(with_config.WithConfig):
         overcloud_section = []
 
         for server in self.get_controllers() + self.get_computes():
-            service_profile_name = '""' if isinstance(server, CimcServer) else server.get_ucsm_info()
+            service_profile_name = '""' if isinstance(server, CimcServer) else server.get_ucsm_info()[1]
 
             try:
                 eth0_nic = server.get_nic(nic='eth0')[0]

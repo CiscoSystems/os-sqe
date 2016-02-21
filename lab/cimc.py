@@ -3,8 +3,9 @@ from lab.server import Server
 
 class CimcServer(Server):
     def set_cimc_id(self, server_id):
-        pci_bus, n_in_bus = server_id.split('/')
-        self._mac_server_part = 'A{0}:{1:02}'.format(int(pci_bus), int(n_in_bus))  # A3:00
+        pci_bus, n_in_bus = server_id.split('/')  # usually pci_bus/id are the same for all servers, so to make sure macs are different we use here a last octet of ipmi address
+        last_ip_octet = str(self._ipmi_ip).split('.')[3]
+        self._mac_server_part = 'A{0}:{1:02X}'.format(int(pci_bus), int(last_ip_octet))  # A3:00
         self._form_nics()
 
     def cleanup(self):

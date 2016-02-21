@@ -8,13 +8,13 @@ class FiServer(Server):
 
     def set_ucsm_id(self, server_id):
         self._server_id = str(server_id)
-        self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i=self._server_id, n=self.name(), bc='C' if '/' in self._server_id else 'B')
+        self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i=self._server_id, n=self.name(), bc='B' if '/' in self._server_id else 'C')
 
         if '/' in self._server_id:
             chasis, n_in_chasis = server_id.split('/')
             self._mac_server_part = 'B{0}:{1:02}'.format(int(chasis), int(n_in_chasis))  # B3:01
         else:
-            self._mac_server_part = 'B0:{0:02}'.format(int(self._server_id))  # B0:05
+            self._mac_server_part = 'C0:{0:02}'.format(int(self._server_id))  # C0:05
         self._form_nics()
 
     def get_ucsm_info(self):
