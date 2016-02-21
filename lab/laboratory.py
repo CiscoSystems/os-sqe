@@ -321,7 +321,7 @@ class Laboratory(with_config.WithConfig):
 
                                            overcloud_control_scale=n_controls, overcloud_ceph_storage_scale=n_ceph, overcloud_compute_scale=n_computes,
 
-                                           ucsm_ip=self._ucsm_vip, ucsm_username=self._neutron_username, ucsm_password=self._neutron_password, network_ucsm_host_list=network_ucsm_host_list,
+                                           network_ucsm_ip=self._ucsm_vip, network_ucsm_username=self._neutron_username, network_ucsm_password=self._neutron_password, network_ucsm_host_list=network_ucsm_host_list,
 
                                            undercloud_lab_pxe_interface='pxe-ext', undercloud_local_interface='pxe-int', undercloud_fake_gateway_interface='eth1',
 
