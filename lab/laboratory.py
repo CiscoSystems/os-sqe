@@ -219,6 +219,9 @@ class Laboratory(with_config.WithConfig):
     def get_ucsm_vlans(self):
         return set(reduce(lambda l, x: l.extends(x['vlan']), self._cfg['nets'].values(), []))
 
+    def get_neutron_creds(self):
+        return self._neutron_username, self._neutron_password
+
     def ucsm_nets_with_pxe(self):
         return [x for x in self._cfg['nets'].keys() if 'pxe' in x]
 

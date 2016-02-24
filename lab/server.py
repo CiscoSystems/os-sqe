@@ -75,6 +75,9 @@ class Server(LabNode):
     def get_nic(self, nic):
         return filter(lambda x: x.get_name() == nic, self._nics)
 
+    def get_nics(self):
+        return self._nics
+
     def get_package_manager(self):
         if not self._package_manager:
             possible_packages = ['apt-get', 'dnf', 'yum']
