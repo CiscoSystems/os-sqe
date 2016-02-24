@@ -244,19 +244,19 @@ exit
                 if is_sriov and vnic.get_name() in ['eth1']:
                     self.set_dynamic_vnic_connection_policy(profile=service_profile_name, vnic=vnic, policy_name=dynamic_vnic_policy_name)
 
-            self.set_boot_policy_to_service_profile(profile=service_profile_name, policy_name='pxe-ext' if 'director' in server.role else 'pxe-int')
+            self.set_boot_policy_to_service_profile(profile=service_profile_name, policy_name='pxe-ext' if 'director' in server.name() else 'pxe-int')
 
             self.associate_server_with_profile(profile=service_profile_name, server_id=server_id)  # main step - association - here server will be rebooted
 
-            count_attempts = 0
-            while count_attempts < 100:
-                lines = self.list_service_profiles(flt='Associated').split('\n')
-                if len(lines) == n_servers:
-                    lab_logger.info('finished {0}'.format(self))
-                    return
-                time.sleep(10)
-                count_attempts += 1
-            raise RuntimeError('failed to associated all service profiles')
+        count_attempts = 0
+        while count_attempts < 100:
+            lines = self.list_service_profiles(flt='Associated')
+            if len(lines) == n_servers:
+                lab_logger.info('finished {0}'.format(self))
+                return
+            time.sleep(10)
+            count_attempts += 1
+        raise RuntimeError('failed to associated all service profiles')
 
     def read_config_ssh(self):
         servers = {}
