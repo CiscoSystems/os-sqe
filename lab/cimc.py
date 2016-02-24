@@ -35,7 +35,7 @@ class CimcServer(Server):
         import ImcSdk
         from lab.logger import lab_logger
 
-        lab_logger.info('Configuring CIMC consoles in lab {0}'.format(self._lab.id))
+        lab_logger.info('Configuring CIMC consoles in lab {0}'.format(self.lab()))
         handle = ImcSdk.ImcHandle()
         try:
             handle.login(name=self._ipmi_ip, username=self._ipmp_username, password=self._ipmi_password)
@@ -45,8 +45,8 @@ class CimcServer(Server):
                 params = dict()
                 params["UplinkPort"] = wire.get_port_n()
                 for nic_order, nic in enumerate(self.get_nics(), start=1):
-                    params["dn"] = "sys/rack-unit-1/adaptor-" + str(wire.get_port_s()) + "/host-eth-" + nic["nic_name"]
-                    if 'pxe' in nic["nic_name"]:
+                    params["dn"] = "sys/rack-unit-1/adaptor-" + str(wire.get_port_s()) + "/host-eth-" + nic.get_name()
+                    if 'pxe' in nic.get_name():
                         params['PxeBoot'] = "enabled"
                     params['mac'] = nic.get_mac()
                     params['Name'] = nic.get_name()

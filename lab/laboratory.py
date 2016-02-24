@@ -242,11 +242,11 @@ class Laboratory(with_config.WithConfig):
         return self._cfg['logstash']
 
     def configure_for_osp7(self):
+        self.create_config_file_for_osp7_install()
         self.get_cobbler().configure_for_osp7()
         map(lambda x: x.configure_for_osp7(), self.get_n9())
-        self.get_fi()[0].configure_for_osp7()
         map(lambda x: x.configure_for_osp7(), self.get_cimc_servers())
-        self.create_config_file_for_osp7_install()
+        self.get_fi()[0].configure_for_osp7()
 
     def create_config_file_for_osp7_install(self):
         import os
