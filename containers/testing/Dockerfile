@@ -32,8 +32,8 @@ RUN pip install -r /tempest/test-requirements.txt
 RUN mkdir /etc/tempest
 RUN cp /tempest/etc/accounts.yaml.sample  /etc/tempest/accounts.yaml
 
-#settup cloud99
-RUN git clone https://cloud-review.cisco.com/mercury/cloud99
+#setup cloud99
+RUN git clone https://github.com/cisco-oss-eng/Cloud99
 RUN pip install -r cloud99/requirements.txt
 RUN curl https://raw.githubusercontent.com/openstack/rally/master/install_rally.sh | bash
 
