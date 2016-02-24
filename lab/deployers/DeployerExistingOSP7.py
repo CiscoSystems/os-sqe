@@ -30,7 +30,7 @@ class DeployerExistingOSP7(Deployer):
         if list_of_servers:
             director = list_of_servers[0]
         else:
-            director = Laboratory(config_path=self.lab_cfg).director()
+            director = Laboratory(config_path=self.lab_cfg).get_director()
 
         self.get_deployment_info(director=director)
         rc = director.run(command='cat /home/stack/overcloudrc')

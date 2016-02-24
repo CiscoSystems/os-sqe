@@ -6,7 +6,11 @@ class FiServer(Server):
     _server_id = None
     _service_profile_name = None
 
-    def set_ucsm_id(self, server_id):
+    def set_ucsm_id(self, server_port):
+        a_or_b = server_port[-2:]
+        if a_or_b not in ['/a', '/b']:
+            raise ValueError('server_port should ends with /a or /b, while provided: {0}'.format(server_port))
+        server_id = server_port[:-2]
         self._server_id = str(server_id)
         self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i=self._server_id, n=self.name(), bc='B' if '/' in self._server_id else 'C')
 
@@ -23,6 +27,7 @@ class FiServer(Server):
 
 class FI(LabNode):
     def __init__(self, name, ip, username, password, lab, hostname):
+        # https://communities.cisco.com/docs/DOC-51816
         self._version = None
         self._vip = 'Not set in FI ctor'
         self._is_sriov = False
@@ -139,6 +144,9 @@ class FI(LabNode):
     def set_boot_policy_to_service_profile(self, profile, policy_name):
         self.cmd('scope org; scope service-profile {profile}; set boot-policy {policy_name}; commit-buffer'.format(profile=profile, policy_name=policy_name))
 
+    def run_kvm_for(self, srv):
+        self.handle.StartKvmSession(blade=srv, frameTitle=srv.__dict__['Dn'], dumpXml=False)
+
     def create_user(self, username, password, role='admin'):
         import tempfile
         import platform
@@ -221,19 +229,19 @@ exit
         for wire in self._downstream_wires:
             server = wire.get_node_s()
             server_id, service_profile_name = server.get_ucsm_info()
-            is_sriov = self.lab().get_sriov()
+            is_sriov = self.lab().is_sriov()
             ipmi_ip, _, _ = server.get_ipmi()
             _, ipmi_gw, ipmi_netmask, _, _ = self.lab().get_ipmi_net_info()
             self.create_ipmi_static(server_id=server_id, ip=ipmi_ip, gw=ipmi_gw, netmask=ipmi_netmask)
             self.add_server_to_pool(server_id, server_pool_name)
 
-            self.create_service_profile(service_profile_name, server.is_sriov())
+            self.create_service_profile(service_profile_name, is_sriov)
 
-            for order, vnic, mac in enumerate(server.get_nics(), start=1):
-                vlans = self.lab().get_net_vlans()[vnic]
-                self.create_vnic_with_vlans(profile=service_profile_name, vnic=vnic, mac=mac, order=order, vlans=vlans)
+            for order, vnic in enumerate(server.get_nics(), start=1):
+                vlans = self.lab().get_net_vlans(vnic.get_name())
+                self.create_vnic_with_vlans(profile=service_profile_name, vnic=vnic.get_name(), mac=vnic.get_mac(), order=order, vlans=vlans)
 
-                if is_sriov and vnic in ['eth1']:
+                if is_sriov and vnic.get_name() in ['eth1']:
                     self.set_dynamic_vnic_connection_policy(profile=service_profile_name, vnic=vnic, policy_name=dynamic_vnic_policy_name)
 
             self.set_boot_policy_to_service_profile(profile=service_profile_name, policy_name='pxe-ext' if 'director' in server.role else 'pxe-int')
@@ -268,7 +276,7 @@ exit
                 split = line.split()
                 if_mac[split[0]] = split[3]
             server = FiServer(lab=self.lab(), name=profile_name, ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM', hostname='XXX')
-            server.set_ucsm_id(server_id=server_id)
+            server.set_ucsm_id(server_port=server_id + '/a')
             server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
             servers[profile_name] = server
         return servers
