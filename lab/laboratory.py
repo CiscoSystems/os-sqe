@@ -25,6 +25,7 @@ class Laboratory(with_config.WithConfig):
         self._user_net = IPNetwork(self._cfg['nets']['user']['cidr'])
         self._ipmi_net = IPNetwork(self._cfg['nets']['ipmi']['cidr'])
         self._net_vlans = {net: val['vlan'] for net, val in self._cfg['nets'].iteritems()}
+        self._is_sriov = self._cfg['use-sr-iov']
 
         self._unique_dict = dict()  # to make sure that all needed objects are unique
 
@@ -34,6 +35,9 @@ class Laboratory(with_config.WithConfig):
 
         for pc_id, pc_description in self._cfg['wires'].iteritems():
             self._process_single_pc(pc_id=pc_id, pc_description=pc_description)
+
+    def is_sriov(self):
+        return self._is_sriov
 
     def make_sure_that_object_is_unique(self, type_of_object, obj, node_name):
         """check that given object is valid and unique
@@ -217,7 +221,10 @@ class Laboratory(with_config.WithConfig):
         return self._ipmi_net.cidr, str(self._ipmi_net[1]), self._ipmi_net.netmask, str(self._ipmi_net[4]), str(self._ipmi_net[-3])
 
     def get_ucsm_vlans(self):
-        return set(reduce(lambda l, x: l.extends(x['vlan']), self._cfg['nets'].values(), []))
+        return sorted(set(reduce(lambda l, x: l + (x['vlan']), self._cfg['nets'].values(), [])))
+
+    def get_net_vlans(self, net_name):
+        return sorted(self._net_vlans[net_name])
 
     def get_neutron_creds(self):
         return self._neutron_username, self._neutron_password

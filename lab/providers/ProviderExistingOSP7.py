@@ -13,7 +13,7 @@ class ProviderExistingOSP7(Provider):
 
         super(ProviderExistingOSP7, self).__init__(config=config)
 
-        director = Laboratory(config_path=config['hardware-lab-config']).director()
+        director = Laboratory(config_path=config['hardware-lab-config']).get_director()
         self.servers = [director]
 
     def create_servers(self):
