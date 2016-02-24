@@ -35,7 +35,7 @@ class CimcServer(Server):
         import ImcSdk
         from lab.logger import lab_logger
 
-        lab_logger.info('Configuring CIMC consoles in lab {0}'.format(self.lab()))
+        lab_logger.info('Configuring CIMC consoles in lab {0}'.format(self))
         handle = ImcSdk.ImcHandle()
         try:
             handle.login(name=self._ipmi_ip, username=self._ipmp_username, password=self._ipmi_password)
@@ -43,9 +43,10 @@ class CimcServer(Server):
             handle.set_imc_managedobject(None, class_id='BiosVfLOMPortOptionROM', params=params, dump_xml='true')
             for wire in self._upstream_wires:
                 params = dict()
-                params["UplinkPort"] = wire.get_port_n()
+                pci_slot_id, params["UplinkPort"] = wire.get_port_s().split('/')
+
                 for nic_order, nic in enumerate(self.get_nics(), start=1):
-                    params["dn"] = "sys/rack-unit-1/adaptor-" + str(wire.get_port_s()) + "/host-eth-" + nic.get_name()
+                    params["dn"] = "sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}".format(pci_slot_id=pci_slot_id, nic_name=nic.get_name())
                     if 'pxe' in nic.get_name():
                         params['PxeBoot'] = "enabled"
                     params['mac'] = nic.get_mac()
@@ -54,7 +55,7 @@ class CimcServer(Server):
                         handle.set_imc_managedobject(None,  'adaptorHostEthIf', params, dump_xml='true')
                     else:
                         handle.add_imc_managedobject(None,  'adaptorHostEthIf', params, dump_xml='true')
-                    vlan = 101010  # TODO Eugine- what vlan is meant here?
+                    vlan = self.lab().get_net_vlans(nic.get_name())[0]  # Get the first VLAN of the net as a default VLAN
                     general_params = {"Dn": params['dn'] + '/general', ImcSdk.AdaptorEthGenProfile.VLAN: vlan, ImcSdk.AdaptorEthGenProfile.ORDER: nic_order}
                     handle.set_imc_managedobject(in_mo=None, class_id="AdaptorEthGenProfile", params=general_params)
         finally:
