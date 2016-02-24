@@ -24,8 +24,8 @@ Q_PLUGIN_EXTRA_CONF_PATH = \
 Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_ncs.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
-NEUTRON_REPO={neutron_repo}
-NEUTRON_BRANCH={neutron_branch}
+NEUTRON_REPO=https://git.openstack.org/openstack/neutron.git
+NEUTRON_BRANCH=master
 
 # Only uncomment the below two lines if you are running on Fedora
 disable_service heat h-api h-api-cfn h-api-cw h-eng
