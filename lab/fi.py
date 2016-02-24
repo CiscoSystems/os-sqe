@@ -61,7 +61,7 @@ class FI(LabNode):
         return line.split('\n') if line else []
 
     def list_servers(self, flt=None):
-        return self.cmd('sh server status' + self._filter(flt=flt)).split('\n')
+        return self.cmd('sh server status' + self._filter(flt=flt or '-V "Server|-------"')).split('\n')
 
     def list_service_profiles(self, flt=None):
         line = self.cmd(command='scope org; sh service-profile status' + self._filter(flt=flt or '-V "-----|Service Profile Name"'))
@@ -175,7 +175,7 @@ sleep 5
 exit
         """.format(admin_user=self._username, admin_password=self._password, ucsm_ip=self._ip,
                    username=username, password=password)
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(create_user_script)
         local('expect {0}'.format(f.name))
         self.cmd('scope security; scope local-user {username}; enter role {role}; commit-buffer;'.format(username=username, role=role))
@@ -220,7 +220,7 @@ exit
 
         for wire in self._downstream_wires:
             server = wire.get_node_s()
-            server_id, service_profile_name = server.ucsm_info()
+            server_id, service_profile_name = server.get_ucsm_info()
             is_sriov = self.lab().get_sriov()
             ipmi_ip, _, _ = server.get_ipmi()
             _, ipmi_gw, ipmi_netmask, _, _ = self.lab().get_ipmi_net_info()

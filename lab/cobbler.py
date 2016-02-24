@@ -11,7 +11,7 @@ class CobblerServer(Server):
         director = self.lab().get_director()
 
         ipmi_ip, ipmi_username, ipmi_password = director.get_ipmi()
-        director_ip, _, _ = director.get_ssh()
+        director_ip, _, _, _ = director.get_ssh()
         _, user_gw, user_mask, _, _ = self.lab().get_user_net_info()
 
         cobbler = xmlrpclib.Server(uri="http://{host}/cobbler_api".format(host=self._ip))
@@ -23,12 +23,12 @@ class CobblerServer(Server):
         cobbler.modify_system(handle, 'hostname', director.hostname(), token)
         cobbler.modify_system(handle, 'gateway', str(user_gw), token)
 
-        for nic, mac in director.get_nics():
-            cobbler.modify_system(handle, 'modify_interface', {'macaddress-{0}'.format(nic): mac}, token)
-            if nic == 'user':
-                cobbler.modify_system(handle, 'modify_interface', {'ipaddress-{0}'.format(nic): str(director_ip),
-                                                                   'static-{0}'.format(nic): True,
-                                                                   'subnet-{0}'.format(nic): str(user_mask)}, token)
+        for nic in director.get_nics():
+            cobbler.modify_system(handle, 'modify_interface', {'macaddress-{0}'.format(nic.get_name()): nic.get_mac()}, token)
+            if nic.get_name() == 'user':
+                cobbler.modify_system(handle, 'modify_interface', {'ipaddress-{0}'.format(nic.get_name()): str(director_ip),
+                                                                   'static-{0}'.format(nic.get_name()): True,
+                                                                   'subnet-{0}'.format(nic.get_name()): str(user_mask)}, token)
 
         cobbler.modify_system(handle, 'power_address', str(ipmi_ip), token)
         cobbler.modify_system(handle, 'power_user', ipmi_username, token)
