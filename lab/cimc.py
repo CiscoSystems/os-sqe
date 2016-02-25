@@ -35,7 +35,7 @@ class CimcServer(Server):
         import ImcSdk
         from lab.logger import lab_logger
 
-        lab_logger.info('Configuring CIMC consoles in lab {0}'.format(self))
+        lab_logger.info('Configuring CIMC in {0}'.format(self))
         handle = ImcSdk.ImcHandle()
         try:
             handle.login(name=self._ipmi_ip, username=self._ipmp_username, password=self._ipmi_password)
@@ -44,8 +44,7 @@ class CimcServer(Server):
             for wire in self._upstream_wires:
                 params = dict()
                 pci_slot_id, params["UplinkPort"] = wire.get_port_s().split('/')
-
-                for nic_order, nic in enumerate(self.get_nics(), start=1):
+                for nic_order, nic in enumerate(self.get_nics()):  # NIC order starts from 0
                     params["dn"] = "sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}".format(pci_slot_id=pci_slot_id, nic_name=nic.get_name())
                     if 'pxe' in nic.get_name():
                         params['PxeBoot'] = "enabled"
