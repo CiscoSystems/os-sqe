@@ -12,7 +12,7 @@ class CimcServer(Server):
         import ImcSdk
         from lab.logger import lab_logger
 
-        lab_logger.info('Cleaning CIMC {0} in lab {1}'.format(self._ipmi_ip, self._lab.id))
+        lab_logger.info('Cleaning CIMC {0}'.format(self))
         handle = ImcSdk.ImcHandle()
         try:
             handle.login(name=self._ipmi_ip, username=self._ipmp_username, password=self._ipmi_password)
@@ -35,6 +35,7 @@ class CimcServer(Server):
         import ImcSdk
         from lab.logger import lab_logger
 
+        self.cleanup()
         lab_logger.info('Configuring CIMC in {0}'.format(self))
         handle = ImcSdk.ImcHandle()
         try:

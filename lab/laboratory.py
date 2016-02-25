@@ -224,7 +224,7 @@ class Laboratory(with_config.WithConfig):
         return sorted(set(reduce(lambda l, x: l + (x['vlan']), self._cfg['nets'].values(), [])))
 
     def get_net_vlans(self, net_name):
-        return sorted(self._net_vlans[net_name])
+        return self._net_vlans[net_name]
 
     def get_neutron_creds(self):
         return self._neutron_username, self._neutron_password
