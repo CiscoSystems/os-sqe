@@ -17,11 +17,11 @@ nets: {
 
 #names are supposed to be in form Role-XX where XX is some small integer
 nodes: {
-  nexus-1: {ip: 10.30.119.100, main_username: admin, main_password: CTO1234!, hostname: g10-N9K9372PX-2},
-  nexus-2: {ip: 10.30.119.101, main_username: admin, main_password: CTO1234!, hostname: g10-N9K9372PX-3},
+  nexus-1: {ip: 10.30.119.100, username: admin, password: CTO1234!, hostname: g10-N9K9372PX-2},
+  nexus-2: {ip: 10.30.119.101, username: admin, password: CTO1234!, hostname: g10-N9K9372PX-3},
 
-  fi-1: {ip: 10.23.228.251, vip: 10.23.228.253, main_username: admin, main_password: cisco, hostname: G10-UCS-6296UP-A},
-  fi-2: {ip: 10.23.228.252, vip: 10.23.228.253, main_username: admin, main_password: cisco, hostname: G10-UCS-6296UP-B},
+  fi-1: {ip: 10.23.228.251, vip: 10.23.228.253, username: admin, password: cisco, hostname: G10-UCS-6296UP-A},
+  fi-2: {ip: 10.23.228.252, vip: 10.23.228.253, username: admin, password: cisco, hostname: G10-UCS-6296UP-B},
 
 # ips are shifts for user and ipmi nets
   director-1:   {ip: -2, hostname: g10-director.ctocllab.cisco.com,                    nets: [user, eth1, pxe-ext, pxe-int]},

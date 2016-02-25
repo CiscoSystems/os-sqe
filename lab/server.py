@@ -286,5 +286,6 @@ class Server(LabNode):
             s.close()
         return res
     
-    def actual_hostname(self):
-        return self.run('hostname').stdout.strip()
+    def actuate_hostname(self):
+        self._hostname = self.run('hostname').stdout.strip()
+        return self._hostname

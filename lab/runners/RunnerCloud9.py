@@ -63,7 +63,7 @@ filebeat:
 output:
   logstash:
     hosts: ["{logstash}"]
-'''.format(logstash=self.lab.logstash_creds(), document_type=server.actual_hostname())
+'''.format(logstash=self.lab.logstash_creds(), document_type=server.actuate_hostname())
 
             filebeat = 'filebeat-1.0.0-x86_64.rpm'
             server.run(command='curl -L -O http://172.29.173.233/{0}'.format(filebeat))
