@@ -101,6 +101,9 @@ class Server(LabNode):
             kwargs['password'] = self._password
         return kwargs
 
+    def cmd(self, command, in_directory='.', warn_only=False):
+        return NotImplementedError
+
     def run(self, command, in_directory='.', warn_only=False):
         """Do run with possible sudo on remote server
         :param command:

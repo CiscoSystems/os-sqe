@@ -297,6 +297,7 @@ class Laboratory(with_config.WithConfig):
         overcloud_nodes = '{{"nodes":[\n\t{{\n\t  {0}\n\t}}\n    ]\n }}'.format('\n\t},\n\t{\n\t  '.join(overcloud_section))
 
         nexus_section = []
+        switch_tempest_section = []
         for n9 in self.get_n9():
             common_pcs_part = ': {"ports": "port-channel:' + ',port-channel:'.join(n9.get_pcs_for_n9_and_fi())  # all pcs n9k-n9k and n9k-fi
 
@@ -314,6 +315,7 @@ class Laboratory(with_config.WithConfig):
             nexus_servers_section = ',\n\t\t\t\t\t\t'.join(mac_port_lines)
 
             ssh_ip, ssh_username, ssh_password, hostname = n9.get_ssh()
+            switch_tempest_section.append({'hostname': hostname, 'username': ssh_username, 'password': ssh_password, 'sw': ssh_ip})
             n9k_description = ['"' + hostname + '": {',
                                '"ip_address": "' + ssh_ip + '",',
                                '"username": "' + ssh_username + '",',
@@ -355,7 +357,9 @@ class Laboratory(with_config.WithConfig):
 
                                            cobbler_system='G{0}-DIRECTOR'.format(self._id),
 
-                                           network_nexus_config=network_nexus_config
+                                           network_nexus_config=network_nexus_config,
+
+                                           switch_tempest_section=switch_tempest_section
                                            )
 
         folder = 'artefacts'
