@@ -51,19 +51,27 @@ class FI(LabNode):
     def service_profiles(self):
         return self.cmd(command='scope org; sh service-profile status | no-more | egrep -V "Service|----" | cut -f 1 -d " "')
 
-    def allowed_vlans(self, profile, vnic):
-        return self.cmd('scope org ; scope service-profile {0}; scope vnic {1}; sh eth-if | no-more | egrep "Name:" | cut -f 6 -d " "'.format(profile, vnic))
+    def list_allowed_vlans(self, profile, vnic):
+        return self.cmd('scope org ; scope service-profile {0}; scope vnic {1}; sh eth-if'.format(profile, vnic) + self._filter(flt='Name:')).split('\n')
 
-    def vlans(self):
-        return self.cmd('scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "')
+    def list_vlans(self):
+        return self.cmd('scope eth-uplink; sh vlan' + self._filter(flt='-V "default|VLAN|Name|-----"')).split('\n')
 
     @staticmethod
-    def _filter(flt):
-        return ' | no-more' + ' | egrep ' + flt if flt else ''
+    def _filter(flt=None):
+        return ' | no-more' + (' | egrep ' + flt if flt else '')
 
     def list_users(self, flt=None):
         line = self.cmd('scope security ; show local-user' + self._filter(flt=flt or '-V "User Name|-------"'))
         return line.split('\n') if line else []
+
+    def list_user_sessions(self):
+        def yield_pairs(l):
+            for i in xrange(0, len(l), 2):
+                yield l[i:i+2]
+
+        result = self.cmd('scope security ; show user-sessions local detail' + self._filter(flt='"Host:|User:"')).split('\n')
+        return [user.split(':')[-1].strip() + '@' + host.split(':')[-1].strip() for user, host in yield_pairs(result)]
 
     def list_servers(self, flt=None):
         return self.cmd('sh server status' + self._filter(flt=flt or '-V "Server|-------"')).split('\n')
@@ -80,9 +88,6 @@ class FI(LabNode):
         vlan_names = self.cmd('scope eth-uplink; sh vlan|no-more| egrep "{0}" | cut -f 5 -d " "'.format(pattern))
         for vlan_name in vlan_names:
             self.cmd('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan_name))
-
-    def user_sessions(self):
-        return self.cmd('scope security ; show user-sessions local detail | no-more | egrep "Pid:" | cut -f 6 -d " "')
 
     def create_uuid_pool(self, pool_name, n_uuids):
         return self.cmd('scope org; create uuid-suffix-pool {name}; set assignment-order sequential; create block 1234-000000000001 1234-00000000000{n}; commit-buffer'.format(name=pool_name, n=n_uuids))
@@ -145,7 +150,8 @@ class FI(LabNode):
         self.cmd('scope org; scope service-profile {profile}; set boot-policy {policy_name}; commit-buffer'.format(profile=profile, policy_name=policy_name))
 
     def run_kvm_for(self, srv):
-        self.handle.StartKvmSession(blade=srv, frameTitle=srv.__dict__['Dn'], dumpXml=False)
+        pass
+        # self.handle.StartKvmSession(blade=srv, frameTitle=srv.__dict__['Dn'], dumpXml=False)
 
     def create_user(self, username, password, role='admin'):
         import tempfile
