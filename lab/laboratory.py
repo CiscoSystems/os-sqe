@@ -310,7 +310,7 @@ class Laboratory(with_config.WithConfig):
                         individual_ports_part = ',' + individual_ports_part
                 else:
                     individual_ports_part = ''
-                mac_port_lines.append('"' + mac + common_pcs_part + individual_ports_part + '" }')
+                mac_port_lines.append('"' + mac + '"' + common_pcs_part + individual_ports_part + '" }')
 
             nexus_servers_section = ',\n\t\t\t\t\t\t'.join(mac_port_lines)
 
