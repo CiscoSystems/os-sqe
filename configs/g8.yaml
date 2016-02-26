@@ -11,12 +11,14 @@ nets: {
   user:     {mac-net-part: 'AA', vlan: [174],                          cidr: 10.23.230.64/27},   # used for normal ssh gw 10.23.230.65 (66,67) mask 255.255.255.224
   pxe-ext:  {mac-net-part: 'FF', vlan: [1],                            cidr: 169.254.4.0/24,},   # used for external pxe bootstrapping of director
   pxe-int:  {mac-net-part: 'F0', vlan: [3009, 3000, 3001, 3002, 3003], cidr: 10.11.12.0/24},     # used for internal pxe bootstrapping of overcloud-node
-  eth0:     {mac-net-part: 'E0', vlan: [3999] },                                                 # used for eth0 network - tenant network
+  eth0:     {mac-net-part: 'E0', vlan: [3899] },                                                 # used for eth0 network - tenant network
   eth1:     {mac-net-part: 'E1', vlan: [3007, 174] }                                             # used for eth1 network - external API network, fiP network
 }
 
 #names are supposed to be in form Role-XX where XX is some small integer
 nodes: {
+  tor-1:   {ip: None},
+
   nexus-1: {ip: 172.31.229.207, username: admin, password: CTO1234!, hostname: g08-N9K-9396PX-1},
   nexus-2: {ip: 172.31.230.234, username: admin, password: CTO1234!, hostname: g08-N9K-9396PX-2},
 
@@ -42,6 +44,8 @@ nodes: {
 # UCS controlled by UCSM is e.g. control-1-5/a: fi-1-1/35. Here control-1 discovered by UCSM as server id = 5 connected to FI-A
 # If server controlled by CIMC then the format is node_name-id-pci_slot/uplink_port
 wires: {
+  1: {nexus-1-1/1:  tor-1-1/1, nexus-2-1/1:  tor-1-1/4},
+
   100: {nexus-1-1/31:  nexus-2-1/31, nexus-1-1/33: nexus-2-1/33, nexus-1-1/35: nexus-2-1/35},
   81:  {fi-1-1/9: nexus-1-1/9, fi-1-1/10: nexus-2-1/9},
   82:  {fi-2-1/9: nexus-1-1/10, fi-2-1/10: nexus-2-1/10},
@@ -53,7 +57,9 @@ wires: {
 
   cimc-1: {compute-1-3/0: nexus-1-1/3},
   cimc-2: {compute-2-3/0: nexus-2-1/4},
-  cobbler: {cobbler-1-0/18: nexus-1-1/15, cobbler-1-0/17: nexus-2-1/15}
+  cobbler: {cobbler-1-0/18: nexus-1-1/15, cobbler-1-0/17: nexus-2-1/15},
+
+  asr-1: {nexus-1-1/48: asr-1-0/0, nexus-2-1/48: asr-1-0/1}
 }
 
 vlan_range: "1000:2000"

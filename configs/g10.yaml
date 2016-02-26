@@ -11,12 +11,14 @@ nets: {
   user:     {mac-net-part: 'AA', vlan: [177],  cidr: 10.23.230.128/27}, # used for normal user traffic
   pxe-ext:  {mac-net-part: 'FF', vlan: [1],    cidr: 169.254.4.0/24,},  # used for external pxe bootstrapping of director
   pxe-int:  {mac-net-part: 'F0', vlan: [3333, 3000, 3001, 3002, 3003, 3004], cidr: 10.11.12.0/24},    # used for internal pxe bootstrapping of overcloud-node
-  eth0:     {mac-net-part: 'E0', vlan: [3999] }, # used for eth0 network - current restriction of ucsm plugin will be renamed to api
+  eth0:     {mac-net-part: 'E0', vlan: [3899] }, # used for eth0 network - current restriction of ucsm plugin will be renamed to api
   eth1:     {mac-net-part: 'E1', vlan: [3007, 177] }, # used for eth1 network - current restriction of ucsm plugin will be renamed to api
 }
 
 #names are supposed to be in form Role-XX where XX is some small integer
 nodes: {
+  tor-1:   {ip: None},
+
   nexus-1: {ip: 10.30.119.100, username: admin, password: CTO1234!, hostname: g10-N9K9372PX-2},
   nexus-2: {ip: 10.30.119.101, username: admin, password: CTO1234!, hostname: g10-N9K9372PX-3},
 
@@ -41,6 +43,7 @@ nodes: {
 # Port id for UCS is either server-id as discovered in UCSM
 # If server controlled by CIMC then the format is node_name-id-pci_slot/uplink_port
 wires: {
+  2:     {nexus-1-1/2:  tor-1-1/7, nexus-2-1/2:  tor-1-1/8},
   101:   {nexus-1-1/16: nexus-2-1/16, nexus-1-1/17: nexus-2-1/17},
   81:    {fi-1-1/47: nexus-1-1/47, fi-1-1/48: nexus-2-1/47},
   82:    {fi-2-1/47: nexus-1-1/48, fi-2-1/48: nexus-2-1/48},

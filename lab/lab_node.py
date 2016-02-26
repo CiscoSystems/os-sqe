@@ -23,6 +23,12 @@ class LabNode(object):
     def name(self):
         return self._name
 
+    def index(self):
+        """
+        If name of a node is "node-3" the method returns 3.
+        """
+        return self.name().split('-')[-1]
+
     def lab(self):
         return self._lab
 

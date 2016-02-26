@@ -91,11 +91,12 @@ class Laboratory(with_config.WithConfig):
         from lab.fi import FI
         from lab.n9k import Nexus
         from lab.asr import Asr
+        from lab.tor import Tor
         from lab.cobbler import CobblerServer
         from lab.fi import FiServer
         from lab.cimc import CimcServer
 
-        possible_roles = ['cobbler', 'nexus', 'asr', 'fi', 'director', 'control', 'compute', 'ceph']
+        possible_roles = ['cobbler', 'nexus', 'asr', 'fi', 'director', 'control', 'compute', 'ceph', 'tor']
 
         if role in ['director', 'control', 'compute', 'ceph']:
             klass = FiServer if type(peer_device) is FI else CimcServer
@@ -107,6 +108,8 @@ class Laboratory(with_config.WithConfig):
             klass = Nexus
         elif role == 'fi':
             klass = FI
+        elif role == 'tor':
+            klass = Tor
         else:
             raise ValueError(role + ' is not known,  should be one of: ' + ', '.join(possible_roles))
         return klass
@@ -299,7 +302,7 @@ class Laboratory(with_config.WithConfig):
         nexus_section = []
         switch_tempest_section = []
         for n9 in self.get_n9():
-            common_pcs_part = ': {"ports": "port-channel:' + ',port-channel:'.join(n9.get_pcs_for_n9_and_fi())  # all pcs n9k-n9k and n9k-fi
+            common_pcs_part = ': {"ports": "port-channel:' + ',port-channel:'.join(n9.get_pcs_for_n9_and_fi_and_tor())  # all pcs n9k-n9k and n9k-fi
 
             mac_port_lines = []
             for server in self.get_controllers() + self.get_computes():
