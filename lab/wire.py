@@ -40,6 +40,18 @@ class Wire(object):
 
         return isinstance(self._node_N, Nexus) and isinstance(self._node_S, Nexus)
 
+    def is_n9_tor(self):
+        from lab.n9k import Nexus
+        from lab.tor import Tor
+
+        return isinstance(self._node_N, Tor) and isinstance(self._node_S, Nexus)
+
+    def is_n9_asr(self):
+        from lab.n9k import Nexus
+        from lab.asr import Asr
+
+        return isinstance(self._node_S, Nexus) and isinstance(self._node_N, Asr)
+
     def is_n9_fi(self):
         from lab.n9k import Nexus
         from lab.fi import FI
