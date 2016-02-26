@@ -9,6 +9,8 @@ KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'pr
 
 
 class WithConfig(object):
+    ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
+
     def __init__(self, config):
         self._exception = LabConfigException(lab_class=type(self), config=config, sample_config=self.sample_config())
         self.verify_config(sample_config=self.sample_config(), config=config)
@@ -79,3 +81,11 @@ def ls_configs(directory=''):
 
     folder = os.path.abspath(os.path.join(CONFIG_DIR, directory))
     return sorted(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))
+
+
+def open_artifact(name, mode):
+    import os
+
+    if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
+        os.makedirs(WithConfig.ARTIFACTS_DIR)
+    return open(os.path.join(WithConfig.ARTIFACTS_DIR, name), mode)
