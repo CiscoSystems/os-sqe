@@ -46,14 +46,16 @@ class CimcServer(Server):
         self._form_nics()
 
     def change_boot_order(self, pxe_order=1, hdd_order=2):
-        params = [{'Dn': 'sys/rack-unit-1/boot-policy/lan-read-only', 'Order': pxe_order, 'Access': 'read-only'},
-                  {'Dn': 'sys/rack-unit-1/boot-policy/storage-read-write', 'Order': hdd_order, 'Access': 'read-write'}]
-        for param in params:
-            boot_device = self.cmd('get_imc_managedobject', in_mo=None, class_id=None, params={'Dn': param['Dn']})
+        boot_configs = [{'params': {'Dn': 'sys/rack-unit-1/boot-policy/lan-read-only', 'Order': pxe_order, 'Access': 'read-only'},
+                         'class_id': 'LsbootLan'},
+                        {'params': {'Dn': 'sys/rack-unit-1/boot-policy/storage-read-write', 'Order': hdd_order, 'Access': 'read-write'},
+                         'class_id': 'LsbootStorage'}]
+        for boot_config in boot_configs:
+            boot_device = self.cmd('get_imc_managedobject', in_mo=None, class_id=None, params={'Dn': boot_config['params']['Dn']})
             if boot_device:
-                self.cmd('set_imc_managedobject', in_mo=boot_device, class_id=None, params=param)
+                self.cmd('set_imc_managedobject', in_mo=boot_device, class_id=None, params=boot_config['params'])
             else:
-                self.cmd('add_imc_managedobject', in_mo=None, class_id='LsbootLan', params=param)
+                self.cmd('add_imc_managedobject', in_mo=None, class_id=boot_config['class_id'], params=boot_config['params'])
 
     def create_vnic(self, pci_slot_id, nic_order, nic, native_vlan, params):
         params['dn'] = 'sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}'.format(pci_slot_id=pci_slot_id, nic_name=nic.get_name())
