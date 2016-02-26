@@ -80,6 +80,7 @@ class CimcServer(Server):
         from lab.logger import lab_logger
 
         lab_logger.info('Configuring CIMC in {0}'.format(self))
+        self.change_boot_order(pxe_order=1, hdd_order=2)
         self.switch_lom_ports(self.LOM_DISABLED)
         self.delete_all_vnics()
         for wire in self._upstream_wires:
