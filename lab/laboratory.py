@@ -323,8 +323,7 @@ class Laboratory(with_config.WithConfig):
                                '"nve_src_intf": 2,',
                                '"ssh_port": 22,',
                                '"physnet": "datacentre",',
-                               '"servers": {' + nexus_servers_section + '\n\t\t\t\t\t\t}',
-                               '}'
+                               '"servers": {' + nexus_servers_section + '}}',
                                ]
             nexus_section.append('\n\t\t\t'.join(n9k_description))
 
