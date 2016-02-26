@@ -1,4 +1,0 @@
-- method: lab.monitors.ucsm
-  duration: 20
-  period: 2
-  is-show-details: True

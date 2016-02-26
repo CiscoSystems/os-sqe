@@ -1,0 +1,22 @@
+---
+
+- method: lab.monitors.mon_cloud # test cloud monitor
+  duration: 20
+  period: 2
+
+- method: lab.monitors.ucsm # test FI monitor
+  duration: 20
+  period: 2
+  is-show-details: True
+
+- method: lab.monitors.nexus # test N9K monitor with offline N9K
+  duration: 20
+  period: 2
+  name_or_ip: 1.1.1.1
+  username: a
+  password: b
+
+- method: lab.monitors.nexus # test N9K monitor
+  duration: 20
+  period: 2
+  is_show_details: True

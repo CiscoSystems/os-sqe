@@ -55,25 +55,32 @@ def g8():
 
 
 @task
-def ha(test_name, do_not_clean=False):
+def ha(lab, test_name, do_not_clean=False):
     """fab ha:g10,tc812,no_clean\tRun HA. "tcall" means all tests.
+        :param lab: name from $REPO/configs/*.yaml
         :param test_name: test name to run - some yaml from configs/ha folder
         :param do_not_clean: if True then the lab will not be cleaned before running test
     """
     from lab.with_config import actual_path_to_config, ls_configs
 
+    if not lab.endswith('.yaml'):
+        lab += '.yaml'
+    available_labs = ls_configs()
+    if lab not in available_labs:
+        raise ValueError('{lab} is not defined. Available labs: {labs}'.format(lab=lab, labs=available_labs))
+
     if test_name == 'tcall':
         tests = sorted(filter(lambda x: x.startswith('tc'), ls_configs(directory='ha')))
     else:
-        tests = [actual_path_to_config(yaml_path=test_name, directory='ha')]
+        tests = [actual_path_to_config(yaml_path=test_name, directory='ha').split('\\')[-1]]
 
-    run_config_yaml = 'g10-ha-{0}.yaml'.format(test_name)
+    run_config_yaml = '{lab}-ha-{tc}.yaml'.format(lab=lab.split('.')[0], tc=test_name)
     with open(run_config_yaml, 'w') as f:
-        f.write('deployer:  {DeployerExistingOSP7: {cloud: g10, hardware-lab-config: g10.yaml}}\n')
+        f.write('deployer:  {DeployerExistingOSP7: {cloud: %s, hardware-lab-config: %s}}\n' % (lab, lab))
         for i, test in enumerate(tests, start=1):
             if not do_not_clean:
-                f.write('runner%s:  {RunnerHA: {cloud: g10, hardware-lab-config: g10.yaml, task-yaml: clean.yaml}}\n' % (10*i))
-            f.write('runner%s:  {RunnerHA: {cloud: g10, hardware-lab-config: g10.yaml, task-yaml: %s}}\n' % (10*i + 1,  test))
+                f.write('runner%s:  {RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab, lab))
+            f.write('runner%s:  {RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: "%s"}}\n' % (10*i + 1,  lab, lab, test))
 
     run(config_path=run_config_yaml)
 
