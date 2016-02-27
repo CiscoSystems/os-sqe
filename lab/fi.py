@@ -12,7 +12,7 @@ class FiServer(Server):
             raise ValueError('server_port should ends with /a or /b, while provided: {0}'.format(server_port))
         server_id = server_port[:-2]
         self._server_id = str(server_id)
-        self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i=self._server_id, n=self.name(), bc='B' if '/' in self._server_id else 'C')
+        self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i='-'.join(self._server_id.split('/')), n=self.name(), bc='B' if '/' in self._server_id else 'C')
 
         if '/' in self._server_id:
             chasis, n_in_chasis = server_id.split('/')
@@ -210,8 +210,7 @@ exit
 
         self.cleanup()
 
-        server_ids = self.list_servers('Complete')
-        n_servers = len(server_ids)  # how many servers UCSM currently sees
+        n_servers = len(self.lab().get_nodes(FiServer))  # how many servers UCSM currently sees
 
         neutron_username, neutron_password = self.lab().get_neutron_creds()
         self.create_user(username=neutron_username, password=self._password)  # special user to be used by neutron services
