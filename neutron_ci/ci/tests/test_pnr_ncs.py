@@ -42,6 +42,9 @@ enable_service q-meta
 enable_service quantum
 enable_service tempest
 enable_service q-agt
+enable_service q-fwaas
+enable_service q-lbaas
+enable_service neutron
 
 enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
 enable_service net-cisco
