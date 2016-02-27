@@ -33,7 +33,7 @@ nodes: {
   compute-3:    {ip: 9,                                               is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
   compute-4:    {ip: 10,                                               is-sriov: False, nets: [eth0, eth1, user, pxe-int]},
 
-  cobbler-1:    {ip: 172.29.74.8, main_username: cobbler, main_password: cobbler}
+  cobbler-1:    {ip: 172.29.74.8, username: cobbler, password: cobbler}
 }
 
 # single wire is in the form pc_id: {South_Node_Name-port_id: North_Node_Name-port_id}.  Node name should match node from nodes section. IMPORTANT: should always be from south to north.
