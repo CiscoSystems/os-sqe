@@ -318,7 +318,7 @@ exit
             self.cmd('scope org; delete dynamic-vnic-conn-policy {0}; commit-buffer'.format(dyn_vnic_policy))
         for vlan in self.cmd('scope eth-uplink; sh vlan | no-more | eg -V "default|VLAN|Name|-----" | cut -f 5 -d " "').split():
             self.cmd('scope eth-uplink; delete vlan {0}; commit-buffer'.format(vlan))
-        self.delete_static_cimc_ip()
+        self.delete_static_cimc_ip('Complete')
 #            run('acknowledge server {0}  ;  commit-buffer'.format(server_num), shell=False)
         for block in self.cmd('scope org; scope ip-pool ext-mgmt; sh block | egrep [1-9] | cut -f 5-10 -d " "').split('\n'):
             if block:
