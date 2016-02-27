@@ -327,7 +327,7 @@ class Laboratory(with_config.WithConfig):
                                ]
             nexus_section.append('\n\t\t\t'.join(n9k_description))
 
-        network_nexus_config = '{\n\t\t' + ',\n\t\t'.join(nexus_section) + '\n}'
+        network_nexus_config = '{\n\t\t' + ',\n\t\t'.join(nexus_section) + '}'
 
         n_controls, n_computes, n_ceph = self.count_role(role_name='control'), self.count_role(role_name='compute'), self.count_role(role_name='ceph')
 
