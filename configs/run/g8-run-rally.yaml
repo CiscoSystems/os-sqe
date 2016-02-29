@@ -1,2 +1,2 @@
-deployer:  {DeployerExistingOSP7: {cloud: g8, hardware-lab-config: g8.yaml }}
-runner:  {RunnerRally: {cloud: g8, task-yaml: artifacts/task-rally.yaml}}
+deployer:  {lab.deployers.deployer_existing_osp7.DeployerExistingOSP7: {cloud: g8, hardware-lab-config: g8.yaml }}
+runner:  {lab.runners.runner_rally.RunnerRally: {cloud: g8, task-yaml: artifacts/task-rally.yaml}}

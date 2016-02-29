@@ -12,14 +12,19 @@ class ProviderExisting(Provider):
         from lab.server import Server
 
         super(ProviderExisting, self).__init__(config=config)
-        self.servers = [Server(ip=server['host'], username=server['username'], password=server['password']) for server in config]
+        self.servers = [Server(name='director', lab=None, ip=server['host'], username=server['username'], password=server['password']) for server in config]
 
     def create_servers(self):
         return self.servers
 
     def wait_for_servers(self):
+        from lab.server import Nic
+
         servers = self.create_servers()
         for server in servers:
-            server.hostname = server.run(command='hostname')
-            server.ip_mac = server.run(command='iface=$(ip -o address | grep {0} | cut -f2 -d " "); ip -o link | grep $iface | cut -f18 -d " "'.format(server.ip))
+            server.actuate_hostname()
+            ip, _, _, _ = server.get_ssh()
+            nic_name = server.run(command='ip -o address | grep {0} | cut -f2 -d " "'.format(ip))
+            nic_mac = server.run(command='ip -o link | grep {0} | cut -f18 -d " "'.format(nic_name))
+            server.add_nics([Nic(name=nic_name, mac=nic_mac, node=server)])
         return servers
