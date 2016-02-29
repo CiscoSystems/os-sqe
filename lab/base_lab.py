@@ -1,5 +1,3 @@
-from fabric.api import task
-from lab import decorators
 from lab.with_status import WithStatusMixIn
 
 
@@ -9,7 +7,7 @@ class BaseLab(WithStatusMixIn):
     def __init__(self, yaml_name):
         import importlib
         import os
-        from lab.with_config import read_config_from_file, LabConfigException
+        from lab.with_config import read_config_from_file
 
         self.providers = []
         self.deployers = []
@@ -19,32 +17,28 @@ class BaseLab(WithStatusMixIn):
         self.clouds = []
 
         config = read_config_from_file(yaml_path=yaml_name, directory='run')
-        if not config:
-            raise LabConfigException(lab_class=type(self), sample_config=self.sample_config, config=config, message='empty config')
-        for section_name, class_name_vs_config in sorted(config.iteritems()):
-            section_class_name = class_name_vs_config.keys()[0]
-            section_class_config = class_name_vs_config[section_class_name]
-            section_name_no_digits = ''.join([i for i in section_name if not i.isdigit()])  # section_name may contain digits: provider1 -> providers
-            section_package = section_name_no_digits + 's'
+        for section_name, class_path_vs_config in sorted(config.iteritems()):
+            class_path = class_path_vs_config.keys()[0]
+            class_config = class_path_vs_config[class_path]
+            a = class_path.split('.')
+            module_path = '.'.join(a[:-1])
+            class_name = a[-1]
             try:
-                module = importlib.import_module('lab.{package}.{klass}'.format(package=section_package, klass=section_class_name))
-            except ImportError:
-                section_dir = 'lab/' + section_package
-                classes = map(lambda name: name.split('.')[0], filter(lambda name: name.startswith(section_name_no_digits.capitalize()) and name.endswith('.py'),
-                                                                      os.listdir(section_dir)))
-                message = '{0} {1} is not defined! Use one of {2}'.format(section_name, section_class_name, classes)
-                sample_config = '{' + section_name + ': {' + classes[0] + ': { some configuration which will be checked on next run } }'
-                raise LabConfigException(lab_class=type(self), sample_config=sample_config, config=config, message=message)
-            section_class_instance = getattr(module, section_class_name)(section_class_config)
-            if section_name.startswith('provider'):
-                self.providers.append(section_class_instance)
-            elif section_name.startswith('deployer'):
-                self.deployers.append(section_class_instance)
-            elif section_name.startswith('runner'):
-                self.runners.append(section_class_instance)
-            else:
-                raise LabConfigException(lab_class=type(self), sample_config='known sections: provider[1-9], deployer[1-9], runner[1-9]',
-                                         config=config, message='do not know what to do with section {0}'.format(section_name))
+                module = importlib.import_module(module_path)
+                class_instance = getattr(module, class_name)(class_config)
+            except (ValueError, ImportError):
+                section_name_no_digits = section_name.strip('0123456789')
+                section_dir = 'lab/' + section_name_no_digits + 's'
+                classes = map(lambda name: section_dir.replace('/', '.') + '.' + name.replace('.py', ''), filter(lambda name: name.startswith(section_name_no_digits) and name.endswith('.py'), os.listdir(section_dir)))
+                raise ValueError('in yaml {y} line {l}: Module "{mp}" is not defined! Use one of {c}'.format(y=yaml_name, l=class_path_vs_config, mp=module_path, c=classes))
+            except AttributeError:
+                raise ValueError('in yaml {y}: class {k} is not in {p}'.format(y=yaml_name, k=class_name, p=module_path))
+            if type(class_instance).__name__.startswith('Provider'):
+                self.providers.append(class_instance)
+            elif type(class_instance).__name__.startswith('Deployer'):
+                self.deployers.append(class_instance)
+            elif type(class_instance).__name__.startswith('Runner'):
+                self.runners.append(class_instance)
 
     def run(self):
         import time
@@ -63,15 +57,3 @@ class BaseLab(WithStatusMixIn):
                 start_time = time.time()
                 runner.execute(self.clouds, self.servers)
                 f.write('Runner {0} runs in {0} seconds'.format(runner, time.time() - start_time))
-
-
-__all__ = ['run_lab']
-
-
-@task
-@decorators.print_time
-def run_lab(yaml_name):
-    """Run lab provided by yaml config"""
-
-    l = BaseLab(yaml_name=yaml_name)
-    l.run()
