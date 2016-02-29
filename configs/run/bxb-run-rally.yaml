@@ -1,3 +1,3 @@
 provider: {lab.providers.provider_existing.ProviderExisting: [{host: 10.86.7.199, username: root, password: openstack}]}
-deployer: {lab.deployers.deployer_existing.DeployerExisting: {end_point: "http://172.17.35.20:5000/v2.0", cloud: bxb, user: admin, tenant: admin, admin: admin, password: mEwyFvAJdFdC8KG2XUqauDzDU}}
+deployer: {lab.deployers.deployer_existing.DeployerExisting: {end_point: "http://172.17.35.20:5000/v2.0", cloud: bxb, user: admin, tenant: admin, admin: admin, password: JqbUn8FepY3rP4pB6JjcP327R}}
 runner:  {lab.runners.runner_rally.RunnerRally: {cloud: bxb, task-yaml:  artifacts/task-rally.yaml}}

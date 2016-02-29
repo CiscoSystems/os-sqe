@@ -1,6 +1,5 @@
 ---
-  NovaServers.boot_and_delete_multiple_servers:
-   {% for n_tenants in range({n_tenants_start_end_step}) %}
+  NovaServers.boot_multiple_servers_with_nic:
     -
       args:
         image:
@@ -8,14 +7,20 @@
         flavor:
           name: "m1.tiny"
         count: 2
+        network_create_args: {}
+        subnet_create_args: {}
+        subnet_cidr_start: "1.2.0.0/24"
+        subnets_per_network: 1
       runner:
         type: "constant"
-        times: {{n_tenants}}
+        times: {n_times}
         concurrency: {concurrency}
       context:
+        network: {}
         users:
-          tenants: {{n_tenants}}
+          tenants: {n_tenants}
           users_per_tenant: 1
-        network:
-          networks_per_tenant: 2
-  {% endfor %}
+        quotas:
+          neutron:
+            network: -1
+            subnet: -1

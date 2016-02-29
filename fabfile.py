@@ -99,7 +99,7 @@ def osp7(config_path):
 
 @task
 @decorators.print_time
-def rally(lab, concurrency, min_vlans, max_vlans):
+def rally(lab, concurrency, max_vlans):
     """fab rally:g10,2,0,200\t\tRun rally with 2 threads for 0-200 vlans.
     :param lab: lab name
     :param concurrency: how many parallel threads
@@ -113,16 +113,12 @@ def rally(lab, concurrency, min_vlans, max_vlans):
     if not runner_config:
         raise ValueError('{0} is not configured to run rally'.format(lab))
 
-    n_tenants_max = int(max_vlans) / 2
-    n_tenants_min = int(min_vlans) / 2
-
-    start = n_tenants_min or 1
-    end = n_tenants_max + 1
-    step = n_tenants_max / 10
+    n_tenants = int(max_vlans) / 2
     with open('configs/rally/scaling.yaml') as f:
         task_body = f.read()
+        task_body = task_body.replace('{n_times}', max_vlans)
         task_body = task_body.replace('{concurrency}', concurrency)
-        task_body = task_body.replace('{n_tenants_start_end_step}', '{0}, {1}, {2}'.format(start, end, step))
+        task_body = task_body.replace('{n_tenants}', '{0}'.format(n_tenants))
 
     with open_artifact('task-rally.yaml', 'w') as f:
         f.write(task_body)

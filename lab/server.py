@@ -245,7 +245,14 @@ class Server(LabNode):
             if self.run(command='whereis {0}'.format(package_name)) == package_name + ':':
                 self.run(command='sudo {0} install -y {1}'.format(pm, package_name))
 
-    def clone_repo(self, repo_url, local_repo_dir=None):
+    def check_rally(self):
+        rally_installed = False
+        self.check_or_install_packages(package_names='git')
+        if not self.run(command='cd rally', warn_only=True):
+            rally_installed = True
+        return rally_installed
+
+    def clone_repo(self, repo_url, local_repo_dir=None, tags=None):
         import urlparse
 
         local_repo_dir = local_repo_dir or urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
@@ -253,6 +260,8 @@ class Server(LabNode):
         self.check_or_install_packages(package_names='git')
         self.run(command='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url))
         self.run(command='git pull -q', in_directory=local_repo_dir)
+        if tags:
+            self.run(command='git checkout tags/{0}'.format(tags), in_directory=local_repo_dir)
         return self.run(command='pwd', in_directory=local_repo_dir)
 
     def create_user(self, new_username):
