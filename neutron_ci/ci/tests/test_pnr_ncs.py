@@ -46,6 +46,18 @@ enable_service q-fwaas
 enable_service q-lbaas
 enable_service neutron
 
+# VLAN configuration
+Q_PLUGIN=ml2
+ENABLE_TENANT_VLANS=True
+
+# GRE tunnel configuration
+Q_PLUGIN=ml2
+ENABLE_TENANT_TUNNELS=True
+
+# VXLAN tunnel configuration
+Q_PLUGIN=ml2
+Q_ML2_TENANT_NETWORK_TYPE=vxlan
+
 enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
 enable_service net-cisco
 
