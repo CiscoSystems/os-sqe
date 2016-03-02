@@ -24,7 +24,7 @@ class Laboratory(with_config.WithConfig):
         self._id = self._cfg['lab-id']
         self._user_net = IPNetwork(self._cfg['nets']['user']['cidr'])
         self._ipmi_net = IPNetwork(self._cfg['nets']['ipmi']['cidr'])
-        self._net_vlans = {net: val['vlan'] for net, val in self._cfg['nets'].iteritems()}
+        self._net_vlans = {net: [str(x) for x in val['vlan']] for net, val in self._cfg['nets'].iteritems()}
         self._is_sriov = self._cfg['use-sr-iov']
 
         self._unique_dict = dict()  # to make sure that all needed objects are unique
@@ -196,6 +196,11 @@ class Laboratory(with_config.WithConfig):
 
         return self.get_nodes(Nexus)
 
+    def get_asr1ks(self):
+        from lab.asr import Asr
+
+        return self.get_nodes(Asr)
+
     def get_cobbler(self):
         return self._nodes['cobbler-1']
 
@@ -223,7 +228,7 @@ class Laboratory(with_config.WithConfig):
     def get_ipmi_net_info(self):
         return self._ipmi_net.cidr, str(self._ipmi_net[1]), self._ipmi_net.netmask, str(self._ipmi_net[4]), str(self._ipmi_net[-3])
 
-    def get_ucsm_vlans(self):
+    def get_all_vlans(self):
         return sorted(set(reduce(lambda l, x: l + (x['vlan']), self._cfg['nets'].values(), [])))
 
     def get_net_vlans(self, net_name):
@@ -249,6 +254,7 @@ class Laboratory(with_config.WithConfig):
         self.get_cobbler().configure_for_osp7()
         map(lambda x: x.configure_for_osp7(), self.get_n9())
         map(lambda x: x.configure_for_osp7(), self.get_cimc_servers())
+        map(lambda x: x.configure_for_osp7(), self.get_asr1ks())
         self.get_fi()[0].configure_for_osp7()
 
     def create_config_file_for_osp7_install(self):

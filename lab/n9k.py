@@ -23,16 +23,6 @@ class Nexus(LabNode):
         wires = filter(lambda w: w.is_n9_n9() or w.is_n9_fi() or w.is_n9_tor(), self._downstream_wires + self._upstream_wires)
         return wires
 
-    def get_wires_for_n9_and_n9(self):
-        """Returns a list of wires used on connection to peer N9K"""
-        wires = filter(lambda w: w.is_n9_n9(), self._downstream_wires + self._upstream_wires)
-        return wires
-
-    def get_peer(self):
-        wires = self.get_wires_for_n9_and_n9()
-        peer = wires[0]._node_N if wires[0]._node_S == self else wires[0]._node_S
-        return peer
-
     def get_pcs_for_n9(self):
         """Returns a list of wires used on connection to peer N9K"""
         wires = filter(lambda w: w.is_n9_n9(), self._upstream_wires)
@@ -52,6 +42,8 @@ class Nexus(LabNode):
     def _rest_api(self, commands, timeout=2):
         import requests
         import json
+        from lab.logger import lab_logger
+        lab_logger.info('{0} commands: {1}'.format(self, ", ".join(commands)))
 
         body = [{"jsonrpc": "2.0", "method": "cli", "params": {"cmd": command, "version": 1}, "id": 1} for command in commands]
         try:
@@ -142,27 +134,31 @@ class Nexus(LabNode):
         skip_list = skip_list or []
 
         pcs = self.show_port_channels()
+        if not pcs:
+            return
         pc_ids = [pc['group'] for pc in pcs if int(pc['group']) not in skip_list]
         for pc_id in pc_ids:
             # delete all port-channels
             self.cmd(['conf t', 'no int port-channel {0}'.format(pc_id)])
 
-    def create_port_channels(self, pc_id, ports, vlans):
+    def create_port_channel(self, pc_id, ports, speed, vlans):
         """
         For example arguments: 2, ['1/2', '1/10'], [222, 333]
         :return:
         """
-        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id),
-                  'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan none',
-                  'speed 10000', 'feature lacp'])
-        # Add vlans to allowed vlans list
-        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id),
-                  'switchport trunk allowed vlan add {0}'.format(','.join(vlans))])
-        # Add ports to the port-channel
+        # create port channel
+        vlans_string = ','.join(map(lambda x: str(x), vlans))
+        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed)])
+        # add ports to the port-channel
         for port in ports:
-            self.cmd(['conf t', 'int ethernet ' + port, 'switchport', 'switchport mode trunk',
-                  'switchport trunk allowed vlan {0}'.format(','.join(vlans)), 'speed 10000',
-                  'channel-group {0} mode active'.format(pc_id)])
+            self.cmd(['conf t', 'int ethernet ' + port, 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed),
+                      'channel-group {0} mode active'.format(pc_id)])
+
+    def create_vpc(self, pc_id):
+        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)])
+
+    def create_vpc_peer_link(self, pc_id):
+        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc peer-link'])
 
     def show_vlans(self):
         vlans = self.cmd(['sh vlan'])
@@ -188,6 +184,9 @@ class Nexus(LabNode):
         vlans = self.show_vlans()
         vlans_str = ','.join([v['vlanshowbr-vlanid-utf'] for v in vlans])
         self.cmd(['conf t', 'no vlan {0}'.format(vlans_str)])
+
+    def assign_vlans(self, port, vlans):
+        self.cmd(['conf t', 'int e{0}'.format(port), 'switchport trunk allowed vlan {0}'.format(','.join([str(x) for x in vlans]))])
 
     def configure_vxlan(self, asr_port):
         # Configure vxlan artefacts
@@ -216,64 +215,46 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'vpc domain {0}'.format(domain_id), 'peer-keepalive destination {0}'.format(peer_ip)])
 
     def configure_for_osp7(self):
-
-        ports_n9k = []
-        ports_fi_a = []
-        ports_fi_b = []
-        ports_tor = []
-
-        for nei in self.show_cdp_neighbor():
-            port_id = nei['intf_id']
-            if 'TOR' in nei['device_id']:
-                ports_tor.append(port_id)
-            if 'UCS-FI' in nei['platform_id']:
-                if not filter(lambda w: w._port_N in port_id, self._downstream_wires):
-                    raise Exception('Port %s is not described in lab config. It is connected to FI'.format(port_id))
-                if '-A' in nei['device_id']:
-                    ports_fi_a.append(port_id)
-                if '-B' in nei['device_id']:
-                    ports_fi_b.append(port_id)
-            if 'N9K' in nei['platform_id']:
-                if not filter(lambda w: w._port_N in port_id, self.get_all_wires()):
-                    raise Exception('Port {0} is not described in lab config. It is connected to other N9k'.format(port_id))
-                ports_n9k.append(port_id)
-
-        # Delete port channels
+        self.cmd(['conf t', 'feature lacp'])
         self.delete_port_channels()
-
-        # Delete vlans
         self.delete_vlans()
 
-        # Create vlans
-        n9k_vlans = []
-        for net_name, vlans in self.lab()._net_vlans.iteritems():
-            vlans_str = [str(v) for v in vlans]
-            n9k_vlans = n9k_vlans + vlans_str
-            self.cmd(['conf t', 'vlan {0}'.format(', '.join(vlans_str)), 'no shut'])
+        vlans = ', '.join(map(lambda x: str(x), self.lab().get_all_vlans()))
+        self.cmd(['conf t', 'vlan {0}'.format(vlans), 'no shut'])
 
-        # Configure VPC domain
-        self.configure_vpc_domain(peer_ip=self.get_peer()._ip)
+        peer = self._peer_link_wires[0].get_peer_node(self)
+        ip, _, _, _ = peer.get_ssh()
+        self.configure_vpc_domain(peer_ip=ip)
 
-        # Create port-channels
-        for w in self.get_wires_for_n9_and_fi_and_tor():
-            self.create_port_channels(w.get_pc_id(), [w.get_port_n()], n9k_vlans)
+        pc_id_versus_ports = {}
+        for w in self._peer_link_wires + self._downstream_wires + self._upstream_wires:
+            pc_id = w.get_pc_id()
+            pc_id_versus_ports.setdefault(pc_id, [])
+            pc_id_versus_ports[pc_id].append(w.get_own_port(self))
 
-        # Configure VPCs
-        processed_pcs = set()
-        for wire in self.get_wires_for_n9_and_fi_and_tor():
-            pc_id = self.id_to_int(wire.get_pc_id())
-            if pc_id not in processed_pcs:
-                if wire.is_n9_n9():
-                    # Peer-link VPC
-                    self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc peer-link'])
+        for pc_id, ports in pc_id_versus_ports.iteritems():
+            if 'tor' in pc_id:
+                vlans = self.lab().get_net_vlans('user')
+            elif 'cobbler' in pc_id:
+                vlans = self.lab().get_net_vlans('pxe-ext')
+            elif 'asr' in pc_id:
+                continue
+            else:
+                vlans = self.lab().get_all_vlans()
+
+            if pc_id[0].isdigit():
+                is_peer = 'peer' in pc_id
+                pc_id = pc_id.split('-')[0]
+                self.create_port_channel(pc_id=pc_id, ports=ports, vlans=vlans, speed=10000)
+                if is_peer:
+                    self.create_vpc_peer_link(pc_id)
                 else:
-                    # Other VPCs
-                    self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)])
-                processed_pcs.add(pc_id)
+                    self.create_vpc(pc_id)
+            else:
+                self.assign_vlans(port=ports[0], vlans=vlans)
 
-        # Looks for ports connected to ASR. If at least one exists then configure VXLAN
-        for w in self._upstream_wires:
-            if w.is_n9_asr():
-                self.configure_vxlan(w.get_port_s())
-                break
-
+        # # Looks for ports connected to ASR. If at least one exists then configure VXLAN
+        # for w in self._upstream_wires:
+        #     if w.is_n9_asr():
+        #         self.configure_vxlan(w.get_port_s())
+        #         break

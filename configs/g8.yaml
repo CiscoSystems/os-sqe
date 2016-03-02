@@ -36,17 +36,17 @@ nodes: {
   compute-1:  {ip: 7, ipmi_ip: 10.30.119.93, ipmi_username: admin, ipmi_password: password, nets: [eth0, eth1, user, pxe-int]}, # 10.23.230.72
   compute-2:  {ip: 8, ipmi_ip: 10.30.119.94, ipmi_username: admin, ipmi_password: password, nets: [eth0, eth1, user, pxe-int]}, # 10.23.230.73
 
-  cobbler-1: {ip: 172.29.74.8, username: cobbler, password: cobbler}
+  cobbler-1: {ip: 172.29.74.8, username: cobbler, password: cobbler, nets: [pxe-ext]}
 }
 
 # single wire is in the form pc_id: {South_Node_Name-port_id: North_Node_Name-port_id}.  Node name should match node from nodes section. IMPORTANT: should always be from south to north.
-# if pc_id is integer, this pc_id will be created on corresponding devices.
+# if pc_id starts with integer, this pc_id will be created on corresponding devices.
 # UCS controlled by UCSM is e.g. control-1-5/a: fi-1-1/35. Here control-1 discovered by UCSM as server id = 5 connected to FI-A
 # If server controlled by CIMC then the format is node_name-id-pci_slot/uplink_port
 wires: {
-  1: {nexus-1-1/1:  tor-1-1/1, nexus-2-1/1:  tor-1-1/4},
+  1-tor: {nexus-1-1/1:  tor-1-1/1, nexus-2-1/1:  tor-1-1/4},
 
-  100: {nexus-1-1/31:  nexus-2-1/31, nexus-1-1/33: nexus-2-1/33, nexus-1-1/35: nexus-2-1/35},
+  100-peer: {nexus-1-1/31:  nexus-2-1/31, nexus-1-1/33: nexus-2-1/33, nexus-1-1/35: nexus-2-1/35},
   81:  {fi-1-1/9: nexus-1-1/9, fi-1-1/10: nexus-2-1/9},
   82:  {fi-2-1/9: nexus-1-1/10, fi-2-1/10: nexus-2-1/10},
 

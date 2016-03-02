@@ -13,12 +13,16 @@ class LabNode(object):
         self._password = password
         self._upstream_wires = []
         self._downstream_wires = []
+        self._peer_link_wires = []
 
     def wire_upstream(self, wire):
         self._upstream_wires.append(wire)
 
     def wire_downstream(self, wire):
         self._downstream_wires.append(wire)
+
+    def wire_peer_link(self, wire):
+        self._peer_link_wires.append(wire)
 
     def name(self):
         return self._name

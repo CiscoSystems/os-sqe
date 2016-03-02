@@ -8,10 +8,16 @@ class Wire(object):
         self._node_S = node_s
         self._port_S = str(num_s)
         self._pc_id = str(pc_id)  # not None if this wire is a part of (possibly virtual) port channel
+        self._speed = 10000
 
         self._is_intentionally_down = False
-        self._node_N.wire_downstream(self)
-        self._node_S.wire_upstream(self)
+
+        if self._pc_id and 'peer' in self._pc_id:
+            self._node_N.wire_peer_link(self)
+            self._node_S.wire_peer_link(self)
+        else:
+            self._node_N.wire_downstream(self)
+            self._node_S.wire_upstream(self)
 
     def down_port(self):
         """Delegate actual operation to north bound networking device"""
@@ -22,6 +28,15 @@ class Wire(object):
 
     def get_node_n(self):
         return self._node_N
+
+    def get_peer_node(self, node):
+        return self._node_N if node == self._node_S else self._node_S
+
+    def get_peer_port(self, node):
+        return self._port_N if node == self._node_S else self._port_S
+
+    def get_own_port(self, node):
+        return self._port_N if node == self._node_N else self._port_S
 
     def get_node_s(self):
         return self._node_S
