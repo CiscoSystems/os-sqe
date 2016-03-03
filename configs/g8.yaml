@@ -47,8 +47,8 @@ wires: {
   1-tor: {nexus-1-1/1:  tor-1-1/1, nexus-2-1/1:  tor-1-1/4},
 
   100-peer: {nexus-1-1/31:  nexus-2-1/31, nexus-1-1/33: nexus-2-1/33, nexus-1-1/35: nexus-2-1/35},
-  81:  {fi-1-1/9: nexus-1-1/9, fi-1-1/10: nexus-2-1/9},
-  82:  {fi-2-1/9: nexus-1-1/10, fi-2-1/10: nexus-2-1/10},
+  81-fi1:  {fi-1-1/9: nexus-1-1/9, fi-1-1/10: nexus-2-1/9},
+  82-fi2:  {fi-2-1/9: nexus-1-1/10, fi-2-1/10: nexus-2-1/10},
 
   fi-1:   {director-1-1/a: fi-1-1/3, director-1-1/b: fi-2-1/3},
   fi-2:   {control-1-2/a: fi-1-1/4,  control-1-2/b: fi-2-1/4},

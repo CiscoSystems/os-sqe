@@ -113,7 +113,7 @@ class Nexus(LabNode):
             # delete all port-channels
             self.cmd(['conf t', 'no int port-channel {0}'.format(pc_id)])
 
-    def create_port_channel(self, pc_id, ports, speed, vlans):
+    def create_port_channel(self, pc_id, pc_name, ports, speed, vlans):
         """
         For example arguments: 2, ['1/2', '1/10'], [222, 333]
         :param vlans:
@@ -124,10 +124,10 @@ class Nexus(LabNode):
         """
         # create port channel
         vlans_string = ','.join(map(lambda x: str(x), vlans))
-        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed)])
+        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed)])
         # add ports to the port-channel
         for port in ports:
-            self.cmd(['conf t', 'int ethernet ' + port, 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed),
+            self.cmd(['conf t', 'int ethernet ' + port, 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed),
                       'channel-group {0} mode active'.format(pc_id)])
 
     def create_vpc(self, pc_id):
@@ -161,8 +161,8 @@ class Nexus(LabNode):
         vlan_delete_str = ['conf t'] + ['no vlan ' + ','.join(vlans[i:i+slice_vlans]) for i in range(0, len(vlans), slice_vlans)]
         self.cmd(vlan_delete_str)
 
-    def assign_vlans(self, port, vlans):
-        self.cmd(['conf t', 'int e{0}'.format(port), 'switchport trunk allowed vlan {0}'.format(','.join([str(x) for x in vlans]))])
+    def assign_vlans(self, int_name, port, vlans):
+        self.cmd(['conf t', 'int e{0}'.format(port), 'description {0}'.format(int_name), 'switchport trunk allowed vlan {0}'.format(','.join([str(x) for x in vlans]))])
 
     def configure_vxlan(self, asr_port):
         # Configure vxlan artefacts
@@ -223,14 +223,17 @@ class Nexus(LabNode):
 
             if pc_id[0].isdigit():
                 is_peer = 'peer' in pc_id
-                pc_id = pc_id.split('-')[0]
-                self.create_port_channel(pc_id=pc_id, ports=ports, vlans=vlans, speed=10000)
+                try:
+                    pc_id, pc_name = pc_id.split('-')
+                except ValueError:
+                    raise ValueError('Expected pc_id in form ID-NODE_NAME. Provided: {0}'.format(pc_id))
+                self.create_port_channel(pc_id=pc_id, pc_name=pc_name, ports=ports, vlans=vlans, speed=10000)
                 if is_peer:
                     self.create_vpc_peer_link(pc_id)
                 else:
                     self.create_vpc(pc_id)
             else:
-                self.assign_vlans(port=ports[0], vlans=vlans)
+                self.assign_vlans(int_name=pc_id, port=ports[0], vlans=vlans)
 
         # # Looks for ports connected to ASR. If at least one exists then configure VXLAN
         # for w in self._upstream_wires:
