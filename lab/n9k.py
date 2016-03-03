@@ -6,13 +6,6 @@ class Nexus(LabNode):
     def __repr__(self):
         return u'{0} {1}'.format(self.lab(), self.name())
 
-    def id_to_int(self, id):
-        try:
-            return int(id)
-        except ValueError:
-            # Skip the wire because port-channel id is not an integer value
-            return None
-
     def get_pcs_for_n9_and_fi_and_tor(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""
         wires = self.get_wires_for_n9_and_fi_and_tor()
@@ -58,7 +51,7 @@ class Nexus(LabNode):
 
     def get_hostname(self):
         res = self.cmd(['sh switchname'])
-        return res[0]['result']['body']['hostname']
+        return res['result']['body']['hostname']
 
     def cmd(self, commands, timeout=15):
         if isinstance(commands, basestring):  # it might be provided as a string where commands are separated by ','
@@ -71,7 +64,7 @@ class Nexus(LabNode):
         for i, x in enumerate(results, start=0):
             if 'error' in x:
                 raise NameError('{cmd} : {msg}'.format(msg=x['error']['data']['msg'].strip('%\n'), cmd=commands[i]))
-        return results
+        return dict(results[0])
 
     def change_port_state(self, port_no, port_state="no shut"):
         """
@@ -83,36 +76,15 @@ class Nexus(LabNode):
 
     def show_port_channel_summary(self):
         res = self.cmd(['show port-channel summary'])
-        if res[0] == 'timeout':
+        if res == 'timeout':
             return []
-        return [x['port-channel'] for x in res[0]['result']['body']['TABLE_channel']['ROW_channel']]
-
-    def get_pc_for_osp(self):
-        res = self.cmd(['show port-channel summary'], timeout=15)
-        if res[0] == 'timeout':
-            raise Exception('Connection to N9K {ip} timed out.'.format(ip=self.ip))
-        pc = []
-        try:
-            all_pc_w_ports = [x for x in res[0]['result']['body']['TABLE_channel']['ROW_channel'] if 'TABLE_member' in x]
-            for entry in all_pc_w_ports:
-                ports = entry['TABLE_member']['ROW_member']
-                if isinstance(ports, list):
-                    port_list = set([x['port'].split('Ethernet')[1] for x in ports])
-                    if port_list.issubset(self.osp_ports):
-                        pc.append(entry['port-channel'])
-                else:
-                    port = ports['port']
-                    if port.split('Ethernet')[1] in self.osp_ports:
-                         pc.append(entry['port-channel'])
-        except Exception:
-            raise Exception('Error in parsing response from N9K {ip}. Response: {res}'.format(ip=self._ip, res=res))
-        return pc
+        return [x['port-channel'] for x in res['result']['body']['TABLE_channel']['ROW_channel']]
 
     def show_interface_switchport(self, name):
         res = self.cmd(['show interface {0} switchport'.format(name)])
-        if res[0] == 'timeout':
+        if res == 'timeout':
             return []
-        vlans_str = res[0]['result']['body']['TABLE_interface']['ROW_interface']['trunk_vlans']
+        vlans_str = res['result']['body']['TABLE_interface']['ROW_interface']['trunk_vlans']
         vlans = set()
         for vlan_range in vlans_str.split(','):  # from  1,2,5-7  to (1, 2, 5, 6, 7)
             se = vlan_range.split('-')
@@ -124,8 +96,8 @@ class Nexus(LabNode):
 
     def show_port_channels(self):
         pcs = self.cmd(['sh port-channel summary'])
-        if pcs[0]['result']:
-            pcs = pcs[0]['result']['body'][u'TABLE_channel'][u'ROW_channel']
+        if pcs['result']:
+            pcs = pcs['result']['body'][u'TABLE_channel'][u'ROW_channel']
             # if there is only one port-channel the API returns object but not a list. Convert to list
             pcs = [pcs] if isinstance(pcs, dict) else pcs
             return pcs
@@ -144,6 +116,10 @@ class Nexus(LabNode):
     def create_port_channel(self, pc_id, ports, speed, vlans):
         """
         For example arguments: 2, ['1/2', '1/10'], [222, 333]
+        :param vlans:
+        :param speed:
+        :param ports:
+        :param pc_id:
         :return:
         """
         # create port channel
@@ -162,28 +138,28 @@ class Nexus(LabNode):
 
     def show_vlans(self):
         vlans = self.cmd(['sh vlan'])
-        if vlans[0]['result']:
-            vlans = vlans[0]['result']['body'][u'TABLE_vlanbrief'][u'ROW_vlanbrief']
+        if vlans['result']:
+            vlans = vlans['result']['body'][u'TABLE_vlanbrief'][u'ROW_vlanbrief']
             vlans = [vlans] if isinstance(vlans, dict) else vlans
             return vlans
 
     def show_cdp_neighbor(self):
         cdp_neis = self.cmd(['sh cdp nei det'])
-        return cdp_neis[0]['result']['body']['TABLE_cdp_neighbor_detail_info']['ROW_cdp_neighbor_detail_info']
+        return cdp_neis['result']['body']['TABLE_cdp_neighbor_detail_info']['ROW_cdp_neighbor_detail_info']
 
     def show_users(self):
         res = self.cmd(['show users'])
-        if res[0] == 'timeout':
+        if res == 'timeout':
             return []
-        if res[0]['result']:
-            return res[0]['result']['body']['TABLE_sessions']['ROW_sessions']
+        if res['result']:
+            return res['result']['body']['TABLE_sessions']['ROW_sessions']
         else:
             return []  # no current session
 
-    def delete_vlans(self):
-        vlans = self.show_vlans()
-        vlans_str = ','.join([v['vlanshowbr-vlanid-utf'] for v in vlans])
-        self.cmd(['conf t', 'no vlan {0}'.format(vlans_str)])
+    def delete_vlans(self, slice_vlans=64):
+        vlans = [x['vlanshowbr-vlanid-utf'] for x in self.show_vlans() if x['vlanshowbr-vlanid-utf'] != '1']
+        vlan_delete_str = ['conf t'] + ['no vlan ' + ','.join(vlans[i:i+slice_vlans]) for i in range(0, len(vlans), slice_vlans)]
+        self.cmd(vlan_delete_str)
 
     def assign_vlans(self, port, vlans):
         self.cmd(['conf t', 'int e{0}'.format(port), 'switchport trunk allowed vlan {0}'.format(','.join([str(x) for x in vlans]))])
@@ -208,13 +184,16 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'interface ethernet {0}'.format(asr_port), 'ip router ospf {0} area {1}'.format(router_ospf, router_area)])
 
     def configure_vpc_domain(self, peer_ip, domain_id=1):
-        old_vpc_domain = self.cmd(['sh vpc'])[0]['result']['body']['vpc-domain-id']
+        old_vpc_domain = self.cmd(['sh vpc'])['result']['body']['vpc-domain-id']
         if old_vpc_domain != 'not configured':
             self.cmd(['conf t', 'no vpc domain {0}'.format(old_vpc_domain)])
         self.cmd(['conf t', 'feature vpc'])
         self.cmd(['conf t', 'vpc domain {0}'.format(domain_id), 'peer-keepalive destination {0}'.format(peer_ip)])
 
     def configure_for_osp7(self):
+        from lab.logger import lab_logger
+        lab_logger.info('Configuring {0}'.format(self))
+
         self.cmd(['conf t', 'feature lacp'])
         self.delete_port_channels()
         self.delete_vlans()
