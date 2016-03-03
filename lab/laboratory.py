@@ -3,6 +3,7 @@ from lab import with_config
 
 
 class Laboratory(with_config.WithConfig):
+    TOPOLOGY_VLAN, TOPOLOGY_VXLAN = 'VLAN', 'VXLAN'
 
     temp_dir = tempfile.mkdtemp(prefix='runner-ha-')
 
@@ -249,15 +250,15 @@ class Laboratory(with_config.WithConfig):
     def logstash_creds(self):
         return self._cfg['logstash']
 
-    def configure_for_osp7(self):
-        self.create_config_file_for_osp7_install()
+    def configure_for_osp7(self, topology=TOPOLOGY_VLAN):
+        self.create_config_file_for_osp7_install(topology)
         self.get_cobbler().configure_for_osp7()
-        map(lambda x: x.configure_for_osp7(), self.get_n9())
+        map(lambda x: x.configure_for_osp7(topology), self.get_n9())
         map(lambda x: x.configure_for_osp7(), self.get_cimc_servers())
-        map(lambda x: x.configure_for_osp7(), self.get_asr1ks())
+        map(lambda x: x.configure_for_osp7(topology), self.get_asr1ks())
         self.get_fi()[0].configure_for_osp7()
 
-    def create_config_file_for_osp7_install(self):
+    def create_config_file_for_osp7_install(self, topology=TOPOLOGY_VLAN):
         import os
         from lab.logger import lab_logger
         from lab.with_config import read_config_from_file

@@ -16,11 +16,6 @@ class Nexus(LabNode):
         wires = filter(lambda w: w.is_n9_n9() or w.is_n9_fi() or w.is_n9_tor(), self._downstream_wires + self._upstream_wires)
         return wires
 
-    def get_pcs_for_n9(self):
-        """Returns a list of wires used on connection to peer N9K"""
-        wires = filter(lambda w: w.is_n9_n9(), self._upstream_wires)
-        return sorted(set([x.get_pc_id() for x in wires]))
-
     def get_wires_to_servers(self):
         """Returns a list wires connected servers"""
         return filter(lambda w: w.is_n9_ucs(), self._downstream_wires)
@@ -116,6 +111,7 @@ class Nexus(LabNode):
     def create_port_channel(self, pc_id, pc_name, ports, speed, vlans):
         """
         For example arguments: 2, ['1/2', '1/10'], [222, 333]
+        :param pc_name:
         :param vlans:
         :param speed:
         :param ports:
@@ -124,11 +120,12 @@ class Nexus(LabNode):
         """
         # create port channel
         vlans_string = ','.join(map(lambda x: str(x), vlans))
-        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed)])
+        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string),
+                  'speed {0}'.format(speed)])
         # add ports to the port-channel
         for port in ports:
-            self.cmd(['conf t', 'int ethernet ' + port, 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed),
-                      'channel-group {0} mode active'.format(pc_id)])
+            self.cmd(['conf t', 'int ethernet ' + port, 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string),
+                      'speed {0}'.format(speed), 'channel-group {0} mode active'.format(pc_id)])
 
     def create_vpc(self, pc_id):
         self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)])
@@ -166,6 +163,7 @@ class Nexus(LabNode):
 
     def configure_vxlan(self, asr_port):
         # Configure vxlan artefacts
+
         lo1_ip = '1.1.1.22{0}'.format(self.index())
         lo2_ip = '2.2.2.22{0}'.format(self.index())
         router_ospf = '111'
@@ -190,7 +188,10 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'feature vpc'])
         self.cmd(['conf t', 'vpc domain {0}'.format(domain_id), 'peer-keepalive destination {0}'.format(peer_ip)])
 
-    def configure_for_osp7(self):
+    def get_peer_link_id(self):
+        return self._peer_link_wires[0].get_pc_id().split('-')[0]
+
+    def configure_for_osp7(self, topology):
         from lab.logger import lab_logger
         lab_logger.info('Configuring {0}'.format(self))
 
@@ -235,8 +236,7 @@ class Nexus(LabNode):
             else:
                 self.assign_vlans(int_name=pc_id, port=ports[0], vlans=vlans)
 
-        # # Looks for ports connected to ASR. If at least one exists then configure VXLAN
-        # for w in self._upstream_wires:
-        #     if w.is_n9_asr():
-        #         self.configure_vxlan(w.get_port_s())
-        #         break
+        if topology == self.lab().TOPOLOGY_VXLAN:
+            self.cmd(['conf t', 'int po{0}'.format(self.get_peer_link_id()), 'shut'])
+            asr = filter(lambda x: x.is_n9_asr(), self._upstream_wires)
+            self.configure_vxlan(asr[0].get_own_port(self))
