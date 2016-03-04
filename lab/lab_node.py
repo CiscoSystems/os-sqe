@@ -4,6 +4,9 @@ import abc
 class LabNode(object):
     __metaclass__ = abc.ABCMeta
 
+    def __repr__(self):
+        return u'{0} {1}'.format(self.lab(), self.name())
+
     def __init__(self, name, ip, username, password, lab, hostname):
         self._lab = lab  # link to parent Laboratory object
         self._name = name  # something which describes what this node is and how it will be used
@@ -27,11 +30,12 @@ class LabNode(object):
     def name(self):
         return self._name
 
-    def index(self):
-        """
-        If name of a node is "node-3" the method returns 3.
-        """
-        return self.name().split('-')[-1]
+    def node_index(self):
+        """ If name of a node is "node-3" the method returns 3 """
+        try:
+            return int(self.name().split('-')[-1])
+        except ValueError:
+            raise ValueError('Node "{0}" is not of form role-integer'.format(self._name))
 
     def lab(self):
         return self._lab
@@ -41,10 +45,6 @@ class LabNode(object):
 
     def hostname(self):
         return self._hostname
-
-    def get_pcs(self):
-        """Returns all PC IDs found on all wires"""
-        return set(map(lambda x: x.get_pc_id(), self._downstream_wires + self._upstream_wires))
 
     def get_all_wires(self):
         """Returns all ires"""

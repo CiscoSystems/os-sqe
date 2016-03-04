@@ -35,8 +35,8 @@ class Laboratory(with_config.WithConfig):
         self._ipmi_username, self._ipmi_password = self._cfg['cred']['ipmi_username'], self._cfg['cred']['ipmi_password']
         self._neutron_username, self._neutron_password = self._cfg['cred']['neutron_username'], self._cfg['cred']['neutron_password']
 
-        for pc_id, pc_description in self._cfg['wires'].iteritems():
-            self._process_single_pc(pc_id=pc_id, pc_description=pc_description)
+        for name, wires in self._cfg['wires'].iteritems():
+            self._process_single_connection(name=name, wires=wires)
 
     def is_sriov(self):
         return self._is_sriov
@@ -63,15 +63,8 @@ class Laboratory(with_config.WithConfig):
                 raise ValueError('{0} is not valid {1}'.format(obj, type_of_object))
             self._unique_dict[type_of_object].add(obj)
 
-    def _process_single_pc(self, pc_id, pc_description):
+    def _process_single_connection(self, name, wires):
         from lab.wire import Wire
-
-        try:
-            pc_id = int(pc_id)
-            if not 1 <= pc_id <= 65535:
-                raise ValueError('Valid range of pc_id is 1-65535')
-        except ValueError:
-            pass
 
         def get_port_id(dev_port):
             try:
@@ -80,13 +73,13 @@ class Laboratory(with_config.WithConfig):
             except (UnboundLocalError, ValueError):
                 raise KeyError('you provided {0} as full port id, while expected like Nexus-1-1/31'.format(dev_port))
 
-        for s, n in pc_description.iteritems():  # sample value: Director-1-3/1:  FI-1-1/10
+        for s, n in wires.iteritems():  # sample value: Director-1-3/1:  FI-1-1/10
             port_s = get_port_id(s)
             port_n = get_port_id(n)
             node_n = self._get_or_create_node(n)  # first north node, servers could not be north
             node_s = self._get_or_create_node(s, node_n)  # now create south node which might be server
 
-            Wire(node_n=node_n, num_n=port_n, node_s=node_s, num_s=port_s, pc_id=pc_id)
+            Wire(node_n=node_n, num_n=port_n, node_s=node_s, num_s=port_s, name=name)
 
     @staticmethod
     def _get_role_class(role, peer_device):
