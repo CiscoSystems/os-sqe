@@ -39,9 +39,10 @@ nodes: {
 }
 
 # single wire is in the form pc_id: {South_Node_Name-port_id: North_Node_Name-port_id}.  Node name should match node from nodes section. IMPORTANT: should always be from south to north.
-# if pc_id is integer, this pc_id will be created on corresponding devices.
-# Port id for UCS is either server-id as discovered in UCSM
-# If server controlled by CIMC then the format is node_name-id-pci_slot/uplink_port
+# if pc_id starts with integer, this number will be used as (v)PC id on corresponding devices, if not this number will be assigned automatically
+# UCS controlled by UCSM is e.g. control-1-5/a: fi-1-1/35  port_id=5/a means server_id=5 (C series) connected to FI-A,  port_id=3/1/b means server_id=3/1 connected to FI-B
+# UCS controlled by CIMC is e.g. compute-1-3/0: nexus-1-1/3 port_id=3/0 means pci_slot=3 uplink_port=0
+# all other port ids are usual ids as they used in NXOS
 wires: {
   2-tor:      {nexus-1-1/2:  tor-1-1/7, nexus-2-1/2:  tor-1-1/8},
   101-peer:   {nexus-1-1/16: nexus-2-1/16, nexus-1-1/17: nexus-2-1/17},

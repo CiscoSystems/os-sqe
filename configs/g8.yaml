@@ -40,26 +40,27 @@ nodes: {
 }
 
 # single wire is in the form pc_id: {South_Node_Name-port_id: North_Node_Name-port_id}.  Node name should match node from nodes section. IMPORTANT: should always be from south to north.
-# if pc_id starts with integer, this pc_id will be created on corresponding devices.
-# UCS controlled by UCSM is e.g. control-1-5/a: fi-1-1/35. Here control-1 discovered by UCSM as server id = 5 connected to FI-A
-# If server controlled by CIMC then the format is node_name-id-pci_slot/uplink_port
+# if pc_id starts with integer, this number will be used as (v)PC id on corresponding devices, if not this number will be assigned automatically
+# UCS controlled by UCSM is e.g. control-1-5/a: fi-1-1/35  port_id=5/a means server_id=5 (C series) connected to FI-A,  port_id=3/1/b means server_id=3/1 connected to FI-B
+# UCS controlled by CIMC is e.g. compute-1-3/0: nexus-1-1/3 port_id=3/0 means pci_slot=3 uplink_port=0
+# all other port ids are usual ids as they used in NXOS
 wires: {
-  1-tor: {nexus-1-1/1:  tor-1-1/1, nexus-2-1/1:  tor-1-1/4},
+  tor:  {nexus-1-1/1:  tor-1-1/1, nexus-2-1/1:  tor-1-1/4},
+  peer: {nexus-1-1/31:  nexus-2-1/31, nexus-1-1/33: nexus-2-1/33, nexus-1-1/35: nexus-2-1/35},
 
-  100-peer: {nexus-1-1/31:  nexus-2-1/31, nexus-1-1/33: nexus-2-1/33, nexus-1-1/35: nexus-2-1/35},
-  81-fi1:  {fi-1-1/9: nexus-1-1/9, fi-1-1/10: nexus-2-1/9},
-  82-fi2:  {fi-2-1/9: nexus-1-1/10, fi-2-1/10: nexus-2-1/10},
+  fi1-n9:  {fi-1-1/9: nexus-1-1/9, fi-1-1/10: nexus-2-1/9},
+  fi2-n9:  {fi-2-1/9: nexus-1-1/10, fi-2-1/10: nexus-2-1/10},
 
-  fi-1:   {director-1-1/a: fi-1-1/3, director-1-1/b: fi-2-1/3},
-  fi-2:   {control-1-2/a: fi-1-1/4,  control-1-2/b: fi-2-1/4},
-  fi-3:   {control-2-3/a: fi-1-1/5,  control-2-3/b: fi-2-1/4},
-  fi-4:   {control-3-4/a: fi-1-1/6,  control-3-4/b: fi-2-1/4},
+  ucs-1:   {director-1-1/a: fi-1-1/3, director-1-1/b: fi-2-1/3},
+  ucs-2:   {control-1-2/a: fi-1-1/4,  control-1-2/b: fi-2-1/4},
+  ucs-3:   {control-2-3/a: fi-1-1/5,  control-2-3/b: fi-2-1/4},
+  ucs-4:   {control-3-4/a: fi-1-1/6,  control-3-4/b: fi-2-1/4},
 
   cimc-1: {compute-1-3/0: nexus-1-1/3},
   cimc-2: {compute-2-3/0: nexus-2-1/4},
   cobbler: {cobbler-1-0/18: nexus-1-1/15, cobbler-1-0/17: nexus-2-1/15},
 
-  asr-1: {nexus-1-1/48: asr-1-0/0, nexus-2-1/48: asr-1-0/1}
+  n9-asr: {nexus-1-1/48: asr-1-0/0, nexus-2-1/48: asr-1-0/1}
 }
 
 vlan_range: "1000:2000"

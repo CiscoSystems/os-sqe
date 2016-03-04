@@ -3,17 +3,14 @@ from lab.lab_node import LabNode
 
 class Nexus(LabNode):
 
-    def __repr__(self):
-        return u'{0} {1}'.format(self.lab(), self.name())
-
     def get_pcs_for_n9_and_fi_and_tor(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""
         wires = self.get_wires_for_n9_and_fi_and_tor()
-        return sorted(set([x.get_pc_id() for x in wires]))
+        return sorted(set([str(x.get_pc_id()) for x in wires]))
 
     def get_wires_for_n9_and_fi_and_tor(self):
         """Returns a list of wires used on connection to peer N9K and both FIs"""
-        wires = filter(lambda w: w.is_n9_n9() or w.is_n9_fi() or w.is_n9_tor(), self._downstream_wires + self._upstream_wires)
+        wires = filter(lambda w: any([w.is_n9_n9(), w.is_n9_fi(), w.is_n9_tor()]), self._downstream_wires + self._upstream_wires)
         return wires
 
     def get_wires_to_servers(self):
@@ -162,13 +159,11 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'int e{0}'.format(port), 'description {0}'.format(int_name), 'switchport trunk allowed vlan {0}'.format(','.join([str(x) for x in vlans]))])
 
     def configure_vxlan(self, asr_port):
-        # Configure vxlan artefacts
-
-        lo1_ip = '1.1.1.22{0}'.format(self.index())
-        lo2_ip = '2.2.2.22{0}'.format(self.index())
+        lo1_ip = '1.1.1.{0}'.format(self.node_index())
+        lo2_ip = '2.2.2.{0}'.format(self.node_index())
         router_ospf = '111'
         router_area = '0.0.0.0'
-        eth48_ip = '169.0.{0}.1'.format(self.index())
+        eth48_ip = '169.0.{0}.1'.format(self.node_index())
         self.cmd(['conf t', 'feature ospf'])
         self.cmd(['conf t', 'feature pim'])
         self.cmd(['conf t', 'interface loopback 1'])
@@ -189,11 +184,26 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'vpc domain {0}'.format(domain_id), 'peer-keepalive destination {0}'.format(peer_ip)])
 
     def get_peer_link_id(self):
-        return self._peer_link_wires[0].get_pc_id().split('-')[0]
+        return self._peer_link_wires[0].get_pc_id()
 
     def configure_for_osp7(self, topology):
         from lab.logger import lab_logger
+
         lab_logger.info('Configuring {0}'.format(self))
+
+        pc_id_versus_ports = {}
+        for w in self._peer_link_wires + self._downstream_wires + self._upstream_wires:
+            vlans = self.lab().get_all_vlans()
+            if w.is_n9_tor():
+                vlans = self.lab().get_net_vlans('user')
+            elif w.is_n9_cobbler():
+                vlans = self.lab().get_net_vlans('pxe-ext')
+            elif w.is_n9_asr():
+                continue
+            pc_id = w.get_pc_id()
+            name = str(w.get_peer_node(self))
+            pc_id_versus_ports.setdefault(pc_id, {'ports': [], 'vlans': vlans, 'name': name, 'is-peer': w.is_n9_n9()})
+            pc_id_versus_ports[pc_id]['ports'].append(w.get_own_port(self))
 
         self.cmd(['conf t', 'feature lacp'])
         self.delete_port_channels()
@@ -202,39 +212,23 @@ class Nexus(LabNode):
         vlans = ', '.join(map(lambda x: str(x), self.lab().get_all_vlans()))
         self.cmd(['conf t', 'vlan {0}'.format(vlans), 'no shut'])
 
-        peer = self._peer_link_wires[0].get_peer_node(self)
-        ip, _, _, _ = peer.get_ssh()
+        peer_nexus = self._peer_link_wires[0].get_peer_node(self)
+        ip, _, _, _ = peer_nexus.get_ssh()
         self.configure_vpc_domain(peer_ip=ip)
 
-        pc_id_versus_ports = {}
-        for w in self._peer_link_wires + self._downstream_wires + self._upstream_wires:
-            pc_id = w.get_pc_id()
-            pc_id_versus_ports.setdefault(pc_id, [])
-            pc_id_versus_ports[pc_id].append(w.get_own_port(self))
+        for pc_id, ports_vlans_name in pc_id_versus_ports.iteritems():
+            name = ports_vlans_name['name']
+            ports = ports_vlans_name['ports']
+            vlans = ports_vlans_name['vlans']
 
-        for pc_id, ports in pc_id_versus_ports.iteritems():
-            if 'tor' in pc_id:
-                vlans = self.lab().get_net_vlans('user')
-            elif 'cobbler' in pc_id:
-                vlans = self.lab().get_net_vlans('pxe-ext')
-            elif 'asr' in pc_id:
-                continue
-            else:
-                vlans = self.lab().get_all_vlans()
-
-            if pc_id[0].isdigit():
-                is_peer = 'peer' in pc_id
-                try:
-                    pc_id, pc_name = pc_id.split('-')
-                except ValueError:
-                    raise ValueError('Expected pc_id in form ID-NODE_NAME. Provided: {0}'.format(pc_id))
-                self.create_port_channel(pc_id=pc_id, pc_name=pc_name, ports=ports, vlans=vlans, speed=10000)
-                if is_peer:
+            if isinstance(pc_id, int):
+                self.create_port_channel(pc_id=pc_id, pc_name=name, ports=ports, vlans=vlans, speed=10000)
+                if ports_vlans_name['is-peer']:
                     self.create_vpc_peer_link(pc_id)
                 else:
                     self.create_vpc(pc_id)
             else:
-                self.assign_vlans(int_name=pc_id, port=ports[0], vlans=vlans)
+                self.assign_vlans(int_name=name, port=ports[0], vlans=vlans)
 
         if topology == self.lab().TOPOLOGY_VXLAN:
             self.cmd(['conf t', 'int po{0}'.format(self.get_peer_link_id()), 'shut'])

@@ -2,22 +2,46 @@ class Wire(object):
     def __repr__(self):
         return u'S:{sn}:{sp} -> N:{nn}:{np} ({pc})'.format(sn=self.get_node_s().name(), sp=self.get_port_s(), nn=self.get_node_n().name(), np=self.get_port_n(), pc=self.get_pc_id())
 
-    def __init__(self, node_n, num_n, node_s, num_s, pc_id=None):
+    def __init__(self, node_n, num_n, node_s, num_s, name):
         self._node_N = node_n  # always north bound networking device
         self._port_N = str(num_n)
         self._node_S = node_s
         self._port_S = str(num_s)
-        self._pc_id = str(pc_id)  # not None if this wire is a part of (possibly virtual) port channel
-        self._speed = 10000
+        self._pc_id = self._calculate_pc_id(name=name)
+        self._is_peer_link = self.is_n9_n9()
 
         self._is_intentionally_down = False
 
-        if self._pc_id and 'peer' in self._pc_id:
+        if self._is_peer_link:
             self._node_N.wire_peer_link(self)
             self._node_S.wire_peer_link(self)
         else:
             self._node_N.wire_downstream(self)
             self._node_S.wire_upstream(self)
+
+    def _calculate_pc_id(self, name):
+        """Split pc_id in integer and name part. Example 81-fi-1 will give 81, fi-1
+        :param pc_id_name:
+        """
+        import re
+
+        if not name:
+            return None
+
+        try:
+            return re.findall('^(\d+)', name)[0]
+        except IndexError:  # since pc_id_name provided in lab config yaml doesn't starts with int we assign it here based on connection type
+            if self.is_n9_tor():
+                pc_id = 300
+            elif self.is_n9_n9():
+                pc_id = 301
+            elif self.is_n9_fi():
+                pc_id = self._node_S.node_index()
+                if pc_id >= 256:
+                    raise ValueError('Node {0} has index which is not suitable for (v)PC- more then 256'.format(self._node_S))
+            else:
+                pc_id = name  # other connection types do not require (v)PC
+            return pc_id
 
     def down_port(self):
         """Delegate actual operation to north bound networking device"""
@@ -83,3 +107,9 @@ class Wire(object):
         from lab.fi import FI, FiServer
 
         return isinstance(self._node_N, FI) and isinstance(self._node_S, FiServer)
+
+    def is_n9_cobbler(self):
+        from lab.n9k import Nexus
+        from lab.cobbler import CobblerServer
+
+        return isinstance(self._node_N, Nexus) and isinstance(self._node_S, CobblerServer)
