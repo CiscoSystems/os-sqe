@@ -32,14 +32,15 @@ def cmd(config_path):
 
 @task
 @decorators.print_time
-def deploy(config_path):
+def deploy(config_path, topology='VLAN'):
     """fab deploy:g10\t\t\t\tDeploy the lab from scratch.
         :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
-    """
+        :param topology: VLAN or VXLAN
+     """
     from lab.laboratory import Laboratory
 
     l = Laboratory(config_path=config_path)
-    l.configure_for_osp7()
+    l.configure_for_osp7(topology=topology)
 
 
 @task
@@ -103,7 +104,6 @@ def rally(lab, concurrency, max_vlans):
     """fab rally:g10,2,0,200\t\tRun rally with 2 threads for 0-200 vlans.
     :param lab: lab name
     :param concurrency: how many parallel threads
-    :param min_vlans: left margin of vlan range
     :param max_vlans: right margin of vlan range
     """
     from lab.with_config import ls_configs, open_artifact
