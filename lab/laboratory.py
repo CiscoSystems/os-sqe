@@ -3,7 +3,8 @@ from lab import with_config
 
 
 class Laboratory(with_config.WithConfig):
-    TOPOLOGY_VLAN, TOPOLOGY_VXLAN = 'VLAN', 'VXLAN'
+    SUPPORTED_TOPOLOGIES = ['VLAN', 'VXLAN']
+    TOPOLOGY_VLAN, TOPOLOGY_VXLAN = SUPPORTED_TOPOLOGIES
 
     temp_dir = tempfile.mkdtemp(prefix='runner-ha-')
 
@@ -251,6 +252,8 @@ class Laboratory(with_config.WithConfig):
         return self._cfg['logstash']
 
     def configure_for_osp7(self, topology=TOPOLOGY_VLAN):
+        if topology not in self.SUPPORTED_TOPOLOGIES:
+            raise ValueError('"{0}" topology is not supported. Correct values: {1}'.format(topology, self.SUPPORTED_TOPOLOGIES))
         self.create_config_file_for_osp7_install(topology)
         self.get_cobbler().configure_for_osp7()
         map(lambda x: x.configure_for_osp7(topology), self.get_n9())
@@ -371,7 +374,10 @@ class Laboratory(with_config.WithConfig):
                                            switch_tempest_section=switch_tempest_section
                                            )
 
-        folder = 'artefacts'
+        if topology == self.TOPOLOGY_VXLAN:
+            pass
+
+        folder = 'artifacts'
         file_path = os.path.join(folder, 'g{0}-osp7-install-config.conf'.format(self._id))
         if not os.path.exists(folder):
             os.makedirs(folder)
