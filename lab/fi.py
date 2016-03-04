@@ -93,7 +93,7 @@ class FI(LabNode):
         for a_b in 'a', 'b':
             created_vpc_ids = set()
             for wire in wires:
-                vpc_id, _ = wire.get_pc_id()
+                vpc_id = wire.get_pc_id()
                 if vpc_id not in created_vpc_ids:
                     self.cmd('scope eth-uplink; scope fabric {a_b}; create port-channel {vpc_id}; commit-buffer'.format(a_b=a_b, vpc_id=vpc_id))
                     created_vpc_ids.add(vpc_id)
