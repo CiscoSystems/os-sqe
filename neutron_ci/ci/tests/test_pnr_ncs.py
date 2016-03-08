@@ -83,13 +83,11 @@ SERVICE_HOST_NAME=$(hostname)
 HOST_IP=$(ip addr | grep inet | grep eth0 | awk -F" " '{{print $2}}'| sed -e 's/\/.*$//')
 SERVICE_HOST=$(hostname)
 
-MYSQL_HOST=$(hostname)
 RABBIT_HOST=$(hostname)
 GLANCE_HOSTPORT=$(hostname):9292
 KEYSTONE_AUTH_HOST=$(hostname)
 KEYSTONE_SERVICE_HOST=$(hostname)
 
-MYSQL_PASSWORD=mysql
 RABBIT_PASSWORD=rabbit
 QPID_PASSWORD=rabbit
 SERVICE_TOKEN=service
