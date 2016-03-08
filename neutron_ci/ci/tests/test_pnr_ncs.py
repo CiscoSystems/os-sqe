@@ -27,6 +27,11 @@ LOCAL_CONF = '''
 NEUTRON_REPO=https://git.openstack.org/openstack/neutron.git
 NEUTRON_BRANCH=master
 
+# enable pre-requisite
+enable_service rabbit
+enable_service mysql
+enable_service key
+
 # Only uncomment the below two lines if you are running on Fedora
 disable_service heat h-api h-api-cfn h-api-cw h-eng
 disable_service cinder c-sch c-api c-vol
@@ -39,7 +44,6 @@ enable_service q-svc
 enable_service q-dhcp
 enable_service q-l3
 enable_service q-meta
-enable_service quantum
 enable_service tempest
 enable_service q-agt
 enable_service q-fwaas
@@ -67,6 +71,12 @@ Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
 Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
 
 VNCSERVER_LISTEN=0.0.0.0
+# keystone
+KEYSTONE_CATALOG_BACKEND=sql
+ 
+VOLUME_GROUP="stack-volumes"
+VOLUME_NAME_PREFIX="volume-"
+VOLUME_BACKING_FILE_SIZE=10250M
 
 HOST_NAME=$(hostname)
 SERVICE_HOST_NAME=$(hostname)
