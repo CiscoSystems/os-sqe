@@ -24,30 +24,54 @@ Q_PLUGIN_EXTRA_CONF_PATH = \
 Q_PLUGIN_EXTRA_CONF_FILES = 'ml2_conf_ncs.ini'
 LOCAL_CONF = '''
 [[local|localrc]]
-NEUTRON_REPO=https://git.openstack.org/openstack/neutron.git
-NEUTRON_BRANCH=master
+NEUTRON_REPO={neutron_repo}
+NEUTRON_BRANCH={neutron_branch}
+ADMIN_PASSWORD=secrete
+MYSQL_PASSWORD=$ADMIN_PASSWORD
+RABBIT_PASSWORD=$ADMIN_PASSWORD
+SERVICE_PASSWORD=$ADMIN_PASSWORD
+SERVICE_TOKEN=secrete
+RECLONE=no
+
+# misc
+API_RATE_LIMIT=False
+
+# log
+DEBUG=True
+VERBOSE=True
+DEST=/opt/stack
+LOGFILE=$DEST/logs/stack.sh.log
+SCREEN_LOGDIR=$DEST/logs/screen
+
+SYSLOG=False
+LOG_COLOR=False
+LOGDAYS=7
 
 # enable pre-requisite
 enable_service rabbit
 enable_service mysql
 enable_service key
 
-# Only uncomment the below two lines if you are running on Fedora
-disable_service heat h-api h-api-cfn h-api-cw h-eng
-disable_service cinder c-sch c-api c-vol
-disable_service horizon
-disable_service n-cpu
-enable_service n-cond
+enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
+enable_service net-cisco
+
+# keystone
+KEYSTONE_CATALOG_BACKEND=sql
+
+VOLUME_GROUP="stack-volumes"
+VOLUME_NAME_PREFIX="volume-"
+VOLUME_BACKING_FILE_SIZE=10250M
+
+# enable neutron
 disable_service n-net
-disable_service n-cauth
 enable_service q-svc
+enable_service q-agt
 enable_service q-dhcp
 enable_service q-l3
 enable_service q-meta
-enable_service tempest
-enable_service q-agt
 enable_service q-fwaas
 enable_service q-lbaas
+#enable_service q-vpn
 enable_service neutron
 
 # VLAN configuration
@@ -62,46 +86,19 @@ ENABLE_TENANT_TUNNELS=True
 Q_PLUGIN=ml2
 Q_ML2_TENANT_NETWORK_TYPE=vxlan
 
-enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
-enable_service net-cisco
+
+# enable horizon
+enable_service horizon
+
+# enable tempest
+enable_service tempest
 
 Q_PLUGIN=ml2
 Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,ncs,logger
 Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
 Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
 
-VNCSERVER_LISTEN=0.0.0.0
-# keystone
-KEYSTONE_CATALOG_BACKEND=sql
- 
-VOLUME_GROUP="stack-volumes"
-VOLUME_NAME_PREFIX="volume-"
-VOLUME_BACKING_FILE_SIZE=10250M
-
-HOST_NAME=$(hostname)
-SERVICE_HOST_NAME=$(hostname)
 HOST_IP=$(ip addr | grep inet | grep eth0 | awk -F" " '{{print $2}}'| sed -e 's/\/.*$//')
-SERVICE_HOST=$(hostname)
-
-RABBIT_HOST=$(hostname)
-GLANCE_HOSTPORT=$(hostname):9292
-KEYSTONE_AUTH_HOST=$(hostname)
-KEYSTONE_SERVICE_HOST=$(hostname)
-
-RABBIT_PASSWORD=rabbit
-QPID_PASSWORD=rabbit
-SERVICE_TOKEN=service
-SERVICE_PASSWORD=admin
-ADMIN_PASSWORD=admin
-
-GIT_BASE=https://git.openstack.org
-API_RATE_LIMIT=False
-VERBOSE=True
-DEBUG=True
-LOGFILE=/opt/stack/screen-logs/stack.sh.log
-USE_SCREEN=True
-SCREEN_LOGDIR=/opt/stack/screen-logs
-RECLONE=True
 
 [[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_ncs]
