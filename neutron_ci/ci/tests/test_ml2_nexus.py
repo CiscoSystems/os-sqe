@@ -70,9 +70,9 @@ ENABLE_TENANT_VLANS=True
 API_RATE_LIMIT=False
 VERBOSE=True
 DEBUG=True
-LOGFILE=/opt/stack/screen-logs/stack.sh.log
+LOGFILE=/opt/stack/screen-logs/{log_ext}/stack.sh.log
 USE_SCREEN=True
-SCREEN_LOGDIR=/opt/stack/screen-logs
+SCREEN_LOGDIR=/opt/stack/screen-logs/{log_ext}
 RECLONE=True
 
 [[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
