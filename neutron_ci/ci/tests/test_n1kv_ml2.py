@@ -53,9 +53,9 @@ IP_VERSION=4
 API_RATE_LIMIT=False
 VERBOSE=True
 DEBUG=True
-LOGFILE=/opt/stack/screen-logs/{log_ext}/stack.sh.log
+LOGFILE=/opt/stack/screen-logs/stack.sh.log
 USE_SCREEN=True
-SCREEN_LOGDIR=/opt/stack/screen-logs/{log_ext}
+SCREEN_LOGDIR=/opt/stack/screen-logs
 RECLONE=True
 
 
