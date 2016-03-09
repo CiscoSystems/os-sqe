@@ -44,19 +44,19 @@ nodes: {
 # UCS controlled by CIMC is e.g. compute-1-3/0: nexus-1-1/3 port_id=3/0 means pci_slot=3 uplink_port=0
 # all other port ids are usual ids as they used in NXOS
 wires: {
-  2-tor:      {nexus-1-1/2:  tor-1-1/7, nexus-2-1/2:  tor-1-1/8},
-  101-peer:   {nexus-1-1/16: nexus-2-1/16, nexus-1-1/17: nexus-2-1/17},
-  81-fi1:     {fi-1-1/47: nexus-1-1/47, fi-1-1/48: nexus-2-1/47},
-  82-fi2:     {fi-2-1/47: nexus-1-1/48, fi-2-1/48: nexus-2-1/48},
-  fi3/1:      {director-1-3/1/a:  fi-1-1/10, director-1-3/1/b: fi-2-1/10},
-  fi1:        {control-1-1/a: fi-1-2/1/25, control-1-1/b: fi-2-2/1/25},
-  fi2:        {control-2-2/a: fi-1-2/1/26, control-2-2/b: fi-2-2/1/26},
-  fi3:        {control-3-3/a: fi-1-2/1/27, control-3-3/b: fi-2-2/1/27},
-  fi4:        {compute-1-4/a: fi-1-2/1/28, compute-1-4/b: fi-2-2/1/28},
-  fi5:        {compute-2-5/a: fi-1-2/1/29, compute-2-5/b: fi-2-2/1/29},
-  fi6:        {compute-3-6/a: fi-1-2/1/30, compute-3-6/b: fi-2-2/1/30},
-  fi7:        {compute-4-7/a: fi-1-2/1/31, compute-4-7/b: fi-2-2/1/31},
-  cobbler:    {cobbler-1-0/8: nexus-1-1/1, cobbler-1-0/7: nexus-2-1/1}
+  tor:          {nexus-1-1/2:  tor-1-1/7, nexus-2-1/2:  tor-1-1/8},
+  peer:         {nexus-1-1/16: nexus-2-1/16, nexus-1-1/17: nexus-2-1/17},
+  fi1-n9:       {fi-1-1/47: nexus-1-1/47, fi-1-1/48: nexus-2-1/47},
+  fi2-n9:       {fi-2-1/47: nexus-1-1/48, fi-2-1/48: nexus-2-1/48},
+  ucs-1:        {director-1-3/1/a:  fi-1-1/10, director-1-3/1/b: fi-2-1/10},
+  ucs-2:        {control-1-1/a: fi-1-2/1/25, control-1-1/b: fi-2-2/1/25},
+  ucs-3:        {control-2-2/a: fi-1-2/1/26, control-2-2/b: fi-2-2/1/26},
+  ucs-4:        {control-3-3/a: fi-1-2/1/27, control-3-3/b: fi-2-2/1/27},
+  ucs-5:        {compute-1-4/a: fi-1-2/1/28, compute-1-4/b: fi-2-2/1/28},
+  ucs-6:        {compute-2-5/a: fi-1-2/1/29, compute-2-5/b: fi-2-2/1/29},
+  ucs-7:        {compute-3-6/a: fi-1-2/1/30, compute-3-6/b: fi-2-2/1/30},
+  ucs-8:        {compute-4-7/a: fi-1-2/1/31, compute-4-7/b: fi-2-2/1/31},
+  cobbler:      {cobbler-1-0/8: nexus-1-1/1, cobbler-1-0/7: nexus-2-1/1}
 }
 
 vlan_range: "1000:2999"
