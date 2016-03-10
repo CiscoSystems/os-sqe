@@ -306,8 +306,8 @@ class Laboratory(with_config.WithConfig):
         nexus_section = []
         switch_tempest_section = []
         for n9 in self.get_n9():
-            common_pcs_part = ': {"ports": "port-channel:' + ',port-channel:'.join(n9.get_pcs_for_n9_and_fi_and_tor())  # all pcs n9k-n9k and n9k-fi
-
+            common_pcs_part = ': {"ports": "port-channel:' + str(n9.get_peer_link_id())  # all pcs n9k-n9k and n9k-fi
+            fi_pc_part = ',port-channel:' + ',port-channel:'.join(n9.get_pcs_to_fi())
             mac_port_lines = []
             for server in self.get_controllers() + self.get_computes():
                 mac = server.get_nic('pxe-int')[0].get_mac()
@@ -316,7 +316,7 @@ class Laboratory(with_config.WithConfig):
                     if individual_ports_part:
                         individual_ports_part = ',' + individual_ports_part
                 else:
-                    individual_ports_part = ''
+                    individual_ports_part = fi_pc_part
                 mac_port_lines.append('"' + mac + '"' + common_pcs_part + individual_ports_part + '" }')
 
             nexus_servers_section = ',\n\t\t\t\t\t\t'.join(mac_port_lines)
