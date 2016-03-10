@@ -29,7 +29,7 @@ class Wire(object):
             return None
 
         try:
-            return re.findall('^(\d+)', name)[0]
+            return int(re.findall('^(\d+)', name)[0])
         except IndexError:  # since pc_id_name provided in lab config yaml doesn't starts with int we assign it here based on connection type
             if self.is_n9_tor():
                 pc_id = 300

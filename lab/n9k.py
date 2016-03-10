@@ -186,6 +186,10 @@ class Nexus(LabNode):
     def get_peer_link_id(self):
         return self._peer_link_wires[0].get_pc_id()
 
+    def cleanup(self):
+        self.delete_port_channels()
+        self.delete_vlans()
+
     def configure_for_osp7(self, topology):
         from lab.logger import lab_logger
 
@@ -206,8 +210,6 @@ class Nexus(LabNode):
             pc_id_versus_ports[pc_id]['ports'].append(w.get_own_port(self))
 
         self.cmd(['conf t', 'feature lacp'])
-        self.delete_port_channels()
-        self.delete_vlans()
 
         vlans = ', '.join(map(lambda x: str(x), self.lab().get_all_vlans()))
         self.cmd(['conf t', 'vlan {0}'.format(vlans), 'no shut'])
