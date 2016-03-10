@@ -7,11 +7,6 @@ publish_path=$3
 publish_login=$4
 publish_pass=$5
 
-sudo pip install --upgrade pip
-#Removing cache on the node
-echo "runnin sudo rm -f /home/ubuntu/.cache/pip/http"
-sudo rm -f /home/ubuntu/.cache/pip/http
-sudo pip install --upgrade ndg-httpsclient
 sudo pip install -r requirements.txt
 
 if [[ -n "${PARAMS_BASE}" ]]; then
