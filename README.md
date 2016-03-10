@@ -1,4 +1,4 @@
-openstack-sqe
+openstack-sqe is a repo for deployment and QA related tasks automation
 =============
 
 To get this repo prepared for operation, the recommended way is:
@@ -14,4 +14,5 @@ The main part of the code is decorated as fabric tasks and might be executed by:
 The list of tasks is produced by:
 
     fab -l
+
 
