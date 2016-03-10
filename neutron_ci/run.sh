@@ -9,7 +9,8 @@ publish_pass=$5
 
 #Removing cache on the node
 sudo rm -rf ~/.cache
-sudo pip install -r requirements.txt
+sudo pip install --upgrade ndg-httpsclient
+sudo pip install -H -r requirements.txt
 
 if [[ -n "${PARAMS_BASE}" ]]; then
     echo "Get parameters..."
