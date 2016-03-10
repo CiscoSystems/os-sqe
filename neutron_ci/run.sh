@@ -7,6 +7,8 @@ publish_path=$3
 publish_login=$4
 publish_pass=$5
 
+#Removing cache on the node
+sudo rm -rf ~/.cache
 sudo pip install -r requirements.txt
 
 if [[ -n "${PARAMS_BASE}" ]]; then
