@@ -3,15 +3,9 @@ from lab.lab_node import LabNode
 
 class Nexus(LabNode):
 
-    def get_pcs_for_n9_and_fi_and_tor(self):
+    def get_pcs_to_fi(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""
-        wires = self.get_wires_for_n9_and_fi_and_tor()
-        return sorted(set([str(x.get_pc_id()) for x in wires]))
-
-    def get_wires_for_n9_and_fi_and_tor(self):
-        """Returns a list of wires used on connection to peer N9K and both FIs"""
-        wires = filter(lambda w: any([w.is_n9_n9(), w.is_n9_fi(), w.is_n9_tor()]), self._downstream_wires + self._upstream_wires)
-        return wires
+        return set([str(x.get_pc_id()) for x in self._downstream_wires if x.is_n9_fi()])
 
     def get_wires_to_servers(self):
         """Returns a list wires connected servers"""
@@ -128,7 +122,7 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)])
 
     def create_vpc_peer_link(self, pc_id):
-        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc peer-link'])
+        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'spanning-tree port type network', 'vpc peer-link'])
 
     def show_vlans(self):
         vlans = self.cmd(['sh vlan'])
@@ -155,6 +149,17 @@ class Nexus(LabNode):
         vlan_delete_str = ['conf t'] + ['no vlan ' + ','.join(vlans[i:i+slice_vlans]) for i in range(0, len(vlans), slice_vlans)]
         self.cmd(vlan_delete_str)
 
+    def clean_interfaces(self):
+        interfaces = set([x.get_own_port(self) for x in self._peer_link_wires + self._downstream_wires])
+        clean_cmd = ['conf t']
+        [clean_cmd.extend(['int e{0}'.format(x), 'no description', 'switchport trunk allowed vlan none', 'exit']) for x in interfaces]
+        self.cmd(clean_cmd)
+
+    def clean_vpc_domain(self):
+        old_vpc_domain = self.cmd(['sh vpc'])['result']['body']['vpc-domain-id']
+        if old_vpc_domain != 'not configured':
+            self.cmd(['conf t', 'no vpc domain {0}'.format(old_vpc_domain)])
+
     def assign_vlans(self, int_name, port, vlans):
         self.cmd(['conf t', 'int e{0}'.format(port), 'description {0}'.format(int_name), 'switchport trunk allowed vlan {0}'.format(','.join([str(x) for x in vlans]))])
 
@@ -177,9 +182,6 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'interface ethernet {0}'.format(asr_port), 'ip router ospf {0} area {1}'.format(router_ospf, router_area)])
 
     def configure_vpc_domain(self, peer_ip, domain_id=1):
-        old_vpc_domain = self.cmd(['sh vpc'])['result']['body']['vpc-domain-id']
-        if old_vpc_domain != 'not configured':
-            self.cmd(['conf t', 'no vpc domain {0}'.format(old_vpc_domain)])
         self.cmd(['conf t', 'feature vpc'])
         self.cmd(['conf t', 'vpc domain {0}'.format(domain_id), 'peer-keepalive destination {0}'.format(peer_ip)])
 
@@ -189,6 +191,8 @@ class Nexus(LabNode):
     def cleanup(self):
         self.delete_port_channels()
         self.delete_vlans()
+        self.clean_interfaces()
+        self.clean_vpc_domain()
 
     def configure_for_osp7(self, topology):
         from lab.logger import lab_logger
