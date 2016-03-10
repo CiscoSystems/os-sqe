@@ -32,8 +32,6 @@ class Nexus(LabNode):
         except requests.exceptions.ConnectionError:
             self._allow_feature_nxapi()
             return self._rest_api(commands=commands, timeout=timeout)
-        except requests.exceptions.ReadTimeout:
-            return 'timeout' if len(commands) == 1 else ['timeout'] * len(commands)
 
     def get_hostname(self):
         res = self.cmd(['sh switchname'])
@@ -62,14 +60,10 @@ class Nexus(LabNode):
 
     def show_port_channel_summary(self):
         res = self.cmd(['show port-channel summary'])
-        if res == 'timeout':
-            return []
         return [x['port-channel'] for x in res['result']['body']['TABLE_channel']['ROW_channel']]
 
     def show_interface_switchport(self, name):
         res = self.cmd(['show interface {0} switchport'.format(name)])
-        if res == 'timeout':
-            return []
         vlans_str = res['result']['body']['TABLE_interface']['ROW_interface']['trunk_vlans']
         vlans = set()
         for vlan_range in vlans_str.split(','):  # from  1,2,5-7  to (1, 2, 5, 6, 7)
@@ -97,7 +91,7 @@ class Nexus(LabNode):
         pc_ids = [pc['group'] for pc in pcs if int(pc['group']) not in skip_list]
         for pc_id in pc_ids:
             # delete all port-channels
-            self.cmd(['conf t', 'no int port-channel {0}'.format(pc_id)])
+            self.cmd(['conf t', 'no int port-channel {0}'.format(pc_id)], timeout=60)
 
     def create_port_channel(self, pc_id, pc_name, ports, speed, vlans):
         """
@@ -119,10 +113,10 @@ class Nexus(LabNode):
                       'speed {0}'.format(speed), 'channel-group {0} mode active'.format(pc_id)])
 
     def create_vpc(self, pc_id):
-        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)])
+        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)], timeout=60)
 
     def create_vpc_peer_link(self, pc_id):
-        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'spanning-tree port type network', 'vpc peer-link'])
+        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'spanning-tree port type network', 'vpc peer-link'], timeout=180)
 
     def show_vlans(self):
         vlans = self.cmd(['sh vlan'])
@@ -153,12 +147,12 @@ class Nexus(LabNode):
         interfaces = set([x.get_own_port(self) for x in self._peer_link_wires + self._downstream_wires])
         clean_cmd = ['conf t']
         [clean_cmd.extend(['int e{0}'.format(x), 'no description', 'switchport trunk allowed vlan none', 'exit']) for x in interfaces]
-        self.cmd(clean_cmd)
+        self.cmd(clean_cmd, timeout=60)
 
     def clean_vpc_domain(self):
         old_vpc_domain = self.cmd(['sh vpc'])['result']['body']['vpc-domain-id']
         if old_vpc_domain != 'not configured':
-            self.cmd(['conf t', 'no vpc domain {0}'.format(old_vpc_domain)])
+            self.cmd(['conf t', 'no vpc domain {0}'.format(old_vpc_domain)], timeout=60)
 
     def assign_vlans(self, int_name, port, vlans):
         self.cmd(['conf t', 'int e{0}'.format(port), 'description {0}'.format(int_name), 'switchport trunk allowed vlan {0}'.format(','.join([str(x) for x in vlans]))])
@@ -183,7 +177,7 @@ class Nexus(LabNode):
 
     def configure_vpc_domain(self, peer_ip, domain_id=1):
         self.cmd(['conf t', 'feature vpc'])
-        self.cmd(['conf t', 'vpc domain {0}'.format(domain_id), 'peer-keepalive destination {0}'.format(peer_ip)])
+        self.cmd(['conf t', 'vpc domain {0}'.format(domain_id), 'peer-keepalive destination {0}'.format(peer_ip)], timeout=60)
 
     def get_peer_link_id(self):
         return self._peer_link_wires[0].get_pc_id()
