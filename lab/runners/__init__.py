@@ -8,7 +8,7 @@ class Runner(WithConfig):
         pass
 
     @staticmethod
-    def get_artefacts(server):
+    def get_artifacts(server):
         configs = ['version:\n{0}'.format(server.run('rpm -qi python-networking-cisco'))]
         for x in ['vlan_ranges', 'ucsm', 'api_workers']:
             cmd = 'sudo grep -r {0} /etc/neutron/* | grep -v \#'.format(x)
@@ -21,7 +21,7 @@ class Runner(WithConfig):
             f.write('\n\n'.join(configs))
 
     @staticmethod
-    def store_artefacts():
+    def store_artifacts():
         """Store $REPO/*.log and $REPO/artifacts/* on file storage server"""
         import lab
         from lab.server import Server
