@@ -12,10 +12,10 @@ PROJECTS="${PROJECTS} openstack/oslo.vmware.git openstack/pycadf.git openstack/s
 PROJECTS="${PROJECTS} openstack/python-keystoneclient.git openstack/python-glanceclient.git openstack/python-cinderclient.git openstack/python-novaclient.git"
 PROJECTS="${PROJECTS} openstack/python-swiftclient.git openstack/python-neutronclient.git openstack/keystonemiddleware.git openstack/python-openstackclient.git"
 PROJECTS="${PROJECTS} openstack/keystone.git openstack/glance.git openstack/cinder.git openstack/nova.git openstack/tempest.git"
-PROJECTS="${PROJECTS} openstack/neutron-lbaas openstack/neutron-vpnaas openstack/neutron-fwaas"
+PROJECTS="${PROJECTS} openstack/neutron-lbaas.git openstack/neutron-vpnaas.git openstack/neutron-fwaas.git"
 for PROJECT in ${PROJECTS}; do
 	NAME=$(echo $PROJECT | grep -P -o '(?<=\/).*(?=.git)')
 	PROJECT_DEST=${DESTINATION}${NAME}
 	git clone git://git.openstack.org/${PROJECT} ${PROJECT_DEST}
-	cd ${PROJECT_DEST} && sudo pip install -r requirements.txt || true
+	sudo pip install --upgrade ${PROJECT_DEST} || true
 done
