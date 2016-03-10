@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-The script deletes following configurations and artefacts in UCSM:
+The script deletes following configurations and artifacts in UCSM:
 * Delete vlans from all interfaces of service profiles
 * Delete port profiles
 * Delete vlan profiles

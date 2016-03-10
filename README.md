@@ -3,9 +3,9 @@ openstack-sqe
 
 To get this repo prepared for operation, the recommended way is:
 
-    virtualenv .venv > artefacts/venv-pip-log.txt 2>&1
-    . .venv/bin/activate >> artefacts/venv-pip-log.txt 2>&1
-    pip install -r requirements.txt >> artefacts/venv-pip-log.txt 2>&1
+    virtualenv .venv > artifacts/venv-pip-log.txt 2>&1
+    . .venv/bin/activate >> artifacts/venv-pip-log.txt 2>&1
+    pip install -r requirements.txt >> artifacts/venv-pip-log.txt 2>&1
 
 The main part of the code is decorated as fabric tasks and might be executed by:
 
