@@ -7,6 +7,7 @@ publish_path=$3
 publish_login=$4
 publish_pass=$5
 
+sudo pip install --upgrade pip
 #Removing cache on the node
 echo "runnin sudo rm -f /home/ubuntu/.cache/pip/http"
 sudo rm -f /home/ubuntu/.cache/pip/http
