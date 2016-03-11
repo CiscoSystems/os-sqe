@@ -151,7 +151,7 @@ class DevStack(object):
                 else:
                     if not exists('.testrepository'):
                         run('tox -evenv -- testr init')
-                    cmd += '  -evenv -- testr ' + '{0}'.format(testr_args)
+                    cmd += '  -evenv -- testr run ' + '{0}'.format(testr_args)
                 res = run(cmd)
                 logger.info(res)
         return res.failed
