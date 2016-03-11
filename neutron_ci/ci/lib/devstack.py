@@ -148,7 +148,7 @@ class DevStack(object):
                 cmd = 'tox'
                 if all_plugin:
                     cmd += ' -eall-plugin'
-                cmd += ' -- {0}'.format(testr_args)
+                cmd += '{0}'.format(testr_args)
                 res = run(cmd)
                 logger.info(res)
         return res.failed
