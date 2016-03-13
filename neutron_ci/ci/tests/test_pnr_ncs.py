@@ -42,10 +42,13 @@ VERBOSE=True
 DEST=/opt/stack
 LOGFILE=$DEST/logs/stack.sh.log
 SCREEN_LOGDIR=$DEST/logs/screen
+USE_SCREEN=True
 
 SYSLOG=False
 LOG_COLOR=False
 LOGDAYS=7
+
+GIT_BASE=https://git.openstack.org
 
 # enable pre-requisite
 enable_service rabbit
@@ -63,6 +66,10 @@ VOLUME_NAME_PREFIX="volume-"
 VOLUME_BACKING_FILE_SIZE=10250M
 
 # enable neutron
+disable_service heat h-api h-api-cfn h-api-cw h-eng
+disable_service cinder c-sch c-api c-vol
+disable_service horizon
+disable_service n-cpu
 disable_service n-net
 enable_service q-svc
 enable_service q-agt
@@ -71,8 +78,9 @@ enable_service q-l3
 enable_service q-meta
 enable_service q-fwaas
 enable_service q-lbaas
-#enable_service q-vpn
+enable_service q-vpn
 enable_service neutron
+enable_service tempest
 
 # VLAN configuration
 Q_PLUGIN=ml2
@@ -86,12 +94,7 @@ ENABLE_TENANT_TUNNELS=True
 Q_PLUGIN=ml2
 Q_ML2_TENANT_NETWORK_TYPE=vxlan
 
-
-# enable horizon
-enable_service horizon
-
-# enable tempest
-enable_service tempest
+VNCSERVER_LISTEN=0.0.0.0
 
 Q_PLUGIN=ml2
 Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,ncs,logger
