@@ -12,9 +12,12 @@ echo "apt_preserve_sources_list: true" | sudo tee /etc/cloud/cloud.cfg.d/99-loca
 sudo cp sources.list /etc/apt/
 sudo apt-get update
 
-wget https://raw.githubusercontent.com/pypa/pip/develop/contrib/get-pip.py
+# Install packages
+sudo apt-get install -y openjdk-7-jre git python-dev libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev gzip python-pip libssl-dev libffi-dev
+
+# Install/Upgrade pip
+wget https://bootstrap.pypa.io/get-pip.py
 sudo python get-pip.py
 
-# Install packages
-sudo apt-get install -y openjdk-7-jre git python-dev libxml2-dev libxslt1-dev zlib1g-dev sshpass mysql-client libmysqlclient-dev gzip python-pip nginx
-sudo pip install ecdsa junitxml ncclient
+# Install misc python packages
+sudo -H pip install ecdsa junitxml ncclient
