@@ -134,6 +134,7 @@ class DevStack(object):
         logger.info('Run tempest tests')
 
         test_list_path = kwargs.get('test_list_path')
+        all_plugin = kwargs.get('all_plugin', False) is True
         testr_args = ' '.join(args)
         with settings(host_string=self.host_string):
             if test_list_path:
@@ -143,10 +144,14 @@ class DevStack(object):
                     tests_list=temp_path)
 
             with cd(self._tempest_path), settings(warn_only=True):
-                if not exists('.testrepository'):
-                    run('testr init')
                 # Run tempest
-                cmd = 'testr run {0}'.format(testr_args)
+                cmd = 'tox'
+                if all_plugin:
+                    cmd += ' -eall-plugin'
+                else:
+                    if not exists('.testrepository'):
+                        run('tox -evenv -- testr init')
+                    cmd += '  -evenv -- testr run ' + '{0}'.format(testr_args)
                 res = run(cmd)
                 logger.info(res)
         return res.failed
