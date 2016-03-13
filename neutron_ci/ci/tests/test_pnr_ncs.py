@@ -101,7 +101,7 @@ Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,ncs,logger
 Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
 Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
 
-# HOST_IP=$(ip addr | grep inet | grep eth0 | awk -F" " '{{print $2}}'| sed -e 's/\/.*$//')
+HOST_IP=$(ip addr | grep inet | grep eth0 | awk -F" " '{{print $2}}'| sed -e 's/\/.*$//')
 
 [[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_ncs]
