@@ -26,12 +26,15 @@ LOCAL_CONF = '''
 [[local|localrc]]
 NEUTRON_REPO={neutron_repo}
 NEUTRON_BRANCH={neutron_branch}
+
 ADMIN_PASSWORD=secrete
 MYSQL_PASSWORD=$ADMIN_PASSWORD
 RABBIT_PASSWORD=$ADMIN_PASSWORD
 SERVICE_PASSWORD=$ADMIN_PASSWORD
 SERVICE_TOKEN=secrete
 RECLONE=no
+
+HOST_IP=$(ip addr | grep inet | grep eth0 | awk -F" " '{{print $2}}'| sed -e 's/\/.*$//')
 
 # misc
 API_RATE_LIMIT=False
@@ -42,20 +45,18 @@ VERBOSE=True
 DEST=/opt/stack
 LOGFILE=$DEST/logs/stack.sh.log
 SCREEN_LOGDIR=$DEST/logs/screen
-USE_SCREEN=True
 
 SYSLOG=False
 LOG_COLOR=False
 LOGDAYS=7
-
-GIT_BASE=https://git.openstack.org
 
 # enable pre-requisite
 enable_service rabbit
 enable_service mysql
 enable_service key
 
-enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
+enable_plugin networking-cisco
+https://git.openstack.org/openstack/networking-cisco.git
 enable_service net-cisco
 
 # keystone
@@ -66,10 +67,6 @@ VOLUME_NAME_PREFIX="volume-"
 VOLUME_BACKING_FILE_SIZE=10250M
 
 # enable neutron
-disable_service heat h-api h-api-cfn h-api-cw h-eng
-disable_service cinder c-sch c-api c-vol
-disable_service horizon
-disable_service n-cpu
 disable_service n-net
 enable_service q-svc
 enable_service q-agt
@@ -78,9 +75,8 @@ enable_service q-l3
 enable_service q-meta
 enable_service q-fwaas
 enable_service q-lbaas
-enable_service q-vpn
+#enable_service q-vpn
 enable_service neutron
-enable_service tempest
 
 # VLAN configuration
 Q_PLUGIN=ml2
@@ -94,14 +90,12 @@ ENABLE_TENANT_TUNNELS=True
 Q_PLUGIN=ml2
 Q_ML2_TENANT_NETWORK_TYPE=vxlan
 
-VNCSERVER_LISTEN=0.0.0.0
 
-Q_PLUGIN=ml2
-Q_ML2_PLUGIN_MECHANISM_DRIVERS=openvswitch,ncs,logger
-Q_PLUGIN_EXTRA_CONF_PATH=({Q_PLUGIN_EXTRA_CONF_PATH})
-Q_PLUGIN_EXTRA_CONF_FILES=({Q_PLUGIN_EXTRA_CONF_FILES})
+# enable horizon
+enable_service horizon
 
-HOST_IP=$(ip addr | grep inet | grep eth0 | awk -F" " '{{print $2}}'| sed -e 's/\/.*$//')
+# enable tempest
+enable_service tempest
 
 [[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_ncs]
