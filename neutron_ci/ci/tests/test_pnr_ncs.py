@@ -55,8 +55,7 @@ enable_service rabbit
 enable_service mysql
 enable_service key
 
-enable_plugin networking-cisco
-https://git.openstack.org/openstack/networking-cisco.git
+enable_plugin networking-cisco https://git.openstack.org/openstack/networking-cisco.git
 enable_service net-cisco
 
 # keystone
