@@ -7,12 +7,10 @@ use-sr-iov: False
 
 # describtion of lab's networks. name will be used to name vNIC which is wired to the network. mac-net-part is unique octet  which will be used in forming vNIC mac address
 nets: {
-  ipmi:     {                    vlan: [8],                            cidr: 10.30.119.0/24},    # used for UCSM KVM IPMI
-  user:     {mac-net-part: 'AA', vlan: [174],                          cidr: 10.23.230.64/27},   # used for normal ssh gw 10.23.230.65 (66,67) mask 255.255.255.224
+  ipmi:     {                    vlan: [],                             cidr: 172.31.230},                  # used for UCSM KVM IPMI
+  user:     {mac-net-part: 'AA', vlan: [112],                          cidr: 10.30.117.0/28},    # used for normal ssh gw 10.30.117.1 (2,3) mask 255.255.255.224
   pxe-ext:  {mac-net-part: 'FF', vlan: [1],                            cidr: 169.254.4.0/24,},   # used for external pxe bootstrapping of director
-  pxe-int:  {mac-net-part: 'F0', vlan: [3009, 3000, 3001, 3002, 3003], cidr: 10.11.12.0/24},     # used for internal pxe bootstrapping of overcloud-node
   eth0:     {mac-net-part: 'E0', vlan: [3899] },                                                 # used for eth0 network - tenant network
-  eth1:     {mac-net-part: 'E1', vlan: [3007, 174] }                                             # used for eth1 network - external API network, fiP network
 }
 
 #names are supposed to be in form Role-XX where XX is some small integer
@@ -21,12 +19,12 @@ nodes: {
 
   nexus-1: {ip: 172.31.230.92, username: admin, password: CTO1234!, hostname: i13-N9372PX-3},
 
-  control-1:  {ip: 7, ipmi_ip: 172.21.230.105, nets: [eth0, eth1, user, pxe-int]},
-  control-2:  {ip: 7, ipmi_ip: 172.21.230.106, nets: [eth0, eth1, user, pxe-int]},
-  control-1:  {ip: 7, ipmi_ip: 172.21.230.107, nets: [eth0, eth1, user, pxe-int]},
-  compute-1:  {ip: 7, ipmi_ip: 172.21.230.108, nets: [eth0, eth1, user, pxe-int]},
-  compute-2:  {ip: 7, ipmi_ip: 172.21.230.109, nets: [eth0, eth1, user, pxe-int]},
-  build-1:    {ip: 7, ipmi_ip: 172.21.230.110, nets: [eth0, eth1, user, pxe-int]},
+#  control-1:  {ip: 4, ipmi_ip: 172.21.230.105, nets: [eth0, eth1, user, pxe-int]},  #  currently experience connectivity issue!
+  control-1:  {ip: 5, ipmi_ip: 172.21.230.106, nets: [eth0, user]},
+  control-2:  {ip: 6, ipmi_ip: 172.21.230.107, nets: [eth0, user]},
+  control-3:  {ip: 7, ipmi_ip: 172.21.230.108, nets: [eth0, user]},
+  compute-1:  {ip: 8, ipmi_ip: 172.21.230.109, nets: [eth0, user]},
+  build-1:    {ip: 9, ipmi_ip: 172.21.230.110, nets: [eth0, user]},
 
   cobbler-1: {ip: 172.29.74.8, username: cobbler, password: cobbler, nets: [pxe-ext]}
 }
@@ -39,13 +37,13 @@ nodes: {
 wires: {
   tor:  {nexus-1-1/48:  tor-1-1/45},
 
-  cimc-1: {compute-1-3/0: nexus-1-1/3, compute-1-3/1: nexus-1-1/14},
-  cimc-2: {compute-1-3/0: nexus-1-1/2, compute-1-3/1: nexus-1-1/15},
-  cimc-3: {compute-1-3/0: nexus-1-1/1, compute-1-3/1: nexus-1-1/16},
 
-  cimc-4: {compute-1-3/0: nexus-1-1/3, compute-1-3/1: nexus-1-1/14},
-  cimc-5: {compute-1-3/0: nexus-1-1/3, compute-1-3/1: nexus-1-1/14},
-  cimc-6: {compute-1-3/0: nexus-1-1/3, compute-1-3/1: nexus-1-1/14},
+#  cimc-1: {compute-1-3/0: nexus-1-1/6, compute-1-3/1: nexus-1-1/11}, # ipmi .105
+  cimc-2: {control-1-3/0: nexus-1-1/5, control-1-3/1: nexus-1-1/12},  # ipmi .106
+  cimc-3: {control-2-3/0: nexus-1-1/4, control-2-3/1: nexus-1-1/13},  # ipmi .107
+  cimc-4: {control-3-3/0: nexus-1-1/3, control-3-3/1: nexus-1-1/14},  # ipmi .108
+  cimc-5: {compute-1-3/0: nexus-1-1/2, compute-1-3/1: nexus-1-1/15},  # ipmi .109
+  cimc-6: {build-1-3/0:   nexus-1-1/1, build-1-3/1:   nexus-1-1/16},  # ipmi .110
 
   cobbler: {cobbler-1-0/18: nexus-1-1/15, cobbler-1-0/17: nexus-2-1/15},
 }
