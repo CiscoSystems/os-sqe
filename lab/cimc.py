@@ -8,6 +8,10 @@ class CimcServer(Server):
     LOM_ENABLED, LOM_DISABLED = 'Enabled', 'Disabled'
     POWER_UP, POWER_DOWN, POWER_CYCLE = 'up', 'down', 'cycle-immediate'
 
+    def form_mac(self, lab_id, net_octet):
+        last_ip_octet = str(self._ipmi_ip).split('.')[3]
+        return '{lab:02}:00:A0:{ip:02X}:00:{net}'.format(lab=lab_id, ip=int(last_ip_octet), net=net_octet)
+
     def do_login(self):
         import ImcSdk
         from lab.logger import lab_logger
@@ -61,12 +65,6 @@ class CimcServer(Server):
         for adapter in adapters:
             if adapter.Name not in ['eth0', 'eth1']:
                 self.cmd('remove_imc_managedobject', in_mo=None, class_id=adapter.class_id, params={'Dn': adapter.Dn})
-
-    def set_cimc_id(self, server_id):
-        pci_bus, n_in_bus = server_id.split('/')  # usually pci_bus/id are the same for all servers, so to make sure macs are different we use here a last octet of ipmi address
-        last_ip_octet = str(self._ipmi_ip).split('.')[3]
-        self._mac_server_part = 'A{0}:{1:02X}'.format(int(pci_bus), int(last_ip_octet))  # A3:00
-        self._form_nics()
 
     def change_boot_order(self, pxe_order=1, hdd_order=2):
         from lab.logger import lab_logger

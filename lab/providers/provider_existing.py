@@ -26,5 +26,5 @@ class ProviderExisting(Provider):
             ip, _, _, _ = server.get_ssh()
             nic_name = server.run(command='ip -o address | grep {0} | cut -f2 -d " "'.format(ip))
             nic_mac = server.run(command='ip -o link | grep {0} | cut -f18 -d " "'.format(nic_name))
-            server.add_nics([Nic(name=nic_name, mac=nic_mac, node=server)])
+            server.add_nic(nic_name=nic_name, mac=nic_mac)
         return servers

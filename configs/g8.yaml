@@ -1,4 +1,5 @@
 lab-id: 8 # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools
+lab-name: g8
 
 # base creds will be used if not specified per node. service is a special creds to be used by OS neutron services
 cred: {ssh_username: root, ssh_password: cisco123, ipmi_username: cobbler, ipmi_password: cobbler, neutron_username: neutron, neutron_password: cisco}

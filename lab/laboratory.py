@@ -12,7 +12,7 @@ class Laboratory(with_config.WithConfig):
         pass
 
     def __repr__(self):
-        return u'G' + str(self._id)
+        return self._lab_name
 
     def __init__(self, config_path):
         from netaddr import IPNetwork
@@ -24,6 +24,7 @@ class Laboratory(with_config.WithConfig):
         self._nodes = dict()
         self._cfg = self.read_config_from_file(config_path=config_path)
         self._id = self._cfg['lab-id']
+        self._lab_name = self._cfg['lab-name']
         self._user_net = IPNetwork(self._cfg['nets']['user']['cidr'])
         self._ipmi_net = IPNetwork(self._cfg['nets']['ipmi']['cidr'])
         self._net_vlans = {net: [str(x) for x in val['vlan']] for net, val in self._cfg['nets'].iteritems()}
@@ -157,12 +158,16 @@ class Laboratory(with_config.WithConfig):
         if klass in [FiServer, CimcServer]:
             node.set_ipmi(ip=ipmi_ip, username=ipmi_username, password=ipmi_password)
 
-            nics = node_description['nets']
-            node.add_nics([[x, self._cfg['nets'][x]['mac-net-part']] for x in nics])  # at this point macs are not yet assigned
             if type(node) is FiServer:
                 node.set_ucsm_id(port)
-            else:
-                node.set_cimc_id(port)
+
+            for element in node_description['nets']:  # here element might be either just NIC name or {nic: mac}
+                if type(element) is dict:
+                    (nic_name, mac), = element.items()
+                else:
+                    nic_name, mac = element, node.form_mac(lab_id=self._id, net_octet=self._cfg['nets'][element]['mac-net-part'])
+                self.make_sure_that_object_is_unique(type_of_object='MAC', obj=mac, node_name=node.name())
+                node.add_nic(nic_name=nic_name, mac=mac)
         elif type(node) is FI:
             self._ucsm_vip = node_description['vip']
             node.set_vip(self._ucsm_vip)
