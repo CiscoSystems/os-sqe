@@ -11,7 +11,7 @@ $ docker run -d -P --name test_tools test_tools:latest
 
 ## Running tempest
 * Create external network for mercury installation with subnet.
-* Edit default-overrides.conf add values to [identity] section
+* Edit in container /tempest/etc/default-overrides.conf add values to [identity] section
      - admin_tenant_name
      - admin_password
      - admin_username

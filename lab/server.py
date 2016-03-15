@@ -56,21 +56,11 @@ class Server(LabNode):
     def get_ipmi(self):
         return self._ipmi_ip, self._ipmp_username, self._ipmi_password
 
-    def add_nics(self, nics):
-        """:param: nics is a list ['eth0', 'eth1', 'user', ''pxe'] """
-        self._nics.extend(nics)
-
-    def _form_nics(self):
-        if not self._is_nics_formed:
-            if not self._mac_server_part:
-                raise RuntimeError('{0} is not ready to form nics- character part of mac is not set!')
-            l = []
-            for nic_name, mac_net_part in self._nics:
-                mac = '{lab_id:02}:00:{srv_part}:00:{net_part}'.format(lab_id=self.lab().get_id(), srv_part=self._mac_server_part, net_part=mac_net_part)
-                self.lab().make_sure_that_object_is_unique(type_of_object='MAC', obj=mac, node_name=self.name())
-                l.append(Nic(name=nic_name, mac=mac, node=self))
-            self._nics = l
-            self._is_nics_formed = True
+    def add_nic(self, nic_name, mac):
+        """:param nic_name: is a name of the net this nic is wired like 'eth0', or 'user'
+           :param mac: mac address
+        """
+        self._nics.append(Nic(name=nic_name, mac=mac, node=self))
 
     def get_nic(self, nic):
         return filter(lambda x: x.get_name() == nic, self._nics)
