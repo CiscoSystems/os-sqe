@@ -49,6 +49,10 @@ class DevStack(object):
 
         self._tempest_path = '/opt/stack/tempest'
 
+    @property
+    def tempest_conf(self):
+        return os.path.join(self._tempest_path, 'etc/tempest.conf')
+
     def clone(self, commit=None, force=True):
         logger.info('Clone DevStack to {0}'.format(self._clone_path))
         with settings(host_string=self.host_string):
@@ -130,6 +134,67 @@ class DevStack(object):
                                             host_string=self.host_string):
             run('if screen -ls | grep stack; then  ./unstack.sh; fi')
 
+    def update_ini(self, ini_path, ini_params):
+        """
+        Update ini file using 'crudini' tool
+        :param ini_path:
+        :param ini_params: Dictionary {<section1>: {<param1>: <value1>, <param2>: <value2>},
+                                    <section2>: {<param1>: <value1>}}
+        :return:
+        """
+        with settings(host_string=self.host_string):
+            # TODO: remove it later
+            run('sudo apt-get -y install crudini')
+            for section, params in ini_params.iteritems():
+                for param, value in params.iteritems():
+                    cmd = 'crudini --set {file} {section} {param} {value}'.format(
+                        file=ini_path, section=section, param=param, value=value)
+                    run(cmd)
+
+    def get_ini(self, ini_path, ini_params):
+        """
+        Update ini file using 'crudini' tool
+        :param ini_path:
+        :param ini_params: Dictionary {<section1>: [<param1>, <param2>],
+                                    <section2>: [<param1>]}
+        :return:
+        """
+        with settings(host_string=self.host_string):
+            # TODO: remove it later
+            run('sudo apt-get -y install crudini')
+
+            res = {}
+            for section, params in ini_params.iteritems():
+                if section not in res:
+                    res[section] = dict()
+                for param in params:
+                    cmd = 'crudini --get --format=ini {file} {section} {param}'.format(
+                        file=ini_path, section=section, param=param)
+                    name, value = run(cmd).stdout.split('=')
+                    res[section][name.strip()] = value.strip()
+            return res
+
+    def get_tempest(self, destination, tempest_repo, tempest_branch,
+                    tempest_config, tempest_config_params=None):
+        with settings(host_string=self.host_string):
+            if exists(destination):
+                logger.info('{0} already exists. Remove it.'
+                            ''.format(destination))
+                run('rm -rf {0}'.format(destination))
+
+            cmd = 'git clone --depth=1 -q -b {branch} {url} {dest}'.format(
+                branch=tempest_branch, url=tempest_repo,
+                dest=destination)
+            output = run(cmd)
+            logger.info(output)
+            self._tempest_path = destination
+
+            # copy and update tempest conf
+            with cd(destination):
+                run('cp {0} {1}'.format(tempest_config, self.tempest_conf))
+                if tempest_config_params:
+                    self.update_ini(self.tempest_conf, tempest_config_params)
+
     def run_tempest(self, *args, **kwargs):
         logger.info('Run tempest tests')
 
@@ -149,29 +214,29 @@ class DevStack(object):
                 if all_plugin:
                     cmd += ' -eall-plugin'
                 else:
-                    if not exists('.testrepository'):
-                        run('tox -evenv -- testr init')
-                    cmd += '  -evenv -- testr run ' + '{0}'.format(testr_args)
+#                    if not exists('.testrepository'):
+#                        run('tox -evenv -- testr init')
+                    cmd += ' -eall -- {0}'.format(testr_args)
                 res = run(cmd)
                 logger.info(res)
         return res.failed
 
-    def get_tempest_unitxml(self, path):
+    def get_tempest_unitxml(self, path, file_name='tempest.xml'):
         with settings(host_string=self.host_string,
                       warn_only=True), cd(self._tempest_path):
             # Export tempest results to junit xml file
-            junitxml_rem = '/tmp/tempest.xml'
+            junitxml_rem = os.path.join('/tmp', file_name)
             cmd = 'testr last --subunit | subunit-1to2 | subunit2junitxml ' \
                   '--output-to="{xml}"'.format(xml=junitxml_rem)
             run(cmd)
             get(junitxml_rem, path)
 
-    def get_tempest_html(self, path):
+    def get_tempest_html(self, path, file_name='testr_results.html'):
         with settings(host_string=self.host_string,
                       warn_only=True), cd(self._tempest_path):
             subunit_rem = '/tmp/testr_results.subunit'
             subunit_loc = '/tmp/testr.subunit'
-            html_path = os.path.join(path, 'testr_results.html')
+            html_path = os.path.join(path, file_name)
             # Export tempest results to subunit file
             run('testr last --subunit > "{s}"'.format(s=subunit_rem))
             # download subunit file to temp folder
