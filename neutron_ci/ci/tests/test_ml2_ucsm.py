@@ -19,7 +19,9 @@ from ci import PARENT_FOLDER_PATH
 from ci.lib.test_case import BaseTestCase
 
 from fabric.operations import local
+from ci.lib.devstack import DevStack
 
+from ci import BUILD_LOG_PATH
 
 TEST_LIST_FILE = os.path.join(PARENT_FOLDER_PATH, 'cisco_plugin_tests.txt')
 Q_PLUGIN_EXTRA_CONF_PATH = \
@@ -111,8 +113,40 @@ class ML2UCSMTest(BaseTestCase):
             PARENT_FOLDER_PATH,
             'files/ucsm/ucsm_delete_admin_sessions.py')
         local(script)
+        
+        cls.hm_devstack = DevStack()
+        cls.hm_devstack._tempest_path = os.path.join(cls.devstack._tempest_path, '../hm_tempest') 
 
     def test_tempest(self):
         self.assertFalse(self.devstack.stack())
         self.assertFalse(self.devstack.run_tempest(
             test_list_path=TEST_LIST_FILE))
+
+        # Run home-made UCSM tests
+        params = self.devstack.get_ini(
+            self.devstack.tempest_conf,
+            {'auth': ['admin_password', 'admin_username', 'admin_tenant_id',
+                      'admin_tenant_name', 'admin_domain_name'],
+             'compute': ['ssh_user']})
+        new_params = {'compute': {'image_ssh_user': params['compute']['ssh_user']},
+                      'identity': params['auth'],
+                      'ucsm': {'ucsm_ip': '172.21.19.10',
+                               'ucsm_username': 'admin',
+                               'ucsm_password': 'Cisc0123',
+                               'compute_host_dict': 'neutron1:org-root/ls-neutron1',
+                               'controller_host_dict': 'neutron1:org-root/ls-neutron1',
+                               'eth_names': 'eth0',
+                               'test_connectivity': 'False'}}
+
+        self.hm_devstack.get_tempest(
+            self.hm_devstack._tempest_path,
+            'https://github.com/cisco-openstack/tempest.git', 'proposed',
+            self.devstack.tempest_conf, tempest_config_params=new_params)
+        self.hm_devstack.run_tempest('tempest.thirdparty.cisco')
+
+    @classmethod
+    def tearDownClass(cls):
+        BaseTestCase.tearDownClass()
+        p = os.path.join(BUILD_LOG_PATH, 'logs')
+        cls.hm_devstack.get_tempest_html(p, 'cisco_ucsm_results.html')
+
