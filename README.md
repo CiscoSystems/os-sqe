@@ -16,3 +16,9 @@ The list of tasks is produced by:
     fab -l
 
 
+Making Changes
+---------------
+
+We are using [GerritHub](https://review.gerrithub.io/#/admin/projects/CiscoSystems/openstack-sqe) 
+for all code changes, if you do NOT have access to this project on GerritHub, contact @bdemers
+
