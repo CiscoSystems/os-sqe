@@ -1,6 +1,0 @@
----
-# Used to test cloud monitor
-
-- method: lab.monitors.mon_cloud # try to test non existing n9k
-  duration: 20
-  period: 2

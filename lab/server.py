@@ -1,4 +1,23 @@
-class Server(object):
+from lab.lab_node import LabNode
+
+
+class Nic(object):
+    def __repr__(self):
+        return u'{0} {1}'.format(self._name, self._mac)
+
+    def __init__(self, name, mac, node):
+        self._node = node  # nic belongs to the node
+        self._name = name
+        self._mac = mac
+
+    def get_mac(self):
+        return self._mac
+
+    def get_name(self):
+        return self._name
+
+
+class Server(LabNode):
 
     _temp_dir = None
 
@@ -14,107 +33,66 @@ class Server(object):
         if not self._tmp_dir_exists:
             from fabric.api import settings
 
-            if self.run('test -d {0}'.format(self._temp_dir), warn_only=True).return_code:
-                self._tmp_dir_exists = self.run('mkdir -p {0}'.format(self._temp_dir)).return_code == 0
+            # if self.run('test -d {0}'.format(self._temp_dir), warn_only=True).return_code:
+            #     self._tmp_dir_exists = self.run('mkdir -p {0}'.format(self._temp_dir)).return_code == 0
         return self._temp_dir if self._tmp_dir_exists else None
 
-    def __init__(self, ip, net='??InServer', username='??InServer', password='ssh_key', hostname='??InServer', role='??InServer', n_in_role=0, ssh_public_key='N/A', ssh_port=22):
-        self.ip = ip
-        self.net = net
-        self.ip_mac = 'UnknownInServer'
-        self.role = role
-        self.n_in_role = n_in_role
-        self.hostname = hostname
-        self.username = username
-        self.password = password
-        self.ssh_public_key = ssh_public_key
-        self.ssh_port = ssh_port
+    def __init__(self, name, ip, lab, username='??InServer', password='ssh_key', hostname='??InServer'):
         self._tmp_dir_exists = False
+        self._package_manager = None
+        self._ipmi_ip, self._ipmp_username, self._ipmi_password = None, None, None
+        self._mac_server_part = None
+        self._nics = list()  # list of NICs
+        self._is_nics_formed = False
 
-        self.ipmi = {'ip': 'UnknownInServer', 'username': 'UnknownInServer', 'password': 'UnknownInServer'}
-        self.ucsm = {'ip': 'UnknownInServer', 'username': 'UnknownInServer', 'password': 'UnknownInServer', 'service-profile': 'UnknownInServer',
-                     'iface_mac': {'UnknownInServer': 'UnknownInServer'}}
-
-        self.nics = []
-        self.cimc = {'n9k': 'UnknownInServer', 'n9k_port': 'UnknownInServer', 'pci_port': 'UnknownInServer', 'uplink_port': 'UnknownInServer'}
-        self.package_manager = None
+        super(Server, self).__init__(name=name, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
 
     def __repr__(self):
-        return 'sshpass -p {0} ssh {1}@{2} {3}'.format(self.password, self.username, self.ip, self.name())
-
-    def name(self):
-        return '{0}-{1}'.format(self.role, self.n_in_role)
+        return '{n} | sshpass -p {p} ssh {u}@{ip} | ipmitool -I lanplus -H {ip2} -U {u2} -P {p2}'.format(p=self._password, u=self._username, ip=self._ip, n=self.name(), ip2=self._ipmi_ip, u2=self._ipmp_username, p2=self._ipmi_password)
 
     def set_ipmi(self, ip, username, password):
-        self.ipmi['ip'] = ip
-        self.ipmi['username'] = username
-        self.ipmi['password'] = password
+        self._ipmi_ip, self._ipmp_username, self._ipmi_password = ip, username, password
 
-    def ipmi_creds(self):
-        return self.ipmi['ip'], self.ipmi['username'], self.ipmi['password']
+    def get_ipmi(self):
+        return self._ipmi_ip, self._ipmp_username, self._ipmi_password
 
-    def set_ucsm(self, ip, username, password, service_profile, server_id, is_sriov):
-        self.ucsm['ip'] = ip
-        self.ucsm['username'] = username
-        self.ucsm['password'] = password
-        self.ucsm['service-profile'] = service_profile
-        self.ucsm['server-id'] = server_id
-        self.ucsm['is-sriov'] = is_sriov
+    def add_nic(self, nic_name, mac):
+        """:param nic_name: is a name of the net this nic is wired like 'eth0', or 'user'
+           :param mac: mac address
+        """
+        self._nics.append(Nic(name=nic_name, mac=mac, node=self))
 
-    def set_cimc(self, n9k, n9k_port, pci_port, uplink_port):
-        self.cimc['n9k'] = n9k
-        self.cimc['n9k_port'] = n9k_port
-        self.cimc['pci_port'] = pci_port
-        self.cimc['uplink_port'] = uplink_port
-
-    def get_cimc(self):
-        return self.cimc
-
-    def add_if(self, nic_name, nic_mac, nic_order, nic_vlans):
-        interface = {"nic_name": nic_name, "nic_mac": nic_mac, "nic_order": nic_order, "nic_vlans": nic_vlans}
-        self.nics.append(interface)
+    def get_nic(self, nic):
+        return filter(lambda x: x.get_name() == nic, self._nics)
 
     def get_nics(self):
-        return self.nics
-
-    def ucsm_profile(self):
-        return self.ucsm['service-profile']
-
-    def ucsm_is_sriov(self):
-        return self.ucsm['is-sriov']
-
-    def ucsm_server_id(self):
-        return self.ucsm['server-id']
-
-    def nic_mac(self, nic_name):
-        nic = filter(lambda x: x["nic_name"] == nic_name, self.nics)
-        if nic:
-            return nic[0]["nic_mac"]
-        else:
-            raise ValueError('Nic {0} does not exist on this server'.format(nic_name))
+        return self._nics
 
     def get_package_manager(self):
-        if not self.package_manager:
+        if not self._package_manager:
             possible_packages = ['apt-get', 'dnf', 'yum']
             for x in possible_packages:
                 if self.run(command='whereis {0}'.format(x)) != x + ':':
-                    self.package_manager = x
+                    self._package_manager = x
                     break
-            if not self.package_manager:
+            if not self._package_manager:
                 raise RuntimeError('do not know which package manager to use: neither of {0} found'.format(possible_packages))
-        return self.package_manager
+        return self._package_manager
 
     def construct_settings(self, warn_only):
         from lab import with_config
 
-        kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
+        kwargs = {'host_string': '{user}@{ip}'.format(user=self._username, ip=self._ip),
                   'connection_attempts': 10,
                   'warn_only': warn_only}
-        if self.password == 'ssh_key':
+        if self._password == 'ssh_key':
             kwargs['key_filename'] = with_config.KEY_PRIVATE_PATH
         else:
-            kwargs['password'] = self.password
+            kwargs['password'] = self._password
         return kwargs
+
+    def cmd(self, command, in_directory='.', warn_only=False):
+        return NotImplementedError
 
     def run(self, command, in_directory='.', warn_only=False):
         """Do run with possible sudo on remote server
@@ -125,7 +103,7 @@ class Server(object):
         """
         from fabric.api import run, sudo, settings, cd
 
-        if self.ip == 'localhost' or self.ip == '127.0.0.1':
+        if self._ip == 'localhost' or self._ip == '127.0.0.1':
             return self.run_local(command, in_directory=in_directory, warn_only=warn_only)
 
         run_or_sudo = run
@@ -187,7 +165,7 @@ class Server(object):
         if in_directory != '.':
             self.run(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
 
-        if self.ip == 'localhost' or self.ip == '127.0.0.1':
+        if self._ip == 'localhost' or self._ip == '127.0.0.1':
             with lcd(in_directory):
                 local('echo "{0}" > {1}'.format(string_to_put, file_name))
                 return os.path.abspath(os.path.join(in_directory, file_name))
@@ -257,7 +235,14 @@ class Server(object):
             if self.run(command='whereis {0}'.format(package_name)) == package_name + ':':
                 self.run(command='sudo {0} install -y {1}'.format(pm, package_name))
 
-    def clone_repo(self, repo_url, local_repo_dir=None):
+    def check_rally(self):
+        rally_installed = False
+        self.check_or_install_packages(package_names='git')
+        if not self.run(command='cd rally', warn_only=True):
+            rally_installed = True
+        return rally_installed
+
+    def clone_repo(self, repo_url, local_repo_dir=None, tags=None):
         import urlparse
 
         local_repo_dir = local_repo_dir or urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
@@ -265,6 +250,8 @@ class Server(object):
         self.check_or_install_packages(package_names='git')
         self.run(command='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url))
         self.run(command='git pull -q', in_directory=local_repo_dir)
+        if tags:
+            self.run(command='git checkout tags/{0}'.format(tags), in_directory=local_repo_dir)
         return self.run(command='pwd', in_directory=local_repo_dir)
 
     def create_user(self, new_username):
@@ -276,13 +263,13 @@ class Server(object):
             self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
             self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
             self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
-        self.username = new_username
-        self.password = 'cisco123'
+        self._username = new_username
+        self._password = 'cisco123'
         with open(with_config.KEY_PUBLIC_PATH) as f:
             self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
         self.run(command='sudo chmod 700 .ssh')
         self.run(command='sudo chmod 600 .ssh/authorized_keys')
-        self.password = 'ssh_key'
+        self._password = 'ssh_key'
 
     def ping(self, port=22):
         import socket
@@ -290,7 +277,7 @@ class Server(object):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
         try:
-            s.connect((str(self.ip), port))
+            s.connect((str(self._ip), port))
             res = True
         except (socket.timeout, socket.error):
             res = False
@@ -298,5 +285,6 @@ class Server(object):
             s.close()
         return res
     
-    def actual_hostname(self):
-        return self.run('hostname').stdout.strip()
+    def actuate_hostname(self):
+        self._hostname = self.run('hostname').stdout.strip()
+        return self._hostname

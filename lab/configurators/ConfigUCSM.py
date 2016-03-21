@@ -18,6 +18,6 @@ class ConfiguratorUCSM(Configurator):
             raise ConfiguratorUCSMError(self.wrong_config_message(''))
 
     def config(self):
-        from lab.providers.ucsm import ucsm_backup
+        from lab.fi import ucsm_backup
 
         ucsm_backup(host=self.ucsm_host, username=self.ucsm_user, password=self.ucsm_password, backup_path=self.ucsm_backup_path)
