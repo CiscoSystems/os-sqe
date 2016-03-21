@@ -1,8 +1,0 @@
-provider1: {ProviderExisting: [{host: 10.23.230.70, username: root, password: cisco123}]}
-provider2: {ProviderUCSM: {host: 10.30.119.66, username: admin, password: cisco}}
-deployer: {DeployerOSP7: {rh-secret: 'http://172.29.173.233/redhat/osp7/redhat-developers-account.yaml',
-                          undercloud_network: '10.11.12/24',
-                          images_url: 'http://172.29.173.233/redhat/osp7',
-                          director: 10.23.230.70
-                          }
-          }

@@ -9,8 +9,10 @@ KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'pr
 
 
 class WithConfig(object):
+    ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
+
     def __init__(self, config):
-        self._exception = LabConfigException(lab_class=type(self), config=config, sample_config=self.sample_config())
+        self._exception = LabConfigError(lab_class=type(self), config=config, sample_config=self.sample_config())
         self.verify_config(sample_config=self.sample_config(), config=config)
 
     @abc.abstractmethod
@@ -27,7 +29,7 @@ class WithConfig(object):
         return read_config_from_file(yaml_path=config_path, directory=directory, is_as_string=is_as_string)
 
 
-class LabConfigException(Exception):
+class LabConfigError(Exception):
     def __init__(self,  lab_class, sample_config, config, message=''):
         self.__class_name = lab_class
         self.__sample_config = sample_config
@@ -45,10 +47,10 @@ class LabConfigException(Exception):
         self.__form_exception()
 
     def __form_exception(self):
-        super(LabConfigException, self).__init__('in {klass}:\n{msg}\nSample config: {sample}\nProvided config: {provided}'.format(msg=self.__message,
-                                                                                                                                   klass=self.__class_name,
-                                                                                                                                   sample=self.__sample_config,
-                                                                                                                                   provided=self.__config))
+        super(LabConfigError, self).__init__('in {klass}:\n{msg}\nSample config: {sample}\nProvided config: {provided}'.format(msg=self.__message,
+                                                                                                                               klass=self.__class_name,
+                                                                                                                               sample=self.__sample_config,
+                                                                                                                               provided=self.__config))
 
 
 def read_config_from_file(yaml_path, directory='', is_as_string=False):
@@ -56,7 +58,10 @@ def read_config_from_file(yaml_path, directory='', is_as_string=False):
 
     actual_path = actual_path_to_config(yaml_path=yaml_path, directory=directory)
     with open(actual_path) as f:
-        return f.read() if is_as_string else yaml.load(f)
+        body_or_yaml = f.read() if is_as_string else yaml.load(f)
+    if not body_or_yaml:
+        raise ValueError('{0} is empty!'.format(actual_path))
+    return body_or_yaml
 
 
 def actual_path_to_config(yaml_path, directory=''):
@@ -64,8 +69,10 @@ def actual_path_to_config(yaml_path, directory=''):
 
     if os.path.isfile(yaml_path):
         return yaml_path
-
     actual_path = yaml_path if yaml_path.endswith('.yaml') else yaml_path + '.yaml'
+    if os.path.isfile(actual_path):
+        return actual_path
+
     actual_path = os.path.join(CONFIG_DIR, directory, actual_path)
     if os.path.isfile(actual_path):
         return actual_path
@@ -78,3 +85,11 @@ def ls_configs(directory=''):
 
     folder = os.path.abspath(os.path.join(CONFIG_DIR, directory))
     return sorted(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))
+
+
+def open_artifact(name, mode):
+    import os
+
+    if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
+        os.makedirs(WithConfig.ARTIFACTS_DIR)
+    return open(os.path.join(WithConfig.ARTIFACTS_DIR, name), mode)

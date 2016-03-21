@@ -169,7 +169,7 @@ def g10(cmd):
     """fab cloud.g10:'neutron net-list' \t\t Run single command on G10 cloud.
         :param cmd: command to be executed
     """
-    from lab.deployers.DeployerExistingOSP7 import DeployerExistingOSP7
+    from lab.deployers.deployer_existing_osp7 import DeployerExistingOSP7
 
     d = DeployerExistingOSP7(config={'cloud': 'g10', 'hardware-lab-config': 'g10'})
     cloud = d.deploy_cloud([])
