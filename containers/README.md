@@ -1,22 +1,16 @@
-## Building and running container
+## Building container
+* Choose the flavor you want ot run: currently they are redhat or ubuntu
+* Put your cloud credentials to $REPO/$flavor/openrc
 * Build container with 
 ```sh  
-$ docker build -t test_tools:latest  .
+$ docker build -t tempest:$flavor --no-cache $flavor
 ```
+ This process will build the image and execute predefined list of tempest tests as the last step of build.
 
-* Run container with: 
-```sh    
-$ docker run -d -P --name test_tools test_tools:latest
+* If you wanna do something more, e.g. re-run tempest, first run the container from the image I've just built
+```sh
+$ docker run -it --name you_name tempest:$flavor
 ```
-
-## Running tempest
-* Create external network for mercury installation with subnet.
-* Edit in container /tempest/etc/default-overrides.conf add values to [identity] section
-     - admin_tenant_name
-     - admin_password
-     - admin_username
-     - uri_v3
-     - uri
 
 * In container run to create config
 
