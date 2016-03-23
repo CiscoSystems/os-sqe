@@ -57,6 +57,23 @@ class CimcServer(Server):
         params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status}
         self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
 
+    # sys/rack-unit-1/sol-if adminState, speed 115200 sshPort 2400
+
+    def create_storage(self, raid='1'):
+        from lab.logger import lab_logger
+        if self.cmd('get_imc_managedobject', None, class_id='storageControllerProps')[0].get_attr('VirtualDriveCount') != '0':
+            return
+        disks = self.cmd('get_imc_managedobject', None, class_id='storageLocalDisk')
+        # get 2 or more disks to form RAID
+        disks_by_size = {}
+        map(lambda x: disks_by_size.setdefault(x.get_attr('CoercedSize'), []).append(x), disks)
+        size = filter(lambda x: len(disks_by_size[x]) > 1, disks_by_size.keys())[0]
+        drive_group = ','.join(map(lambda x: x.Id, disks_by_size[filter(lambda x: len(disks_by_size[x]) > 1, disks_by_size.keys())[0]])[:2])
+        params = {'raidLevel': raid, 'size': size, 'virtualDriveName': "RAID", 'dn': "sys/rack-unit-1/board/storage-SAS-SLOT-HBA/virtual-drive-create",
+                  'driveGroup': '[{0}]'.format(drive_group), 'adminState': 'trigger', 'writePolicy': 'Write Through'}
+        lab_logger.info('Creating Virtual Drive RAID {0}. Using storage {0}'.format(raid, drive_group))
+        self.cmd('set_imc_managedobject', in_mo=None, class_id="storageVirtualDriveCreatorUsingUnusedPhysicalDrive", params=params)
+
     def delete_all_vnics(self):
         from lab.logger import lab_logger
 
