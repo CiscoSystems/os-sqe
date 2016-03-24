@@ -109,11 +109,19 @@ class ML2UCSMTest(BaseTestCase):
 
         cls.devstack.local_conf = local_conf
         cls.devstack.clone()
+
+        # Delete user sessions
         script = 'python ' + os.path.join(
             PARENT_FOLDER_PATH,
             'files/ucsm/ucsm_delete_admin_sessions.py')
         local(script)
-        
+
+        # Clear VLANs and port profiles
+        script = 'python ' + os.path.join(
+            PARENT_FOLDER_PATH,
+            'files/ucsm/ucsm_clear.py')
+        local(script + ' --ip 172.21.19.10 --username admin --password Cisc0123 --skip-vlans 1,519')
+
         cls.hm_devstack = DevStack()
         cls.hm_devstack._tempest_path = os.path.join(cls.devstack._tempest_path, '../hm_tempest') 
 
@@ -142,7 +150,7 @@ class ML2UCSMTest(BaseTestCase):
             self.hm_devstack._tempest_path,
             'https://github.com/cisco-openstack/tempest.git', 'proposed',
             self.devstack.tempest_conf, tempest_config_params=new_params)
-        self.hm_devstack.run_tempest('tempest.thirdparty.cisco')
+        self.assertFalse(self.hm_devstack.run_tempest('tempest.thirdparty.cisco'))
 
     @classmethod
     def tearDownClass(cls):
