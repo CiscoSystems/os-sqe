@@ -252,13 +252,13 @@ class Laboratory(with_config.WithConfig):
     def configure_for_osp7(self, topology=TOPOLOGY_VLAN):
         if topology not in self.SUPPORTED_TOPOLOGIES:
             raise ValueError('"{0}" topology is not supported. Correct values: {1}'.format(topology, self.SUPPORTED_TOPOLOGIES))
-        self.create_config_file_for_osp7_install(topology)
         self.get_cobbler().configure_for_osp7()
         map(lambda x: x.cleanup(), self.get_n9())
         map(lambda x: x.configure_for_osp7(topology), self.get_n9())
         map(lambda x: x.configure_for_osp7(), self.get_cimc_servers())
         map(lambda x: x.configure_for_osp7(topology), self.get_asr1ks())
         self.get_fi()[0].configure_for_osp7()
+        self.create_config_file_for_osp7_install(topology)
 
     def create_config_file_for_osp7_install(self, topology=TOPOLOGY_VLAN):
         import os
