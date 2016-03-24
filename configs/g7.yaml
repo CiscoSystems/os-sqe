@@ -18,8 +18,8 @@ nets: {
 nodes: {
   tor-1:   {ip: None},
 
-  nexus-1: {ip: 172.31.229.207, username: admin, password: CTO1234!, hostname: g08-N9K-9396PX-1},
-  nexus-2: {ip: 172.31.230.234, username: admin, password: CTO1234!, hostname: g08-N9K-9396PX-2},
+  nexus-1: {ip: 172.31.230.91, username: admin, password: CTO1234!, hostname: i13-N9372PX-2},
+  nexus-2: {ip: 172.31.230.92, username: admin, password: CTO1234!, hostname: i11-N9372PX-3},
   director-1: {ip: 10, ipmi_ip: 172.31.230.213, nets: [{pxe-ext: 'a8:9d:21:6b:77:8e'}, user], hostname: 'i13tb3-bld.ctocllab.cisco.com'}, # 10.30.117.10
   control-1:  {ip: 4, ipmi_ip: 172.31.230.205, ipmi_username: admin, ipmi_password: cisco123, nets: [user]},    # ssh 10.23.230.69 ipmi 10.30.119.6
   control-2:  {ip: 5, ipmi_ip: 172.31.230.206, ipmi_username: admin, ipmi_password: cisco123, nets: [user]},    # ssh 10.23.230.70 ipmi 10.30.119.7
