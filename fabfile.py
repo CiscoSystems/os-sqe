@@ -100,18 +100,20 @@ def osp7(config_path):
 
 @task
 @decorators.print_time
-def rally(lab, concurrency, max_vlans):
+def rally(lab, concurrency, max_vlans, rally_repo='https://git.openstack.org/openstack/rally.git', rally_patch=''):
     """fab rally:g10,2,0,200\t\tRun rally with 2 threads for 0-200 vlans.
-    :param lab: lab name
+    :param lab: lab name - one of yaml in $REPO/configs
     :param concurrency: how many parallel threads
     :param max_vlans: right margin of vlan range
+    :param rally_repo: specify rally git repo if needed
+    :param rally_patch: specify review if needed
     """
     from lab.with_config import ls_configs, open_artifact
 
-    runner_config = filter(lambda x: 'rally' in x and lab in x, ls_configs(directory='run'))
+    lab_confirmed = filter(lambda x: lab in x, ls_configs())
 
-    if not runner_config:
-        raise ValueError('{0} is not configured to run rally'.format(lab))
+    if not lab_confirmed:
+        raise ValueError('There is no hardware configuration for lab {0}'.format(lab))
 
     n_tenants = int(max_vlans) / 2
     with open('configs/rally/scaling.yaml') as f:
@@ -122,7 +124,12 @@ def rally(lab, concurrency, max_vlans):
 
     with open_artifact('task-rally.yaml', 'w') as f:
         f.write(task_body)
-    run(runner_config[0])
+
+    with open_artifact('rally-runner.yaml', 'w') as f:
+        f.write('deployer:  {lab.deployers.deployer_existing_osp7.DeployerExistingOSP7: {cloud: %s, hardware-lab-config: %s}}\n' % (lab, lab))
+        f.write('runner:    {{lab.runners.runner_rally.RunnerRally: {{cloud: {lab}, hardware-lab-config: {lab}, task-yaml: artifacts/task-rally.yaml, rally-repo: "{repo}", rally-patch: "{patch}" }}}}\n'.format(
+            lab=lab, repo=rally_repo, patch=rally_patch))
+    run('artifacts/rally-runner.yaml')
 
 
 @task
