@@ -79,7 +79,7 @@ def main(ip, username, password, skip_vlans):
             print run('scope system; scope vm-mgmt; scope profile-set; delete port-profile %s; commit-buffer' % port_profile['Name'])
 
         print "Delete vlan profiles"
-        vlans = parse_table(run('scope eth-uplink; show vlan'))
+        vlans = parse_table(run("scope eth-uplink; show vlan | egrep -v 'default|mgmt|519'"))
         for vlan in vlans:
             if int(vlan['VLAN ID']) in skip_vlans:
                 continue
