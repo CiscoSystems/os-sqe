@@ -7,6 +7,7 @@ class CimcServer(Server):
     _logout_on_each_command = False
     LOM_ENABLED, LOM_DISABLED = 'Enabled', 'Disabled'
     POWER_UP, POWER_DOWN, POWER_CYCLE = 'up', 'down', 'cycle-immediate'
+    RAID_0, RAID_1, RAID_10 = '0', '1', '10'
 
     def form_mac(self, lab_id, net_octet):
         last_ip_octet = str(self._ipmi_ip).split('.')[3]
@@ -57,18 +58,48 @@ class CimcServer(Server):
         params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status}
         self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
 
-    # sys/rack-unit-1/sol-if adminState, speed 115200 sshPort 2400
+    def get_lom_macs(self):
+        return map(lambda x: x.Mac, self.get_mo_by_class_id('networkAdapterEthIf'))
 
-    def create_storage(self, raid='1'):
+    def get_mo_by_class_id(self, class_id):
+        return self.cmd('get_imc_managedobject', in_mo=None, class_id=class_id)
+
+    def enable_sol(self):
         from lab.logger import lab_logger
-        if self.cmd('get_imc_managedobject', None, class_id='storageControllerProps')[0].get_attr('VirtualDriveCount') != '0':
-            return
-        disks = self.cmd('get_imc_managedobject', None, class_id='storageLocalDisk')
+
+        lab_logger.info('Enable Serial over Lan connections')
+        params = {'dn': 'sys/rack-unit-1/sol-if', 'adminState': 'enable', 'speed': '115200'}
+        self.cmd('set_imc_managedobject', in_mo=None, class_id='solIf', params=params)
+
+    def create_storage(self, raid=RAID_1, disks_needed=2, clean_vds=False):
+        """
+
+        :param clean_vds: Clean all virtual drives before creating any
+        :param raid: Please select from '0','1','10','5','6'
+        :param disks_needed: Number of disks needed
+        :return:
+        """
+        if raid not in [self.RAID_0, self.RAID_1, self.RAID_10]:
+            raise ValueError('RAID request is not correct. Use one of the {0}. Got: {1}'.format(','.join([self.RAID_0, self.RAID_1, self.RAID_10]), raid))
+        from lab.logger import lab_logger
+        virtual_drives_list = self.get_mo_by_class_id('storageVirtualDrive')
+        if virtual_drives_list:
+            if clean_vds:
+                lab_logger.info('Cleaning Virtual Drives to create new one.')
+                for vd in virtual_drives_list:
+                    self.cmd('remove_imc_managedobject', in_mo=None, class_id='storageVirtualDrive', params={'Dn': vd.Dn})
+            else:
+                lab_logger.info('Virtual Drive already exists.')
+                return
+        disks = self.get_mo_by_class_id('storageLocalDisk')
         # get 2 or more disks to form RAID
         disks_by_size = {}
         map(lambda x: disks_by_size.setdefault(x.get_attr('CoercedSize'), []).append(x), disks)
-        size = filter(lambda x: len(disks_by_size[x]) > 1, disks_by_size.keys())[0]
-        drive_group = ','.join(map(lambda x: x.Id, disks_by_size[filter(lambda x: len(disks_by_size[x]) > 1, disks_by_size.keys())[0]])[:2])
+        available_disks = filter(lambda x: len(disks_by_size[x]) > disks_needed, disks_by_size.keys())
+        if len(available_disks) == 0:
+            raise Exception('Not enough disks to build RAID {0}. Minimum required are {1}.'.format(raid, disks_needed))
+        size = available_disks[0]
+        drive_group = ','.join(map(lambda x: x.Id, disks_by_size[size])[:disks_needed])
         params = {'raidLevel': raid, 'size': size, 'virtualDriveName': "RAID", 'dn': "sys/rack-unit-1/board/storage-SAS-SLOT-HBA/virtual-drive-create",
                   'driveGroup': '[{0}]'.format(drive_group), 'adminState': 'trigger', 'writePolicy': 'Write Through'}
         lab_logger.info('Creating Virtual Drive RAID {0}. Using storage {0}'.format(raid, drive_group))
@@ -78,7 +109,7 @@ class CimcServer(Server):
         from lab.logger import lab_logger
 
         lab_logger.info('Cleaning up all VNICs from the server')
-        adapters = self.cmd('get_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf')
+        adapters = self.get_mo_by_class_id('adaptorHostEthIf')
         for adapter in adapters:
             if adapter.Name not in ['eth0', 'eth1']:
                 self.cmd('remove_imc_managedobject', in_mo=None, class_id=adapter.class_id, params={'Dn': adapter.Dn})
@@ -115,7 +146,7 @@ class CimcServer(Server):
         self.cmd('set_imc_managedobject', in_mo=None, class_id="AdaptorEthGenProfile", params=general_params)
 
     def get_power_status(self):
-        return self.cmd('get_imc_managedobject', in_mo=None, class_id='computeRackUnit')[0].get_attr('OperPower')
+        return self.get_mo_by_class_id('computeRackUnit')[0].get_attr('OperPower')
 
     def power(self, state=POWER_UP):
         from lab.logger import lab_logger
@@ -140,6 +171,18 @@ class CimcServer(Server):
         self.delete_all_vnics()
         self.power(self.POWER_DOWN)
         self.do_logout()
+
+    def configure_for_mercury(self):
+        from lab.logger import lab_logger
+
+        lab_logger.info('Configuring CIMC in {0}'.format(self))
+        self.do_login()
+        self.power(self.POWER_UP)
+        if 'director' not in self._name:
+            self.switch_lom_ports(self.LOM_DISABLED)
+        self.enable_sol()
+        self.create_storage('1', 2, True)
+        self.power(self.POWER_CYCLE)
 
     def configure_for_osp7(self):
         from lab.logger import lab_logger

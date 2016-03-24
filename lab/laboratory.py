@@ -260,6 +260,9 @@ class Laboratory(with_config.WithConfig):
         map(lambda x: x.configure_for_osp7(topology), self.get_asr1ks())
         self.get_fi()[0].configure_for_osp7()
 
+    def configure_for_mercury(self):
+        map(lambda x: x.configure_for_mercury(), self.get_cimc_servers())
+
     def create_config_file_for_osp7_install(self, topology=TOPOLOGY_VLAN):
         import os
         from lab.logger import lab_logger
