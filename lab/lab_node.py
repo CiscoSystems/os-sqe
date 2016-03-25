@@ -5,7 +5,7 @@ class LabNode(object):
     __metaclass__ = abc.ABCMeta
 
     def __repr__(self):
-        return u'{0} {1}'.format(self.lab(), self.name())
+        return u'{l} {n} | sshpass -p {p} ssh {u}@{ip}'.format(l=self.lab(), n=self.name(), p=self._password, u=self._username, ip=self._ip)
 
     def __init__(self, name, ip, username, password, lab, hostname):
         self._lab = lab  # link to parent Laboratory object
