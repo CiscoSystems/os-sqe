@@ -261,6 +261,8 @@ class Laboratory(with_config.WithConfig):
         self.create_config_file_for_osp7_install(topology)
 
     def configure_for_mercury(self):
+        self.get_cobbler().configure_for_osp7()
+        map(lambda x: x.configure_for_mercury(), self.get_n9())
         map(lambda x: x.configure_for_mercury(), self.get_cimc_servers())
 
     def create_config_file_for_osp7_install(self, topology=TOPOLOGY_VLAN):

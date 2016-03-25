@@ -5,7 +5,7 @@ from lab import decorators
 
 @task
 def cmd(config_path):
-    """fab cmd:g10\t\t\t\t\tRun single command on lab device.
+    """fab cmd:g10\t\t\t\tRun single command on lab device.
         :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
     """
     from fabric.operations import prompt
@@ -32,27 +32,19 @@ def cmd(config_path):
 
 @task
 @decorators.print_time
-def deploy(config_path, topology='VLAN'):
+def deploy(config_path, is_for_mercury=False, topology='VLAN'):
     """fab deploy:g10\t\t\t\tDeploy the lab from scratch.
         :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
+        :param is_for_mercury: True if mercury installer will be used, False if RH OSP
         :param topology: VLAN or VXLAN
      """
     from lab.laboratory import Laboratory
 
     l = Laboratory(config_path=config_path)
-    l.configure_for_osp7(topology=topology)
-
-
-@task
-def g10():
-    """fab g10\t\t\t\t\t\tShortcut for fab deploy_lab:g10"""
-    deploy(config_path='configs/g10.yaml')
-
-
-@task
-def g8():
-    """fab g8\t\t\t\t\t\tShortcut for fab deploy_lab:g8"""
-    deploy(config_path='configs/g8.yaml')
+    if is_for_mercury:
+        l.configure_for_mercury()
+    else:
+        l.configure_for_osp7(topology=topology)
 
 
 @task
