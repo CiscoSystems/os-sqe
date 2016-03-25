@@ -48,7 +48,7 @@ class Server(LabNode):
         super(Server, self).__init__(name=name, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
 
     def __repr__(self):
-        return '{n} | sshpass -p {p} ssh {u}@{ip} | ipmitool -I lanplus -H {ip2} -U {u2} -P {p2}'.format(p=self._password, u=self._username, ip=self._ip, n=self.name(), ip2=self._ipmi_ip, u2=self._ipmp_username, p2=self._ipmi_password)
+        return '{s} | ipmitool -I lanplus -H {i} -U {u} -P {p}'.format(s=super(Server, self).__repr__(), i=self._ipmi_ip, u=self._ipmp_username, p=self._ipmi_password)
 
     def set_ipmi(self, ip, username, password):
         self._ipmi_ip, self._ipmp_username, self._ipmi_password = ip, username, password

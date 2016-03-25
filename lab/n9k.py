@@ -157,6 +157,9 @@ class Nexus(LabNode):
     def assign_vlans(self, int_name, port, vlans):
         self.cmd(['conf t', 'int e{0}'.format(port), 'description {0}'.format(int_name), 'switchport trunk allowed vlan {0}'.format(','.join([str(x) for x in vlans]))])
 
+    def set_port_description(self, desc, port):
+        self.cmd(['conf t', 'int e{0}'.format(port), 'description {0}'.format(desc)])
+
     def configure_vxlan(self, asr_port):
         lo1_ip = '1.1.1.{0}'.format(self.node_index())
         lo2_ip = '2.2.2.{0}'.format(self.node_index())
@@ -234,3 +237,10 @@ class Nexus(LabNode):
             self.cmd(['conf t', 'int po{0}'.format(self.get_peer_link_id()), 'shut'])
             asr = filter(lambda x: x.is_n9_asr(), self._upstream_wires)
             self.configure_vxlan(asr[0].get_own_port(self))
+
+    def configure_for_mercury(self):
+        from lab.logger import lab_logger
+
+        lab_logger.info('Configuring {0}'.format(self))
+        for wire in self._downstream_wires:
+            self.set_port_description(desc=wire.get_peer_node(self), port=wire.get_own_port(self))
