@@ -1,0 +1,30 @@
+---
+  CiscoPlugins.vm_boot_ssh:
+    -
+      args:
+        flavor:
+          name: "^ram64$"
+        image:
+          name: "^cirros.*uec$"
+        use_floating_ip: True
+        floating_network: "ext-net"
+        username: "cirros"
+        routers_per_run: 1
+        networks_per_router: 2
+        vms_per_network: 2
+        start_cidr: "10.2.0.0/24"
+        vm_ping_timeout: 120
+        vm_ssh_timeout: 120
+      runner:
+        type: "constant"
+        times: {n_times}
+        concurrency: {concurrency}
+#        pause_on_completion: True  <=== add this line to runner to pause between scenario finishes and context cleanup
+      context:
+        users:
+          tenants: {n_tenants}
+          users_per_tenant: 1
+        flavors:
+          -
+            name: "ram64"
+            ram: 64
