@@ -92,11 +92,12 @@ def osp7(config_path):
 
 @task
 @decorators.print_time
-def rally(lab, concurrency, max_vlans, rally_repo='https://git.openstack.org/openstack/rally.git', rally_patch=''):
+def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openstack.org/openstack/rally.git', rally_patch=''):
     """fab rally:g10,2,0,200\t\tRun rally with 2 threads for 0-200 vlans.
     :param lab: lab name - one of yaml in $REPO/configs
     :param concurrency: how many parallel threads
     :param max_vlans: right margin of vlan range
+    :param task_yaml: specify task yaml, one from $REPO/configs/rally
     :param rally_repo: specify rally git repo if needed
     :param rally_patch: specify review if needed
     """
@@ -108,7 +109,7 @@ def rally(lab, concurrency, max_vlans, rally_repo='https://git.openstack.org/ope
         raise ValueError('There is no hardware configuration for lab {0}'.format(lab))
 
     n_tenants = int(max_vlans) / 2
-    with open('configs/rally/scaling.yaml') as f:
+    with open('configs/rally/{0}.yaml'.format(task_yaml)) as f:
         task_body = f.read()
         task_body = task_body.replace('{n_times}', max_vlans)
         task_body = task_body.replace('{concurrency}', concurrency)
