@@ -191,6 +191,11 @@ class Nexus(LabNode):
         self.clean_interfaces()
         self.clean_vpc_domain()
 
+    def add_vlan_range(self, interfaces):
+        vlan_range = self.lab().vlan_range().replace(':', '-')
+        commands = ['conf t', 'vlan {0}'.format(vlan_range), 'no shut', 'exit', 'int e{0}'.format(',e'.join(interfaces)), 'switchport trunk allowed vlan add {0}'.format(vlan_range), 'end']
+        self.cmd(commands)
+
     def configure_for_osp7(self, topology):
         from lab.logger import lab_logger
 
