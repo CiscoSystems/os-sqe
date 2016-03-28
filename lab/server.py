@@ -235,13 +235,6 @@ class Server(LabNode):
             if self.run(command='whereis {0}'.format(package_name)) == package_name + ':':
                 self.run(command='sudo {0} install -y {1}'.format(pm, package_name))
 
-    def check_rally(self):
-        rally_installed = False
-        self.check_or_install_packages(package_names='git')
-        if not self.run(command='cd rally', warn_only=True):
-            rally_installed = True
-        return rally_installed
-
     def clone_repo(self, repo_url, local_repo_dir=None, tags=None, patch=None):
         import urlparse
 
