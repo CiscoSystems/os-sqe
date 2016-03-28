@@ -35,7 +35,8 @@ class RunnerRally(Runner):
         server.put_string_as_file_in_dir(string_to_put=open_rc_body, file_name=open_rc_path)
         server.put_string_as_file_in_dir(string_to_put=self._task_body, file_name=task_path)
 
-        rally_installed = server.check_rally()
+        rally_installed = True if server.run(command='test -d rally', warn_only=True) else False
+
         if not rally_installed:
             repo_dir = server.clone_repo(repo_url=self._rally_repo, patch=self._rally_patch, tags='0.2.0')
             server.check_or_install_packages(package_names='libffi-devel gmp-devel postgresql-devel wget python-virtualenv')
