@@ -45,14 +45,13 @@ enable_service q-agt
 enable_service q-l3
 enable_service q-dhcp
 enable_service q-meta
-enable_service q-lbaas
 enable_service neutron
 enable_service tempest
 
 enable_plugin networking-cisco {net_cisco_repo} {net_cisco_ref}
 enable_service net-cisco
 
-LIBVIRT_TYPE=qemu
+LIBVIRT_TYPE=kvm
 NOVA_USE_QUANTUM_API=v2
 VOLUME_BACKING_FILE_SIZE=2052M
 Q_PLUGIN=ml2
@@ -78,12 +77,18 @@ RECLONE=True
 PIP_UPGRADE=True
 API_WORKERS=0
 
+#IMAGE_URLS="file:///home/cisco_neutron_ci/CentOS-6-x86_64-GenericCloud-20140929_01_Cisco_enic_Login-root_Password-ubuntu.qcow2"
+
+[[post-config|$NOVA_CONF]]
+[DEFAULT]
+pci_passthrough_whitelist = {\\"devname\\":\\"nic0\\",\\"physical_network\\":\\"physnet1\\"}
+
 [[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
-[ml2_cisco_ucsm]
-ucsm_ip=172.21.19.10
+[ml2_cisco_ucsm_ip:172.21.19.10]
 ucsm_username=admin
 ucsm_password=Cisc0123
 ucsm_host_list=neutron1:neutron1
+ucsm_virtio_eth_ports = nic0, nic1
 '''
 
 
@@ -144,7 +149,8 @@ class ML2UCSMTest(BaseTestCase):
                                'compute_host_dict': 'neutron1:org-root/ls-neutron1',
                                'controller_host_dict': 'neutron1:org-root/ls-neutron1',
                                'eth_names': 'eth0',
-                               'test_connectivity': 'False'}}
+                               'test_connectivity': 'False',
+                               'virtual_functions_amount': '8'}}
 
         self.hm_devstack.get_tempest(
             self.hm_devstack._tempest_path,
