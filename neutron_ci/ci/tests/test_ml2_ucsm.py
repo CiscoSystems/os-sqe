@@ -87,7 +87,6 @@ pci_passthrough_whitelist = {{\\"devname\\":\\"nic0\\",\\"physical_network\\":\\
 [ml2_cisco_ucsm_ip:172.21.19.10]
 ucsm_username=admin
 ucsm_password=Cisc0123
-ucsm_host_list=neutron1:neutron1
 ucsm_virtio_eth_ports = nic0, nic1
 '''
 
