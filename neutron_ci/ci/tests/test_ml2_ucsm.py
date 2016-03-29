@@ -81,7 +81,7 @@ API_WORKERS=0
 
 [[post-config|$NOVA_CONF]]
 [DEFAULT]
-pci_passthrough_whitelist = {\\"devname\\":\\"nic0\\",\\"physical_network\\":\\"physnet1\\"}
+pci_passthrough_whitelist = {{\\"devname\\":\\"nic0\\",\\"physical_network\\":\\"physnet1\\"}}
 
 [[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_cisco_ucsm_ip:172.21.19.10]
