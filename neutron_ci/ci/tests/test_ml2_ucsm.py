@@ -81,7 +81,8 @@ API_WORKERS=0
 
 [[post-config|$NOVA_CONF]]
 [DEFAULT]
-pci_passthrough_whitelist = {{\\\\"devname\\\\":\\\\"nic0\\\\",\\\\"physical_network\\\\":\\\\"physnet1\\\\"}}
+#pci_passthrough_whitelist = {{\\\\"devname\\\\":\\\\"nic0\\\\",\\\\"physical_network\\\\":\\\\"physnet1\\\\"}}
+pci_passthrough_whitelist = {\\\\"address\\\\":\\\\"*:0a:*\\\\",\\\\"physical_network\\":\\"physnet1\\",\\"vendor_id\\":\\"1137\\",\\"product_id\\":\\"0071\\"}
 
 [[post-config|{Q_PLUGIN_EXTRA_CONF_PATH}/{Q_PLUGIN_EXTRA_CONF_FILES}]]
 [ml2_cisco_ucsm_ip:172.21.19.10]
@@ -148,8 +149,9 @@ class ML2UCSMTest(BaseTestCase):
                                'compute_host_dict': 'neutron1:org-root/ls-neutron1',
                                'controller_host_dict': 'neutron1:org-root/ls-neutron1',
                                'eth_names': 'nic0, nic1',
-                               'test_connectivity': 'False',
-                               'virtual_functions_amount': '8'}}
+                               'test_connectivity': 'False'
+#                               'virtual_functions_amount': '8'
+                               }}
 
         self.hm_devstack.get_tempest(
             self.hm_devstack._tempest_path,
