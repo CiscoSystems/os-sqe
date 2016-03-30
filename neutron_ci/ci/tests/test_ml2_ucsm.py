@@ -37,7 +37,7 @@ RABBIT_PASSWORD=nova
 SERVICE_TOKEN=nova
 SERVICE_PASSWORD=nova
 ADMIN_PASSWORD=nova
-ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,n-sch,n-novnc,n-xvnc,rabbit
+ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-cond,n-sch,n-novnc,n-xvnc,rabbit,horizon
 enable_service mysql
 disable_service n-net
 enable_service q-svc
@@ -147,7 +147,7 @@ class ML2UCSMTest(BaseTestCase):
                                'ucsm_password': 'Cisc0123',
                                'compute_host_dict': 'neutron1:org-root/ls-neutron1',
                                'controller_host_dict': 'neutron1:org-root/ls-neutron1',
-                               'eth_names': 'eth0',
+                               'eth_names': 'nic0, nic1',
                                'test_connectivity': 'False',
                                'virtual_functions_amount': '8'}}
 
