@@ -61,6 +61,18 @@ class CimcServer(Server):
     def get_lom_macs(self):
         return map(lambda x: x.Mac, self.get_mo_by_class_id('networkAdapterEthIf'))
 
+    def disable_pxe_all_intf(self, status):
+        adapters = self.get_mo_by_class_id('adaptorHostEthIf')
+        for adapter in adapters:
+            self.switch_lom_ports(status)
+            params = dict()
+            params['dn'] = adapter.Dn
+            params['PxeBoot'] = 'disabled'
+            params['mac'] = adapter.Mac
+            params['Name'] = adapter.Name
+            self.cmd('set_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params=params)
+
+
     def get_mo_by_class_id(self, class_id):
         return self.cmd('get_imc_managedobject', in_mo=None, class_id=class_id)
 

@@ -10,6 +10,7 @@ use-sr-iov: False
 nets: {
   ipmi:     {                    vlan: [6],                            cidr: 172.31.230.0/24},                        # used for OOB gw 172.31.230.1 (2,3) mask 255.255.255.0
   user:     {mac-net-part: 'AA', vlan: [327],                          cidr: 10.23.222.96/28, dns: 171.70.168.183},    # used for normal ssh gw 10.30.117.1 (2,3) mask 255.255.255.240
+  api:      {mac-net-part: 'BB', vlan: [326],                          cidr: 10.23.222.80/28, dns: 171.70.168.183},    # used for normal ssh gw 10.30.117.1 (2,3) mask 255.255.255.240
   pxe-ext:  {mac-net-part: 'FF', vlan: [1],                            cidr: 169.254.4.0/22,},                        # used for external pxe bootstrapping of build node
 }
 
@@ -21,12 +22,12 @@ nodes: {
   nexus-1: {ip: 172.31.230.123, username: admin, password: CTO1234!, hostname: i13-N9372PX-2},
   nexus-2: {ip: 172.31.230.124, username: admin, password: CTO1234!, hostname: i11-N9372PX-3},
   director-1: {ip: 10, ipmi_ip: 172.31.230.213, nets: [{pxe-ext: 'a8:9d:21:6b:77:8e'}, user], hostname: 'i13tb3-bld.ctocllab.cisco.com'}, # 10.30.117.10
-  control-1:  {ip: 4, ipmi_ip: 172.31.230.205, ipmi_username: admin, ipmi_password: cisco123, nets: [user]},    # ssh 10.23.230.69 ipmi 10.30.119.6
-  control-2:  {ip: 5, ipmi_ip: 172.31.230.206, ipmi_username: admin, ipmi_password: cisco123, nets: [user]},    # ssh 10.23.230.70 ipmi 10.30.119.7
-  control-3:  {ip: 6, ipmi_ip: 172.31.230.207, ipmi_username: admin, ipmi_password: cisco123, nets: [user]},    # ssh 10.23.230.71 ipmi 10.30.119.8
+  control-1:  {ip: 4, ipmi_ip: 172.31.230.205, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]},    # ssh 10.23.230.69 ipmi 10.30.119.6
+  control-2:  {ip: 5, ipmi_ip: 172.31.230.206, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]},    # ssh 10.23.230.70 ipmi 10.30.119.7
+  control-3:  {ip: 6, ipmi_ip: 172.31.230.207, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]},    # ssh 10.23.230.71 ipmi 10.30.119.8
 
-  compute-1:  {ip: 7, ipmi_ip: 172.31.230.211, ipmi_username: admin, ipmi_password: cisco123, nets: [user]}, # 10.23.230.72
-  compute-2:  {ip: 8, ipmi_ip: 172.31.230.212, ipmi_username: admin, ipmi_password: cisco123, nets: [user]}, # 10.23.230.73
+  compute-1:  {ip: 7, ipmi_ip: 172.31.230.211, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]}, # 10.23.230.72
+  compute-2:  {ip: 8, ipmi_ip: 172.31.230.212, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]}, # 10.23.230.73
 
 }
 
@@ -48,7 +49,7 @@ wires: {
 
 }
 
-vlan_range: "1000:2000"
+vlan_range: "3122:3250"
 rh-secret: http://172.29.173.233/redhat/osp7/redhat-developers-account.yaml  # login-password info for RH dev account used in director's registration
 connection_type: vlan
 logstash: "172.29.173.236:9999"
