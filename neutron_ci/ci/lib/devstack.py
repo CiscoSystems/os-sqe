@@ -147,7 +147,7 @@ class DevStack(object):
             run('sudo apt-get -y install crudini')
             for section, params in ini_params.iteritems():
                 for param, value in params.iteritems():
-                    cmd = 'crudini --set {file} {section} {param} {value}'.format(
+                    cmd = "crudini --set {file} {section} {param} '{value}'".format(
                         file=ini_path, section=section, param=param, value=value)
                     run(cmd)
 
