@@ -105,8 +105,8 @@ class Nexus(LabNode):
         """
         # create port channel
         vlans_string = ','.join(map(lambda x: str(x), vlans))
-        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string),
-                  'speed {0}'.format(speed)])
+        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'spanning-tree port type edge trunk',
+                  'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed), 'shut', 'no lacp suspend-individual', 'no shut'])
         # add ports to the port-channel
         for port in ports:
             self.cmd(['conf t', 'int ethernet ' + port, 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string),

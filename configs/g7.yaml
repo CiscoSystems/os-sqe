@@ -8,10 +8,11 @@ use-sr-iov: False
 
 # describtion of lab's networks. name will be used to name vNIC which is wired to the network. mac-net-part is unique octet  which will be used in forming vNIC mac address
 nets: {
-  ipmi:     {                    vlan: [6],                            cidr: 172.31.230.0/24},                        # used for OOB gw 172.31.230.1 (2,3) mask 255.255.255.0
+  ipmi:     {                    vlan: [6],                            cidr: 172.31.230.0/24                     },    # used for OOB gw 172.31.230.1 (2,3) mask 255.255.255.0
   user:     {mac-net-part: 'AA', vlan: [327],                          cidr: 10.23.222.96/28, dns: 171.70.168.183},    # used for normal ssh gw 10.30.117.1 (2,3) mask 255.255.255.240
   api:      {mac-net-part: 'BB', vlan: [326],                          cidr: 10.23.222.80/28, dns: 171.70.168.183},    # used for normal ssh gw 10.30.117.1 (2,3) mask 255.255.255.240
-  pxe-ext:  {mac-net-part: 'FF', vlan: [1],                            cidr: 169.254.4.0/22,},                        # used for external pxe bootstrapping of build node
+  pxe-int:  {mac-net-part: 'CC', vlan: [999],                          cidr: 192.111.222.0/24                    },    # used for normal ssh gw 10.30.117.1 (2,3) mask 255.255.255.240
+  pxe-ext:  {mac-net-part: 'FF', vlan: [1],                            cidr: 169.254.4.0/22                      },    # used for external pxe bootstrapping of build node
 }
 
 
@@ -21,13 +22,13 @@ nodes: {
 
   nexus-1: {ip: 172.31.230.123, username: admin, password: CTO1234!, hostname: i13-N9372PX-2},
   nexus-2: {ip: 172.31.230.124, username: admin, password: CTO1234!, hostname: i11-N9372PX-3},
-  director-1: {ip: 10, ipmi_ip: 172.31.230.213, nets: [{pxe-ext: 'a8:9d:21:6b:77:8e'}, user], hostname: 'i13tb3-bld.ctocllab.cisco.com'}, # 10.30.117.10
-  control-1:  {ip: 4, ipmi_ip: 172.31.230.205, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]},    # ssh 10.23.230.69 ipmi 10.30.119.6
-  control-2:  {ip: 5, ipmi_ip: 172.31.230.206, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]},    # ssh 10.23.230.70 ipmi 10.30.119.7
-  control-3:  {ip: 6, ipmi_ip: 172.31.230.207, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]},    # ssh 10.23.230.71 ipmi 10.30.119.8
+  director-1: {ip: 10, ipmi_ip: 172.31.230.213, nets: [{pxe-ext: 'a8:9d:21:6b:77:8e'}, user, api, pxe-int], hostname: 'i13tb3-bld.ctocllab.cisco.com'}, # 10.30.117.10
+  control-1:  {ip: 4, ipmi_ip: 172.31.230.205, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api, pxe-int]},    # ssh 10.23.230.69 ipmi 10.30.119.6
+  control-2:  {ip: 5, ipmi_ip: 172.31.230.206, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api, pxe-int]},    # ssh 10.23.230.70 ipmi 10.30.119.7
+  control-3:  {ip: 6, ipmi_ip: 172.31.230.207, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api, pxe-int]},    # ssh 10.23.230.71 ipmi 10.30.119.8
 
-  compute-1:  {ip: 7, ipmi_ip: 172.31.230.211, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]}, # 10.23.230.72
-  compute-2:  {ip: 8, ipmi_ip: 172.31.230.212, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api]}, # 10.23.230.73
+  compute-1:  {ip: 7, ipmi_ip: 172.31.230.211, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api, pxe-int]}, # 10.23.230.72
+  compute-2:  {ip: 8, ipmi_ip: 172.31.230.212, ipmi_username: admin, ipmi_password: cisco123, nets: [user, api, pxe-int]}, # 10.23.230.73
 
 }
 
@@ -37,14 +38,14 @@ nodes: {
 # UCS controlled by CIMC is e.g. compute-1-3/0: nexus-1-1/3 port_id=3/0 means pci_slot=3 uplink_port=0
 # all other port ids are usual ids as they used in NXOS
 wires: {
-  2-tor:     {nexus-1-1/48:   tor-1-1/45,  nexus-2-1/48:  tor-1-1/46},
-  100-peer:    {nexus-1-1/46:   nexus-2-1/46,nexus-1-1/47: nexus-2-1/47, nexus-1-1/35: nexus-2-1/35},
+  102-tor:     {nexus-1-1/48:   tor-1-1/45,  nexus-2-1/48:  tor-1-1/46},
+  100-peer:    {nexus-1-1/46:   nexus-2-1/46,nexus-1-1/47: nexus-2-1/47},
 
-  cimc-1:  {control-1-l/0:  nexus-1-1/6, control-1-l/1: nexus-2-1/6},
-  cimc-2:  {control-2-l/0:  nexus-1-1/5, control-2-l/1: nexus-2-1/5},
-  cimc-3:  {control-3-l/0:  nexus-1-1/4, control-3-l/1: nexus-2-1/4},
-  cimc-4:  {compute-1-l/0:  nexus-1-1/3, compute-1-l/1: nexus-2-1/3},
-  cimc-5:  {compute-2-l/0:  nexus-1-1/2, compute-2-l/1: nexus-2-1/2},
+  1-cimc-1:  {control-1-l/0:  nexus-1-1/6, control-1-l/1: nexus-2-1/6},
+  2-cimc-2:  {control-2-l/0:  nexus-1-1/5, control-2-l/1: nexus-2-1/5},
+  3-cimc-3:  {control-3-l/0:  nexus-1-1/4, control-3-l/1: nexus-2-1/4},
+  4-cimc-4:  {compute-1-l/0:  nexus-1-1/3, compute-1-l/1: nexus-2-1/3},
+  5-cimc-5:  {compute-2-l/0:  nexus-1-1/2, compute-2-l/1: nexus-2-1/2},
   cimc-6:  {director-1-l/0: nexus-1-1/1, director-1-l/1: nexus-2-1/1},
 
 }

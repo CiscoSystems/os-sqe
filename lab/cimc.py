@@ -55,7 +55,7 @@ class CimcServer(Server):
         from lab.logger import lab_logger
 
         lab_logger.info('Set all LOM ports to the status: {0}'.format(status))
-        params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status}
+        params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status, 'vpLOMPort0State': status, 'vpLOMPort1State': status}
         self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
 
     def get_lom_macs(self):
