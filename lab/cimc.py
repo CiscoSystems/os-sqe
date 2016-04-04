@@ -9,31 +9,32 @@ class CimcServer(Server):
     POWER_UP, POWER_DOWN, POWER_CYCLE = 'up', 'down', 'cycle-immediate'
     RAID_0, RAID_1, RAID_10 = '0', '1', '10'
 
+    def logger(self, message):
+        from lab.logger import lab_logger
+
+        lab_logger.info('{0}: {1}'.format(self, message))
+        
     def form_mac(self, lab_id, net_octet):
         last_ip_octet = str(self._ipmi_ip).split('.')[3]
         return '00:{lab:02}:A0:{ip:02X}:00:{net}'.format(lab=lab_id, ip=int(last_ip_octet), net=net_octet)
 
     def do_login(self):
         import ImcSdk
-        from lab.logger import lab_logger
 
-        lab_logger.info('Logging into CIMC')
+        self.logger('Logging into CIMC')
         self._handle = ImcSdk.ImcHandle()
         if not all([self._ipmi_ip, self._ipmp_username, self._ipmi_password]):
             raise AttributeError('To control CIMC you need to provide IPMI IP, username and password.')
         self._handle.login(name=self._ipmi_ip, username=self._ipmp_username, password=self._ipmi_password, dump_xml=self._dump_xml)
 
     def do_logout(self):
-        from lab.logger import lab_logger
-
-        lab_logger.info('Logging out from the CIMC')
+        self.logger('Logging out from the CIMC')
         self._handle.logout()
         self._handle = None
 
     def cmd(self, cmd, in_mo=None, class_id=None, params=None):
         from ImcSdk.ImcCoreMeta import ImcException
-        from lab.logger import lab_logger
-
+        
         if not self._handle:
             self.do_login()
         func = getattr(self._handle, cmd)
@@ -41,7 +42,7 @@ class CimcServer(Server):
             result = func(in_mo=in_mo, class_id=class_id, params=params, dump_xml=self._dump_xml)
         except ImcException as error:
             if error.error_code == '552':
-                lab_logger.info('Refreshing connection to CIMC')
+                self.logger('Refreshing connection to CIMC')
                 self._handle.refresh(auto_relogin=True)
                 result = func(in_mo=in_mo, class_id=class_id, params=params, dump_xml=self._dump_xml)
             else:
@@ -52,9 +53,9 @@ class CimcServer(Server):
         return result
 
     def switch_lom_ports(self, status):
-        from lab.logger import lab_logger
+        
 
-        lab_logger.info('Set all LOM ports to the status: {0}'.format(status))
+        self.logger('Set all LOM ports to the status: {0}'.format(status))
         params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status, 'vpLOMPort0State': status, 'vpLOMPort1State': status}
         self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
 
@@ -76,9 +77,8 @@ class CimcServer(Server):
         return self.cmd('get_imc_managedobject', in_mo=None, class_id=class_id)
 
     def enable_sol(self):
-        from lab.logger import lab_logger
-
-        lab_logger.info('Enable Serial over Lan connections')
+        
+        self.logger('Enable Serial over Lan connections')
         params = {'dn': 'sys/rack-unit-1/sol-if', 'adminState': 'enable', 'speed': '115200'}
         self.cmd('set_imc_managedobject', in_mo=None, class_id='solIf', params=params)
 
@@ -92,15 +92,15 @@ class CimcServer(Server):
         """
         if raid not in [self.RAID_0, self.RAID_1, self.RAID_10]:
             raise ValueError('RAID request is not correct. Use one of the {0}. Got: {1}'.format(','.join([self.RAID_0, self.RAID_1, self.RAID_10]), raid))
-        from lab.logger import lab_logger
+        
         virtual_drives_list = self.get_mo_by_class_id('storageVirtualDrive')
         if virtual_drives_list:
             if clean_vds:
-                lab_logger.info('Cleaning Virtual Drives to create new one.')
+                self.logger('Cleaning Virtual Drives to create new one.')
                 for vd in virtual_drives_list:
                     self.cmd('remove_imc_managedobject', in_mo=None, class_id='storageVirtualDrive', params={'Dn': vd.Dn})
             else:
-                lab_logger.info('Virtual Drive already exists.')
+                self.logger('Virtual Drive already exists.')
                 return
         disks = self.get_mo_by_class_id('storageLocalDisk')
         # get 2 or more disks to form RAID
@@ -113,13 +113,11 @@ class CimcServer(Server):
         drive_group = ','.join(map(lambda x: x.Id, disks_by_size[size])[:disks_needed])
         params = {'raidLevel': raid, 'size': size, 'virtualDriveName': "RAID", 'dn': "sys/rack-unit-1/board/storage-SAS-SLOT-HBA/virtual-drive-create",
                   'driveGroup': '[{0}]'.format(drive_group), 'adminState': 'trigger', 'writePolicy': 'Write Through'}
-        lab_logger.info('Creating Virtual Drive RAID {0}. Using storage {0}'.format(raid, drive_group))
+        self.logger('Creating Virtual Drive RAID {0}. Using storage {0}'.format(raid, drive_group))
         self.cmd('set_imc_managedobject', in_mo=None, class_id="storageVirtualDriveCreatorUsingUnusedPhysicalDrive", params=params)
 
     def delete_all_vnics(self):
-        from lab.logger import lab_logger
-
-        lab_logger.info('Cleaning up all VNICs from the server')
+        self.logger('Cleaning up all VNICs from the server')
         adapters = self.get_mo_by_class_id('adaptorHostEthIf')
         for adapter in adapters:
             if adapter.Name not in ['eth0', 'eth1']:
@@ -134,9 +132,7 @@ class CimcServer(Server):
         self.cmd('set_imc_managedobject', in_mo=None, class_id='commHttps', params={'Dn': 'sys/svc-ext/https-svc', 'sessionTimeout': str(timeout)})
 
     def change_boot_order(self, pxe_order=1, hdd_order=2):
-        from lab.logger import lab_logger
-
-        lab_logger.info('Updating boot order. Setting PXE as #{0}, and HDD as #{1}'.format(pxe_order, hdd_order))
+        self.logger('Updating boot order. Setting PXE as #{0}, and HDD as #{1}'.format(pxe_order, hdd_order))
         boot_configs = [{'params': {'Dn': 'sys/rack-unit-1/boot-policy/lan-read-only', 'Order': pxe_order, 'Access': 'read-only'},
                          'class_id': 'LsbootLan'},
                         {'params': {'Dn': 'sys/rack-unit-1/boot-policy/storage-read-write', 'Order': hdd_order, 'Access': 'read-write'},
@@ -149,8 +145,6 @@ class CimcServer(Server):
                 self.cmd('add_imc_managedobject', in_mo=None, class_id=boot_config['class_id'], params=boot_config['params'])
 
     def create_vnic(self, pci_slot_id, uplink_port, nic_order, nic, native_vlan):
-        from lab.logger import lab_logger
-
         corrected_nic_name = nic.get_name() if nic.get_name() in ['eth0', 'eth1'] else nic.get_name() + '-' + str(uplink_port)
         corrected_nic_order = str(2*int(nic_order) + int(uplink_port))
         corrected_mac = nic.get_mac()[:-5] + corrected_nic_order.zfill(2) + nic.get_mac()[-3:]
@@ -158,7 +152,7 @@ class CimcServer(Server):
                   'mac': corrected_mac,
                   'Name': corrected_nic_name,
                   'dn': 'sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}'.format(pci_slot_id=pci_slot_id, nic_name=corrected_nic_name)}
-        lab_logger.info('Creating VNIC  {name} on {dn} order={order}, native VLAN={vlan}'.format(name=params['Name'], dn=params['dn'], order=corrected_nic_order, vlan=native_vlan))
+        self.logger('Creating VNIC  {name} on {dn} order={order}, native VLAN={vlan}'.format(name=params['Name'], dn=params['dn'], order=corrected_nic_order, vlan=native_vlan))
         if 'pxe-ext' in nic.get_name():
             params['PxeBoot'] = 'enabled'
         if nic.get_name() in ['eth0', 'eth1']:
@@ -172,7 +166,6 @@ class CimcServer(Server):
         return self.get_mo_by_class_id('computeRackUnit')[0].get_attr('OperPower')
 
     def power(self, state=POWER_UP):
-        from lab.logger import lab_logger
         import time
 
         current_power_state = self.get_power_status()
@@ -180,15 +173,13 @@ class CimcServer(Server):
             state = self.POWER_UP
         if (current_power_state == 'off' and state == self.POWER_UP) or (current_power_state == 'on' and state == self.POWER_DOWN) \
                 or state == self.POWER_CYCLE:
-            lab_logger.info('Changing power state on server to {0}'.format(state))
+            self.logger('Changing power state on server to {0}'.format(state))
             params = {'dn': "sys/rack-unit-1", 'adminPower': state}
             self.cmd('set_imc_managedobject', in_mo=None, class_id='computeRackUnit', params=params)
             time.sleep(120)  # wait for the server to come up
 
     def cleanup(self):
-        from lab.logger import lab_logger
-
-        lab_logger.info('Cleaning CIMC {0}'.format(self))
+        self.logger('Cleaning CIMC {0}'.format(self))
         self.do_login()
         self.switch_lom_ports(self.LOM_ENABLED)
         self.delete_all_vnics()
@@ -211,9 +202,7 @@ class CimcServer(Server):
                     raise ValueError('Specified MAC {mac} is not on LOM on {srv}. Edit lab config'.format(mac=nic.get_mac(), srv=self))
 
     def configure_for_mercury(self):
-        from lab.logger import lab_logger
-
-        lab_logger.info('Configuring CIMC in {0}'.format(self))
+        self.logger('Configuring for MERCURY'.format(self))
         self.do_login()
         self.power(self.POWER_UP)
         if 'director' not in self._name:
@@ -224,9 +213,7 @@ class CimcServer(Server):
         self.do_logout()
 
     def configure_for_osp7(self):
-        from lab.logger import lab_logger
-
-        lab_logger.info('Configuring CIMC in {0}'.format(self))
+        self.logger('Configuring for OSP'.format(self))
         self.do_login()
         self.power(self.POWER_UP)
         self.change_boot_order(pxe_order=1, hdd_order=2)
