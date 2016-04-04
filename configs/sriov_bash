@@ -1,0 +1,161 @@
+#!/bin/bash -x
+
+###################################
+#     Modified script for KILO
+###################################
+
+# create internal network
+neutron net-create int-net-1
+neutron subnet-create int-net-1 1.1.1.0/24 --name int-subnet-1 \
+                      --gateway 1.1.1.1 --dns-nameserver 171.70.168.183 \
+                      --allocation-pool start=1.1.1.10,end=1.1.1.200
+sleep 2
+
+neutron net-create int-net-2
+neutron subnet-create int-net-2 2.1.1.0/24 --name int-subnet-2 \
+                      --gateway 2.1.1.1 --dns-nameserver 171.70.168.183 \
+                      --allocation-pool start=2.1.1.10,end=2.1.1.200
+sleep 2
+
+# create provider network
+end=2
+net=41
+vlan=3040
+for i in $(seq 1 $end);
+do 
+    neutron net-create prov-net-$i --provider:physical_network=phys_prov \
+                                   --provider:network_type=vlan --provider:segmentation_id=$vlan
+    neutron subnet-create prov-net-$i $net.1.1.0/24 --name prov-sub-$i \
+                          --gateway $net.1.1.1 --dns-nameserver 171.70.168.183 \
+                          --allocation-pool start=$net.1.1.10,end=$net.1.1.200
+net=$((net+1))
+vlan=$((vlan+1))
+done
+
+# create router
+neutron router-create router-1
+neutron router-interface-add router-1 int-subnet-1
+neutron router-interface-add router-1 int-subnet-2
+neutron router-gateway-set router-1 ext-net
+
+# create di-internal network
+neutron net-create di-internal
+neutron subnet-create di-internal 11.1.1.0/24 --name di-internal-sub \
+                      --gateway 11.1.1.1 --dns-nameserver 171.70.168.183 \
+                      --allocation-pool start=11.1.1.10,end=11.1.1.200
+
+# create service network
+end=10
+net=21
+for i in $(seq 1 $end);
+do 
+    neutron net-create service-net-$i
+    neutron subnet-create service-net-$i $net.1.1.0/24 --name service-sub-$i \
+                          --gateway $net.1.1.1 --dns-nameserver 171.70.168.183 \
+                          --allocation-pool start=$net.1.1.10,end=$net.1.1.200
+net=$((net+1))
+done
+
+neutron net-list
+
+# create ports of virtio and sriov on different network
+end=4
+for i in $(seq 1 $end);
+do 
+    export i1_virio_pid_$i=`neutron port-create --name i1-virio-port-$i int-net-1 -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export i2_virio_pid_$i=`neutron port-create --name i2-virio-port-$i int-net-2 -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export di_sriov_pid_$i=`neutron port-create --name di-sriov-port-$i di-internal --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s1_sriov_pid_$i=`neutron port-create --name s1-sriov-port-$i service-net-1 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s2_sriov_pid_$i=`neutron port-create --name s2-sriov-port-$i service-net-2 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s3_sriov_pid_$i=`neutron port-create --name s3-sriov-port-$i service-net-3 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s4_sriov_pid_$i=`neutron port-create --name s4-sriov-port-$i service-net-4 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s5_sriov_pid_$i=`neutron port-create --name s5-sriov-port-$i service-net-5 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s6_sriov_pid_$i=`neutron port-create --name s6-sriov-port-$i service-net-6 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s7_sriov_pid_$i=`neutron port-create --name s7-sriov-port-$i service-net-7 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s8_sriov_pid_$i=`neutron port-create --name s8-sriov-port-$i service-net-8 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s9_sriov_pid_$i=`neutron port-create --name s9-sriov-port-$i service-net-9 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export s10_sriov_pid_$i=`neutron port-create --name s10-sriov-port-$i service-net-10 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export p1_sriov_pid_$i=`neutron port-create --name p1-sriov-port-$i prov-net-1 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+    export p2_sriov_pid_$i=`neutron port-create --name p2-sriov-port-$i prov-net-2 --binding:vnic-type direct -c id | grep id |  awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+done
+
+sleep 2
+
+neutron port-list
+
+# create VMs with virtio and sriov ports
+nova boot --flavor m1.custom --image CentOS-6-x86_64-Cisco_enic_Login-root_Password-ubuntu \
+                             --nic port-id=$i1_virio_pid_1 \
+                             --nic port-id=$i2_virio_pid_1 \
+                             --nic port-id=$di_sriov_pid_1 \
+                             --nic port-id=$s1_sriov_pid_1 \
+                             --nic port-id=$s2_sriov_pid_1 \
+                             --nic port-id=$s3_sriov_pid_1 \
+                             --nic port-id=$s4_sriov_pid_1 \
+                             --nic port-id=$s5_sriov_pid_1 \
+                             --nic port-id=$s6_sriov_pid_1 \
+                             --nic port-id=$s7_sriov_pid_1 \
+                             --nic port-id=$s8_sriov_pid_1 \
+                             --nic port-id=$s9_sriov_pid_1 \
+                             --nic port-id=$s10_sriov_pid_1 \
+                             --security-group default --key-name key1 cf-sriov-ins-1
+sleep 10
+
+nova boot --flavor m1.custom --image CentOS-6-x86_64-Cisco_enic_Login-root_Password-ubuntu \
+                             --nic port-id=$i1_virio_pid_2 \
+                             --nic port-id=$i2_virio_pid_2 \
+                             --nic port-id=$di_sriov_pid_2 \
+                             --nic port-id=$s1_sriov_pid_2 \
+                             --nic port-id=$s2_sriov_pid_2 \
+                             --nic port-id=$s3_sriov_pid_2 \
+                             --nic port-id=$s4_sriov_pid_2 \
+                             --nic port-id=$s5_sriov_pid_2 \
+                             --nic port-id=$s6_sriov_pid_2 \
+                             --nic port-id=$s7_sriov_pid_2 \
+                             --nic port-id=$s8_sriov_pid_2 \
+                             --nic port-id=$s9_sriov_pid_2 \
+                             --nic port-id=$s10_sriov_pid_2 \
+                             --security-group default --key-name key1 sf-sriov-ins-1
+sleep 10
+
+nova boot --flavor m1.custom --image CentOS-6-x86_64-Cisco_enic_Login-root_Password-ubuntu \
+                             --nic port-id=$i1_virio_pid_3 \
+                             --nic port-id=$i2_virio_pid_3 \
+                             --nic port-id=$di_sriov_pid_3 \
+                             --nic port-id=$s1_sriov_pid_3 \
+                             --nic port-id=$s2_sriov_pid_3 \
+                             --nic port-id=$p1_sriov_pid_1 \
+                             --nic port-id=$p2_sriov_pid_1 \
+                             --security-group default --key-name key1 cf-sriov-ins-11
+sleep 10
+
+nova boot --flavor m1.custom --image CentOS-6-x86_64-Cisco_enic_Login-root_Password-ubuntu \
+                             --nic port-id=$i1_virio_pid_4 \
+                             --nic port-id=$i2_virio_pid_4 \
+                             --nic port-id=$di_sriov_pid_4 \
+                             --nic port-id=$s1_sriov_pid_4 \
+                             --nic port-id=$s2_sriov_pid_4 \
+                             --nic port-id=$p1_sriov_pid_2 \
+                             --nic port-id=$p2_sriov_pid_2 \
+                             --security-group default --key-name key1 sf-sriov-ins-12
+sleep 30
+
+nova list
+
+sleep 30
+
+floating_ip_1=`neutron floatingip-create ext-net | grep floating_ip_address | awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+floating_ip_2=`neutron floatingip-create ext-net | grep floating_ip_address | awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+floating_ip_3=`neutron floatingip-create ext-net | grep floating_ip_address | awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+floating_ip_4=`neutron floatingip-create ext-net | grep floating_ip_address | awk -F"|" '{ print $3}' | tr -d '[[:space:]]'`
+
+nova floating-ip-associate cf-sriov-ins-1 ${floating_ip_1}
+nova floating-ip-associate sf-sriov-ins-1 ${floating_ip_2}
+nova floating-ip-associate cf-sriov-ins-11 ${floating_ip_3}
+nova floating-ip-associate sf-sriov-ins-12 ${floating_ip_4}
+
+sleep 30
+ping -c 5 ${floating_ip_1}
+ping -c 5 ${floating_ip_2}
+ping -c 5 ${floating_ip_3}
+ping -c 5 ${floating_ip_4}
