@@ -1,7 +1,7 @@
 from lab.providers import Provider
 
 
-class ProviderExistingOSP7(Provider):
+class ProviderExistingLab(Provider):
     """Creates servers from base hardware lab config
     """
 
@@ -11,7 +11,7 @@ class ProviderExistingOSP7(Provider):
     def __init__(self, config):
         from lab.laboratory import Laboratory
 
-        super(ProviderExistingOSP7, self).__init__(config=config)
+        super(ProviderExistingLab, self).__init__(config=config)
 
         director = Laboratory(config_path=config['hardware-lab-config']).get_director()
         self.servers = [director]

@@ -5,16 +5,20 @@ class Nic(object):
     def __repr__(self):
         return u'{0} {1}'.format(self._name, self._mac)
 
-    def __init__(self, name, mac, node):
+    def __init__(self, name, mac, node, is_vnic=False):
         self._node = node  # nic belongs to the node
         self._name = name
         self._mac = mac
+        self._is_vnic = is_vnic
 
     def get_mac(self):
         return self._mac
 
     def get_name(self):
         return self._name
+
+    def is_vnic(self):
+        return self._is_vnic
 
 
 class Server(LabNode):
@@ -56,11 +60,12 @@ class Server(LabNode):
     def get_ipmi(self):
         return self._ipmi_ip, self._ipmp_username, self._ipmi_password
 
-    def add_nic(self, nic_name, mac):
+    def add_nic(self, nic_name, mac, is_vnic=False):
         """:param nic_name: is a name of the net this nic is wired like 'eth0', or 'user'
            :param mac: mac address
+           :param is_vnic: True if this NIC is actually a vNIC, so supposed to be created in UCSM or CIMC
         """
-        self._nics.append(Nic(name=nic_name, mac=mac, node=self))
+        self._nics.append(Nic(name=nic_name, mac=mac, node=self, is_vnic=is_vnic))
 
     def get_nic(self, nic):
         return filter(lambda x: x.get_name() == nic, self._nics)
