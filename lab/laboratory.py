@@ -164,10 +164,12 @@ class Laboratory(with_config.WithConfig):
             for element in node_description['nets']:  # here element might be either just NIC name or {nic: mac}
                 if type(element) is dict:
                     (nic_name, mac), = element.items()
+                    is_vnic = False  # this is a NIC like LOM so it will not be created in CIMC
                 else:
                     nic_name, mac = element, node.form_mac(lab_id=self._id, net_octet=self._cfg['nets'][element]['mac-net-part'])
+                    is_vnic = True   # this is a normal VNIC, so will be created in CIMC or UCSM
                 self.make_sure_that_object_is_unique(type_of_object='MAC', obj=mac, node_name=node.name())
-                node.add_nic(nic_name=nic_name, mac=mac)
+                node.add_nic(nic_name=nic_name, mac=mac, is_vnic=is_vnic)
         elif type(node) is FI:
             self._ucsm_vip = node_description['vip']
             node.set_vip(self._ucsm_vip)

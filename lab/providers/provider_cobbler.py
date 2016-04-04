@@ -19,26 +19,26 @@ class ProviderCobbler(Provider):
                 'user': 'username on cobbler server',
                 'password': 'password on cobbler server',
                 'system_password': 'password on all servers deployed by cobbler',
-                'selector': {'name': 'cobbler_system_name', 'owners': 'user1'},
+                'selector': {'name': 'cobbler_system_name'},
                 'force_pxe_boot': 'set True if you want to force PXE re-provisioning'
                 }
 
     def __init__(self, config):
         import datetime
         import xmlrpclib
-        import os
+        import getpass
 
         super(ProviderCobbler, self).__init__(config=config)
-        self.host = config['host']
-        self.user = config['user']
-        self.password = config['password']
-        self.selector = config['selector']
-        self.system_password = config['system_password']
-        self.force_pxe_boot = config['force_pxe_boot']
-        self.__cobbler = xmlrpclib.Server(uri="http://{host}/cobbler_api".format(host=self.host))
+        self._host = config['host']
+        self._user = config['user']
+        self._password = config['password']
+        self._selector = config['selector']
+        self._system_password = config['system_password']
+        self._force_pxe_boot = config['force_pxe_boot']
+        self.__cobbler = xmlrpclib.Server(uri="http://{host}/cobbler_api".format(host=self._host))
 
         now = datetime.datetime.utcnow()
-        self.prov_time = now.strftime('%b-%d-%H-%M-%S-UTC-by-{0}'.format(os.getenv('USER')))
+        self._prov_time = now.strftime('%b-%d-%H-%M-%S-UTC-by-{0}'.format(getpass.getuser()))
 
     @staticmethod
     def is_valid_ipv4(ip):
@@ -71,28 +71,23 @@ class ProviderCobbler(Provider):
         from lab.server import Server
         from lab.logger import lab_logger
 
-        token = self.__cobbler.login(self.user, self.password)
+        token = self.__cobbler.login(self._user, self._password)
         handle = self.__cobbler.get_system_handle(system_name, token)
 
-        if self.force_pxe_boot:
+        if self._force_pxe_boot:
             self.__cobbler.modify_system(handle, 'netboot_enabled', True, token)
-            self.__cobbler.modify_system(handle, 'ks_meta', 'ProvTime={0}'.format(self.prov_time), token)
-            self.__cobbler.modify_system(handle, 'comment', 'Used to deploy the director', token)
+            self.__cobbler.modify_system(handle, 'ks_meta', 'ProvTime={0}'.format(self._prov_time), token)
         self.__cobbler.power_system(handle, "reboot", token)
         rendered = self.__cobbler.get_system_as_rendered(system_name)
 
-        server = Server(ip=self.ip_for_system(rendered),
-                        username=self.username_for_system(rendered),
-                        ssh_public_key=rendered.get("redhat_management_key"),
-                        password=self.system_password,
-                        ssh_port=22)
+        server = Server(name='heh', lab=None, ip=self.ip_for_system(rendered), username='root', password=self._system_password)
         lab_logger.info('server {0} is being provisioned by PXE re-booting... (might take several minutes- please wait)'.format(server))
         return server
 
     def create_servers(self):
-        systems = self.__cobbler.find_system(dict(self.selector))
+        systems = self.__cobbler.find_system(dict(self._selector))
         if not systems:
-            raise CobblerError('No associated systems selected by ' + '{0}'.format(self.selector))
+            raise CobblerError('No associated systems selected by ' + '{0}'.format(self._selector))
 
         servers = [self.reboot_system(system) for system in systems]
 
@@ -103,9 +98,9 @@ class ProviderCobbler(Provider):
     def wait_for_servers(self):
         servers = self.create_servers()
         for server in servers:
-            if self.force_pxe_boot:
+            if self._force_pxe_boot:
                 when_provided = server.run(command='cat ProvTime')
-                if when_provided != self.prov_time:
+                if when_provided != self._prov_time:
                     raise CobblerError('Wrong provisioning attempt- timestamps are not matched')
             server.hostname = server.run(command='hostname')
         return servers

@@ -19,7 +19,7 @@ def verify_config(sample_config, config, exception, current_key=None):
             verify_config(sample_config=sample_value, config=config[sample_key], exception=exception, current_key=sample_key)
     else:
         # from this point config and sample_config start to be simple values
-        if type(sample_config) is basestring:
+        if type(sample_config) is str:
             if sample_config.startswith('http') and validators.url(config) is not True:
                 exception.message = 'Key "{0}" do not contain valid url: {1}'.format(current_key, config)
                 raise exception

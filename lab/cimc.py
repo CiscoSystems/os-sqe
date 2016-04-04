@@ -11,7 +11,7 @@ class CimcServer(Server):
 
     def form_mac(self, lab_id, net_octet):
         last_ip_octet = str(self._ipmi_ip).split('.')[3]
-        return '{lab:02}:00:A0:{ip:02X}:00:{net}'.format(lab=lab_id, ip=int(last_ip_octet), net=net_octet)
+        return '00:{lab:02}:A0:{ip:02X}:00:{net}'.format(lab=lab_id, ip=int(last_ip_octet), net=net_octet)
 
     def do_login(self):
         import ImcSdk
@@ -72,7 +72,6 @@ class CimcServer(Server):
             params['Name'] = adapter.Name
             self.cmd('set_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params=params)
 
-
     def get_mo_by_class_id(self, class_id):
         return self.cmd('get_imc_managedobject', in_mo=None, class_id=class_id)
 
@@ -125,6 +124,14 @@ class CimcServer(Server):
         for adapter in adapters:
             if adapter.Name not in ['eth0', 'eth1']:
                 self.cmd('remove_imc_managedobject', in_mo=None, class_id=adapter.class_id, params={'Dn': adapter.Dn})
+            else:
+                params = {'UplinkPort': adapter.Name[-1], 'mac': 'AUTO', 'dn': adapter.Dn}
+                self.cmd('set_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params=params)
+                general_params = {'Dn': adapter.Dn + '/general', 'Vlan': 'NONE', 'Order': adapter.Name[-1]}
+                self.cmd('set_imc_managedobject', in_mo=None, class_id='AdaptorEthGenProfile', params=general_params)
+
+    def set_ssh_timeout(self, timeout=3600):
+        self.cmd('set_imc_managedobject', in_mo=None, class_id='commHttps', params={'Dn': 'sys/svc-ext/https-svc', 'sessionTimeout': str(timeout)})
 
     def change_boot_order(self, pxe_order=1, hdd_order=2):
         from lab.logger import lab_logger
@@ -141,20 +148,24 @@ class CimcServer(Server):
             else:
                 self.cmd('add_imc_managedobject', in_mo=None, class_id=boot_config['class_id'], params=boot_config['params'])
 
-    def create_vnic(self, pci_slot_id, nic_order, nic, native_vlan, params):
+    def create_vnic(self, pci_slot_id, uplink_port, nic_order, nic, native_vlan):
         from lab.logger import lab_logger
 
-        lab_logger.info('Creating VNIC on slot {0}. Name={1}, order={2}, native VLAN={3}'.format(pci_slot_id, nic.get_name(), nic_order, native_vlan))
-        params['dn'] = 'sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}'.format(pci_slot_id=pci_slot_id, nic_name=nic.get_name())
-        if 'pxe' in nic.get_name():
+        corrected_nic_name = nic.get_name() if nic.get_name() in ['eth0', 'eth1'] else nic.get_name() + '-' + str(uplink_port)
+        corrected_nic_order = str(2*int(nic_order) + int(uplink_port))
+        corrected_mac = nic.get_mac()[:-5] + corrected_nic_order.zfill(2) + nic.get_mac()[-3:]
+        params = {'UplinkPort': uplink_port,
+                  'mac': corrected_mac,
+                  'Name': corrected_nic_name,
+                  'dn': 'sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}'.format(pci_slot_id=pci_slot_id, nic_name=corrected_nic_name)}
+        lab_logger.info('Creating VNIC  {name} on {dn} order={order}, native VLAN={vlan}'.format(name=params['Name'], dn=params['dn'], order=corrected_nic_order, vlan=native_vlan))
+        if 'pxe-ext' in nic.get_name():
             params['PxeBoot'] = 'enabled'
-        params['mac'] = nic.get_mac()
-        params['Name'] = nic.get_name()
-        if params['Name'] in ['eth0', 'eth1']:
+        if nic.get_name() in ['eth0', 'eth1']:
             self.cmd('set_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params=params)
         else:
             self.cmd('add_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params=params)
-        general_params = {'Dn': params['dn'] + '/general', 'Vlan': native_vlan, 'Order': nic_order}
+        general_params = {'Dn': params['dn'] + '/general', 'Vlan': native_vlan, 'Order': corrected_nic_order}
         self.cmd('set_imc_managedobject', in_mo=None, class_id="AdaptorEthGenProfile", params=general_params)
 
     def get_power_status(self):
@@ -184,6 +195,21 @@ class CimcServer(Server):
         self.power(self.POWER_DOWN)
         self.do_logout()
 
+    def recreate_vnics(self):
+        self.delete_all_vnics()
+        for nic_order, nic in enumerate(self.get_nics()):  # NIC order starts from 0
+            if nic.is_vnic():
+                native_vlan = self.lab().get_net_vlans(nic.get_name())[0]
+                for wire in self._upstream_wires:
+                    pci_slot_id, uplink_port = wire.get_own_port(node=self).split('/')
+                    if pci_slot_id not in ['lom', 'LOM']:
+                        self.create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, nic_order=nic_order, nic=nic, native_vlan=native_vlan)
+                    if nic.get_name() in ['eth0', 'eth1']:  # since eth0 and eth1 are special they are not split like user -> user-0, user-1
+                        break
+            else:
+                if nic.get_mac() not in self.get_lom_macs():
+                    raise ValueError('Specified MAC {mac} is not on LOM on {srv}. Edit lab config'.format(mac=nic.get_mac(), srv=self))
+
     def configure_for_mercury(self):
         from lab.logger import lab_logger
 
@@ -194,7 +220,8 @@ class CimcServer(Server):
             self.switch_lom_ports(self.LOM_DISABLED)
         self.enable_sol()
         self.create_storage('1', 2, True)
-        self.power(self.POWER_CYCLE)
+        self.recreate_vnics()
+        self.do_logout()
 
     def configure_for_osp7(self):
         from lab.logger import lab_logger
@@ -204,11 +231,5 @@ class CimcServer(Server):
         self.power(self.POWER_UP)
         self.change_boot_order(pxe_order=1, hdd_order=2)
         self.switch_lom_ports(self.LOM_DISABLED)
-        self.delete_all_vnics()
-        for wire in self._upstream_wires:
-            params = dict()
-            pci_slot_id, params['UplinkPort'] = wire.get_port_s().split('/')
-            for nic_order, nic in enumerate(self.get_nics()):  # NIC order starts from 0
-                native_vlan = self.lab().get_net_vlans(nic.get_name())[0]
-                self.create_vnic(pci_slot_id=pci_slot_id, nic_order=nic_order, nic=nic, native_vlan=native_vlan, params=params)
+        self.recreate_vnics()
         self.do_logout()
