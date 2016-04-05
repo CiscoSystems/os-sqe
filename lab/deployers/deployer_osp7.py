@@ -205,8 +205,8 @@ class DeployerOSP7(Deployer):
         self.__create_overcloud_config_and_template(servers=servers)
         self.__deploy_undercloud()
         self.__deploy_overcloud()
-        return Cloud(cloud='osp7', user='demo', admin='admin', tenant='demo', password=self.cloud_password)
+        return Cloud(cloud='osp7', user='demo', admin='admin', tenant='demo', password=self.cloud_password, mediator=self.director_server)
 
     def wait_for_cloud(self, list_of_servers):
         cloud = self.deploy_cloud(list_of_servers=list_of_servers)
-        return self.verify_cloud(cloud=cloud, from_server=self.director_server)
+        return cloud.verify_cloud()

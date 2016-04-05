@@ -1,10 +1,6 @@
 from lab.deployers import Deployer
 
 
-class ErrorDeployerExistingOSP7(Exception):
-    pass
-
-
 class DeployerExistingOSP7(Deployer):
 
     def sample_config(self):
@@ -49,4 +45,4 @@ class DeployerExistingOSP7(Deployer):
 
     def wait_for_cloud(self, list_of_servers):
         cloud = self.deploy_cloud(list_of_servers)
-        return self.verify_cloud(cloud=cloud, from_server=cloud.mediator)
+        return cloud.verify_cloud()
