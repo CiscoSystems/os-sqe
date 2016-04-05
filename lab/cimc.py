@@ -53,8 +53,6 @@ class CimcServer(Server):
         return result
 
     def switch_lom_ports(self, status):
-        
-
         self.logger('Set all LOM ports to the status: {0}'.format(status))
         params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status, 'vpLOMPort0State': status, 'vpLOMPort1State': status}
         self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
@@ -123,7 +121,7 @@ class CimcServer(Server):
             if adapter.Name not in ['eth0', 'eth1']:
                 self.cmd('remove_imc_managedobject', in_mo=None, class_id=adapter.class_id, params={'Dn': adapter.Dn})
             else:
-                params = {'UplinkPort': adapter.Name[-1], 'mac': 'AUTO', 'dn': adapter.Dn}
+                params = {'UplinkPort': adapter.Name[-1], 'mac': 'AUTO', 'mtu': 1500, 'dn': adapter.Dn}
                 self.cmd('set_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params=params)
                 general_params = {'Dn': adapter.Dn + '/general', 'Vlan': 'NONE', 'Order': adapter.Name[-1]}
                 self.cmd('set_imc_managedobject', in_mo=None, class_id='AdaptorEthGenProfile', params=general_params)
@@ -145,12 +143,18 @@ class CimcServer(Server):
                 self.cmd('add_imc_managedobject', in_mo=None, class_id=boot_config['class_id'], params=boot_config['params'])
 
     def create_vnic(self, pci_slot_id, uplink_port, nic_order, nic, native_vlan):
-        corrected_nic_name = nic.get_name() if nic.get_name() in ['eth0', 'eth1'] else nic.get_name() + '-' + str(uplink_port)
-        corrected_nic_order = str(2*int(nic_order) + int(uplink_port))
-        corrected_mac = nic.get_mac()[:-5] + corrected_nic_order.zfill(2) + nic.get_mac()[-3:]
-        params = {'UplinkPort': uplink_port,
-                  'mac': corrected_mac,
-                  'Name': corrected_nic_name,
+        if nic.get_name() in ['eth0', 'eth1']:
+            corrected_nic_name = nic.get_name()
+            corrected_nic_order = nic.get_name()[-1]
+            corrected_mac = nic.get_mac()
+            corrected_uplink_port = nic.get_name()[-1]
+        else:
+            corrected_nic_name = nic.get_name() + '-' + str(uplink_port)
+            corrected_nic_order = str(5 + 2*int(nic_order) + int(uplink_port))  # started split order from 5
+            corrected_mac = nic.get_mac()[:-5] + corrected_nic_order.zfill(2) + nic.get_mac()[-3:]
+            corrected_uplink_port = uplink_port
+
+        params = {'UplinkPort': corrected_uplink_port, 'mac': corrected_mac, 'Name': corrected_nic_name,
                   'dn': 'sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}'.format(pci_slot_id=pci_slot_id, nic_name=corrected_nic_name)}
         self.logger('Creating VNIC  {name} on {dn} order={order}, native VLAN={vlan}'.format(name=params['Name'], dn=params['dn'], order=corrected_nic_order, vlan=native_vlan))
         if 'pxe-ext' in nic.get_name():
