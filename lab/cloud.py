@@ -236,20 +236,25 @@ export OS_AUTH_URL={end_point}
         pids = []
         sriov_addon = '--binding:vnic-type direct' if sriov else ''
         for net_name in sorted(on_nets.keys()):
-            port_name = '{sqe_pref}-{instance_name}-port-{sriov}-on-{net_name}'.format(sqe_perf=self._unique_pattern_in_name, instance_name=instance_name, sriov='sriov' if sriov else 'virio', net_name=net_name)
-            pid = self.cmd('neutron port-create --name {port_name} {net_name} {sriov_addon} -c id '.format(port_name=port_name, net_name=net_name, sriov_addon=sriov_addon))
-            pids.append(pid)
+            port_name = '{sqe_pref}-{instance_name}-port-{sriov}-on-{net_name}'.format(sqe_pref=self._unique_pattern_in_name, instance_name=instance_name, sriov='sriov' if sriov else 'virio', net_name=net_name)
+            ans = self.cmd('neutron port-create --name {port_name} {net_name} {sriov_addon} -c id '.format(port_name=port_name, net_name=net_name, sriov_addon=sriov_addon))
+            pids.append(self._names_from_answer(ans)[9])
         return pids
 
     def create_fips(self, how_many):
-        fips = map(lambda _: self.cmd('neutron floatingip-create ext-net'), xrange(how_many))
+        fips = map(lambda _: self.cmd('neutron floatingip-create {0}'.format(self._fip_network)), xrange(how_many))
         return fips
 
     def create_instance(self, name, flavor, image, on_ports):
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, on_ports))
-        instance_name = '{sqe-pref}-{name}'.format(sqe_perf=self._unique_pattern_in_name, name=name)
+        instance_name = '{sqe_pref}-{name}'.format(sqe_pref=self._unique_pattern_in_name, name=name)
         self.cmd('nova boot {name} --flavor {flavor} --image {image} --security-group default --key-name key1 {ports_part}'.format(name=instance_name, flavor=flavor, image=image, ports_part=ports_part))
         return instance_name
+
+    def create_image(self, url):
+        image_path = self.mediator.wget_file(url)
+        self.cmd('openstack image create {path}'.format(path=image_path))
+        return image_path
 
     def cleanup(self):
         ans = self.cmd(cmd='neutron router-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
@@ -258,9 +263,19 @@ export OS_AUTH_URL={end_point}
         port_names = self._names_from_answer(ans)
         ans = self.cmd(cmd='neutron net-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
         net_names = self._names_from_answer(ans)
-        map(lambda port_name: self.cmd('openstack port delete {0}'.format(port_name)), sorted(router_names))
-        map(lambda port_name: self.cmd('openstack port delete {0}'.format(port_name)), sorted(port_names))
+
+        map(lambda router_name: self._clean_router(router_name), sorted(router_names))
+        map(lambda port_name: self.cmd('neutron port-delete {0}'.format(port_name)), sorted(port_names))
         map(lambda net_name: self.cmd('openstack network delete {0}'.format(net_name)), sorted(net_names))
+
+    def _clean_router(self, router_name):
+        import re
+
+        self.cmd('neutron router-gateway-clear {0}'.format(router_name))
+        ans = self.cmd('neutron router-port-list {0} | grep -v HA'.format(router_name))
+        subnet_ids = re.findall('"subnet_id": "(.*)",', ans)
+        map(lambda subnet_id: self.cmd('neutron router-interface-delete {router_name} {subnet_id}'.format(router_name=router_name, subnet_id=subnet_id)), subnet_ids)
+        self.cmd('neutron router-delete {0}'.format(router_name))
 
     def verify_cloud(self):
         self.cmd('neutron net-list -c name')
