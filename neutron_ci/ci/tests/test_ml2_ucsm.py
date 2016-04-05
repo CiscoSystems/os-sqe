@@ -100,6 +100,11 @@ class ML2UCSMTest(BaseTestCase):
     net_cisco_repo = os.environ.get('NET_CISCO_REPO')
     net_cisco_ref = os.environ.get('NET_CISCO_REF')
 
+    ucsm_service_profiles = {
+        'neutron1': 'org-root/ls-neutron1',
+        'neutron2': 'org-root/ls-neutron2',
+    }
+
     @classmethod
     def setUpClass(cls):
         BaseTestCase.setUpClass()
@@ -136,6 +141,7 @@ class ML2UCSMTest(BaseTestCase):
             test_list_path=TEST_LIST_FILE))
 
         # Run home-made UCSM tests
+        hostname = self.devstack.run_cmd('hostname')
         params = self.devstack.get_ini(
             self.devstack.tempest_conf,
             {'auth': ['admin_password', 'admin_username', 'admin_tenant_id',
@@ -146,8 +152,8 @@ class ML2UCSMTest(BaseTestCase):
                       'ucsm': {'ucsm_ip': '172.21.19.10',
                                'ucsm_username': 'admin',
                                'ucsm_password': 'Cisc0123',
-                               'compute_host_dict': 'neutron1:org-root/ls-neutron1',
-                               'controller_host_dict': 'neutron1:org-root/ls-neutron1',
+                               'compute_host_dict': '{0}:{1}'.format(hostname, self.ucsm_service_profiles[hostname]),
+                               'controller_host_dict': '{0}:{1}'.format(hostname, self.ucsm_service_profiles[hostname]),
                                'eth_names': 'nic0, nic1',
                                'test_connectivity': 'False',
                                'virtual_functions_amount': '8'
