@@ -352,3 +352,7 @@ class DevStack(object):
         with settings(host_string=self.host_string, warn_only=True), cd(self._clone_path):
             return run('source .openrc {user} {tenant} && {cmd}'.format(
                 cmd=cmd, user=user, tenant=tenant)).stdout
+
+    def run_cmd(self, cmd):
+        with settings(host_string=self.host_string, warn_only=True):
+            return run(cmd).stdout
