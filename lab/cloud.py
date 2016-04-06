@@ -6,6 +6,8 @@ class Cloud:
     ROLE_MEDIATOR = 'mediator'
 
     def __init__(self, cloud, user, admin, tenant, password, end_point=None, mediator=None):
+        import re
+
         self.name = cloud
         self.user = user
         self.admin = admin
@@ -19,7 +21,9 @@ class Cloud:
         self.mediator = mediator  # special server to be used to execute CLI commands for this cloud
         self._dns = '171.70.168.183'
         self._unique_pattern_in_name = 'sqe-test'
+        self._re_sqe = re.compile('(sqe-test-.*) ')
         self._fip_network = None
+        self._provider_physical_network = None
 
     def __repr__(self):
         return '--os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(u=self.user, t=self.tenant, p=self.password, a=self.get_end_point())
@@ -134,6 +138,8 @@ export OS_AUTH_URL={end_point}
             ans = self.cmd('neutron net-list --router:external=True -c name')
             net_names = self._names_from_answer(ans)
             self._fip_network = net_names[0]
+            ans = self.cmd('neutron net-list -c provider:physical_network --name {0}'.format(self._fip_network))
+            self._provider_physical_network = filter(lambda x: x not in ['provider:physical_network', '|', '+---------------------------+'], ans.split())[0]
         return self._fip_network
 
     @staticmethod
@@ -198,7 +204,7 @@ export OS_AUTH_URL={end_point}
         cidrs = self.get_cidrs4(class_a=class_a, how_many=how_many)
         net_vs_subnet = {}
         for i in xrange(len(net_names)):
-            phys_net_addon = '--provider:physical_network=phys_prov --provider:network_type=vlan --provider:segmentation_id={vlan}'.format(vlan+i) if vlan else ''
+            phys_net_addon = '--provider:physical_network={phys_net} --provider:network_type=vlan --provider:segmentation_id={vlan}'.format(phys_net=self._provider_physical_network, vlan=vlan+i) if vlan else ''
 
             net_line = 'neutron net-create {name} {addon} -c name'.format(name=net_names[i], addon=phys_net_addon)
             cidr, gw, start, stop = cidrs[i], cidrs[i][1], cidrs[i][10], cidrs[i][200]
@@ -209,20 +215,22 @@ export OS_AUTH_URL={end_point}
             net_vs_subnet[net_line] = sub_line
         return net_vs_subnet
 
-    def create_net_subnet(self, common_part_of_name, class_a, how_many):
+    def create_net_subnet(self, common_part_of_name, class_a, how_many, vlan=None):
         net_vs_subnet_names = {}
-        for net_line, subnet_line in sorted(self.get_net_subnet_lines(common_part_of_name=common_part_of_name, class_a=class_a, how_many=how_many).iteritems()):
-            net_name = self.cmd(net_line)
-            subnet_name = self.cmd(subnet_line)
+        for net_line, subnet_line in sorted(self.get_net_subnet_lines(common_part_of_name=common_part_of_name, class_a=class_a, how_many=how_many, vlan=vlan).iteritems()):
+            ans = self.cmd(net_line)
+            net_name = self._re_sqe.findall(ans)[0]
+            ans = self.cmd(subnet_line)
+            subnet_name = self._re_sqe.findall(ans)[0]
             net_vs_subnet_names[net_name] = subnet_name
         return net_vs_subnet_names
 
     def create_router(self, number, on_nets):
-        router_name = 'router-' + number
+        router_name = self._unique_pattern_in_name + '-router-' + str(number)
         self.cmd('neutron router-create ' + router_name)
-        for subnet_name in sorted(on_nets.values):
-            self.cmd('neutron router-interface-add {route} {subnet}'.format(router=router_name, subnet=subnet_name))
-        self.cmd('neutron router-gateway-set {router} ext-net'.format(router=router_name))
+        for subnet_name in sorted(on_nets.values()):
+            self.cmd('neutron router-interface-add {router} {subnet}'.format(router=router_name, subnet=subnet_name))
+        self.cmd('neutron router-gateway-set {router} {net}'.format(router=router_name, net=self._fip_network))
 
     def create_ports(self, instance_name, on_nets, sriov=False):
         pids = []
@@ -244,12 +252,15 @@ export OS_AUTH_URL={end_point}
         return instance_name
 
     def cleanup(self):
+        ans = self.cmd(cmd='neutron router-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
+        router_names = self._names_from_answer(ans)
         ans = self.cmd(cmd='neutron port-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
         port_names = self._names_from_answer(ans)
         ans = self.cmd(cmd='neutron net-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
         net_names = self._names_from_answer(ans)
-        map(lambda port_name: self.cmd('openstack port delete {0}'.format(port_name)), port_names)
-        map(lambda net_name: self.cmd('openstack network delete {0}'.format(net_name)), net_names)
+        map(lambda port_name: self.cmd('openstack port delete {0}'.format(port_name)), sorted(router_names))
+        map(lambda port_name: self.cmd('openstack port delete {0}'.format(port_name)), sorted(port_names))
+        map(lambda net_name: self.cmd('openstack network delete {0}'.format(net_name)), sorted(net_names))
 
     def verify_cloud(self):
         self.cmd('neutron net-list -c name')
@@ -261,4 +272,5 @@ export OS_AUTH_URL={end_point}
             for url in ['publicURL', 'internalURL', 'adminURL']:
                 end_point = self.cmd('openstack catalog show {service} | grep {url} | awk \'{{print $4}}\''.format(service=service, url=url))
                 self.add_service_end_point(service=service, url=url, end_point=end_point)
+        self.cmd('neutron quota-update --network 100 --subnet 100 --port 500')
         return self
