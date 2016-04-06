@@ -1,10 +1,6 @@
 from lab.deployers import Deployer
 
 
-class ErrorDeployerExisting(Exception):
-    pass
-
-
 class DeployerExisting(Deployer):
 
     def sample_config(self):
@@ -12,11 +8,12 @@ class DeployerExisting(Deployer):
                 'user': 'default user', 'tenant': 'tenant name', 'admin': 'admin username', 'password': 'password for both'}
 
     def __init__(self, config):
-        from lab.cloud import Cloud
-
         super(DeployerExisting, self).__init__(config=config)
-        self.cloud_end_point_ip = config['end_point']
-        self.cloud = Cloud(cloud=config['cloud'], user=config['user'], tenant=config['tenant'], admin=config['admin'], password=config['password'], end_point=config['end_point'])
+        self._config = config
 
     def wait_for_cloud(self, list_of_servers):
-        return self.verify_cloud(cloud=self.cloud, from_server=list_of_servers[0])
+        from lab.cloud import Cloud
+
+        cloud = Cloud(cloud=self._config['cloud'], user=self._config['user'], tenant=self._config['tenant'], admin=self._config['admin'],
+                      password=self._config['password'], end_point=self._config['end_point'], mediator=list_of_servers[0])
+        return cloud.verify_cloud()

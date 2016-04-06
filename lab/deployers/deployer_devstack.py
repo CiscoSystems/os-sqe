@@ -99,4 +99,4 @@ class DeployerDevstack(Deployer):
 
     def wait_for_cloud(self, list_of_servers):
         cloud = self.deploy_cloud(servers=list_of_servers)
-        return self.verify_cloud(cloud=cloud, from_server=self.actual_servers[0])
+        return cloud.verify_cloud()
