@@ -12,7 +12,7 @@ function sqe-venv()
 
 function sqe-ip()
 {
-    source ~/overcloudrc
+    source /home/stack/overcloudrc
 
     local ip
     ip=$(echo $OS_AUTH_URL | cut -d : -f2)
