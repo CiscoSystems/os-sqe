@@ -35,4 +35,4 @@ class DeployerMercury(Deployer):
 
     def wait_for_cloud(self, list_of_servers):
         cloud = self.deploy_cloud(list_of_servers=list_of_servers)
-        return self.verify_cloud(cloud=cloud)
+        return cloud.verify_cloud()

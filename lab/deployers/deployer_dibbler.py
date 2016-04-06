@@ -15,9 +15,6 @@ class DeployerDibbler(Deployer):
         self.prefix = config['prefix']
         self.hostname = config['hostname']
 
-    def verify_cloud(self):
-        pass
-
     def wait_for_cloud(self, list_of_servers):
         conf = '''
 

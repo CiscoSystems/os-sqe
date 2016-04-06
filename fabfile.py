@@ -11,23 +11,31 @@ def cmd(config_path):
     from fabric.operations import prompt
     from time import sleep
     from lab.laboratory import Laboratory
+    from lab.deployers.deployer_existing_osp7 import DeployerExistingOSP7
 
     l = Laboratory(config_path=config_path)
-    print l, ' has: ', sorted(l.get_nodes().keys())
+    print l, 'has: cloud and', sorted(l.get_nodes().keys())
     device_name = prompt(text='On which device you want to execute the command?')
-    device = l.get_node(device_name)
+    if device_name == 'cloud':
+        d = DeployerExistingOSP7({'cloud': config_path, 'hardware-lab-config': config_path})
+        device = d.wait_for_cloud([])
+    else:
+        device = l.get_node(device_name)
     method_names = [x for x in dir(device) if not x.startswith('_')]
     print device,  ' has: \n', '\n'.join(method_names)
-    method_name = prompt(text='Which operation you wanna execute?')
-    if method_name == 'cmd':
-        command = prompt(text='cmd requires command, please enter something like sh cdp nei:')
-        results = device.cmd(command)
-    else:
+    while True:
+        method_name = prompt(text='Which operation you wanna execute? (quit to exit) ')
+        if method_name == 'quit':
+            break
         method_to_execute = getattr(device, method_name)
-        results = method_to_execute()
+        parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
+        arguments = []
+        for parameter in parameters:
+            arguments.append(prompt(text='{p}=? '.format(p=parameter)))
+        results = method_to_execute(*arguments)
 
-    sleep(1)
-    print 'RESULTS:\n', results
+        sleep(1)
+        print '\nRESULTS:\n', results
 
 
 @task
