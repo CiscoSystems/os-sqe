@@ -112,7 +112,7 @@ class FI(LabNode):
         return self.cmd('scope org; create dynamic-vnic-conn-policy {name}; set dynamic-eth 4; set adapter-policy Linux; commit-buffer'.format(name=policy_name))
 
     def set_dynamic_vnic_connection_policy(self, profile, vnic, policy_name):
-        self.cmd('scope org; scope service-profile {profile}; scope vnic {vnic}; set adapter-policy Linux; enter dynamic-conn-policy-ref {name}; commit-buffer'.format(profile=profile, vnic=vnic, name=policy_name))
+        self.cmd('scope org; scope service-profile {p}; scope vnic {v}; set adapter-policy Linux; enter dynamic-conn-policy-ref {n}; commit-buffer'.format(p=profile, v=vnic.get_name(), n=policy_name))
 
     def list_dynamic_vnic_policy(self, profile):
         return self.cmd('scope org; scope service-profile {0}; sh dynamic-vnic-conn-policy'.format(profile))
