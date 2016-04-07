@@ -80,8 +80,8 @@ def actual_path_to_config(yaml_path, directory=''):
     if os.path.isfile(yaml_path):
         return yaml_path
     actual_path = yaml_path if yaml_path.endswith('.yaml') else yaml_path + '.yaml'
-    if os.path.isfile(os.path.join(directory, actual_path)):
-        return os.path.isfile(directory, actual_path)
+    if os.path.isfile(os.path.join(CONFIG_DIR, directory, actual_path)):
+        return os.path.join(CONFIG_DIR, directory, actual_path)
 
     return GITLAB_REPO + actual_path
 
