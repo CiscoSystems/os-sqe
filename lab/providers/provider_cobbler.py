@@ -77,11 +77,13 @@ class ProviderCobbler(Provider):
         if self._force_pxe_boot:
             self.__cobbler.modify_system(handle, 'netboot_enabled', True, token)
             self.__cobbler.modify_system(handle, 'ks_meta', 'ProvTime={0}'.format(self._prov_time), token)
-        self.__cobbler.power_system(handle, "reboot", token)
-        rendered = self.__cobbler.get_system_as_rendered(system_name)
 
-        server = Server(name='heh', lab=None, ip=self.ip_for_system(rendered), username='root', password=self._system_password)
+        rendered = self.__cobbler.get_system_as_rendered(system_name)
+        server = Server(name=system_name, lab=None, ip=self.ip_for_system(rendered), username='root', password=self._system_password, hostname=rendered['hostname'])
+        server.set_ipmi(ip=rendered['power_address'], username=rendered['power_user'], password=rendered['power_pass'])
         lab_logger.info('server {0} is being provisioned by PXE re-booting... (might take several minutes- please wait)'.format(server))
+
+        self.__cobbler.power_system(handle, "reboot", token)
         return server
 
     def create_servers(self):
