@@ -6,6 +6,7 @@ CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
 
 KEY_PUBLIC_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'public'))
 KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'private'))
+GITLAB_REPO = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/master/lab_configs/'
 
 
 class WithConfig(object):
@@ -55,12 +56,21 @@ class LabConfigError(Exception):
 
 def read_config_from_file(yaml_path, directory='', is_as_string=False):
     import yaml
+    import requests
+    import validators
 
     actual_path = actual_path_to_config(yaml_path=yaml_path, directory=directory)
-    with open(actual_path) as f:
-        body_or_yaml = f.read() if is_as_string else yaml.load(f)
+    if validators.url(actual_path):
+        resp = requests.get(actual_path)
+        if resp.status_code != 200:
+            raise ValueError('File is not available at this URL: {0}'.format(actual_path))
+        body_or_yaml = yaml.load(resp.text)
+    else:
+        with open(actual_path) as f:
+            body_or_yaml = f.read() if is_as_string else yaml.load(f)
     if not body_or_yaml:
         raise ValueError('{0} is empty!'.format(actual_path))
+
     return body_or_yaml
 
 
@@ -70,14 +80,10 @@ def actual_path_to_config(yaml_path, directory=''):
     if os.path.isfile(yaml_path):
         return yaml_path
     actual_path = yaml_path if yaml_path.endswith('.yaml') else yaml_path + '.yaml'
-    if os.path.isfile(actual_path):
-        return actual_path
+    if os.path.isfile(os.path.join(directory, actual_path)):
+        return os.path.isfile(directory, actual_path)
 
-    actual_path = os.path.join(CONFIG_DIR, directory, actual_path)
-    if os.path.isfile(actual_path):
-        return actual_path
-
-    raise IOError('{0} not found. Provide full path or choose one of:\n{1}'.format(yaml_path, '\n'.join(ls_configs(directory=directory))))
+    return GITLAB_REPO + actual_path
 
 
 def ls_configs(directory=''):
