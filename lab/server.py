@@ -88,7 +88,7 @@ class Server(LabNode):
         from lab import with_config
 
         kwargs = {'host_string': '{user}@{ip}'.format(user=self._username, ip=self._ip),
-                  'connection_attempts': 10,
+                  'connection_attempts': 100,
                   'warn_only': warn_only}
         if self._password == 'ssh_key':
             kwargs['key_filename'] = with_config.KEY_PRIVATE_PATH

@@ -31,7 +31,10 @@ def cmd(config_path):
         parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
         arguments = []
         for parameter in parameters:
-            arguments.append(prompt(text='{p}=? '.format(p=parameter)))
+            argument = prompt(text='{p}=? '.format(p=parameter))
+            if argument.startswith('['):
+                argument = argument.strip('[]').split(',')
+            arguments.append(argument)
         results = method_to_execute(*arguments)
 
         sleep(1)
