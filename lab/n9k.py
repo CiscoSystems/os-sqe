@@ -220,9 +220,10 @@ class Nexus(LabNode):
         vlans = ', '.join(map(lambda x: str(x), self.lab().get_all_vlans()))
         self.cmd(['conf t', 'vlan {0}'.format(vlans), 'no shut'])
 
-        peer_nexus = self._peer_link_wires[0].get_peer_node(self)
-        ip, _, _, _ = peer_nexus.get_ssh()
-        self.configure_vpc_domain(peer_ip=ip)
+        if self._peer_link_wires:
+            peer_nexus = self._peer_link_wires[0].get_peer_node(self)
+            ip, _, _, _ = peer_nexus.get_ssh()
+            self.configure_vpc_domain(peer_ip=ip)
 
         for pc_id, ports_vlans_name in pc_id_versus_ports.iteritems():
             name = ports_vlans_name['name']
