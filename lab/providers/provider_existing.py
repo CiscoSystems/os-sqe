@@ -18,8 +18,6 @@ class ProviderExisting(Provider):
         return self.servers
 
     def wait_for_servers(self):
-        from lab.server import Nic
-
         servers = self.create_servers()
         for server in servers:
             server.actuate_hostname()
