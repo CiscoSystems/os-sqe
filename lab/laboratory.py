@@ -2,45 +2,27 @@ import tempfile
 from lab import with_config
 
 
-class Laboratory(with_config.WithConfig):
-    SUPPORTED_TOPOLOGIES = ['VLAN', 'VXLAN']
-    TOPOLOGY_VLAN, TOPOLOGY_VXLAN = SUPPORTED_TOPOLOGIES
+class LaboratoryNetworks(object):
+    IPV4 = 'IPv4'
+    MAC = 'MAC'
 
-    temp_dir = tempfile.mkdtemp(prefix='runner-ha-')
-
-    def sample_config(self):
-        pass
-
-    def __repr__(self):
-        return self._lab_name
-
-    def __init__(self, config_path):
+    def __init__(self, cfg):
         from netaddr import IPNetwork
-
-        super(Laboratory, self).__init__(config=None)
-
-        with open(with_config.KEY_PUBLIC_PATH) as f:
-            self.public_key = f.read()
-        self._nodes = dict()
-        self._cfg = self.read_config_from_file(config_path=config_path)
-        self._id = self._cfg['lab-id']
-        self._lab_name = self._cfg['lab-name']
-        self._user_net = IPNetwork(self._cfg['nets']['user']['cidr'])
-        self._ipmi_net = IPNetwork(self._cfg['nets']['ipmi']['cidr'])
-        self._net_vlans = {net: [str(x) for x in val['vlan']] for net, val in self._cfg['nets'].iteritems()}
-        self._is_sriov = self._cfg['use-sr-iov']
 
         self._unique_dict = dict()  # to make sure that all needed objects are unique
 
-        self._ssh_username, self._ssh_password = self._cfg['cred']['ssh_username'], self._cfg['cred']['ssh_password']
-        self._ipmi_username, self._ipmi_password = self._cfg['cred']['ipmi_username'], self._cfg['cred']['ipmi_password']
-        self._neutron_username, self._neutron_password = self._cfg['cred']['neutron_username'], self._cfg['cred']['neutron_password']
+        self._nets = {}
+        self._vlans = {}
+        self._ssh_net = None
+        self._ipmi_net = None
 
-        for name, wires in self._cfg['wires'].iteritems():
-            self._process_single_connection(name=name, wires=wires)
-
-    def is_sriov(self):
-        return self._is_sriov
+        for net_name, net_desc in cfg['nets'].iteritems():
+            self._nets[net_name] = IPNetwork(net_desc.get('cidr', '1'))
+            self._vlans[net_name] = net_desc.get('vlan', [])
+            if net_desc.get('is_ssh', False):
+                self._ssh_net = self._nets[net_name]
+            if net_desc.get('is_ipmi', False):
+                self._ipmi_net = self._nets[net_name]
 
     def make_sure_that_object_is_unique(self, type_of_object, obj, node_name):
         """check that given object is valid and unique
@@ -57,12 +39,74 @@ class Laboratory(with_config.WithConfig):
             if type_of_object == 'MAC':
                 is_ok = validators.mac_address(obj)
             elif type_of_object == 'IPv4':
-                is_ok = validators.ipv4(obj)
+                is_ok = validators.ipv4(str(obj))
             else:
                 is_ok = True
             if not is_ok:
                 raise ValueError('{0} is not valid {1}'.format(obj, type_of_object))
             self._unique_dict[type_of_object].add(obj)
+
+    def get_ip_ssh_or_ipmi(self, node_name, node_description, ssh_or_ipmi):
+        import validators
+        import netaddr
+
+        ip_or_index = node_description.get(ssh_or_ipmi)
+
+        if validators.ipv4(str(ip_or_index)):
+            ip = netaddr.IPAddress(ip_or_index)
+        else:
+            index = int(ip_or_index)
+            net = self._ssh_net if 'ssh' else self._ipmi_net
+            if index in [0, 1, 2, 3, -1]:
+                raise ValueError('IP address index {0} is not possible since 0 is network , 1,2,3 are GWs and -1 is broadcast'.format(node_name))
+            try:
+                ip = self._ssh_net[index]
+            except (IndexError, ValueError):
+                raise ValueError('{0} index {1} is not in {2}'.format(index, net))
+        self.make_sure_that_object_is_unique(type_of_object=self.IPV4, obj=ip, node_name=node_name)
+        return ip
+
+    def get_vlans(self, net_name):
+        return self._vlans[net_name]
+
+    def get_ssh_net(self):
+        return self._ssh_net
+
+
+class Laboratory(with_config.WithConfig):
+    SUPPORTED_TOPOLOGIES = ['VLAN', 'VXLAN']
+    TOPOLOGY_VLAN, TOPOLOGY_VXLAN = SUPPORTED_TOPOLOGIES
+
+    temp_dir = tempfile.mkdtemp(prefix='runner-ha-')
+
+    def sample_config(self):
+        pass
+
+    def __repr__(self):
+        return self._lab_name
+
+    def __init__(self, config_path):
+
+        super(Laboratory, self).__init__(config=None)
+
+        with open(with_config.KEY_PUBLIC_PATH) as f:
+            self.public_key = f.read()
+        self._nodes = dict()
+        self._cfg = self.read_config_from_file(config_path=config_path)
+        self._id = self._cfg['lab-id']
+        self._lab_name = self._cfg['lab-name']
+        self._is_sriov = self._cfg['use-sr-iov']
+
+        self._ssh_username, self._ssh_password = self._cfg['cred']['ssh_username'], self._cfg['cred']['ssh_password']
+        self._ipmi_username, self._ipmi_password = self._cfg['cred']['ipmi_username'], self._cfg['cred']['ipmi_password']
+        self._neutron_username, self._neutron_password = self._cfg['cred']['neutron_username'], self._cfg['cred']['neutron_password']
+
+        self._nets = LaboratoryNetworks(cfg=self._cfg)
+        for name, wires in self._cfg['wires'].iteritems():
+            self._process_single_connection(name=name, wires=wires)
+
+    def is_sriov(self):
+        return self._is_sriov
 
     def _process_single_connection(self, name, wires):
         from lab.wire import Wire
@@ -128,51 +172,32 @@ class Laboratory(with_config.WithConfig):
             raise ValueError(role + ' is not lower case.')
 
         try:
-            node_description = self._cfg['nodes'][node_name]
+            n_d = self._cfg['nodes'][node_name]
         except KeyError:
             raise ValueError(node_name + ' is not found in section "nodes"')
 
         klass = self._get_role_class(role=role, peer_device=peer_device)
 
-        ssh_username, ssh_password = node_description.get('username', self._ssh_username), node_description.get('password', self._ssh_password)
-        ipmi_ip, ipmi_username, ipmi_password = 'No ipmi', node_description.get('ipmi_username', self._ipmi_username), node_description.get('ipmi_password', self._ipmi_password)
-        hostname = node_description.get('hostname', 'NotConfiguredInYaml')
+        node = klass(lab=self, name=node_name,
+                     ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_name, node_description=n_d, ssh_or_ipmi='ssh_ip'),
+                     username=n_d.get('ssh_username', self._ssh_username),
+                     password=n_d.get('ssh_password', self._ssh_password),
+                     hostname=n_d.get('hostname', 'NotConfiguredInYaml'))
+        if 'set_ipmi' in dir(node):
+            node.set_ipmi(ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_name, node_description=n_d, ssh_or_ipmi='ipmi_ip'),
+                          username=n_d.get('ipmi_username', self._ipmi_username),
+                          password=n_d.get('ipmi_password', self._ipmi_password))
 
-        if klass in [FiServer, CimcServer]:
-            def get_ip_in_net_by_index(net):
-                if ip_index_in_net in [0, 1, 2, 3, -1]:
-                    raise ValueError('IP address index {0} is not possible since 0 is network , 1,2,3 are GWs and -1 is broadcast'.format(node_name))
-                try:
-                    return net[int(ip_index_in_net)]
-                except (IndexError, ValueError):
-                    raise ValueError('{0} index {1} is not in {2}'.format(ip_index_in_net, net))
-
-            ip_index_in_net = node_description['ip']
-            ssh_ip = get_ip_in_net_by_index(net=self._user_net)
-            ipmi_ip = node_description.get('ipmi_ip', get_ip_in_net_by_index(net=self._ipmi_net))
-        else:
-            ssh_ip = node_description['ip']
-
-        node = klass(lab=self, name=node_name, ip=ssh_ip, username=ssh_username, password=ssh_password, hostname=hostname)
-
-        if klass in [FiServer, CimcServer]:
-            node.set_ipmi(ip=ipmi_ip, username=ipmi_username, password=ipmi_password)
-
-            if type(node) is FiServer:
-                node.set_ucsm_id(port)
-
-            for element in node_description['nets']:  # here element might be either just NIC name or {nic: mac}
-                if type(element) is dict:
-                    (nic_name, mac), = element.items()
-                    is_vnic = False  # this is a NIC like LOM so it will not be created in CIMC
-                else:
-                    nic_name, mac = element, node.form_mac(lab_id=self._id, net_octet=self._cfg['nets'][element]['mac-net-part'])
-                    is_vnic = True   # this is a normal VNIC, so will be created in CIMC or UCSM
-                self.make_sure_that_object_is_unique(type_of_object='MAC', obj=mac, node_name=node.name())
-                node.add_nic(nic_name=nic_name, mac=mac, is_vnic=is_vnic)
+        if type(node) is FiServer:
+            node.set_ucsm_id(port)
         elif type(node) is FI:
-            self._ucsm_vip = node_description['vip']
-            node.set_vip(self._ucsm_vip)
+            node.set_vip(n_d['vip'])
+
+        if type(node) in [FiServer, CimcServer]:
+            for nic_name in n_d.get('nets', []):
+                nic = node.add_nic(nic_name=nic_name, mac=self._cfg['nets'][nic_name]['mac-net-part'])
+                self._nets.make_sure_that_object_is_unique(type_of_object=LaboratoryNetworks.MAC, obj=nic.get_mac(), node_name=node.name())
+
         self._nodes[node_name] = node
         return node
 
@@ -224,17 +249,11 @@ class Laboratory(with_config.WithConfig):
 
         return self.get_nodes(klass=CimcServer)
 
-    def get_user_net_info(self):
-        return self._user_net.cidr, str(self._user_net[1]), self._user_net.netmask, str(self._user_net[4]), str(self._user_net[-3])
-
-    def get_ipmi_net_info(self):
-        return self._ipmi_net.cidr, str(self._ipmi_net[1]), self._ipmi_net.netmask, str(self._ipmi_net[4]), str(self._ipmi_net[-3])
-
     def get_all_vlans(self):
         return sorted(set(reduce(lambda l, x: l + (x['vlan']), self._cfg['nets'].values(), [])))
 
     def get_net_vlans(self, net_name):
-        return self._net_vlans[net_name]
+        return self._nets.get_vlans(net_name)
 
     def get_neutron_creds(self):
         return self._neutron_username, self._neutron_password
@@ -277,7 +296,8 @@ class Laboratory(with_config.WithConfig):
         osp7_install_template = read_config_from_file(yaml_path='./configs/osp7/osp7-install.yaml', is_as_string=True)
 
         # Calculate IPs for user net, VIPs and director IP
-        overcloud_network_cidr, overcloud_external_gateway, overcloud_external_ip_start, overcloud_external_ip_end = self._user_net.cidr, self._user_net[1], self._user_net[4+1], self._user_net[-3]
+        ssh_net = self._nets.get_ssh_net()
+        overcloud_network_cidr, overcloud_external_gateway, overcloud_external_ip_start, overcloud_external_ip_end = ssh_net.cidr, ssh_net[1], ssh_net[4+1], ssh_net[-3]
 
         eth0_mac_versus_service_profile = {}
         overcloud_section = []

@@ -14,9 +14,9 @@ class CimcServer(Server):
 
         lab_logger.info('{0}: {1}'.format(self, message))
         
-    def form_mac(self, lab_id, net_octet):
+    def form_mac(self, net_octet):
         last_ip_octet = str(self._ipmi_ip).split('.')[3]
-        return '00:{lab:02}:A0:{ip:02X}:00:{net}'.format(lab=lab_id, ip=int(last_ip_octet), net=net_octet)
+        return '00:{lab:02}:A0:{ip:02X}:00:{net}'.format(lab=self._lab.get_id(), ip=int(last_ip_octet), net=net_octet)
 
     def do_login(self):
         import ImcSdk
