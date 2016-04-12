@@ -10,12 +10,13 @@ class CobblerServer(LabNode):
         from lab.time_func import time_as_string
         from lab.logger import lab_logger
 
-        lab_logger.info('(Re)creating cobbler profile')
+        lab_logger.info(str(self) + ' (Re)creating cobbler profile')
         director = self.lab().get_director()
 
         ipmi_ip, ipmi_username, ipmi_password = director.get_ipmi()
         director_ip, _, _, _ = director.get_ssh()
-        _, user_gw, user_mask, _, _ = self.lab().get_user_net_info()
+        ssh_net = self.lab().get_ssh_net()
+        user_gw, user_mask = str(ssh_net[1]), ssh_net.netmask
 
         cobbler = xmlrpclib.Server(uri="http://{host}/cobbler_api".format(host=self._ip))
 

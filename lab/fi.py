@@ -233,7 +233,8 @@ exit
             server_id, service_profile_name = server.get_ucsm_info()
             is_sriov = self.lab().is_sriov()
             ipmi_ip, _, _ = server.get_ipmi()
-            _, ipmi_gw, ipmi_netmask, _, _ = self.lab().get_ipmi_net_info()
+            ipmi_net = self.lab().get_ipmi_net()
+            ipmi_gw, ipmi_netmask = str(ipmi_net[1]), ipmi_net.netmask
             self.create_ipmi_static(server_id=server_id, ip=ipmi_ip, gw=ipmi_gw, netmask=ipmi_netmask)
             self.add_server_to_pool(server_id, server_pool_name)
 

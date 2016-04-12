@@ -72,6 +72,9 @@ class LaboratoryNetworks(object):
     def get_ssh_net(self):
         return self._ssh_net
 
+    def get_ipmi_net(self):
+        return self._ipmi_net
+
 
 class Laboratory(with_config.WithConfig):
     SUPPORTED_TOPOLOGIES = ['VLAN', 'VXLAN']
@@ -104,6 +107,12 @@ class Laboratory(with_config.WithConfig):
         self._nets = LaboratoryNetworks(cfg=self._cfg)
         for name, wires in self._cfg['wires'].iteritems():
             self._process_single_connection(name=name, wires=wires)
+
+    def get_ssh_net(self):
+        return self._nets.get_ssh_net()
+
+    def get_ipmi_net(self):
+        return self._nets.get_ipmi_net()
 
     def is_sriov(self):
         return self._is_sriov
