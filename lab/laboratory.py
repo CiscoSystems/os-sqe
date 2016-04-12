@@ -32,9 +32,9 @@ class LaboratoryNetworks(object):
         """
         import validators
 
-        self._unique_dict.setdefault(type_of_object, set())
-        if obj in self._unique_dict[type_of_object]:
-            raise ValueError('{0} node is trying to use {1}={2} which is already in use by others'.format(node_name, type_of_object, obj))
+        self._unique_dict.setdefault(type_of_object, dict())
+        if obj in self._unique_dict[type_of_object].keys():
+            raise ValueError('{0} node is trying to use {1}={2} which is already in use by {3}'.format(node_name, type_of_object, obj, self._unique_dict[type_of_object][obj]))
         else:
             if type_of_object == 'MAC':
                 is_ok = validators.mac_address(obj)
@@ -44,7 +44,7 @@ class LaboratoryNetworks(object):
                 is_ok = True
             if not is_ok:
                 raise ValueError('{0} is not valid {1}'.format(obj, type_of_object))
-            self._unique_dict[type_of_object].add(obj)
+            self._unique_dict[type_of_object].update({obj: node_name})
 
     def get_ip_ssh_or_ipmi(self, node_name, node_description, ssh_or_ipmi):
         import validators
@@ -56,11 +56,11 @@ class LaboratoryNetworks(object):
             ip = netaddr.IPAddress(ip_or_index)
         else:
             index = int(ip_or_index)
-            net = self._ssh_net if 'ssh' else self._ipmi_net
+            net = self._ssh_net if ssh_or_ipmi == 'ssh_ip' else self._ipmi_net
             if index in [0, 1, 2, 3, -1]:
                 raise ValueError('IP address index {0} is not possible since 0 is network , 1,2,3 are GWs and -1 is broadcast'.format(node_name))
             try:
-                ip = self._ssh_net[index]
+                ip = net[index]
             except (IndexError, ValueError):
                 raise ValueError('{0} index {1} is not in {2}'.format(index, net))
         self.make_sure_that_object_is_unique(type_of_object=self.IPV4, obj=ip, node_name=node_name)
