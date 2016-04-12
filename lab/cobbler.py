@@ -1,7 +1,10 @@
-from lab.server import Server
+from lab.lab_node import LabNode
 
 
-class CobblerServer(Server):
+class CobblerServer(LabNode):
+    def cmd(self, cmd):
+        pass
+
     def configure_for_osp7(self):
         import xmlrpclib
         from lab.time_func import time_as_string
