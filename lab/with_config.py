@@ -6,7 +6,8 @@ CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
 
 KEY_PUBLIC_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'public'))
 KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'private'))
-GITLAB_REPO = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/master/lab_configs/'
+git_reference = os.getenv('SQE-GIT-REF', 'master')
+GITLAB_REPO = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/{0}/lab_configs/'.format(git_reference)
 
 
 class WithConfig(object):
