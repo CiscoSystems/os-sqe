@@ -364,7 +364,7 @@ class Laboratory(with_config.WithConfig):
             nexus_servers_section = ',\n\t\t\t\t\t\t'.join(mac_port_lines)
 
             ssh_ip, ssh_username, ssh_password, hostname = n9.get_ssh()
-            switch_tempest_section.append({'hostname': hostname, 'username': ssh_username, 'password': ssh_password, 'sw': ssh_ip})
+            switch_tempest_section.append({'hostname': hostname, 'username': ssh_username, 'password': ssh_password, 'sw': str(ssh_ip)})
             n9k_description = ['"' + hostname + '": {',
                                '"ip_address": "' + str(ssh_ip) + '",',
                                '"username": "' + ssh_username + '",',
