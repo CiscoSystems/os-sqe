@@ -6,7 +6,7 @@ CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
 
 KEY_PUBLIC_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'public'))
 KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'private'))
-git_reference = os.getenv('SQE-GIT-REF', 'master')
+git_reference = os.getenv('SQE_GIT_REF', 'master')
 GITLAB_REPO = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/{0}/lab_configs/'.format(git_reference)
 
 
@@ -59,8 +59,11 @@ def read_config_from_file(yaml_path, directory='', is_as_string=False):
     import yaml
     import requests
     import validators
+    from logger import lab_logger
 
     actual_path = actual_path_to_config(yaml_path=yaml_path, directory=directory)
+
+    lab_logger.info('Taking config from {0}'.format(actual_path))
     if validators.url(actual_path):
         resp = requests.get(actual_path)
         if resp.status_code != 200:
