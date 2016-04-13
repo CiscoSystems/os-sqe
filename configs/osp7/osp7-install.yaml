@@ -88,3 +88,5 @@ undercloud_fake_gw_ip_prefix = 24
 network_nexus_config = {network_nexus_config}
 
 switch_tempest_section = {switch_tempest_section}
+
+do_sriov = {do_sriov}

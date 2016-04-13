@@ -201,6 +201,7 @@ class Laboratory(with_config.WithConfig):
             node.set_ucsm_id(port)
         elif type(node) is FI:
             node.set_vip(n_d['vip'])
+            node.set_sriov(self._is_sriov)
 
         if type(node) in [FiServer, CimcServer]:
             for nic_name in n_d.get('nets', []):
@@ -282,13 +283,13 @@ class Laboratory(with_config.WithConfig):
     def configure_for_osp7(self, topology=TOPOLOGY_VLAN):
         if topology not in self.SUPPORTED_TOPOLOGIES:
             raise ValueError('"{0}" topology is not supported. Correct values: {1}'.format(topology, self.SUPPORTED_TOPOLOGIES))
+        self.create_config_file_for_osp7_install(topology)
         self.get_cobbler().configure_for_osp7()
         map(lambda x: x.cleanup(), self.get_n9())
         map(lambda x: x.configure_for_osp7(topology), self.get_n9())
         map(lambda x: x.configure_for_osp7(), self.get_cimc_servers())
         map(lambda x: x.configure_for_osp7(topology), self.get_asr1ks())
         self.get_fi()[0].configure_for_osp7()
-        self.create_config_file_for_osp7_install(topology)
 
     def configure_for_mercury(self):
         self.get_cobbler().configure_for_osp7()
@@ -365,7 +366,7 @@ class Laboratory(with_config.WithConfig):
             ssh_ip, ssh_username, ssh_password, hostname = n9.get_ssh()
             switch_tempest_section.append({'hostname': hostname, 'username': ssh_username, 'password': ssh_password, 'sw': ssh_ip})
             n9k_description = ['"' + hostname + '": {',
-                               '"ip_address": "' + ssh_ip + '",',
+                               '"ip_address": "' + str(ssh_ip) + '",',
                                '"username": "' + ssh_username + '",',
                                '"password": "' + ssh_password + '",',
                                '"nve_src_intf": 2,',
@@ -384,6 +385,9 @@ class Laboratory(with_config.WithConfig):
         pxe_int_vlans = self._cfg['nets']['pxe-int']['vlan']
         eth1_vlans = self._cfg['nets']['eth1']['vlan']
         ext_vlan, test_vlan, stor_vlan, stor_mgmt_vlan, tenant_vlan, fip_vlan = eth1_vlans[1], pxe_int_vlans[1], pxe_int_vlans[2], pxe_int_vlans[3], pxe_int_vlans[4], eth1_vlans[0]
+
+        ucsm_vip = self.get_fi()[0].get_vip()
+
         cfg = osp7_install_template.format(director_node_hostname=director_hostname, director_node_ssh_ip=director_node_ssh_ip,
 
                                            ext_vlan=ext_vlan, test_vlan=test_vlan, stor_vlan=stor_vlan, stor_mgmt_vlan=stor_mgmt_vlan, tenant_vlan=tenant_vlan, fip_vlan=fip_vlan,
@@ -396,7 +400,7 @@ class Laboratory(with_config.WithConfig):
 
                                            overcloud_control_scale=n_controls, overcloud_ceph_storage_scale=n_ceph, overcloud_compute_scale=n_computes,
 
-                                           network_ucsm_ip=self._ucsm_vip, network_ucsm_username=self._neutron_username, network_ucsm_password=self._neutron_password, network_ucsm_host_list=network_ucsm_host_list,
+                                           network_ucsm_ip=ucsm_vip, network_ucsm_username=self._neutron_username, network_ucsm_password=self._neutron_password, network_ucsm_host_list=network_ucsm_host_list,
 
                                            undercloud_lab_pxe_interface='pxe-ext', undercloud_local_interface='pxe-int', undercloud_fake_gateway_interface='eth1',
 
@@ -406,7 +410,8 @@ class Laboratory(with_config.WithConfig):
 
                                            network_nexus_config=network_nexus_config,
 
-                                           switch_tempest_section=switch_tempest_section
+                                           switch_tempest_section=switch_tempest_section,
+                                           do_sriov=self._is_sriov
                                            )
 
         if topology == self.TOPOLOGY_VXLAN:
