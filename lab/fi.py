@@ -36,8 +36,14 @@ class FI(LabNode):
     def set_vip(self, vip):
         self._vip = vip
 
+    def get_vip(self):
+        return self._vip
+
     def set_sriov(self, sriov):
-        self._vip = sriov
+        self._is_sriov = sriov
+
+    def get_sriov(self):
+        return self._is_sriov
 
     def cmd(self, command):
         from fabric.api import settings, run
