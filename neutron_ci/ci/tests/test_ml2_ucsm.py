@@ -156,7 +156,7 @@ class ML2UCSMTest(BaseTestCase):
                                'controller_host_dict': '{0}:{1}'.format(hostname, self.ucsm_service_profiles[hostname]),
                                'eth_names': 'nic0, nic1',
                                'test_connectivity': 'False',
-                               'virtual_functions_amount': '4'
+#                               'virtual_functions_amount': '4'
                                }}
 
         self.hm_devstack.get_tempest(
