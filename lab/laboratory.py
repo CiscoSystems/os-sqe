@@ -189,8 +189,8 @@ class Laboratory(with_config.WithConfig):
 
         node = klass(lab=self, name=node_name,
                      ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_name, node_description=n_d, ssh_or_ipmi='ssh_ip'),
-                     username=n_d.get('ssh_username', self._ssh_username),
-                     password=n_d.get('ssh_password', self._ssh_password),
+                     username=n_d.get('username', self._ssh_username),
+                     password=n_d.get('password', self._ssh_password),
                      hostname=n_d.get('hostname', 'NotConfiguredInYaml'))
         if 'set_ipmi' in dir(node):
             node.set_ipmi(ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_name, node_description=n_d, ssh_or_ipmi='ipmi_ip'),
