@@ -6,7 +6,7 @@ CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
 
 KEY_PUBLIC_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'public'))
 KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'private'))
-git_reference = os.getenv('SQE_GIT_REF', 'master')
+git_reference = os.getenv('SQE_GIT_REF', 'master').split('/')[-1]
 GITLAB_REPO = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/{0}/lab_configs/'.format(git_reference)
 
 
