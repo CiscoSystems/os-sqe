@@ -274,3 +274,18 @@ export OS_AUTH_URL={end_point}
                 self.add_service_end_point(service=service, url=url, end_point=end_point)
         self.cmd('neutron quota-update --network 100 --subnet 100 --port 500')
         return self
+
+    @staticmethod
+    def from_openrc(name, mediator, openrc_as_string):
+        user = tenant = password = end_point = None
+        for line in openrc_as_string.split('\n'):
+            if 'OS_USERNAME' in line:
+                user = line.split('=')[-1].strip()
+            if 'OS_TENANT_NAME' in line:
+                tenant = line.split('=')[-1].strip()
+            if 'OS_PASSWORD' in line:
+                password = line.split('=')[-1].strip()
+            if 'OS_AUTH_URL' in line:
+                end_point = line.split('=')[-1].strip()
+
+        return Cloud(cloud=name, user=user, tenant=tenant, admin=tenant, password=password, end_point=end_point, mediator=mediator)

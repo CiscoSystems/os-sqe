@@ -179,7 +179,7 @@ class Server(LabNode):
         else:
             with settings(**self.construct_settings(warn_only=False)):
                 with cd(in_directory):
-                    return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)
+                    return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)[0]
 
     def get(self, remote_path, in_directory='.', local_path=None):
         """Get remote file as string or local file if local_path is specified
@@ -224,16 +224,17 @@ class Server(LabNode):
         else:
             return body
 
-    def wget_file(self, url, to_directory, checksum):
-        import os
-
+    def wget_file(self, url, to_directory='.', checksum=None):
         loc = url.split('/')[-1]
-        self.run(command='test -e  {loc} || wget -nv {url} -O {loc}'.format(loc=loc, url=url), in_directory=to_directory)
-        calc_checksum = self.run(command='sha256sum {loc}'.format(loc=loc), in_directory=to_directory)
-        if calc_checksum.split()[0] != checksum:
-            self.run(command='rm {0}'.format(loc), in_directory=to_directory)
-            raise RuntimeError('I deleted image {0} since it is broken (checksum is not matched). Re-run the script'.format(loc))
-        return os.path.abspath(os.path.join(to_directory, loc))
+        if to_directory != '.':
+            self.run('mkdir -p {0}'.format(to_directory))
+        self.run(command='test -e  {loc} || curl {url} -o {loc}'.format(loc=loc, url=url), in_directory=to_directory)
+        if checksum:
+            calc_checksum = self.run(command='sha256sum {loc}'.format(loc=loc), in_directory=to_directory)
+            if calc_checksum.split()[0] != checksum:
+                self.run(command='rm {0}'.format(loc), in_directory=to_directory)
+                raise RuntimeError('I deleted image {0} since it is broken (checksum is not matched). Re-run the script'.format(loc))
+        return self.run(command='readlink -f {0}'.format(loc), in_directory=to_directory)
 
     def check_or_install_packages(self, package_names):
         pm = self.get_package_manager()
