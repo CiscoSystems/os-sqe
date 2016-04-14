@@ -117,6 +117,9 @@ class Laboratory(with_config.WithConfig):
     def is_sriov(self):
         return self._is_sriov
 
+    def get_common_ssh_creds(self):
+        return self._ssh_username, self._ssh_password
+
     def _process_single_connection(self, name, wires):
         from lab.wire import Wire
 

@@ -61,7 +61,7 @@ def read_config_from_file(yaml_path, directory='', is_as_string=False):
     import validators
     from logger import lab_logger
 
-    actual_path = actual_path_to_config(yaml_path=yaml_path, directory=directory)
+    actual_path = actual_path_to_config(path=yaml_path, directory=directory)
 
     lab_logger.info('Taking config from {0}'.format(actual_path))
     if validators.url(actual_path):
@@ -78,16 +78,28 @@ def read_config_from_file(yaml_path, directory='', is_as_string=False):
     return body_or_yaml
 
 
-def actual_path_to_config(yaml_path, directory=''):
+def actual_path_to_config(path, directory=''):
+    """ Trying to construct full path to file in the following order:
+        1. try to interpret path as full path
+        2. try to interpret path as short file name with respect to CONFIG_DIR + directory without appending extension .yaml
+        3. the same as in 2 but with appending .yaml to the end of the path
+        4. if all fail , append .yaml to the end of th path and try to get it from remote GITLAB_REPO
+        :param path: path to the config file or just a name of the config file
+        :param directory: sub-directory of CONFIG_DIR
+    """
     import os
 
-    if os.path.isfile(yaml_path):
-        return yaml_path
-    actual_path = yaml_path if yaml_path.endswith('.yaml') else yaml_path + '.yaml'
-    if os.path.isfile(os.path.join(CONFIG_DIR, directory, actual_path)):
-        return os.path.join(CONFIG_DIR, directory, actual_path)
+    if os.path.isfile(path):
+        return path
 
-    return GITLAB_REPO + actual_path
+    path_with_yaml = path if path.endswith('.yaml') else path + '.yaml'
+
+    for path in [path, path_with_yaml]:
+        actual_path = os.path.join(CONFIG_DIR, directory, path)
+        if os.path.isfile(actual_path):
+            return actual_path
+
+    return GITLAB_REPO + path_with_yaml
 
 
 def ls_configs(directory=''):
