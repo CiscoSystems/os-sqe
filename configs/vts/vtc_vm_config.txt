@@ -1,0 +1,14 @@
+Hostname=vtc
+ManagementIPv4Method=Static
+ManagementIPv4Address={ssh_ip}
+ManagementIPv4Netmask={ssh_netmask}
+ManagementIPv4Gateway={ssh_gw}
+UnderlayIPv4Method=Static
+UnderlayIPv4Address={loc_ip}
+UnderlayIPv4Netmask={loc_netmask}
+DNSv4={dns}
+Domain=cisco.com
+NTPv4=1.1.1.1
+vts-adminPassword={vtc_password}
+AdministrativeUser={vtc_username}
+AdministrativePassword={vtc_password}

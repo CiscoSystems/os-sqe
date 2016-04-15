@@ -22,26 +22,32 @@ class DeployerExistingOSP7(Deployer):
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
         from lab.laboratory import Laboratory
+        from lab.server import Server
+        import re
 
         if list_of_servers:
             director = list_of_servers[0]
         else:
             director = Laboratory(config_path=self.lab_cfg).get_director()
 
+        list_of_servers.append(director)
         self.get_deployment_info(director=director)
-        rc = director.run(command='cat /home/stack/overcloudrc')
-        user = tenant = password = end_point = None
-        for line in rc.split('\n'):
-            if 'OS_USERNAME' in line:
-                user = line.split('=')[-1].strip()
-            if 'OS_TENANT_NAME' in line:
-                tenant = line.split('=')[-1].strip()
-            if 'OS_PASSWORD' in line:
-                password = line.split('=')[-1].strip()
-            if 'OS_AUTH_URL' in line:
-                end_point = line.split('=')[-1].strip()
 
-        return Cloud(cloud=self.cloud_name, user=user, tenant=tenant, admin=tenant, password=password, end_point=end_point, mediator=director)
+        net = director.lab().get_ssh_net()
+        ssh_ip_pattern = '({0}.*)/{1}'.format(str(net).rsplit('.', 1)[0], net.prefixlen)
+        re_ip = re.compile(ssh_ip_pattern)
+        lines = director.run('source stackrc && nova list').split('\n')
+        for line in lines:
+            if '=' in line:
+                local_ip = line.split('=')[-1].split()[0]
+                name = line.split('|')[2]
+                ip_a_ans = director.run('ssh -o StrictHostKeyChecking=no {local_ip} ip -o a'.format(local_ip=local_ip))
+                ip = re_ip.findall(ip_a_ans)
+                if ip:
+                    list_of_servers.append(Server(name=name, username='root', lab=director.lab(), ip=ip[0]))
+
+        overcloud_openrc = director.run(command='cat /home/stack/overcloudrc')
+        return Cloud.from_openrc(name=self.cloud_name, mediator=director, openrc_as_string=overcloud_openrc)
 
     def wait_for_cloud(self, list_of_servers):
         cloud = self.deploy_cloud(list_of_servers)

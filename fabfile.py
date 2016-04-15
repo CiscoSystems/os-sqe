@@ -76,7 +76,7 @@ def ha(lab, test_name, do_not_clean=False):
     if test_name == 'tcall':
         tests = sorted(filter(lambda x: x.startswith('tc'), ls_configs(directory='ha')))
     else:
-        tests = [actual_path_to_config(yaml_path=test_name, directory='ha').split('\\')[-1]]
+        tests = [actual_path_to_config(path=test_name, directory='ha').split('\\')[-1]]
 
     run_config_yaml = '{lab}-ha-{tc}.yaml'.format(lab=lab.split('.')[0], tc=test_name)
     with open(run_config_yaml, 'w') as f:
