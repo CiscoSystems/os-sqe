@@ -27,13 +27,13 @@ class DeployerVts(Deployer):
 
         config_body = self._config_tmpl.format(ssh_ip=ssh_ip, ssh_netmask=ssh_netmask, ssh_gw=ssh_gw,
                                                loc_ip='172.16.16.1', loc_netmask='255.255.255.0', dns='171.70.168.183',
-                                               vtc_username=ssh_username, vtc_password=ssh_password)
+                                               vtc_username='admin', vtc_password=ssh_password)
 
         vts_service_dir = '/tmp/vts'
 
-        vtc_config_txt_path = controller.put_string_as_file_in_dir(string_to_put=config_body, file_name='vtc_config.txt', in_directory=vts_service_dir)
+        vtc_config_txt_path = controller.put_string_as_file_in_dir(string_to_put=config_body, file_name='config.txt', in_directory=vts_service_dir)
 
-        vtc_config_iso_path = vts_service_dir + '/vtc_config.iso'
+        vtc_config_iso_path = vts_service_dir + '/config.iso'
         controller.run('mkisofs -o {iso} {txt}'.format(iso=vtc_config_iso_path, txt=vtc_config_txt_path))
 
         qcow_files = []
