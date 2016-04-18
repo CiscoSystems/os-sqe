@@ -245,18 +245,30 @@ export OS_AUTH_URL={end_point}
         fips = map(lambda _: self.cmd('neutron floatingip-create {0}'.format(self._fip_network)), xrange(how_many))
         return fips
 
+    def create_key_pair(self):
+        from lab import with_config
+        with open(with_config.KEY_PUBLIC_PATH) as f:
+            public_path = self.mediator.put_string_as_file_in_dir(string_to_put=f.read(), file_name='sqe_public_key')
+
+        self.cmd('openstack keypair create {sqe_pref}-key1 --public-key {public}'.format(sqe_pref=self._unique_pattern_in_name, public=public_path))
+
     def create_instance(self, name, flavor, image, on_ports):
+        if image not in self.cmd('openstack image list'):
+            raise ValueError('Image {0} is not known by cloud'.format(image))
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, on_ports))
         instance_name = '{sqe_pref}-{name}'.format(sqe_pref=self._unique_pattern_in_name, name=name)
-        self.cmd('nova boot {name} --flavor {flavor} --image {image} --security-group default --key-name key1 {ports_part}'.format(name=instance_name, flavor=flavor, image=image, ports_part=ports_part))
+        self.cmd('openstack server create {name} --flavor {flavor} --image "{image}" --security-group default --key-name sqe-test-key1 {ports_part}'.format(name=instance_name, flavor=flavor, image=image, ports_part=ports_part))
         return instance_name
 
     def create_image(self, url):
         image_path = self.mediator.wget_file(url)
-        self.cmd('openstack image create {path}'.format(path=image_path))
+        name = image_path.split('/')[-1]
+        self.cmd('glance image-create --architecture i386 --protected=False --name {name} --visibility public --disk-format qcow2 --progress --file {path}  --container-format bare'.format(name=name, path=image_path))
         return image_path
 
     def cleanup(self):
+        import json
+
         ans = self.cmd(cmd='neutron router-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
         router_names = self._names_from_answer(ans)
         ans = self.cmd(cmd='neutron port-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
@@ -267,6 +279,9 @@ export OS_AUTH_URL={end_point}
         map(lambda router_name: self._clean_router(router_name), sorted(router_names))
         map(lambda port_name: self.cmd('neutron port-delete {0}'.format(port_name)), sorted(port_names))
         map(lambda net_name: self.cmd('openstack network delete {0}'.format(net_name)), sorted(net_names))
+
+        keypairs = json.loads(self.cmd('openstack keypair list -f json'))
+        map(lambda keypair: self.cmd('openstack keypair delete {0}'.format(keypair['Name'])), filter(lambda x: self._unique_pattern_in_name in x['Name'], keypairs))
 
     def _clean_router(self, router_name):
         import re
