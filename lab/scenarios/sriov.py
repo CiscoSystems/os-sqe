@@ -5,8 +5,8 @@ def start(lab, log, args):
 
     cloud = lab.cloud
 
-    image = cloud.create_image('http://172.29.173.233/CentOs6.5-SRIOV-Iperf-pass-ubuntu.qcow2')
     cloud.cleanup()
+    cloud.create_key_pair()
     internal_nets = cloud.create_net_subnet(common_part_of_name='internal', class_a=1, how_many=2)
     provider_nets = cloud.create_net_subnet(common_part_of_name='provider', class_a=41, how_many=2, vlan=3040)
     di_internal_net = cloud.create_net_subnet(common_part_of_name='di-internal', class_a=11, how_many=1)
@@ -29,7 +29,7 @@ def start(lab, log, args):
             ports.extend(cloud.create_ports(instance_name=instance, on_nets=internal_nets[:2], sriov=False))
             ports.extend(cloud.create_ports(instance_name=instance, on_nets=provider_nets, sriov=True))
 
-        instance_name = cloud.create_instance(name=instance, flavor='m1.medium', image='http://172.29.173.233/CentOs6.5-SRIOV-Iperf-pass-ubuntu.qcow2', on_ports=ports)
+        instance_name = cloud.create_instance(name=instance, flavor='m1.medium', image='cirros 0.3.4', on_ports=ports)
 
         cloud.cmd('nova floating-ip-associate {instance_name} {fip}'.format(instance_name=instance_name, fip=fips[i]))
 
