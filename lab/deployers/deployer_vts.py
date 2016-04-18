@@ -29,7 +29,7 @@ class DeployerVts(Deployer):
                                                loc_ip='172.16.16.1', loc_netmask='255.255.255.0', dns='171.70.168.183',
                                                vtc_username=ssh_username, vtc_password=ssh_password)
 
-        vts_service_dir = '/root/vts'
+        vts_service_dir = '/tmp/vts'
 
         vtc_config_txt_path = controller.put_string_as_file_in_dir(string_to_put=config_body, file_name='vtc_config.txt', in_directory=vts_service_dir)
 
@@ -51,7 +51,7 @@ class DeployerVts(Deployer):
 </disk>
 
 <disk type='file' device='cdrom'>
-    <driver name='qemu' type='qcow2'/>
+    <driver name='qemu' type='raw'/>
     <source file='{vtc_config_iso_path}'/>
     <target dev='hdc' bus='ide'/>
 </disk>

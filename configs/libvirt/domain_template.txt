@@ -4,7 +4,7 @@
     <currentMemory unit='GiB'>8</currentMemory>
     <vcpu placement='static'>2</vcpu>
     <os>
-      <type arch='x86_64' machine='pc-i440fx-1.5'>hvm</type>
+      <type arch='x86_64'>hvm</type>
       <boot dev='hd'/>
       <boot dev='network'/>
     </os>
