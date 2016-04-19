@@ -258,13 +258,27 @@ export OS_AUTH_URL={end_point}
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, on_ports))
         instance_name = '{sqe_pref}-{name}'.format(sqe_pref=self._unique_pattern_in_name, name=name)
         self.cmd('openstack server create {name} --flavor {flavor} --image "{image}" --security-group default --key-name sqe-test-key1 {ports_part}'.format(name=instance_name, flavor=flavor, image=image, ports_part=ports_part))
+        self.wait_instances_ready(names=[name])
         return instance_name
 
-    def create_image(self, url):
-        image_path = self.mediator.wget_file(url)
-        name = image_path.split('/')[-1]
-        self.cmd('glance image-create --architecture i386 --protected=False --name {name} --visibility public --disk-format qcow2 --progress --file {path}  --container-format bare'.format(name=name, path=image_path))
-        return image_path
+    def wait_instances_ready(self, names=None):
+        import time
+        import json
+
+        while True:
+            all_instances = json.loads(self.cmd('openstack server list -f json'))
+            our_instances = filter(lambda x: x['Name'] in names, all_instances) if names else all_instances
+            instances_in_error = filter(lambda x: x['Status'] == 'ERROR', our_instances)
+            instances_in_active = filter(lambda x: x['Status'] == 'ACTIVE', our_instances)
+            if len(instances_in_active) == len(names):
+                return
+            if instances_in_error:
+                raise RuntimeError('These instances failed: {0}'.format(instances_in_error))
+            time.sleep(30)
+
+    def create_image(self, name, url):
+        self.cmd('openstack image create {name} --public --disk-format qcow2 --protected --location {url} --container-format bare'.format(name=name, url=url))
+        return name
 
     def cleanup(self):
         import json
