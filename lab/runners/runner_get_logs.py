@@ -9,7 +9,7 @@ class RunnerGetLogs(Runner):
     def __init__(self, config):
         super(RunnerGetLogs, self).__init__(config=config)
         self._cloud_name = config['cloud']
-        self._regexp = config['regexp']
+        self._regex = config['regex']
 
     def execute(self, clouds, servers):
         from lab.with_config import open_artifact
@@ -17,7 +17,7 @@ class RunnerGetLogs(Runner):
         for d in ['neutron', 'nova']:
             for server in servers:
                 with open_artifact(name='{0}-{1}-errors.txt'.format(server.name(), d), mode='w') as f:
-                    f.write(server.run('sudo grep -i {regexp} /var/log/{d}/*.log'.format(regexp=self._regexp, d=d)))
+                    f.write(server.run('sudo grep -i {regex} /var/log/{d}/*.log'.format(regexp=self._regex, d=d)))
 
     @staticmethod
     def store_on_our_server():
