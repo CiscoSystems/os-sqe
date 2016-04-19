@@ -4,11 +4,12 @@ from lab.runners import Runner
 class RunnerGetLogs(Runner):
 
     def sample_config(self):
-        return {'cloud': 'cloud name'}
+        return {'cloud': 'cloud name', 'regex': 'some regexp to be used in grep'}
 
     def __init__(self, config):
         super(RunnerGetLogs, self).__init__(config=config)
         self._cloud_name = config['cloud']
+        self._regexp = config['regexp']
 
     def execute(self, clouds, servers):
         from lab.with_config import open_artifact
@@ -16,7 +17,7 @@ class RunnerGetLogs(Runner):
         for d in ['neutron', 'nova']:
             for server in servers:
                 with open_artifact(name='{0}-{1}-errors.txt'.format(server.name(), d), mode='w') as f:
-                    f.write(server.run('sudo grep -i ERROR /var/log/{0}/*.log'.format(d)))
+                    f.write(server.run('sudo grep -i {regexp} /var/log/{d}/*.log'.format(regexp=self._regexp, d=d)))
 
     @staticmethod
     def store_on_our_server():

@@ -29,7 +29,7 @@ def start(lab, log, args):
             ports.extend(cloud.create_ports(instance_name=instance, on_nets=internal_nets[:2], sriov=False))
             ports.extend(cloud.create_ports(instance_name=instance, on_nets=provider_nets, sriov=True))
 
-        instance_name = cloud.create_instance(name=instance, flavor='m1.medium', image='cirros 0.3.4', on_ports=ports)
+        instance_name = cloud.create_instance(name=instance, flavor='m1.medium', image='sriov', on_ports=ports)
 
         cloud.cmd('nova floating-ip-associate {instance_name} {fip}'.format(instance_name=instance_name, fip=fips[i]))
 
@@ -40,3 +40,6 @@ def start(lab, log, args):
     # service iptables stop && chkconfig iptables off
     # iperf -s -p {port_num}
     # iperf -c {ip_of_server} -p {port_num} -M {mtu}
+    # lspci -nn | grep 0071
+    # grep ^pci_passthrough_whitelist nova.conf
+    # grep iommu /etc/default/grub
