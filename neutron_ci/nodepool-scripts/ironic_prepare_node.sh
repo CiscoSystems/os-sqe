@@ -5,6 +5,7 @@
 
 # Install ImcSdk requirement
 sudo -H pip install ImcSdk
+sudo -H pip install "UcsSdk==0.8.2.2"
 
 # Ensure everything is written to disk
 sync

@@ -37,6 +37,7 @@ def run_cmd_line(cmd_str, stderr=None, shell=False, check_result=True):
             raise e
         else:
             return_code = e.returncode
+            output = e.output
     return output, return_code
 
 

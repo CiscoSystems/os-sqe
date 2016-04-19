@@ -20,8 +20,19 @@ from ci.lib import test_ironic
 
 class IronicCIMCDriverTestCase(test_ironic.IronicTestCase):
 
-    enabled_driver = "pxe_iscsi_cimc"
+    enabled_driver = "pxe_ucs"
 
     def test_tempest(self):
         self.start_devstack()
+
+        # Update ironic node to use UCSM driver
+        (result, code) = self.run_cmd_with_openrc(
+            'ironic node-update node-0 add '
+            'properties/capabilities=\"boot_option:local\""')
+
+        # Update nova flavor to enable local boot
+        (result, code) = self.run_cmd_with_openrc(
+            'nova flavor-key baremetal set '
+            'capabilities:boot_option=\"local\""')
+
         self.run_ironic_tempest()
