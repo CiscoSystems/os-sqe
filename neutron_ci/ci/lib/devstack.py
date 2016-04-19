@@ -222,7 +222,7 @@ class DevStack(object):
                 if all_plugin:
                     cmd += ' -eall-plugin'
                 else:
-                    cmd += ' -aall'
+                    cmd += ' -eall'
 
                 cmd += ' -- {0}'.format(testr_args)
 
