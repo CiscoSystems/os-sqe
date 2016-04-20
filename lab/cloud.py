@@ -277,7 +277,8 @@ export OS_AUTH_URL={end_point}
             time.sleep(30)
 
     def create_image(self, name, url):
-        self.cmd('openstack image create {name} --public --disk-format qcow2 --protected --location {url} --container-format bare'.format(name=name, url=url))
+        image_path = self.mediator.wget_file(url=url, to_directory='cloud_images')
+        self.cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
         return name
 
     def cleanup(self):
