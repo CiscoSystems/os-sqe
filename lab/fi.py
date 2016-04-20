@@ -235,7 +235,7 @@ exit
         # run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_pool), shell=False)
 
         for wire in self._downstream_wires:
-            server = wire.get_node_s()
+            server = wire.get_peer_node(self)
             server_id, service_profile_name = server.get_ucsm_info()
             is_sriov = self.lab().is_sriov()
             ipmi_ip, _, _ = server.get_ipmi()
@@ -250,7 +250,7 @@ exit
                 vlans = self.lab().get_net_vlans(vnic.get_name())
                 self.create_vnic_with_vlans(profile=service_profile_name, vnic=vnic.get_name(), mac=vnic.get_mac(), order=order, vlans=vlans)
 
-                if is_sriov and vnic.get_name() in ['eth1']:
+                if is_sriov and 'compute' in service_profile_name and vnic.get_name() in ['eth1']:
                     self.set_dynamic_vnic_connection_policy(profile=service_profile_name, vnic=vnic, policy_name=dynamic_vnic_policy_name)
 
             self.set_boot_policy_to_service_profile(profile=service_profile_name, policy_name='pxe-ext' if 'director' in server.name() else 'pxe-int')
