@@ -357,3 +357,12 @@ class DevStack(object):
         with settings(host_string=self.host_string, warn_only=True):
             run("for pid in `ps -ef | grep python | "
                 "awk '{print $2}'`; do  sudo kill -9 $pid; done")
+
+    def openstack_run(self, cmd, user='admin', tenant='admin'):
+        with settings(host_string=self.host_string, warn_only=True), cd(self._clone_path):
+            return run('source .openrc {user} {tenant} && {cmd}'.format(
+                cmd=cmd, user=user, tenant=tenant)).stdout
+
+    def run_cmd(self, cmd):
+        with settings(host_string=self.host_string, warn_only=True):
+            return run(cmd).stdout
