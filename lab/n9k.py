@@ -42,7 +42,7 @@ class Nexus(LabNode):
             commands = commands.strip('[]')
             commands = commands.split(',')
 
-        results = self._rest_api(commands=commands, timeout=timeout)
+        results = self._rest_api(commands=commands, timeout=int(timeout))
         if len(commands) == 1:
             results = [results]
         for i, x in enumerate(results, start=0):
