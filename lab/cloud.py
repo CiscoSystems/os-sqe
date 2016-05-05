@@ -258,7 +258,7 @@ export OS_AUTH_URL={end_point}
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, on_ports))
         instance_name = '{sqe_pref}-{name}'.format(sqe_pref=self._unique_pattern_in_name, name=name)
         self.cmd('openstack server create {name} --flavor {flavor} --image "{image}" --security-group default --key-name sqe-test-key1 {ports_part}'.format(name=instance_name, flavor=flavor, image=image, ports_part=ports_part))
-        self.wait_instances_ready(names=[name])
+        self.wait_instances_ready(names=[instance_name])
         return instance_name
 
     def wait_instances_ready(self, names=None):
