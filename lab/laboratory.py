@@ -208,7 +208,11 @@ class Laboratory(with_config.WithConfig):
 
         if type(node) in [FiServer, CimcServer]:
             for nic_name in n_d.get('nets', []):
-                nic = node.add_nic(nic_name=nic_name, mac=self._cfg['nets'][nic_name]['mac-net-part'])
+                if nic_name in self._cfg['nets']:
+                    mac = self._cfg['nets'][nic_name]['mac-net-part']
+                else:
+                    raise ValueError('Node "{0}" has NIC name "{1}" which does not match any network'.format(node_name, nic_name))
+                nic = node.add_nic(nic_name=nic_name, mac=mac)
                 self._nets.make_sure_that_object_is_unique(type_of_object=LaboratoryNetworks.MAC, obj=nic.get_mac(), node_name=node.name())
 
         self._nodes[node_name] = node

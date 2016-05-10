@@ -60,6 +60,9 @@ class CimcServer(Server):
     def get_lom_macs(self):
         return map(lambda x: x.Mac, self.get_mo_by_class_id('networkAdapterEthIf'))
 
+    def list_mlom_macs(self):
+        return map(lambda x: x.Mac, self.get_mo_by_class_id('adaptorHostEthIf'))
+
     def disable_pxe_all_intf(self, status):
         adapters = self.get_mo_by_class_id('adaptorHostEthIf')
         for adapter in adapters:
