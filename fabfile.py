@@ -14,31 +14,34 @@ def cmd(config_path):
     from lab.deployers.deployer_existing_osp7 import DeployerExistingOSP7
 
     l = Laboratory(config_path=config_path)
-    print l, 'has: cloud and', sorted(l.get_nodes().keys())
-    device_name = prompt(text='On which device you want to execute the command?')
-    if device_name == 'cloud':
-        d = DeployerExistingOSP7({'cloud': config_path, 'hardware-lab-config': config_path})
-        device = d.wait_for_cloud([])
-    else:
-        device = l.get_node(device_name)
-    method_names = [x for x in dir(device) if not x.startswith('_')]
-    print device,  ' has: \n', '\n'.join(method_names)
     while True:
-        method_name = prompt(text='Which operation you wanna execute? (quit to exit) ')
-        if method_name == 'quit':
-            break
-        method_to_execute = getattr(device, method_name)
-        parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
-        arguments = []
-        for parameter in parameters:
-            argument = prompt(text='{p}=? '.format(p=parameter))
-            if argument.startswith('['):
-                argument = argument.strip('[]').split(',')
-            arguments.append(argument)
-        results = method_to_execute(*arguments)
+        print l, 'has: cloud and', sorted(l.get_nodes().keys())
+        device_name = prompt(text='On which device you want to execute the command?')
+        if device_name == 'cloud':
+            d = DeployerExistingOSP7({'cloud': config_path, 'hardware-lab-config': config_path})
+            device = d.wait_for_cloud([])
+        else:
+            device = l.get_node(device_name)
+        method_names = [x for x in dir(device) if not x.startswith('_')]
+        print device,  ' has: \n', '\n'.join(method_names)
+        while True:
+            method_name = prompt(text='Which operation you wanna execute? ("quit" to exit, "node" to select new node) ')
+            if method_name == 'quit':
+                return
+            elif method_name == 'node':
+                break
+            method_to_execute = getattr(device, method_name)
+            parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
+            arguments = []
+            for parameter in parameters:
+                argument = prompt(text='{p}=? '.format(p=parameter))
+                if argument.startswith('['):
+                    argument = argument.strip('[]').split(',')
+                arguments.append(argument)
+            results = method_to_execute(*arguments)
 
-        sleep(1)
-        print '\nRESULTS:\n', results
+            sleep(1)
+            print '\n{0} RESULTS:\n\n'.format(device), results
 
 
 @task
