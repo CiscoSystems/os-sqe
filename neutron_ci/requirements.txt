@@ -5,3 +5,4 @@ testtools
 netifaces
 nose
 fabric
+netaddr
