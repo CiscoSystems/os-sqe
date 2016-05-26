@@ -14,7 +14,7 @@ def cmd(config_path):
     from lab.deployers.deployer_existing_osp7 import DeployerExistingOSP7
 
     l = Laboratory(config_path=config_path)
-    nodes = sorted(l.get_nodes().keys())
+    nodes = sorted(map(lambda node: node.name(), l.get_nodes()))
     while True:
         print l, 'has: cloud and', nodes
         device_name = prompt(text='On which device you want to execute the command?')

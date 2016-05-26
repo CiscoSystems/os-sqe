@@ -52,7 +52,7 @@ class Server(LabNode):
     def __init__(self, name, role, ip, lab, username='??InServer', password='ssh_key', hostname='??InServer'):
         self._tmp_dir_exists = False
         self._package_manager = None
-        self._ipmi_ip, self._ipmp_username, self._ipmi_password = None, None, None
+        self._ipmi_ip, self._ipmi_username, self._ipmi_password = None, None, None
         self._mac_server_part = None
         self._nics = list()  # list of NICs
         self._is_nics_formed = False
@@ -60,13 +60,13 @@ class Server(LabNode):
         super(Server, self).__init__(name=name, role=role, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
 
     def __repr__(self):
-        return '{s} | ipmitool -I lanplus -H {i} -U {u} -P {p}'.format(s=super(Server, self).__repr__(), i=self._ipmi_ip, u=self._ipmp_username, p=self._ipmi_password)
+        return '{s} | ipmitool -I lanplus -H {i} -U {u} -P {p}'.format(s=super(Server, self).__repr__(), i=self._ipmi_ip, u=self._ipmi_username, p=self._ipmi_password)
 
     def set_ipmi(self, ip, username, password):
-        self._ipmi_ip, self._ipmp_username, self._ipmi_password = ip, username, password
+        self._ipmi_ip, self._ipmi_username, self._ipmi_password = ip, username, password
 
     def get_ipmi(self):
-        return self._ipmi_ip, self._ipmp_username, self._ipmi_password
+        return self._ipmi_ip, self._ipmi_username, self._ipmi_password
 
     def add_nic(self, nic_name, mac, vlans):
         nic = Nic(name=nic_name, mac=mac, node=self, vlans=vlans)
@@ -109,8 +109,8 @@ class Server(LabNode):
             kwargs['password'] = self._password
         return kwargs
 
-    def cmd(self, command, in_directory='.', warn_only=False):
-        return NotImplementedError
+    def cmd(self, cmd):
+        raise NotImplementedError
 
     def run(self, command, in_directory='.', warn_only=False):
         """Do run with possible sudo on remote server

@@ -1,4 +1,4 @@
-from lab_node import LabNode
+from lab.lab_node import LabNode
 
 
 class Tor(LabNode):

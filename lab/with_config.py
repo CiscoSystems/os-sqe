@@ -59,7 +59,7 @@ def read_config_from_file(yaml_path, directory='', is_as_string=False):
     import yaml
     import requests
     import validators
-    from logger import lab_logger
+    from lab.logger import lab_logger
 
     actual_path = actual_path_to_config(path=yaml_path, directory=directory)
 
