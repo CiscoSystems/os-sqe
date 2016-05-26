@@ -31,7 +31,7 @@ class FI(LabNode):
         self._version = None
         self._vip = 'Not set in FI ctor'
         self._is_sriov = False
-        super(FI, self).__init__(name=name, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
+        super(FI, self).__init__(name=name, role='fi', ip=ip, username=username, password=password, lab=lab, hostname=hostname)
 
     def set_vip(self, vip):
         self._vip = vip

@@ -3,13 +3,14 @@ from lab.lab_node import LabNode
 
 class Nic(object):
     def __repr__(self):
-        return u'{0} {1}'.format(self._name, self._mac)
+        return u'{0} {1} vlans={2}'.format(self._name, self._mac, self._vlans)
 
-    def __init__(self, name, mac, node):
+    def __init__(self, name, mac, node, vlans=None):
         import validators
 
         self._node = node  # nic belongs to the node
         self._name = name
+        self._vlans = vlans or []
         if validators.mac_address(mac):
             self._mac, self._is_vnic = mac, False
         else:
@@ -20,6 +21,9 @@ class Nic(object):
 
     def get_name(self):
         return self._name
+
+    def get_vlans(self):
+        return self._vlans
 
     def is_vnic(self):
         return self._is_vnic
@@ -45,7 +49,7 @@ class Server(LabNode):
             #     self._tmp_dir_exists = self.run('mkdir -p {0}'.format(self._temp_dir)).return_code == 0
         return self._temp_dir if self._tmp_dir_exists else None
 
-    def __init__(self, name, ip, lab, username='??InServer', password='ssh_key', hostname='??InServer'):
+    def __init__(self, name, role, ip, lab, username='??InServer', password='ssh_key', hostname='??InServer'):
         self._tmp_dir_exists = False
         self._package_manager = None
         self._ipmi_ip, self._ipmp_username, self._ipmi_password = None, None, None
@@ -53,7 +57,7 @@ class Server(LabNode):
         self._nics = list()  # list of NICs
         self._is_nics_formed = False
 
-        super(Server, self).__init__(name=name, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
+        super(Server, self).__init__(name=name, role=role, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
 
     def __repr__(self):
         return '{s} | ipmitool -I lanplus -H {i} -U {u} -P {p}'.format(s=super(Server, self).__repr__(), i=self._ipmi_ip, u=self._ipmp_username, p=self._ipmi_password)
@@ -64,8 +68,8 @@ class Server(LabNode):
     def get_ipmi(self):
         return self._ipmi_ip, self._ipmp_username, self._ipmi_password
 
-    def add_nic(self, nic_name, mac):
-        nic = Nic(name=nic_name, mac=mac, node=self)
+    def add_nic(self, nic_name, mac, vlans):
+        nic = Nic(name=nic_name, mac=mac, node=self, vlans=vlans)
         self._nics.append(nic)
         return nic
 
@@ -74,6 +78,13 @@ class Server(LabNode):
 
     def get_nics(self):
         return self._nics
+
+    def get_vlans(self):
+        """ Get all vlans which need to reach this server"""
+        vlans = []
+        for nic in self.get_nics():
+            vlans.extend(nic.get_vlans())
+        return vlans
 
     def get_package_manager(self):
         if not self._package_manager:
@@ -241,7 +252,7 @@ class Server(LabNode):
 
         for package_name in package_names.split():
             if self.run(command='whereis {0}'.format(package_name)) == package_name + ':':
-                self.run(command='sudo {0} install -y {1}'.format(pm, package_name))
+                self.run(command='sudo {0} install -y {1}'.format(pm, package_names))
 
     def clone_repo(self, repo_url, local_repo_dir=None, tags=None, patch=None):
         import urlparse

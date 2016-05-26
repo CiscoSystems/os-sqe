@@ -14,12 +14,16 @@ def cmd(config_path):
     from lab.deployers.deployer_existing_osp7 import DeployerExistingOSP7
 
     l = Laboratory(config_path=config_path)
+    nodes = sorted(l.get_nodes().keys())
     while True:
-        print l, 'has: cloud and', sorted(l.get_nodes().keys())
+        print l, 'has: cloud and', nodes
         device_name = prompt(text='On which device you want to execute the command?')
         if device_name == 'cloud':
             d = DeployerExistingOSP7({'cloud': config_path, 'hardware-lab-config': config_path})
             device = d.wait_for_cloud([])
+        elif device_name not in nodes:
+            print device_name, 'is not available'
+            continue
         else:
             device = l.get_node(device_name)
         method_names = [x for x in dir(device) if not x.startswith('_')]
@@ -30,6 +34,9 @@ def cmd(config_path):
                 return
             elif method_name == 'node':
                 break
+            elif method_name not in method_names:
+                print method_name, 'is not available'
+                continue
             method_to_execute = getattr(device, method_name)
             parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
             arguments = []
@@ -37,6 +44,10 @@ def cmd(config_path):
                 argument = prompt(text='{p}=? '.format(p=parameter))
                 if argument.startswith('['):
                     argument = argument.strip('[]').split(',')
+                elif argument in ['True', 'true', 'yes']:
+                    argument = True
+                elif argument in ['False', 'false', 'no']:
+                    argument = False
                 arguments.append(argument)
             results = method_to_execute(*arguments)
 
@@ -56,7 +67,7 @@ def deploy(config_path, is_for_mercury=False, topology='VLAN'):
 
     l = Laboratory(config_path=config_path)
     if is_for_mercury:
-        l.configure_for_mercury()
+        l.configure_for_mercury(topology=topology)
     else:
         l.configure_for_osp7(topology=topology)
 

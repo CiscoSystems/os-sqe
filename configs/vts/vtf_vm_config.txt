@@ -1,0 +1,25 @@
+# This is a sample day0 configuration file
+# Copyright (c) 2015 cisco Systems
+
+# VTS Information
+VTS_ADDRESS={vtc_loc_ip}
+VTS_REGISTRATION_USERNAME="admin"
+VTS_REGISTRATION_PASSWORD="Cisco123!"
+
+# VTC/VTF Network Configuration
+HOSTNAME="VTF-{compute_hostname}"
+COMPUTE_HOSTNAME="{compute_hostname}"
+NTP_SERVER="{ntp_ip}"
+NETWORK_NAMESERVER_IP="{dns_ip}"
+NETWORK_CONFIG_METHOD="static"
+NETWORK_IP_ADDRESS="{loc_ip}"
+NETWORK_IP_NETMASK="{loc_netmask}"
+NETWORK_IP_GATEWAY="{loc_gw}"
+
+# VTC/VTF Admin user/password hash
+USERNAME='cisco'
+# Generate with openssl passwd -1 -salt <salt> <password>
+# cisco/cisco123
+PASSWORD_HASH='$1$xxx$J3aa90XAPYg6HSNUUUD2o1'
+
+VTS_REGISTRATION_API="https://{vtc_loc_ip}:8888/api/running/cisco-vts/vtfs/vtf"

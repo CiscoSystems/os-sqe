@@ -1,0 +1,2 @@
+deployer1: {lab.deployers.deployer_existing.DeployerExisting: {cloud: g7-2, hardware-lab-config: artifacts/g7-2.yaml }}
+deployer2: {lab.deployers.deployer_vts.DeployerVts: {'images-location': 'http://172.29.173.233/vts/nightly-2016-04-30/'}}

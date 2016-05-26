@@ -137,6 +137,8 @@ export OS_AUTH_URL={end_point}
         if not self._fip_network:
             ans = self.cmd('neutron net-list --router:external=True -c name')
             net_names = self._names_from_answer(ans)
+            if not net_names:
+                return
             self._fip_network = net_names[0]
             ans = self.cmd('neutron net-list -c provider:physical_network --name {0}'.format(self._fip_network))
             self._provider_physical_network = filter(lambda x: x not in ['provider:physical_network', '|', '+---------------------------+'], ans.split())[0]
@@ -326,11 +328,11 @@ export OS_AUTH_URL={end_point}
         for line in openrc_as_string.split('\n'):
             if 'OS_USERNAME' in line:
                 user = line.split('=')[-1].strip()
-            if 'OS_TENANT_NAME' in line:
+            elif 'OS_TENANT_NAME' in line:
                 tenant = line.split('=')[-1].strip()
-            if 'OS_PASSWORD' in line:
+            elif 'OS_PASSWORD' in line:
                 password = line.split('=')[-1].strip()
-            if 'OS_AUTH_URL' in line:
+            elif 'OS_AUTH_URL' in line:
                 end_point = line.split('=')[-1].strip()
 
         return Cloud(cloud=name, user=user, tenant=tenant, admin=tenant, password=password, end_point=end_point, mediator=mediator)

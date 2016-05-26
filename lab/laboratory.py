@@ -15,10 +15,15 @@ class LaboratoryNetworks(object):
         self._vlans = {}
         self._ssh_net = None
         self._ipmi_net = None
+        self._vlans_to_tor = {}
 
         for net_name, net_desc in cfg['nets'].iteritems():
             self._nets[net_name] = IPNetwork(net_desc.get('cidr', '1'))
-            self._vlans[net_name] = net_desc.get('vlan', [])
+            vlans = net_desc.get('vlan', [])
+            self._vlans[net_name] = vlans
+            if net_desc.get('is_routable', False):
+                self._vlans_to_tor[net_name] = vlans
+
             if net_desc.get('is_ssh', False):
                 self._ssh_net = self._nets[net_name]
             if net_desc.get('is_ipmi', False):
@@ -52,9 +57,7 @@ class LaboratoryNetworks(object):
 
         ip_or_index = node_description.get(ssh_or_ipmi)
 
-        if validators.ipv4(str(ip_or_index)):
-            ip = netaddr.IPAddress(ip_or_index)
-        else:
+        try:
             index = int(ip_or_index)
             net = self._ssh_net if ssh_or_ipmi == 'ssh_ip' else self._ipmi_net
             if index in [0, 1, 2, 3, -1]:
@@ -62,12 +65,20 @@ class LaboratoryNetworks(object):
             try:
                 ip = net[index]
             except (IndexError, ValueError):
-                raise ValueError('{0} index {1} is not in {2}'.format(index, net))
+                raise ValueError('index {0} is not in {1}'.format(index, net))
+        except ValueError:
+            if validators.ipv4(str(ip_or_index)):
+                ip = netaddr.IPAddress(ip_or_index)
+            else:
+                raise ValueError('IP address "{0}" for node "{1}" is invalid'.format(ip_or_index, node_name))
         self.make_sure_that_object_is_unique(type_of_object=self.IPV4, obj=ip, node_name=node_name)
         return ip
 
     def get_vlans(self, net_name):
         return self._vlans[net_name]
+
+    def get_vlans_to_tor(self):
+        return self._vlans_to_tor
 
     def get_ssh_net(self):
         return self._ssh_net
@@ -94,19 +105,26 @@ class Laboratory(with_config.WithConfig):
 
         with open(with_config.KEY_PUBLIC_PATH) as f:
             self.public_key = f.read()
-        self._nodes = dict()
+        self._nodes = list()
+        self._director = None
         self._cfg = self.read_config_from_file(config_path=config_path)
         self._id = self._cfg['lab-id']
         self._lab_name = self._cfg['lab-name']
-        self._is_sriov = self._cfg['use-sr-iov']
+        self._is_sriov = self._cfg.get('use-sr-iov', False)
 
         self._ssh_username, self._ssh_password = self._cfg['cred']['ssh_username'], self._cfg['cred']['ssh_password']
         self._ipmi_username, self._ipmi_password = self._cfg['cred']['ipmi_username'], self._cfg['cred']['ipmi_password']
         self._neutron_username, self._neutron_password = self._cfg['cred']['neutron_username'], self._cfg['cred']['neutron_password']
 
         self._nets = LaboratoryNetworks(cfg=self._cfg)
-        for name, wires in self._cfg['wires'].iteritems():
-            self._process_single_connection(name=name, wires=wires)
+        for node_description in self._cfg['nodes']:
+            self._process_single_node(node_description)
+
+        if not self._director:
+            self._director = self.get_controllers()[0]  # assign first controller as director if no director node specified in yaml config
+
+        for peer in self._cfg['peer-links']:
+            pass
 
     def get_ssh_net(self):
         return self._nets.get_ssh_net()
@@ -120,102 +138,90 @@ class Laboratory(with_config.WithConfig):
     def get_common_ssh_creds(self):
         return self._ssh_username, self._ssh_password
 
-    def _process_single_connection(self, name, wires):
+    def _process_single_node(self, node_description):
         from lab.wire import Wire
 
-        def get_port_id(dev_port):
+        own_node = self._create_node(node_description)
+
+        peer_node = None
+        for wire in node_description.get('wires', []):  # Example {MLOMl/0: {peer: N9K-C9372PX-ru8-1/26, mac: '00:FE:C8:E4:CD:1D'}}
             try:
-                dev_role, dev_id, port = dev_port.split('-')
-                return port
-            except (UnboundLocalError, ValueError):
-                raise KeyError('you provided {0} as full port id, while expected like Nexus-1-1/31'.format(dev_port))
+                own_port = wire['own-port']
+                own_mac = wire['own-mac']
+                peer_id = wire['peer-id']
+                peer_port = wire['peer-port']
+                vlans = wire.get('vlans', [])
+                own_nic = wire.get('nic', None)
+            except (ValueError, KeyError):
+                raise KeyError('you provided {0} as wire description, while expected something like {own-port: 1/48, peer-id: tor-N9K-C9372PX-ru25, peer-port: 1/46, own-mac: None}'.format(wire))
+            peer_node = peer_node or self.get_node(peer_id)
+            Wire(node_n=peer_node, port_n=peer_port, node_s=own_node, port_s=own_port, mac_s=own_mac, nic_s=own_nic, vlans=vlans)
 
-        for s, n in wires.iteritems():  # sample value: Director-1-3/1:  FI-1-1/10
-            port_s = get_port_id(s)
-            port_n = get_port_id(n)
-            node_n = self._get_or_create_node(n)  # first north node, servers could not be north
-            node_s = self._get_or_create_node(s, node_n)  # now create south node which might be server
-
-            Wire(node_n=node_n, num_n=port_n, node_s=node_s, num_s=port_s, name=name)
-
-    @staticmethod
-    def _get_role_class(role, peer_device):
-        from lab.fi import FI
+    def _create_node(self, node_description):
+        from lab.fi import FI, FiServer
         from lab.n9k import Nexus
         from lab.asr import Asr
         from lab.tor import Tor
         from lab.cobbler import CobblerServer
-        from lab.fi import FiServer
         from lab.cimc import CimcServer
 
-        possible_roles = ['cobbler', 'nexus', 'asr', 'fi', 'director', 'control', 'compute', 'ceph', 'tor']
+        try:
+            node_id = node_description['id']
+        except KeyError:
+            ValueError('id for node "{0}" is not porvided'.format(node_description))
 
-        if role in ['director', 'control', 'compute', 'ceph']:
-            klass = FiServer if type(peer_device) is FI else CimcServer
-        elif role == 'cobbler':
+        possible_roles = ['tor', 'terminal', 'cobbler', 'oob', 'pxe', 'n9', 'nexus', 'asr', 'fi', 'ucsm', 'director-fi', 'director-n9', 'control-fi', 'control-n9' 'compute-fi', 'compute-n9', 'ceph-fi', 'ceph-n9']
+        try:
+            role = node_description['role']
+        except KeyError:
+            raise ValueError(' {0} does not define its role'.format(node_description))
+
+        role = role.lower()
+        if role == 'cobbler':
             klass = CobblerServer
         elif role == 'asr':
             klass = Asr
-        elif role == 'nexus':
+        elif role == 'nexus' or role == 'n9':
             klass = Nexus
-        elif role == 'fi':
+        elif role == 'fi' or role == 'ucsm':
             klass = FI
-        elif role == 'tor':
+        elif role in ['tor', 'pxe', 'oob', 'terminal']:
             klass = Tor
+        elif role in ['director-fi', 'compute-fi', 'control-fi', 'ceph-fi']:
+            klass = FiServer
+        elif role in ['director-n9', 'compute-n9', 'control-n9', 'ceph-n9']:
+            klass = CimcServer
         else:
-            raise ValueError(role + ' is not known,  should be one of: ' + ', '.join(possible_roles))
-        return klass
+            raise ValueError('role "{0}" is not known,  should be one of: {1}'.format(role, possible_roles))
 
-    def _get_or_create_node(self, node_port, peer_device=None):
-        from lab.fi import FI, FiServer
-        from lab.cimc import CimcServer
-
-        try:
-            role, id_in_role, port = node_port.split('-')
-        except (UnboundLocalError, ValueError):
-            raise ValueError(node_port + ' is not of role-id-port pattern.')
-
-        node_name = '-'.join([role, id_in_role])
-
-        if node_name in self._nodes:  # if we're lucky , this node was created on previous call to this method
-            return self.get_node(node_name)
-
-        if not role.islower():
-            raise ValueError(role + ' is not lower case.')
-
-        try:
-            n_d = self._cfg['nodes'][node_name]
-        except KeyError:
-            raise ValueError(node_name + ' is not found in section "nodes"')
-
-        klass = self._get_role_class(role=role, peer_device=peer_device)
-
-        node = klass(lab=self, name=node_name,
-                     ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_name, node_description=n_d, ssh_or_ipmi='ssh_ip'),
-                     username=n_d.get('username', self._ssh_username),
-                     password=n_d.get('password', self._ssh_password),
-                     hostname=n_d.get('hostname', 'NotConfiguredInYaml'))
+        node = klass(lab=self, name=node_id, role=role,
+                     ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_id, node_description=node_description, ssh_or_ipmi='ssh_ip'),
+                     username=node_description.get('username', self._ssh_username),
+                     password=node_description.get('password', self._ssh_password),
+                     hostname=node_description.get('hostname', 'NotConfiguredInYaml'))
         if 'set_ipmi' in dir(node):
-            node.set_ipmi(ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_name, node_description=n_d, ssh_or_ipmi='ipmi_ip'),
-                          username=n_d.get('ipmi_username', self._ipmi_username),
-                          password=n_d.get('ipmi_password', self._ipmi_password))
+            node.set_ipmi(ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_id, node_description=node_description, ssh_or_ipmi='ipmi_ip'),
+                          username=node_description.get('ipmi_username', self._ipmi_username),
+                          password=node_description.get('ipmi_password', self._ipmi_password))
 
-        if type(node) is FiServer:
-            node.set_ucsm_id(port)
-        elif type(node) is FI:
-            node.set_vip(n_d['vip'])
-            node.set_sriov(self._is_sriov)
+        # if type(node) is FiServer:
+        #     node.set_ucsm_id(port_id)
+        # elif type(node) is FI:
+        #     node.set_vip(node_description['vip'])
+        #     node.set_sriov(self._is_sriov)
 
-        if type(node) in [FiServer, CimcServer]:
-            for nic_name in n_d.get('nets', []):
-                if nic_name in self._cfg['nets']:
-                    mac = self._cfg['nets'][nic_name]['mac-net-part']
-                else:
-                    raise ValueError('Node "{0}" has NIC name "{1}" which does not match any network'.format(node_name, nic_name))
-                nic = node.add_nic(nic_name=nic_name, mac=mac)
-                self._nets.make_sure_that_object_is_unique(type_of_object=LaboratoryNetworks.MAC, obj=nic.get_mac(), node_name=node.name())
+        # if type(node) in [FiServer, CimcServer]:
+        #     for nic_name in node_description.get('nets', []):
+        #         if nic_name in self._cfg['nets']:
+        #             mac = self._cfg['nets'][nic_name]['mac-net-part']
+        #         else:
+        #             raise ValueError('Node "{0}" has NIC name "{1}" which does not match any network'.format(node_id, nic_name))
+        #
+        #         self._nets.make_sure_that_object_is_unique(type_of_object=LaboratoryNetworks.MAC, obj=nic.get_mac(), node_name=node.name())
 
-        self._nodes[node_name] = node
+        self._nodes.append(node)
+        if 'director' in node.role():
+            self._director = node
         return node
 
     def get_id(self):
@@ -223,12 +229,12 @@ class Laboratory(with_config.WithConfig):
 
     def get_nodes(self, klass=None):
         if klass:
-            return filter(lambda x: isinstance(x, klass), self._nodes.values())
+            return filter(lambda x: isinstance(x, klass), self._nodes)
         else:
             return self._nodes
 
-    def get_node(self, name):
-        return self._nodes[name]
+    def get_node(self, node_id):
+        return filter(lambda x: x.name() == node_id, self._nodes)[0]
 
     def get_fi(self):
         from lab.fi import FI
@@ -246,14 +252,13 @@ class Laboratory(with_config.WithConfig):
         return self.get_nodes(Asr)
 
     def get_cobbler(self):
-        return self._nodes['cobbler-1']
+        return self._get_servers_for_role('cobbler')[0]
 
     def get_director(self):
-        return self._nodes['director-1']
+        return self._director
 
     def _get_servers_for_role(self, role):
-        keys = filter(lambda x: role in x, self._nodes.keys())
-        return [self._nodes[key] for key in keys]
+        return filter(lambda x: role in x.role(), self._nodes)
 
     def get_controllers(self):
         return self._get_servers_for_role('control')
@@ -269,6 +274,9 @@ class Laboratory(with_config.WithConfig):
     def get_all_vlans(self):
         return sorted(set(reduce(lambda l, x: l + (x['vlan']), self._cfg['nets'].values(), [])))
 
+    def get_vlans_to_tor(self):
+        return sorted(self._nets.get_vlans_to_tor())
+
     def get_net_vlans(self, net_name):
         return self._nets.get_vlans(net_name)
 
@@ -282,7 +290,7 @@ class Laboratory(with_config.WithConfig):
         return self._cfg['vlan_range']
 
     def count_role(self, role_name):
-        return len([x for x in self._nodes.keys() if role_name in x])
+        return len([x for x in self._nodes if role_name in x.role()])
 
     def logstash_creds(self):
         return self._cfg['logstash']
@@ -293,15 +301,13 @@ class Laboratory(with_config.WithConfig):
         self.create_config_file_for_osp7_install(topology)
         self.get_cobbler().configure_for_osp7()
         map(lambda x: x.cleanup(), self.get_n9())
-        map(lambda x: x.configure_for_osp7(topology), self.get_n9())
+        map(lambda x: x.configure_for_lab(topology), self.get_n9())
         map(lambda x: x.configure_for_osp7(), self.get_cimc_servers())
         map(lambda x: x.configure_for_osp7(topology), self.get_asr1ks())
         self.get_fi()[0].configure_for_osp7()
 
-    def configure_for_mercury(self):
-        self.get_cobbler().configure_for_osp7()
-        map(lambda x: x.configure_for_mercury(), self.get_n9())
-        map(lambda x: x.configure_for_mercury(), self.get_cimc_servers())
+    def configure_for_mercury(self, topology):
+        map(lambda x: x.configure_for_lab(topology), self.get_n9())
 
     def create_config_file_for_osp7_install(self, topology=TOPOLOGY_VLAN):
         import os

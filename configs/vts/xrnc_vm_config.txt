@@ -1,0 +1,35 @@
+# VTS Information
+VTS_ADDRESS="{vtc_ssh_ip}"
+VTS_REGISTRATION_USERNAME="admin"
+VTS_REGISTRATION_PASSWORD="Cisco123!"
+
+# VTC/VTF Network Configuration
+HOSTNAME="DL-{lab_name}"
+NTP_SERVER="{ntp_ip}"
+NETWORK_CONFIG_METHOD="static"
+NETWORK_NAMESERVER_IP="{dns_ip}"
+UNDERLAY_NETWORK_CONFIG_METHOD="static"
+UNDERLAY_NETWORK_IP_ADDRESS="{loc_ip_dl}"
+UNDERLAY_NETWORK_IP_NETMASK="{loc_netmask}"
+
+MGMT_NETWORK_CONFIG_METHOD="static"
+MGMT_NETWORK_IP_ADDRESS="{ssh_ip_dl}"
+MGMT_NETWORK_IP_NETMASK="{ssh_netmask}"
+MGMT_NETWORK_IP_GATEWAY="{ssh_gw}"
+
+# VTC/VTF Admin user/password hash
+USERNAME='cisco'
+# Generate with openssl passwd -1 -salt <salt> <password>
+# cisco/cisco123
+PASSWORD_HASH='$1$xxx$J3aa90XAPYg6HSNUUUD2o1'
+
+# XRVR Specific Settings (VTC only)
+XRVR_USERNAME="admin"
+XRVR_PASSWORD="{password}"
+XRVR_STATIC_MGMT_IP="{ssh_ip_xrvr}/{ssh_prefixlen}"
+XRVR_STATIC_UNDERLAY_IP="{loc_ip_xrvr}/{loc_prefixlen}"
+XRVR_NAME="XRVR-{lab_name}"
+VTS_REGISTRATION_API="https://{vtc_ssh_ip}:8888/api/running/devices/device/"
+XRVR_VTS_SSH_API="https://{vtc_ssh_ip}:8888/api/running/devices/device/XRVR-{lab_name}/ssh/host-key/ssh-rsa"
+XRVR_VTS_SYNCFROM_API="https://{vtc_ssh_ip}:8888/api/running/devices/device/XRVR-{lab_name}/vts-sync-xrvr/_operations/sync"
+XRVR_VTS_GROUP_API="https://{vtc_ssh_ip}:8888/api/running/cisco-vts/xrvr-groups/xrvr-group/"

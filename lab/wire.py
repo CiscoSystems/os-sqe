@@ -1,14 +1,15 @@
 class Wire(object):
     def __repr__(self):
-        return u'S:{sn}:{sp} -> N:{nn}:{np} ({pc})'.format(sn=self.get_node_s().name(), sp=self.get_port_s(), nn=self.get_node_n().name(), np=self.get_port_n(), pc=self.get_pc_id())
+        return u'S:{sn}:{sp} -> N:{nn}:{np} ({pc}) on vlans: {vlan}'.format(sn=self.get_node_s().name(), sp=self.get_port_s(), nn=self.get_node_n().name(), np=self.get_port_n(), pc=self.get_pc_id(), vlan=self._vlans)
 
-    def __init__(self, node_n, num_n, node_s, num_s, name):
-        self._node_N = node_n  # always north bound networking device
-        self._port_N = str(num_n)
+    def __init__(self, node_n, port_n, node_s, port_s, mac_s, nic_s, vlans):
+        self._node_N = node_n
+        self._port_N = str(port_n)
         self._node_S = node_s
-        self._port_S = str(num_s)
-        self._pc_id = self._calculate_pc_id(name=name)
+        self._port_S = str(port_s)
+        self._pc_id = self._calculate_pc_id(name='super')
         self._is_peer_link = self.is_n9_n9()
+        self._vlans = vlans
 
         self._is_intentionally_down = False
 
@@ -18,6 +19,8 @@ class Wire(object):
         else:
             self._node_N.wire_downstream(self)
             self._node_S.wire_upstream(self)
+            if nic_s:
+                self._node_S.add_nic(nic_name=nic_s, mac=mac_s, vlans=vlans)
 
     def _calculate_pc_id(self, name):
         """Split pc_id in integer and name part. Example 81-fi-1 will give 81, fi-1
@@ -34,7 +37,7 @@ class Wire(object):
             if self.is_n9_tor():
                 pc_id = 300
             elif self.is_n9_n9():
-                pc_id = 301
+                pc_id = 100
             elif self.is_n9_fi():
                 pc_id = self._node_S.node_index()
                 if pc_id >= 256:
