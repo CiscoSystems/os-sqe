@@ -17,7 +17,7 @@ class LaboratoryNetworks(object):
         self._ipmi_net = None
         self._vlans_to_tor = {}
 
-        for net_name, net_desc in cfg['nets'].iteritems():
+        for net_name, net_desc in cfg['nets'].items():
             self._nets[net_name] = IPNetwork(net_desc.get('cidr', '1'))
             vlans = net_desc.get('vlan', [])
             self._vlans[net_name] = vlans
@@ -51,28 +51,38 @@ class LaboratoryNetworks(object):
                 raise ValueError('{0} is not valid {1}'.format(obj, type_of_object))
             self._unique_dict[type_of_object].update({obj: node_name})
 
-    def get_ip_ssh_or_ipmi(self, node_name, node_description, ssh_or_ipmi):
+    def get_node_credentials(self, node_name, node_description):
         import validators
         import netaddr
 
-        ip_or_index = node_description.get(ssh_or_ipmi)
+        ssh_ip, ssh_username, ssh_password = None, node_description.get('ssh_username'), node_description.get('ssh_password'),
+        ipmi_ip, ipmi_username, ipmi_password = None, node_description.get('ipmi_username'), node_description.get('ipmi_password'),
 
-        try:
-            index = int(ip_or_index)
-            net = self._ssh_net if ssh_or_ipmi == 'ssh_ip' else self._ipmi_net
-            if index in [0, 1, 2, 3, -1]:
-                raise ValueError('IP address index {0} is not possible since 0 is network , 1,2,3 are GWs and -1 is broadcast'.format(node_name))
+        for ip_type in ['ssh_ip', 'ipmi_ip']:
+            ip = node_description.get(ip_type, ssh_ip)
             try:
-                ip = net[index]
-            except (IndexError, ValueError):
-                raise ValueError('index {0} is not in {1}'.format(index, net))
-        except ValueError:
-            if validators.ipv4(str(ip_or_index)):
-                ip = netaddr.IPAddress(ip_or_index)
+                index = int(ip)
+                if index in [0, 1, 2, 3, -1]:
+                    raise ValueError('IP address index {0} is not possible since 0 is network , 1,2,3 are GWs and -1 is broadcast'.format(node_name))
+                net = self._get_net_by_name(ip_type)
+                try:
+                    ip = net[index]
+                except (IndexError, ValueError):
+                    raise ValueError('index {0} is not in {1}'.format(index, net))
+            except ValueError:
+                if validators.ipv4(str(ip)):
+                    ip = netaddr.IPAddress(ip)
+                else:
+                    raise ValueError('IP address "{0}" for node "{1}" is invalid'.format(ip, node_name))
+            if ip_type == 'ssh_ip':
+                ssh_ip = ip
             else:
-                raise ValueError('IP address "{0}" for node "{1}" is invalid'.format(ip_or_index, node_name))
-        self.make_sure_that_object_is_unique(type_of_object=self.IPV4, obj=ip, node_name=node_name)
-        return ip
+                ipmi_ip = ip
+
+        self.make_sure_that_object_is_unique(type_of_object=self.IPV4, obj=ssh_ip, node_name=node_name)
+        if ipmi_ip != ssh_ip:
+            self.make_sure_that_object_is_unique(type_of_object=self.IPV4, obj=ipmi_ip, node_name=node_name)
+        return ssh_ip, ssh_username, ssh_password, ipmi_ip, ipmi_username, ipmi_password
 
     def get_vlans(self, net_name):
         return self._vlans[net_name]
@@ -85,6 +95,12 @@ class LaboratoryNetworks(object):
 
     def get_ipmi_net(self):
         return self._ipmi_net
+
+    def _get_net_by_name(self, name):
+        if 'ssh' in name:
+            return self._ssh_net
+        elif 'ipmi' in name:
+            return self._ipmi_net
 
 
 class Laboratory(with_config.WithConfig):
@@ -153,8 +169,11 @@ class Laboratory(with_config.WithConfig):
                 vlans = wire.get('vlans', [])
                 own_nic = wire.get('nic', None)
             except (ValueError, KeyError):
-                raise KeyError('you provided {0} as wire description, while expected something like {own-port: 1/48, peer-id: tor-N9K-C9372PX-ru25, peer-port: 1/46, own-mac: None}'.format(wire))
-            peer_node = peer_node or self.get_node(peer_id)
+                raise KeyError('you provided {0} as wire description, while expected something like {{own-port: 1/48, peer-id: tor-N9K-C9372PX-ru25, peer-port: 1/46, own-mac: None}}'.format(wire))
+            try:
+                peer_node = peer_node or self.get_node(peer_id)
+            except ValueError:
+                raise ValueError('Wire "{0}" specified wrong peer node id: "{1}"'.format(wire, peer_id))
             Wire(node_n=peer_node, port_n=peer_port, node_s=own_node, port_s=own_port, mac_s=own_mac, nic_s=own_nic, vlans=vlans)
 
     def _create_node(self, node_description):
@@ -164,13 +183,14 @@ class Laboratory(with_config.WithConfig):
         from lab.tor import Tor
         from lab.cobbler import CobblerServer
         from lab.cimc import CimcServer
+        from lab.vts import Vts
 
         try:
             node_id = node_description['id']
         except KeyError:
             ValueError('id for node "{0}" is not porvided'.format(node_description))
 
-        possible_roles = ['tor', 'terminal', 'cobbler', 'oob', 'pxe', 'n9', 'nexus', 'asr', 'fi', 'ucsm', 'director-fi', 'director-n9', 'control-fi', 'control-n9' 'compute-fi', 'compute-n9', 'ceph-fi', 'ceph-n9']
+        possible_roles = ['tor', 'terminal', 'cobbler', 'oob', 'pxe', 'n9', 'nexus', 'asr', 'fi', 'ucsm', 'vtc', 'director-fi', 'director-n9', 'control-fi', 'control-n9' 'compute-fi', 'compute-n9', 'ceph-fi', 'ceph-n9']
         try:
             role = node_description['role']
         except KeyError:
@@ -191,18 +211,17 @@ class Laboratory(with_config.WithConfig):
             klass = FiServer
         elif role in ['director-n9', 'compute-n9', 'control-n9', 'ceph-n9']:
             klass = CimcServer
+        elif role in ['vtc']:
+            klass = Vts
         else:
             raise ValueError('role "{0}" is not known,  should be one of: {1}'.format(role, possible_roles))
 
-        node = klass(lab=self, name=node_id, role=role,
-                     ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_id, node_description=node_description, ssh_or_ipmi='ssh_ip'),
-                     username=node_description.get('username', self._ssh_username),
-                     password=node_description.get('password', self._ssh_password),
-                     hostname=node_description.get('hostname', 'NotConfiguredInYaml'))
+        ssh_ip, ssh_username, ssh_password, ipmi_ip, ipmi_username, ipmi_password = self._nets.get_node_credentials(node_name=node_id, node_description=node_description)
+        hostname = node_description.get('hostname', 'NotConfiguredInYaml')
+
+        node = klass(lab=self, name=node_id, role=role, ip=ssh_ip, username=ssh_username or self._ssh_username, password=ssh_password or self._ssh_password, hostname=hostname)
         if 'set_ipmi' in dir(node):
-            node.set_ipmi(ip=self._nets.get_ip_ssh_or_ipmi(node_name=node_id, node_description=node_description, ssh_or_ipmi='ipmi_ip'),
-                          username=node_description.get('ipmi_username', self._ipmi_username),
-                          password=node_description.get('ipmi_password', self._ipmi_password))
+            node.set_ipmi(ip=ipmi_ip, username=ipmi_username or self._ipmi_username, password=ipmi_password or self._ipmi_password)
 
         # if type(node) is FiServer:
         #     node.set_ucsm_id(port_id)
@@ -234,7 +253,11 @@ class Laboratory(with_config.WithConfig):
             return self._nodes
 
     def get_node(self, node_id):
-        return filter(lambda x: x.name() == node_id, self._nodes)[0]
+        nodes = list(filter(lambda x: x.name() == node_id, self._nodes))
+        if len(nodes) == 1:
+            return nodes[0]
+        else:
+            raise ValueError('Something strange with node_id={0}, list of nodes with this id: {1}'.format(node_id, nodes))
 
     def get_fi(self):
         from lab.fi import FI
@@ -258,7 +281,7 @@ class Laboratory(with_config.WithConfig):
         return self._director
 
     def _get_servers_for_role(self, role):
-        return filter(lambda x: role in x.role(), self._nodes)
+        return list(filter(lambda x: role in x.role(), self._nodes))
 
     def get_controllers(self):
         return self._get_servers_for_role('control')
