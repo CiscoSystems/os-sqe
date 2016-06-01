@@ -1,0 +1,10 @@
+---
+
+- method: lab.monitors.vts_monitor
+  duration: 200
+  period: 2
+
+- method: lab.scenarios.vts_scenario
+  delay: 20
+  how-many-networks: 1
+  how-many-servers: 3

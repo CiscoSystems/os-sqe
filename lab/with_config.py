@@ -1,16 +1,9 @@
 import abc
 import os
 
-REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
-
-KEY_PUBLIC_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'public'))
-KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'private'))
-git_reference = os.getenv('SQE_GIT_REF', 'master').split('/')[-1]
-GITLAB_REPO = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/{0}/lab_configs/'.format(git_reference)
-
 
 class WithConfig(object):
+    REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
 
     def __init__(self, config):
@@ -29,6 +22,15 @@ class WithConfig(object):
     @staticmethod
     def read_config_from_file(config_path, directory='', is_as_string=False):
         return read_config_from_file(yaml_path=config_path, directory=directory, is_as_string=is_as_string)
+
+    @staticmethod
+    def get_log_file_names():
+        return os.path.join(WithConfig.REPO_DIR, 'iron-lady.log'), os.path.join(WithConfig.REPO_DIR, 'json.log')
+
+
+CONFIG_DIR = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs'))
+KEY_PUBLIC_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'public'))
+KEY_PRIVATE_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'private'))
 
 
 class LabConfigError(Exception):
@@ -89,6 +91,9 @@ def actual_path_to_config(path, directory=''):
     """
     import os
 
+    git_reference = os.getenv('SQE_GIT_REF', 'master').split('/')[-1]
+    gitlab_config_repo = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/{0}/lab_configs/'.format(git_reference)
+
     if os.path.isfile(path):
         return path
 
@@ -99,7 +104,7 @@ def actual_path_to_config(path, directory=''):
         if os.path.isfile(actual_path):
             return actual_path
 
-    return GITLAB_REPO + path_with_yaml
+    return gitlab_config_repo + path_with_yaml
 
 
 def ls_configs(directory=''):

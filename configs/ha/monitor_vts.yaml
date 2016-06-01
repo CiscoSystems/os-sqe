@@ -1,0 +1,3 @@
+- method: lab.monitors.vts_monitor
+  duration: 60
+  period: 2
