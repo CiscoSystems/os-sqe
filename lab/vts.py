@@ -55,6 +55,7 @@ class Vts(Server):
 
         self.check_or_install_packages('sshpass')
         ans = self._rest_api(resource='/api/running/cisco-vts')
+        vtfs = []
         for ip_addess in ans['cisco-vts:cisco-vts']['vtfs']['vtf']:
             _, ip = ip_addess.items()[0]
             username, password = 'cisco', 'cisco123'
@@ -63,4 +64,5 @@ class Vts(Server):
             vtf.actuate_hostname()
             Wire(node_n=self, port_n='A', node_s=vtf, port_s='B', mac_s='', nic_s='', vlans=[])
             vtf.cmd(cmd='show version')
-
+            vtfs.append(vtf)
+        return vtfs
