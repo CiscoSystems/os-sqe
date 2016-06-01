@@ -86,20 +86,21 @@ def ha(lab, test_name, do_not_clean=False):
     # available_labs = ls_configs()
     # if lab not in available_labs:
     #     raise ValueError('{lab} is not defined. Available labs: {labs}'.format(lab=lab, labs=available_labs))
-    lab = actual_path_to_config(path=lab)
+    lab_path = actual_path_to_config(path=lab)
+    lab_name = lab_path.rsplit('/', 1)[-1].replace('.yaml', '')
 
     if test_name == 'tcall':
         tests = sorted(filter(lambda x: x.startswith('tc'), ls_configs(directory='ha')))
     else:
         tests = [actual_path_to_config(path=test_name, directory='ha').split('\\')[-1]]
 
-    run_config_yaml = '{lab}-ha-{tc}.yaml'.format(lab=lab.split('.')[0], tc=test_name)
+    run_config_yaml = '{lab}-ha-{tc}.yaml'.format(lab=lab_name, tc=test_name)
     with open(run_config_yaml, 'w') as f:
-        f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab, lab))
+        f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab_name))
         for i, test in enumerate(tests, start=1):
             if not do_not_clean:
-                f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab, lab))
-            f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: "%s"}}\n' % (10*i + 1,  lab, lab, test))
+                f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab_name, lab_name))
+            f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: "%s"}}\n' % (10*i + 1,  lab_name, lab_name, test))
 
     run(config_path=run_config_yaml)
 
