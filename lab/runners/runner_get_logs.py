@@ -29,10 +29,10 @@ class RunnerGetLogs(Runner):
     @staticmethod
     def store_on_our_server():
         """Store $REPO/*.log and $REPO/artifacts/* on file storage server"""
-        import lab
+        from lab import logger
         from lab.server import Server
 
-        destination_dir = '{0}-{1}'.format(lab.JENKINS_TAG, lab.REPO_TAG)
+        destination_dir = '{0}-{1}'.format(logger.JENKINS_TAG, logger.REPO_TAG)
         server = Server(ip='172.29.173.233', username='localadmin', password='ubuntu', lab=None, name='FileStorage')
         server.run(command='mkdir -p /var/www/logs/{0}'.format(destination_dir))
         server.put(local_path='*.log', remote_path='/var/www/logs/' + destination_dir, is_sudo=False)

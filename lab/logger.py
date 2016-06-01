@@ -1,4 +1,13 @@
 import logging
+import os
+from fabric.api import local, hide, settings
+
+with hide('running', 'warnings'):
+    with settings(warn_only=True):
+        REPO_TAG = local('git describe --always', capture=True)
+
+JENKINS_TAG = os.getenv('BUILD_TAG', 'NA')
+OSP7_INFO = 'NA'
 
 formatter = logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s:  %(message)s')
 
@@ -18,7 +27,6 @@ class JsonFormatter(logging.Formatter):
     def format(self, record):
         import re
         import json
-        import lab
 
         def split_pairs():
             for key_value in re.split(pattern='[ ,]', string=record.message):
@@ -43,9 +51,9 @@ class JsonFormatter(logging.Formatter):
         if '@timestamp' not in d:
             d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
         d['name'] = record.name
-        d['repo_tag'] = lab.REPO_TAG
-        d['osp7_info'] = lab.OSP7_INFO
-        d['jenkins'] = lab.JENKINS_TAG
+        d['sqe-repo-tag'] = REPO_TAG
+        d['osp7-info'] = OSP7_INFO
+        d['jenkins'] = JENKINS_TAG
         return json.dumps(d)
 
 

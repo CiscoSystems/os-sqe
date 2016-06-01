@@ -48,12 +48,12 @@ class BaseLab(WithStatusMixIn):
             for provider in self.providers:
                 start_time = time.time()
                 self.servers.extend(provider.wait_for_servers())
-                f.write('Provider {0} runs in {0} seconds'.format(provider, time.time() - start_time))
+                f.write('Provider {0} runs in {0} seconds\n'.format(provider, time.time() - start_time))
             for deployer in self.deployers:
                 start_time = time.time()
                 self.clouds.append(deployer.wait_for_cloud(self.servers))
-                f.write('Deployer {0} runs in {0} seconds'.format(deployer, time.time() - start_time))
+                f.write('Deployer {0} runs in {0} seconds\n'.format(deployer, time.time() - start_time))
             for runner in self.runners:
                 start_time = time.time()
                 runner.execute(self.clouds, self.servers)
-                f.write('Runner {0} runs in {0} seconds'.format(runner, time.time() - start_time))
+                f.write('Runner {0} runs in {0} seconds\n'.format(runner, time.time() - start_time))

@@ -1,0 +1,3 @@
+- method: lab.scenarios.vts_scenario
+  how-many-networks: 1
+  how-many-servers: 3

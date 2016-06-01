@@ -11,7 +11,7 @@ def cmd(config_path):
     from fabric.operations import prompt
     from time import sleep
     from lab.laboratory import Laboratory
-    from lab.deployers.deployer_existing_osp7 import DeployerExistingOSP7
+    from lab.deployers.deployer_existing import DeployerExisting
 
     l = Laboratory(config_path=config_path)
     nodes = sorted(map(lambda node: node.name(), l.get_nodes()))
@@ -19,7 +19,7 @@ def cmd(config_path):
         print l, 'has: cloud and', nodes
         device_name = prompt(text='On which device you want to execute the command?')
         if device_name == 'cloud':
-            d = DeployerExistingOSP7({'cloud': config_path, 'hardware-lab-config': config_path})
+            d = DeployerExisting({'cloud': config_path, 'hardware-lab-config': config_path})
             device = d.wait_for_cloud([])
         elif device_name not in nodes:
             print device_name, 'is not available'
@@ -81,11 +81,12 @@ def ha(lab, test_name, do_not_clean=False):
     """
     from lab.with_config import actual_path_to_config, ls_configs
 
-    if not lab.endswith('.yaml'):
-        lab += '.yaml'
-    available_labs = ls_configs()
-    if lab not in available_labs:
-        raise ValueError('{lab} is not defined. Available labs: {labs}'.format(lab=lab, labs=available_labs))
+    # if not lab.endswith('.yaml'):
+    #     lab += '.yaml'
+    # available_labs = ls_configs()
+    # if lab not in available_labs:
+    #     raise ValueError('{lab} is not defined. Available labs: {labs}'.format(lab=lab, labs=available_labs))
+    lab = actual_path_to_config(path=lab)
 
     if test_name == 'tcall':
         tests = sorted(filter(lambda x: x.startswith('tc'), ls_configs(directory='ha')))
@@ -94,7 +95,7 @@ def ha(lab, test_name, do_not_clean=False):
 
     run_config_yaml = '{lab}-ha-{tc}.yaml'.format(lab=lab.split('.')[0], tc=test_name)
     with open(run_config_yaml, 'w') as f:
-        f.write('deployer:  {lab.deployers.deployer_existing_osp7.DeployerExistingOSP7: {cloud: %s, hardware-lab-config: %s}}\n' % (lab, lab))
+        f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab, lab))
         for i, test in enumerate(tests, start=1):
             if not do_not_clean:
                 f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab, lab))

@@ -5,7 +5,6 @@ from lab.runners import Runner
 def starter(item_description):
     import time
     from lab import logger
-    from lab.laboratory import Laboratory
 
     log = logger.create_logger(item_description.pop('log-name'))
 
@@ -20,7 +19,7 @@ def starter(item_description):
 
     func = item_description.pop('function')
     cloud = item_description.pop('cloud')
-    lab = Laboratory(config_path=cloud.name)
+    lab = cloud.mediator.lab()
     lab.cloud = cloud
 
     log.info('status=Start arguments={0}'.format(item_description))
@@ -56,31 +55,25 @@ class RunnerHA(Runner):
         import fabric.network
         from lab.logger import create_logger
 
-        cloud = filter(lambda x: x.name == self.cloud_name, clouds)
-        if not cloud:
+        try:
+            cloud = filter(lambda x: x.name == self.cloud_name, clouds)[0]
+        except IndexError:
             raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self.cloud_name))
+
         log = create_logger(name=str(self))
+
         items_to_run = []
         for arguments in self.task_body:
             module_path = arguments.pop('method')
             try:
                 module = importlib.import_module(module_path)
                 func = getattr(module, 'start')
-                arguments.update({'function': func, 'log-name': module_path, 'cloud': cloud[0]})
+                arguments.update({'function': func, 'log-name': module_path, 'cloud': cloud})
                 items_to_run.append(arguments)
             except ImportError:
                 raise Exception('{0} failed to import'.format(module_path))
 
-        """
-        Below line was added because of:
-        When the connection is established within another process,
-        what happens is that the child process gets a copy of the socket
-        associated with the channel. What happens is we get two objects
-        trying to communicate with single socket and the session gets corrupted
-
-        URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
-        """
-        fabric.network.disconnect_all()
+        fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
 
         pool = multiprocessing.Pool(len(items_to_run))
 

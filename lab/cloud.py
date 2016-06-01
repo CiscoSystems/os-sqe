@@ -6,7 +6,31 @@ class Cloud:
     ROLE_MEDIATOR = 'mediator'
 
     def __init__(self, cloud, user, admin, tenant, password, end_point=None, mediator=None):
-        import re
+        self._create_server_cmd = 'openstack server create -f shell '
+        self._create_subnet_cmd = 'neutron subnet-create -f shell '
+        self._create_network_cmd = 'openstack network create -f shell '
+        self._create_port_cmd = 'neutron port-create -f shell '
+
+        self._delete_server_cmd = 'openstack server delete '
+        self._delete_keypair_cmd = 'openstack keypair delete '
+        self._delete_network_cmd = 'openstack network delete '
+        self._delete_subnet_cmd = 'neutron subnet-delete '
+        self._delete_port_cmd = 'neutron port-delete '
+
+        self._show_server_cmd = 'openstack server show -f shell '
+        self._show_subnet_cmd = 'neutron subnet-show -f shell '
+        
+        self._list_network_cmd = 'Default Value Set In Cloud.__init__()'
+        self._list_subnet_cmd = 'Default Value Set In Cloud.__init__()'
+        self._list_router_cmd = 'Default Value Set In Cloud.__init__()'
+        self._list_port_cmd = 'Default Value Set In Cloud.__init__()'
+        self._list_server_cmd = 'Default Value Set In Cloud.__init__()'
+        self._list_keypair_cmd = 'Default Value Set In Cloud.__init__()'
+        self._list_image_cmd = 'Default Value Set In Cloud.__init__()'
+
+        self._fip_network = 'Default Value Set In Cloud.__init__()'
+        self._provider_physical_network = 'Default Value Set In Cloud.__init__()'
+        self._openstack_version = 'Default Value Set In Cloud.__init__()'
 
         self.name = cloud
         self.user = user
@@ -21,9 +45,7 @@ class Cloud:
         self.mediator = mediator  # special server to be used to execute CLI commands for this cloud
         self._dns = '171.70.168.183'
         self._unique_pattern_in_name = 'sqe-test'
-        self._re_sqe = re.compile('(sqe-test-.*) ')
-        self._fip_network = None
-        self._provider_physical_network = None
+        self._instance_counter = 0  # this counter is used to count how many instances are created via this class
 
     def __repr__(self):
         return '--os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(u=self.user, t=self.tenant, p=self.password, a=self.get_end_point())
@@ -104,30 +126,49 @@ export OS_AUTH_URL={end_point}
             lab_logger.info(role + ' ip: ' + ' '.join(self.get(role=role, parameter='ip')))
 
     def cmd(self, cmd, server=None, is_warn_only=False):
+        import json
+
         server = server or self.mediator
-        parts = cmd.split('|')  # handler command like neutron net-list | grep foo
-        flt = '|'.join(parts[1:])
-        return server.run(command='{cmd} {creds} {flt}'.format(cmd=parts[0], creds=self, flt='|' + flt if flt else ''), warn_only=is_warn_only)
+        ans = server.run(command='{cmd} {creds}'.format(cmd=cmd, creds=self), warn_only=is_warn_only)
+        if '-f csv' in cmd:
+            return self._process_csv_output(ans)
+        elif '-f json' in cmd:
+            return json.loads(ans)
+        elif '-f shell' in cmd:
+            return self._process_shell_output(ans)
+        else:
+            return ans
 
     @staticmethod
     def _filter(minus_c, flt):
         return '{c} {g}'.format(c='-c ' + minus_c if minus_c else '', g=' | grep ' + flt if flt else '')
 
-    def list_networks(self, minus_c=None, flt=None):
-        output = []
+    @staticmethod
+    def _process_csv_output(answer):
+        output_list = []
+        if answer:
+            lines = answer.split('\n')
+            keys = []
+            for i, line in enumerate(lines):
+                line = line.strip('\r')
+                if i == 0:  # it's line of keys like: "ID","Name" or "ID","Name","Subnets"
+                    keys = map(lambda x: x.strip('" '), line.split(','))
+                else:
+                    output_list.append(dict(zip(keys, map(lambda x: x.strip('" '), line.split(',')))))
+        return output_list
 
-        for net in self._parse_cli_output(self.cmd('openstack network list' + self._filter(minus_c=minus_c, flt=flt))):
-            net_show = self._parse_cli_output(self.cmd('openstack network show {0}'.format(net['ID'])))
-            output += net_show
-        return output
-
-    def list_ports(self):
-        output = []
-
-        for port in self._parse_cli_output(self.cmd('openstack port list')):
-            port_show = self._parse_cli_output(self.cmd('openstack port show {0}'.format(port['ID'])))
-            output += port_show
-        return output
+    @staticmethod
+    def _process_shell_output(answer):
+        output_dict = {}
+        if answer:
+            lines = answer.split('\n')
+            for line in lines:
+                if '=' not in line:  # might be lines not in form a=b
+                    continue
+                line = line.strip('\r')
+                key, value = line.split('=', 1)
+                output_dict[key.strip('" ')] = value.strip('" ')
+        return output_dict
 
     @staticmethod
     def _names_from_answer(ans):
@@ -200,7 +241,7 @@ export OS_AUTH_URL={end_point}
     def get_net_names(self, common_part_of_name, how_many):
         return map(lambda number: '{sqe_pref}-{name}-net-{number}'.format(sqe_pref=self._unique_pattern_in_name, name=common_part_of_name, number=number), xrange(1, how_many+1))
 
-    def get_net_subnet_lines(self, common_part_of_name, class_a, how_many, vlan=None):
+    def get_net_subnet_lines(self, common_part_of_name, class_a, how_many, vlan=None, is_dhcp=True):
         net_names = self.get_net_names(common_part_of_name=common_part_of_name, how_many=how_many)
         subnet_names = map(lambda x: x.replace('-net-', '-subnet-'), net_names)
         cidrs = self.get_cidrs4(class_a=class_a, how_many=how_many)
@@ -208,23 +249,22 @@ export OS_AUTH_URL={end_point}
         for i in xrange(len(net_names)):
             phys_net_addon = '--provider:physical_network={phys_net} --provider:network_type=vlan --provider:segmentation_id={vlan}'.format(phys_net=self._provider_physical_network, vlan=vlan+i) if vlan else ''
 
-            net_line = 'neutron net-create {name} {addon} -c name'.format(name=net_names[i], addon=phys_net_addon)
+            net_line = 'openstack network create {name} {addon} -f shell'.format(name=net_names[i], addon=phys_net_addon)
             cidr, gw, start, stop = cidrs[i], cidrs[i][1], cidrs[i][10], cidrs[i][200]
-            sub_line = 'neutron subnet-create {n_n} {cidr} --name {s_n} --gateway {gw} --dns-nameserver {dns} --allocation-pool start={ip1},end={ip2} -c name'.format(n_n=net_names[i],
-                                                                                                                                                                      s_n=subnet_names[i],
-                                                                                                                                                                      cidr=cidr, gw=gw, dns=self._dns,
-                                                                                                                                                                      ip1=start, ip2=stop)
+            sub_line = 'neutron subnet-create {n_n} {cidr} --name {s_n} --gateway {gw} --dns-nameserver {dns} {dhcp} --allocation-pool start={ip1},end={ip2} -f shell'.format(n_n=net_names[i],
+                                                                                                                                                                              s_n=subnet_names[i],
+                                                                                                                                                                              cidr=cidr, gw=gw, dns=self._dns,
+                                                                                                                                                                              dhcp='' if is_dhcp else '--disable-dhcp',
+                                                                                                                                                                              ip1=start, ip2=stop)
             net_vs_subnet[net_line] = sub_line
         return net_vs_subnet
 
-    def create_net_subnet(self, common_part_of_name, class_a, how_many, vlan=None):
+    def create_net_subnet(self, common_part_of_name, class_a, how_many, vlan=None, is_dhcp=True):
         net_vs_subnet_names = {}
-        for net_line, subnet_line in sorted(self.get_net_subnet_lines(common_part_of_name=common_part_of_name, class_a=class_a, how_many=how_many, vlan=vlan).iteritems()):
-            ans = self.cmd(net_line)
-            net_name = self._re_sqe.findall(ans)[0]
-            ans = self.cmd(subnet_line)
-            subnet_name = self._re_sqe.findall(ans)[0]
-            net_vs_subnet_names[net_name] = subnet_name
+        for net_line, subnet_line in sorted(self.get_net_subnet_lines(common_part_of_name=common_part_of_name, class_a=class_a, how_many=how_many, vlan=vlan, is_dhcp=is_dhcp).iteritems()):
+            network = self.cmd(net_line)
+            subnet = self.cmd(subnet_line)
+            net_vs_subnet_names[network['name']] = {'network': network, 'subnet': subnet}
         return net_vs_subnet_names
 
     def create_router(self, number, on_nets):
@@ -234,14 +274,30 @@ export OS_AUTH_URL={end_point}
             self.cmd('neutron router-interface-add {router} {subnet}'.format(router=router_name, subnet=subnet_name))
         self.cmd('neutron router-gateway-set {router} {net}'.format(router=router_name, net=self._fip_network))
 
-    def create_ports(self, instance_name, on_nets, sriov=False):
+    def create_ports(self, instance_name, on_nets, is_fixed_ip=False, sriov=False):
+        import re
+
         pids = []
         sriov_addon = '--binding:vnic-type direct' if sriov else ''
-        for net_name in sorted(on_nets.keys()):
+
+        for net_name, desc in sorted(on_nets.items()):
+            if is_fixed_ip:
+                ip, mac = self._calculate_static_ip_and_mac(re.findall(r'[0-9]+(?:\.[0-9]+){3}', desc['subnet']['allocation_pools']))
+                fixed_ip_addon = '--fixed-ip ip_address={ip} --mac-address {mac}'.format(ip=ip, mac=mac)
+            else:
+                fixed_ip_addon = ''
+
             port_name = '{sqe_pref}-{instance_name}-port-{sriov}-on-{net_name}'.format(sqe_pref=self._unique_pattern_in_name, instance_name=instance_name, sriov='sriov' if sriov else 'virio', net_name=net_name)
-            ans = self.cmd('neutron port-create --name {port_name} {net_name} {sriov_addon} -c id '.format(port_name=port_name, net_name=net_name, sriov_addon=sriov_addon))
-            pids.append(self._names_from_answer(ans)[9])
+            port = self.cmd(self._create_port_cmd + ' --name {port_name} {net_name}  {ip_addon} {sriov_addon}'.format(port_name=port_name, net_name=net_name, ip_addon=fixed_ip_addon, sriov_addon=sriov_addon))
+            pids.append(port['id'])
         return pids
+
+    def _calculate_static_ip_and_mac(self, allocation_pool):
+        a = map(lambda x: int(x), allocation_pool[0].split('.'))
+        a[-1] += self._instance_counter
+        ip = '.'.join(map(lambda x: str(x), a))
+        mac = '00:10:' + ':'.join(map(lambda x: '{0:02}'.format(x) if x < 100 else '{0:02x}'.format(x), a))
+        return ip, mac
 
     def create_fips(self, how_many):
         fips = map(lambda _: self.cmd('neutron floatingip-create {0}'.format(self._fip_network)), xrange(how_many))
@@ -259,46 +315,59 @@ export OS_AUTH_URL={end_point}
             raise ValueError('Image {0} is not known by cloud'.format(image))
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, on_ports))
         instance_name = '{sqe_pref}-{name}'.format(sqe_pref=self._unique_pattern_in_name, name=name)
-        self.cmd('openstack server create {name} --flavor {flavor} --image "{image}" --security-group default --key-name sqe-test-key1 {ports_part}'.format(name=instance_name, flavor=flavor, image=image, ports_part=ports_part))
+        self.cmd('openstack server create {name} --flavor {flavor} --image "{image}" --security-group default --key-name sqe-test-key1 {ports_part}'.format(name=instance_name, flavor=flavor,
+                                                                                                                                                            image=image, ports_part=ports_part))
         self.wait_instances_ready(names=[instance_name])
+        self._instance_counter += 1
         return instance_name
 
     def wait_instances_ready(self, names=None):
         import time
-        import json
 
         while True:
-            all_instances = json.loads(self.cmd('openstack server list -f json'))
+            all_instances = self.cmd(self._list_server_cmd)
             our_instances = filter(lambda x: x['Name'] in names, all_instances) if names else all_instances
             instances_in_error = filter(lambda x: x['Status'] == 'ERROR', our_instances)
             instances_in_active = filter(lambda x: x['Status'] == 'ACTIVE', our_instances)
             if len(instances_in_active) == len(names):
                 return
             if instances_in_error:
+                for instance in instances_in_error:
+                    self.analyse_instance_problems(instance)
                 raise RuntimeError('These instances failed: {0}'.format(instances_in_error))
             time.sleep(30)
 
+    def analyse_instance_problems(self, instance):
+        from lab.server import Server
+
+        instance_details = self.cmd(self._show_server_cmd + instance['Name'])
+        compute_node = Server(name='tmp_compute', role='compute', ip=instance_details['os-ext-srv-attr:host'], lab=None, username='root', password='cisco123')
+        logs = compute_node.run(command='grep {instance_id} | grep -i error'.format(instance_id=instance_details['id']))
+
     def create_image(self, name, url):
-        image_path = self.mediator.wget_file(url=url, to_directory='cloud_images')
-        self.cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
+        if not filter(lambda image: image['Name'] == name, self.cmd(self._list_image_cmd)):
+            image_path = self.mediator.wget_file(url=url, to_directory='cloud_images')
+            self.cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
         return name
 
     def cleanup(self):
-        import json
+        servers = self.cmd(self._list_server_cmd)
+        routers = self.cmd(self._list_router_cmd)
+        ports = self.cmd(self._list_port_cmd)
+        keypairs = self.cmd(self._list_keypair_cmd)
+        networks = self.cmd(self._list_network_cmd)
 
-        ans = self.cmd(cmd='neutron router-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
-        router_names = self._names_from_answer(ans)
-        ans = self.cmd(cmd='neutron port-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
-        port_names = self._names_from_answer(ans)
-        ans = self.cmd(cmd='neutron net-list -c name | grep {sqe_pref}'.format(sqe_pref=self._unique_pattern_in_name), is_warn_only=True)
-        net_names = self._names_from_answer(ans)
+        sqe_servers = filter(lambda x: self._unique_pattern_in_name in x['Name'], servers)
+        sqe_ports = filter(lambda x: self._unique_pattern_in_name in x['name'], ports)
+        sqe_networks = filter(lambda x: self._unique_pattern_in_name in x['Name'], networks)
+        sqe_routes = filter(lambda x: self._unique_pattern_in_name in x['name'], routers)
+        sqe_keypairs = filter(lambda x: self._unique_pattern_in_name in x['Name'], keypairs)
 
-        map(lambda router_name: self._clean_router(router_name), sorted(router_names))
-        map(lambda port_name: self.cmd('neutron port-delete {0}'.format(port_name)), sorted(port_names))
-        map(lambda net_name: self.cmd('openstack network delete {0}'.format(net_name)), sorted(net_names))
-
-        keypairs = json.loads(self.cmd('openstack keypair list -f json'))
-        map(lambda keypair: self.cmd('openstack keypair delete {0}'.format(keypair['Name'])), filter(lambda x: self._unique_pattern_in_name in x['Name'], keypairs))
+        map(lambda server: self.cmd(self._delete_server_cmd + server['Name']), sqe_servers)
+        map(lambda router: self._clean_router(router['name']), sqe_routes)
+        map(lambda port: self.cmd(self._delete_port_cmd + port['name']), sqe_ports)
+        map(lambda net: self.cmd(self._delete_network_cmd + net['Name']), sqe_networks)
+        map(lambda keypair: self.cmd(self._delete_keypair_cmd + keypair['Name']), sqe_keypairs)
 
     def _clean_router(self, router_name):
         import re
@@ -310,15 +379,27 @@ export OS_AUTH_URL={end_point}
         self.cmd('neutron router-delete {0}'.format(router_name))
 
     def verify_cloud(self):
-        self.cmd('neutron net-list -c name')
-        self.cmd('neutron port-list -c name')
-        self.cmd('neutron router-list -c name')
-        self.cmd('openstack server list')
+        ans = self.cmd('openstack --version')
+        self._openstack_version = int(''.join(ans.rsplit('.')).replace('openstack ', ''))
+        
+        self._list_network_cmd = 'openstack network list -f ' + ('json' if self._openstack_version > 200 else 'csv')
+        self._list_port_cmd = 'openstack port list -f json' if self._openstack_version > 200 else 'neutron port-list -f csv'
+        self._list_router_cmd = 'openstack router list -f json' if self._openstack_version > 200 else 'neutron router-list -f csv'
+        self._list_server_cmd = 'openstack server list -f ' + ('json' if self._openstack_version > 200 else 'csv')
+        self._list_keypair_cmd = 'openstack keypair list -f ' + ('json' if self._openstack_version > 200 else 'csv')
+        self._list_image_cmd = 'openstack image list -f ' + ('json' if self._openstack_version > 200 else 'csv')
+
+        self.cmd(self._list_network_cmd)
+        self.cmd(self._list_port_cmd)
+        self.cmd(self._list_router_cmd)
+        self.cmd(self._list_server_cmd)
         self.get_fip_network()
-        for service in self.services():
-            for url in ['publicURL', 'internalURL', 'adminURL']:
-                end_point = self.cmd('openstack catalog show {service} | grep {url} | awk \'{{print $4}}\''.format(service=service, url=url))
-                self.add_service_end_point(service=service, url=url, end_point=end_point)
+
+        # for service in self.services():
+        #     for url in ['publicURL', 'internalURL', 'adminURL']:
+        #         end_point = self.cmd('openstack catalog show {service} | grep {url} | awk \'{{print $4}}\''.format(service=service, url=url))
+        #         self.add_service_end_point(service=service, url=url, end_point=end_point)
+
         self.cmd('neutron quota-update --network 100 --subnet 100 --port 500')
         return self
 

@@ -103,27 +103,21 @@ class LaboratoryNetworks(object):
             return self._ipmi_net
 
 
-class Laboratory(with_config.WithConfig):
+class Laboratory(object):
     SUPPORTED_TOPOLOGIES = ['VLAN', 'VXLAN']
     TOPOLOGY_VLAN, TOPOLOGY_VXLAN = SUPPORTED_TOPOLOGIES
-
-    temp_dir = tempfile.mkdtemp(prefix='runner-ha-')
-
-    def sample_config(self):
-        pass
 
     def __repr__(self):
         return self._lab_name
 
     def __init__(self, config_path):
-
-        super(Laboratory, self).__init__(config=None)
+        from lab.with_config import read_config_from_file
 
         with open(with_config.KEY_PUBLIC_PATH) as f:
             self.public_key = f.read()
         self._nodes = list()
         self._director = None
-        self._cfg = self.read_config_from_file(config_path=config_path)
+        self._cfg = read_config_from_file(yaml_path=config_path)
         self._id = self._cfg['lab-id']
         self._lab_name = self._cfg['lab-name']
         self._is_sriov = self._cfg.get('use-sr-iov', False)
