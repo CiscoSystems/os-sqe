@@ -1,23 +1,16 @@
-def start(lab, log, args):
-    import validators
-    from lab.vts import Vts
+from lab.worker import Worker
 
-    is_show_details = args.get('is-show-details', False)
-    name_or_ip = args.get('name_or_ip', 'from_lab')
-    if validators.ipv4(name_or_ip):
-        ip = name_or_ip
-        username = args['username']
-        password = args['password']
-        vtc = Vts(name='NotDefined', ip=ip, username=username, password=password, lab=lab, hostname='NoDefined')
-    else:
-        vtc = lab.get_nodes(Vts)[0]
 
-    vtfs = vtc.get_vtfs()
-    log.info('vni-pool={0}'.format(vtc.get_vni_pool()))
+class VtsMonitor(Worker):
 
-    for vtf in vtfs:
-        log.info('host={0}; vxlan={1}'.format(vtf, vtf.cmd('show vxlan tunnel')))
+    # noinspection PyAttributeOutsideInit
+    def setup(self):
+        from lab.vts import Vts
 
-    if is_show_details:
-        pass
+        lab = self._cloud.mediator.lab()
+        self._vtc = Vts(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else lab.get_nodes(Vts)[0]
+        self._vtfs = self._vtc.get_vtfs()
 
+    def loop(self):
+        for vtf in self._vtfs:
+            self._log.info('host={0}; vxlan={1}'.format(vtf, vtf.cmd('show vxlan tunnel')))

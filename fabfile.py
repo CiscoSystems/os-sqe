@@ -96,7 +96,7 @@ def ha(lab, test_name, do_not_clean=False):
 
     run_config_yaml = '{lab}-ha-{tc}.yaml'.format(lab=lab_name, tc=test_name)
     with open(run_config_yaml, 'w') as f:
-        f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab_name))
+        f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab))
         for i, test in enumerate(tests, start=1):
             if not do_not_clean:
                 f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab_name, lab_name))
