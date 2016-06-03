@@ -9,31 +9,35 @@ def cmd(config_path):
         :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
     """
     from fabric.operations import prompt
-    from time import sleep
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
 
     l = Laboratory(config_path=config_path)
     nodes = sorted(map(lambda node: node.name(), l.get_nodes()))
     while True:
-        print l, 'has: cloud and', nodes
-        device_name = prompt(text='On which device you want to execute the command?')
+        print l, 'has: "cloud" and:\n', nodes, '\n(use "quit" to quit)'
+        device_name = prompt(text='node? ')
         if device_name == 'cloud':
             d = DeployerExisting({'cloud': config_path, 'hardware-lab-config': config_path})
             device = d.wait_for_cloud([])
+        elif device_name in ['quit', 'q', 'exit']:
+            return
         elif device_name not in nodes:
             print device_name, 'is not available'
             continue
         else:
             device = l.get_node(device_name)
         method_names = [x for x in dir(device) if not x.startswith('_')]
-        print device,  ' has: \n', '\n'.join(method_names)
+        print device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)'
         while True:
-            method_name = prompt(text='Which operation you wanna execute? ("quit" to exit, "node" to select new node) ')
-            if method_name == 'quit':
+            method_name = prompt(text='\n\n>>{0}<< operation?: '.format(device))
+            if method_name in ['quit', 'q', 'exit']:
                 return
             elif method_name == 'node':
                 break
+            elif method_name in ['r', 'rpt']:
+                print device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)'
+                continue
             elif method_name not in method_names:
                 print method_name, 'is not available'
                 continue
@@ -49,10 +53,12 @@ def cmd(config_path):
                 elif argument in ['False', 'false', 'no']:
                     argument = False
                 arguments.append(argument)
-            results = method_to_execute(*arguments)
-
-            sleep(1)
-            print '\n{0} RESULTS:\n\n'.format(device), results
+            # noinspection PyBroadException
+            try:
+                results = method_to_execute(*arguments)
+                print '\n>>{0}<< RESULTS:\n\n'.format(device), results
+            except Exception as ex:
+                print '\n Exception: ', ex
 
 
 @task

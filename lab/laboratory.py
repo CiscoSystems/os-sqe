@@ -222,6 +222,8 @@ class Laboratory(object):
         node = klass(lab=self, name=node_id, role=role, ip=ssh_ip, username=ssh_username or self._ssh_username, password=ssh_password or self._ssh_password, hostname=hostname)
         if 'set_ipmi' in dir(node):
             node.set_ipmi(ip=ipmi_ip, username=ipmi_username or self._ipmi_username, password=ipmi_password or self._ipmi_password)
+        if 'set_proxy' in dir(node):
+            node.set_proxy(self.get_nodes(Vts)[0])
 
         # if type(node) is FiServer:
         #     node.set_ucsm_id(port_id)

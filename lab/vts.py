@@ -2,16 +2,28 @@ from lab.server import Server
 
 
 class Vtf(Server):
+    COMMANDS = ['show vxlan tunnel', 'show version', 'show ip fib', 'show l2fib verbose']  # supported- expect files are pre-created
+
     def __init__(self, name, role, ip, lab, username, password, hostname):
         super(Vtf, self).__init__(name, role, ip, lab, username, password, hostname)
-        self._commands = {}
+        self._commands = {cmd: '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self._name) for cmd in self.COMMANDS}
         self._proxy_to_run = None
 
+    def __repr__(self):
+        return u'{0} proxy {1}'.format(self._name, self._proxy_to_run)
+
+    def set_proxy(self, proxy):
+        self._proxy_to_run = proxy
+
     def cmd(self, cmd):  # this one needs to run via telnet on vtf host
+        if not self._proxy_to_run:
+            raise RuntimeError('{0} needs to have proxy server (usually VTC)'.format(self))
         ans = self._proxy_to_run.run(command='expect {0}'.format(self._commands[cmd]))
         return ans.split('\n')[-2]
 
     def run(self, command, in_directory='.', warn_only=False):  # this one imply runs the command on vtf host (without telnet)
+        if not self._proxy_to_run:
+            raise RuntimeError('{0} needs to have proxy server (usually VTC)'.format(self))
         return self._proxy_to_run.run(command='sshpass -p {p} ssh {u}@{ip} '.format(p=self._password, u=self._username, ip=self._ip) + command)
 
     def show_vxlan_tunnel(self):
@@ -20,10 +32,17 @@ class Vtf(Server):
     def show_version(self):
         return self.cmd('show version')
 
-    def actuate(self, proxy):
-        self._proxy_to_run = proxy
+    def show_ip_fib(self):
+        return self.cmd('show ip fib')
 
-        for cmd in ['show vxlan tunnel', 'show version']:
+    def show_l2fib(self):
+        return self.cmd('show l2fib verbose')
+
+    def show_connections_xrvr_vtf(self):
+        return self.run('netstat -ant |grep 21345')
+
+    def actuate(self):
+        for cmd, file_name in self._commands.iteritems():
             tmpl = '''
 log_user 0
 spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip} telnet 0 5002
@@ -33,40 +52,50 @@ log_user 1
 send "quit\r"
 expect eof
 '''.format(p=self._password, u=self._username, ip=self._ip, cmd=cmd)
-            file_name = 'expect-to-run-' + '-'.join(cmd.split()) + '-' + self._name
-            file_name = self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
-            self._commands[cmd] = file_name
+            self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
         self.cmd('show version')
 
 
 class Xrvr(Server):
+    COMMANDS = ['show running-config', 'show running-config evpn']  # supported- expect files are pre-created
+
     def __init__(self, name, role, ip, lab, username, password, hostname):
         super(Xrvr, self).__init__(name, role, ip, lab, username, password, hostname)
-        self._commands = {}
+        self._commands = {cmd: '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self._name) for cmd in self.COMMANDS}
         self._proxy_to_run = None
 
+    def set_proxy(self, proxy):
+        self._proxy_to_run = proxy
+
     def cmd(self, cmd):  # XRVR uses redirection: username goes to DL while ipmi_username goes to XRVR, ip is the same for both
+        if not self._proxy_to_run:
+            raise RuntimeError('{0} needs to have proxy server (usually VTC)'.format(self))
         ans = self._proxy_to_run.run(command='expect {0}'.format(self._commands[cmd]))
         return ans
 
-    def actuate(self, proxy):
-        self._proxy_to_run = proxy  # we use proxy just to keep all expect files in a single place
-
-        for cmd in ['show running-config']:
+    def actuate(self):
+        for cmd, file_name in self._commands.iteritems():
             tmpl = '''
 log_user 0
 spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}
 expect "CPU0:XRVR"
-send "terminal length 0 ; show running-config\n"
+send "terminal length 0 ; {cmd}\n"
 log_user 1
 expect eof
 '''.format(p=self._ipmi_password, u=self._ipmi_username, ip=self._ip, cmd=cmd)
-            file_name = 'expect-to-run-' + '-'.join(cmd.split()) + '-' + self._name
-            file_name = self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
-            self._commands[cmd] = file_name
+            self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
 
     def show_running_config(self):
         return self.cmd('show running-config')
+
+    def show_evpn(self):
+        return self.cmd('show running-config evpn')
+
+    def restart_dl_server(self):
+        return self.run('sudo crm resource restart dl_server')
+
+    def show_connections_xrvr_vtf(self):
+        return self.run('netstat -ant |grep 21345')
 
 
 class Vts(Server):
@@ -84,6 +113,7 @@ class Vts(Server):
         auth = (self._ipmi_username, self._ipmi_password)
         headers = {'Accept': 'application/vnd.yang.data+json'}
 
+        # noinspection PyBroadException
         try:
             res = requests.get(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
             return json.loads(res.text)
@@ -106,7 +136,7 @@ class Vts(Server):
             ip, _, _, _ = vtf.get_ssh()
             if str(ip) not in vtf_ips_from_vtc:
                 raise RuntimeError('{0} is not detected by {1}'.format(vtf, self))
-            vtf.actuate(proxy=self)
+            vtf.actuate()
         return vtf_nodes
 
     def check_xrvr(self):
@@ -117,7 +147,7 @@ class Vts(Server):
             ip, _, _, _ = xrvr.get_ssh()
             if str(ip) not in xrvr_ips_from_vtc:
                 raise RuntimeError('{0} is not detected by {1}'.format(xrvr, self))
-            xrvr.actuate(proxy=self)
+            xrvr.actuate()
         return xrvr_nodes
 
     def json_api_url(self, resource):
@@ -137,7 +167,6 @@ class Vts(Server):
 
     def json_api_get(self, resource):
         s = None
-        r = None
         try:
             s = self.json_api_session()
             r = s.get(self.json_api_url(resource))
@@ -149,3 +178,25 @@ class Vts(Server):
 
     def json_api_get_network_inventory(self):
         return self.json_api_get('rs/ncs/query/networkInventory')
+
+    def restart_dl_server(self):
+        return map(lambda xrvr: xrvr.restart_dl_server(), self.lab().get_nodes(Xrvr))
+
+    def show_evpn(self):
+        return map(lambda xrvr: xrvr.show_evpn(), self.lab().get_nodes(Xrvr))
+
+    def show_connections_xrvr_vtf(self):
+        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.lab().get_nodes(Vtf)) + map(lambda xrvr: xrvr.show_connections_xrvr_vtf(), self.lab().get_nodes(Xrvr))
+
+    def show_vxlan_tunnel(self):
+        return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_nodes(Vtf))
+
+    def show_logs(self, what='error'):
+        self.run('grep -i {0} /var/log/ncs/*'.format(what), warn_only=True)
+
+    def show_uuid_servers(self):
+        pass  # ncs_cli -u admin show configuration cisco-vts uuid-servers
+
+    def actuate(self):
+        self.check_xrvr()
+        self.check_vtfs()
