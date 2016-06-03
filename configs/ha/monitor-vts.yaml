@@ -1,0 +1,3 @@
+- class: lab.monitors.vts_monitor.VtsMonitor
+  duration: 60
+  period: 2

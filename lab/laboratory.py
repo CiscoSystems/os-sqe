@@ -177,14 +177,16 @@ class Laboratory(object):
         from lab.tor import Tor
         from lab.cobbler import CobblerServer
         from lab.cimc import CimcServer
-        from lab.vts import Vts
+        from lab.vts import Vts, Vtf, Xrvr
 
         try:
             node_id = node_description['id']
         except KeyError:
             ValueError('id for node "{0}" is not porvided'.format(node_description))
 
-        possible_roles = ['tor', 'terminal', 'cobbler', 'oob', 'pxe', 'n9', 'nexus', 'asr', 'fi', 'ucsm', 'vtc', 'director-fi', 'director-n9', 'control-fi', 'control-n9' 'compute-fi', 'compute-n9', 'ceph-fi', 'ceph-n9']
+        possible_roles = ['tor', 'terminal', 'cobbler', 'oob', 'pxe',
+                          'n9', 'nexus', 'asr', 'fi', 'ucsm', 'vtc', 'xrvr', 'vtf',
+                          'director-fi', 'director-n9', 'control-fi', 'control-n9' 'compute-fi', 'compute-n9', 'ceph-fi', 'ceph-n9']
         try:
             role = node_description['role']
         except KeyError:
@@ -207,6 +209,10 @@ class Laboratory(object):
             klass = CimcServer
         elif role in ['vtc']:
             klass = Vts
+        elif role in ['xrvr']:
+            klass = Xrvr
+        elif role in ['vtf']:
+            klass = Vtf
         else:
             raise ValueError('role "{0}" is not known,  should be one of: {1}'.format(role, possible_roles))
 
