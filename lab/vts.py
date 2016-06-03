@@ -55,6 +55,11 @@ expect eof
             self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
         self.cmd('show version')
 
+    def get_compute_node(self):
+        for w in self.get_all_wires():
+            n = w.get_peer_node(self)
+            if 'compute' in n.role():
+                return n
 
 class Xrvr(Server):
     COMMANDS = ['show running-config', 'show running-config evpn']  # supported- expect files are pre-created
@@ -85,8 +90,45 @@ expect eof
 '''.format(p=self._ipmi_password, u=self._ipmi_username, ip=self._ip, cmd=cmd)
             self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
 
+    def _get(self, raw, key):
+        """
+        Return values of a key element found in raw text.
+        :param raw: looks like :
+            evpn
+             evi 10000
+              network-controller
+               host mac fa16.3e5b.9162
+                ipv4 address 10.23.23.2
+                switch 11.12.13.9
+                gateway 10.23.23.1 255.255.255.0
+                vlan 1002
+        :param key: A key string. Ex: vlan, gateway
+        :return: Value of a key parameter
+        """
+        import re
+        try:
+            return re.search('(?<={0} ).*'.format(key), raw).group(0)
+        except AttributeError:
+            return None
+
     def show_running_config(self):
         return self.cmd('show running-config')
+
+    def show_host(self, evi, mac):
+        # mac should look like 0010.1000.2243
+        mac = mac.replace(':', '').lower()
+        mac = '.'.join([mac[0:4], mac[4:8], mac[8:16]])
+
+        cmd = 'show running-config evpn evi {0} network-control host mac {1}'.format(evi, mac)
+        raw = self.cmd(cmd)
+        if 'No such configuration item' not in raw:
+            return {
+                'ipv4_address': self._get(raw, 'ipv4 address'),
+                'switch': self._get(raw, 'switch'),
+                'mac': self._get(raw, 'host mac'),
+                'evi': self._get(raw, 'evi')
+            }
+        return None
 
     def show_evpn(self):
         return self.cmd('show running-config evpn')
@@ -126,6 +168,12 @@ class Vts(Server):
     def get_vni_pool(self):
         ans = self._rest_api(resource='/api/running/resource-pools/vni-pool/vnipool')
         return ans
+
+    def get_vtf(self, compute_hostname):
+        for vtf in self.lab().get_nodes(Vtf):
+            n = vtf.get_compute_node()
+            if n.actuate_hostname() == compute_hostname:
+                return vtf
 
     def check_vtfs(self):
         self.check_or_install_packages('sshpass')
@@ -167,14 +215,17 @@ class Vts(Server):
 
     def json_api_get(self, resource):
         s = None
+        r = {'items': []}
         try:
             s = self.json_api_session()
-            r = s.get(self.json_api_url(resource))
+            response = s.get(self.json_api_url(resource))
+            if response.status_code == 200:
+                r = response.json()
         except Exception as e:
             raise e
         finally:
             s.close()
-        return r.json()
+        return r
 
     def json_api_get_network_inventory(self):
         return self.json_api_get('rs/ncs/query/networkInventory')
@@ -200,3 +251,91 @@ class Vts(Server):
     def actuate(self):
         self.check_xrvr()
         self.check_vtfs()
+
+    def get_overlay_networks(self, name='admin'):
+        return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + name)
+
+    def get_overlay_network(self, network_id):
+        networks = self.get_overlay_networks()
+        for network in networks['items']:
+            if network_id == network['id']:
+                return network
+
+    def get_overlay_network_subnets(self, network_id, topology_id='admin', name='admin'):
+        resource = 'rs/ncs/query/networkSubnetInfoPopover?' \
+                   'limit=2147483647&name={n}&network-id={net_id}&topologyId={t}'.format(net_id=network_id,
+                                                                                         t=topology_id,
+                                                                                         n=name)
+        return self.json_api_get(resource)
+
+    def get_overlay_network_ports(self, network_id):
+        resource = 'rs/vtsService/tenantTopology/admin/admin/ports?network-Id={0}'.format(network_id)
+        return self.json_api_get(resource)
+
+    def get_overlay_network_port(self, network_id, port_id):
+        ports = self.get_overlay_network_ports(network_id)
+        for port in ports['items']:
+            if port_id == port['id']:
+                return port
+
+    def get_overlay_routers(self, name='admin'):
+        return self.json_api_get('rs/ncs/query/topologiesRouterAll?limit=2147483647&name=' + name)
+
+    def get_verlay_virtual_machines(self, name='admin'):
+        return self.json_api_get('rs/ncs/query/topologiesRouterAll?limit=2147483647&name=' + name)
+
+    def get_overlay_devices(self):
+        return self.json_api_get('rs/ncs/query/devices?limit=2147483647')
+
+    def get_overlay_vms(self, name='admin'):
+        return self.json_api_get('rs/ncs/query/tenantPortsAll?limit=2147483647&name=' + name)
+
+    def get_overlay_device_vlan_vni_mapping(self, device_name):
+        resource = 'rs/ncs/operational/vlan-vni-mapping/{0}'.format(device_name)
+        return self.json_api_get(resource)
+
+    def verify_network(self, os_network):
+        overlay_network = self.get_overlay_network(os_network['id'])
+        net_flag = False
+        if overlay_network:
+            net_flag = True
+            net_flag &= overlay_network['name'] == os_network['name']
+            net_flag &= overlay_network['status'] == os_network['status'].lower()
+            net_flag &= overlay_network['admin-state-up'] == os_network['admin_state_up'].lower()
+            net_flag &= overlay_network['provider-network-type'] == os_network['provider:network_type']
+            net_flag &= overlay_network['provider-physical-network'] == os_network['provider:physical_network']
+            net_flag &= overlay_network['provider-segmentation-id'] == os_network['provider:segmentation_id']
+            net_flag &= overlay_network['provider-segmentation-id'] == os_network['provider:segmentation_id']
+        return net_flag
+
+    def verify_subnet(self, os_network_id, os_subnet):
+        overlay_subnet = self.get_overlay_network_subnets(os_network_id)['items']
+        subnet_synced = len(overlay_subnet) > 0
+        if subnet_synced:
+            overlay_subnet = overlay_subnet[0]
+            subnet_synced &= overlay_subnet['cidr'] == os_subnet['cidr']
+            subnet_synced &= overlay_subnet['enable-dhcp'] == os_subnet['enable_dhcp'].lower()
+            subnet_synced &= overlay_subnet['gateway-ip'] == os_subnet['gateway_ip']
+            subnet_synced &= overlay_subnet['id'] == os_subnet['id']
+            subnet_synced &= overlay_subnet['ip-version'] == os_subnet['ip_version']
+            subnet_synced &= overlay_subnet['name'] == os_subnet['name']
+            subnet_synced &= overlay_subnet['network-id'] == os_subnet['network_id']
+        return subnet_synced
+
+    def verify_ports(self, os_network_id, os_ports):
+        overlay_ports = self.get_overlay_network_ports(network_id=os_network_id)['items']
+        ports_synced = len(overlay_ports) == len(os_ports)
+        if ports_synced:
+            for port in os_ports:
+                try:
+                    overlay_port = next(p for p in overlay_ports if p['id'] == port['id'])
+                    ports_synced &= overlay_port['mac'] == port['mac_address']
+                except StopIteration:
+                    ports_synced = False
+                    break
+        return ports_synced
+
+    def verify_instances(self, os_instances):
+        vms = self.get_overlay_vms()['items']
+        instances_synced = len(vms) == len(os_instances)
+        return instances_synced
