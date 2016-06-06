@@ -14,10 +14,10 @@ class VtsScenario(Worker):
         self._cloud.create_key_pair()
         internal_nets = self._cloud.create_net_subnet(common_part_of_name='internal', class_a=10, how_many=self._n_nets, is_dhcp=False)
 
-        for i in range(1, self._n_instances):
+        for i in range(1, self._n_instances + 1):
             port_pids = self._cloud.create_ports(instance_name=str(i), on_nets=internal_nets, is_fixed_ip=True)
             instance_name = self._cloud.create_instance(name=str(i), flavor='m1.medium', image=image_name, on_ports=port_pids)
-
+            self._log.info('instance={0} created'.format(instance_name))
             # cloud.cmd('ping -c5 {fip}'.format(fip=fips[i]))
             # instances[i] = Server(ip=fips[i], username='root', lab=None, name='a')
 

@@ -2,7 +2,7 @@ from lab.server import Server
 
 
 class Vtf(Server):
-    COMMANDS = ['show vxlan tunnel', 'show version', 'show ip fib', 'show l2fib verbose']  # supported- expect files are pre-created
+    COMMANDS = ['show vxlan tunnel', 'show version', 'show ip fib', 'show l2fib verbose', 'show br', 'show br 5000 detail' 'trace add dpdk-input 100']  # supported- expect files are pre-created
 
     def __init__(self, name, role, ip, lab, username, password, hostname):
         super(Vtf, self).__init__(name, role, ip, lab, username, password, hostname)
@@ -40,6 +40,9 @@ class Vtf(Server):
 
     def show_connections_xrvr_vtf(self):
         return self.run('netstat -ant |grep 21345')
+
+    def trace(self):
+        return self.run('trace add dpdk-input 100')
 
     def actuate(self):
         for cmd, file_name in self._commands.iteritems():
