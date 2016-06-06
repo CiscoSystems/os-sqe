@@ -25,7 +25,14 @@ class Worker(object):
 
         self._log = create_logger(name=str(type(self)))
         delay = self._kwargs.get('delay', 0)
-        duration = self._kwargs.get('duration', 3)
+        duration = self._kwargs.get('duration')
+        n_repeats = self._kwargs.get('n_repeats')
+        if duration and n_repeats:
+            raise ValueError('{}: specifies both duration and n_repeats. Decide which one you want to use.'.format(self._kwargs))
+        if duration is None and n_repeats is None:
+            raise ValueError('{}: specifies neither duration no n_repeats. Decide which one you want to use.'.format(self._kwargs))
+        if n_repeats and n_repeats < 1:
+            raise ValueError('{}: n_repeats should >=1'.format(self._kwargs))
         period = self._kwargs.get('period', 0)
 
         if delay:
@@ -36,9 +43,14 @@ class Worker(object):
         start_time = time.time()
         end_time = start_time + duration
         try:
-            while time.time() < end_time:
-                self.loop()
-                time.sleep(period)
+            if duration:
+                while time.time() < end_time:
+                    self.loop()
+                    time.sleep(period)
+            elif n_repeats:
+                for _ in range(n_repeats):
+                    self.loop()
+                    time.sleep(period)
         except:
             self._log.exception('EXCEPTION')
 
