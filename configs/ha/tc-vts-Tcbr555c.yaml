@@ -1,0 +1,19 @@
+---
+# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr555c ShortDesription=Isolate the redundant VTC VM from the management network.
+- class: lab.monitors.vts_monitor.VtsMonitor
+  duration: 200
+  period: 2
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  delay: 20
+  how-many-networks: 1
+  how-many-servers: 3
+
+- class: lab.disruptor.vts_disruptor.VtsDisruptor
+  delay: 20
+  node-to-disrupt: passive-vtc
+  method-to-disrupt: isolate-from-management
+  how-many-times: 2
+  downtime: 100
+  uptime: 20
+

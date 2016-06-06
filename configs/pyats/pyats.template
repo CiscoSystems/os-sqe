@@ -1,0 +1,22 @@
+from ats import aetest
+
+
+tc_name_versus_status = {}
+
+
+@aetest.loop(test_case=tc_name_versus_status.keys())
+class OsSqeTest(aetest.Testcase):
+    uid = 'Will be re-defined in prepare_test_case'
+
+    @aetest.test
+    def run_test_case(self, test_case):
+        if tc_name_versus_status[test_case]['status']:
+            self.passed('PASSED')
+        else:
+            self.failed('tc {{}} failed: with {{}} exceptions'.format(test_case, tc_name_versus_status[test_case]['n_exceptions']))
+
+
+def main():
+    from ats.easypy import run
+
+    run(testscript=__file__)
