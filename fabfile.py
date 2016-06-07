@@ -11,24 +11,24 @@ def cmd(config_path):
     from fabric.operations import prompt
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
+    from six import print_
 
     l = Laboratory(config_path=config_path)
     nodes = sorted(map(lambda node: node.name(), l.get_nodes()))
     while True:
-        print l, 'has: "cloud" and:\n', nodes, '\n(use "quit" to quit)'
-        device_name = prompt(text='node? ')
+        device_name = prompt(text='{lab} has: "cloud" and:\n {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=nodes))
         if device_name == 'cloud':
             d = DeployerExisting({'cloud': config_path, 'hardware-lab-config': config_path})
             device = d.wait_for_cloud([])
         elif device_name in ['quit', 'q', 'exit']:
             return
         elif device_name not in nodes:
-            print device_name, 'is not available'
+            print_(device_name, 'is not available')
             continue
         else:
             device = l.get_node(device_name)
         method_names = [x for x in dir(device) if not x.startswith('_')]
-        print device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)'
+        print_(device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)')
         while True:
             method_name = prompt(text='\n\n>>{0}<< operation?: '.format(device))
             if method_name in ['quit', 'q', 'exit']:
@@ -36,10 +36,10 @@ def cmd(config_path):
             elif method_name == 'node':
                 break
             elif method_name in ['r', 'rpt']:
-                print device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)'
+                print_(device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)')
                 continue
             elif method_name not in method_names:
-                print method_name, 'is not available'
+                print_(method_name, 'is not available')
                 continue
             method_to_execute = getattr(device, method_name)
             parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
@@ -56,9 +56,9 @@ def cmd(config_path):
             # noinspection PyBroadException
             try:
                 results = method_to_execute(*arguments)
-                print '\n>>{0}<< RESULTS:\n\n'.format(device), results
+                print_('\n>>{0}<< RESULTS:\n\n'.format(device), results)
             except Exception as ex:
-                print '\n Exception: ', ex
+                print_('\n Exception: ', ex)
 
 
 @task
@@ -79,29 +79,25 @@ def deploy(config_path, is_for_mercury=False, topology='VLAN'):
 
 
 @task
-def ha(lab, test_name, do_not_clean=False):
-    """fab ha:g10,tc812,no_clean\tRun HA. "tcall" means all tests.
-        :param lab: name from $REPO/configs/*.yaml
-        :param test_name: test name to run - some yaml from configs/ha folder
+def ha(lab, test_regex, do_not_clean=False, is_tims=False):
+    """fab ha:g10,tc-vts,no_clean\t\tRun all VTS tests on lab g10
+        :param lab: which lab to use
+        :param test_regex: regex to match some tc in $REPO/configs/ha
         :param do_not_clean: if True then the lab will not be cleaned before running test
+        :param is_tims: if True then publish results to TIMS
     """
-    from lab.with_config import actual_path_to_config, ls_configs
+    import os
+    from fabric.api import local
+    from lab import with_config
 
-    # if not lab.endswith('.yaml'):
-    #     lab += '.yaml'
-    # available_labs = ls_configs()
-    # if lab not in available_labs:
-    #     raise ValueError('{lab} is not defined. Available labs: {labs}'.format(lab=lab, labs=available_labs))
-    lab_path = actual_path_to_config(path=lab)
+    lab_path = with_config.actual_path_to_config(path=lab)
     lab_name = lab_path.rsplit('/', 1)[-1].replace('.yaml', '')
 
-    if test_name == 'tcall':
-        tests = sorted(filter(lambda x: x.startswith('tc'), ls_configs(directory='ha')))
-    else:
-        tests = [actual_path_to_config(path=test_name, directory='ha').split('\\')[-1]]
+    available_tc = with_config.ls_configs(directory='ha')
+    tests = sorted(filter(lambda x: test_regex in x, available_tc))
 
-    run_config_yaml = '{lab}-ha-{tc}.yaml'.format(lab=lab_name, tc=test_name)
-    with open(run_config_yaml, 'w') as f:
+    run_config_yaml = '{lab}-ha-{regex}.yaml'.format(lab=lab_name, regex=test_regex)
+    with with_config.open_artifact(run_config_yaml, 'w') as f:
         f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab))
         for i, test in enumerate(tests, start=1):
             if not do_not_clean:
@@ -109,6 +105,18 @@ def ha(lab, test_name, do_not_clean=False):
             f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: "%s"}}\n' % (10*i + 1,  lab_name, lab_name, test))
 
     run(config_path=run_config_yaml)
+
+    results = {x: {'status': False, 'n_exceptions': 2} for x in tests}
+    if 'pyats' in os.getenv('PATH'):
+        pyast_template = with_config.read_config_from_file('pyats.template', 'pyats', is_as_string=True)
+        pyats_body = pyast_template.format(results)
+        with with_config.open_artifact('pyats_job.py', 'w') as f:
+            f.write(pyats_body)
+        # noinspection PyBroadException
+        try:
+            local('easypy artifacts/pyats_job.py -no_archive ' + ('-tims_post -tims_dns "tims/Tcbr2p"' if is_tims else ''))
+        except:
+            pass
 
 
 @task
