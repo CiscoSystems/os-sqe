@@ -292,6 +292,22 @@ export OS_AUTH_URL={end_point}
             pids.append(port['id'])
         return pids
 
+    def list_ports(self, network_id=None):
+        query = ' '.join(['--network-id=' + network_id if network_id else ''])
+        return self.cmd('neutron port-list -f csv {q}'.format(q=query))
+
+    def list_networks(self):
+        networks = self.cmd('neutron net-list -f csv')
+        for network in networks:
+            network.update(self.cmd('neutron net-show {id} -f shell'.format(id=network['id'])))
+        return networks
+
+    def show_subnet(self, subnet_id):
+        return self.cmd('neutron subnet-show {0} -f shell'.format(subnet_id))
+
+    def server_list(self):
+        return self.cmd(self._list_server_cmd)
+
     def _calculate_static_ip_and_mac(self, allocation_pool):
         a = map(lambda x: int(x), allocation_pool[0].split('.'))
         a[-1] += self._instance_counter
