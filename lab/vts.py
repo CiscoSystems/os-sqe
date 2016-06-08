@@ -19,7 +19,7 @@ class Vtf(Server):
         if not self._proxy_to_run:
             raise RuntimeError('{0} needs to have proxy server (usually VTC)'.format(self))
         ans = self._proxy_to_run.run(command='expect {0}'.format(self._commands[cmd]))
-        return ans.split('\n')[-2]
+        return ans.split('\n')[3:-1]
 
     def run(self, command, in_directory='.', warn_only=False):  # this one imply runs the command on vtf host (without telnet)
         if not self._proxy_to_run:
