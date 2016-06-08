@@ -1,0 +1,15 @@
+#!/bin/bash
+
+function user_add() {
+    local username=$1
+    local password=$2
+
+    useradd $username
+    echo -e $password | (passwd --stdin $username)
+
+    cat >>/etc/sudoers.d/${username}<<EOF
+$username ALL=NOPASSWD: ALL
+EOF
+}
+
+user_add localadmin ubuntu

@@ -1,0 +1,23 @@
+#!/bin/bash
+home=$(dirname $0)
+
+sudo dnf install -y dnsmasq
+
+exec_file=/opt/sqe-start-dnsmasq
+service_name=sqe-start-dnsmasq.service
+install -m 0755 -o root -g root $home/sqe-start-dnsmasq $exec_file
+
+cat >/etc/systemd/system/${service_name}<<EOF
+[Unit]
+Description=Start dnsmasq service if MAC address looks like "10:XX:XX:XX:XX:XX" on any interface
+After=network.service
+
+[Service]
+Type=oneshot
+ExecStart=$exec_file
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable $service_name
