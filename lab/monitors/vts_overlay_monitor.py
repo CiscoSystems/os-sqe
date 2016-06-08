@@ -23,10 +23,9 @@ class VtsOverlayMonitor(Worker):
 
             ports = self._cloud.list_ports(network_id=network['id'])
             ports_synced = self._vtc.verify_ports(network['id'], ports)
-            self._log.info('ports={0}; synced={1}'.format(len(ports), ports_synced))
+            self._log.info('os_network={0}; ports={1}; synced={2}'.format(
+                network['id'], len(ports), ports_synced))
 
         instances = self._cloud.server_list()
         instances_synced = self._vtc.verify_instances(instances)
         self._log.info('instances={0}; synced={1}'.format(len(instances), instances_synced))
-
-        pass

@@ -1,7 +1,7 @@
 from lab.worker import Worker
 
 
-class VtfOverlayMonitor(Worker):
+class VtfMonitor(Worker):
 
     def setup(self):
         from lab.vts import Vts
@@ -32,14 +32,13 @@ class VtfOverlayMonitor(Worker):
             # Verify tunnels are set up between all VTFs
             for vtf in vtfs:
                 vtf_sync[str(vtf._ip)] = True
-                tunnles_raw = vtf.show_vxlan_tunnel()
+                tunnels_raw = vtf.show_vxlan_tunnel()
                 for vtf_ip in vtf_ips:
                     if vtf_ip == vtf._ip:
                         continue
                     tunnel_str = '{src} (src) {dst} (dst) vni {vni} ' \
                                  'encap_fib_index 0 decap_next l2'.format(src=vtf._ip, dst=vtf_ip, vni=vni_number)
-                    vtf_sync[str(vtf._ip)] &= tunnel_str in tunnles_raw
+                    vtf_sync[str(vtf._ip)] &= any([tunnel_str in tunnel_raw for tunnel_raw in tunnels_raw])
 
         for vtf_ip, sync in vtf_sync.items():
             self._log.info('vtf={0}; sync={1}'.format(vtf_ip, sync))
-
