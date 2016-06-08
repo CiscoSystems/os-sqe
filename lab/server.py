@@ -301,6 +301,7 @@ class Server(LabNode):
             s.close()
         return res
     
-    def actuate_hostname(self):
-        self._hostname = self.run('hostname').stdout.strip()
+    def actuate_hostname(self, refresh=True):
+        if not hasattr(self, '_hostname') or refresh:
+            self._hostname = self.run('hostname').stdout.strip()
         return self._hostname

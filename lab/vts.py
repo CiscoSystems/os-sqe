@@ -69,8 +69,20 @@ class Xrvr(Server):
 
     def __init__(self, name, role, ip, lab, username, password, hostname):
         super(Xrvr, self).__init__(name, role, ip, lab, username, password, hostname)
-        self._commands = {cmd: '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self._name) for cmd in self.COMMANDS}
+        self._commands = {}
         self._proxy_to_run = None
+
+        self._init_commands()
+
+    def _add_command(self, cmd):
+        file_name = '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self._name)
+        self._commands[cmd] = file_name
+        return file_name
+
+    def _init_commands(self):
+        self._commands = {}
+        for cmd in self.COMMANDS:
+            self._add_command(cmd)
 
     def set_proxy(self, proxy):
         self._proxy_to_run = proxy
@@ -78,20 +90,26 @@ class Xrvr(Server):
     def cmd(self, cmd):  # XRVR uses redirection: username goes to DL while ipmi_username goes to XRVR, ip is the same for both
         if not self._proxy_to_run:
             raise RuntimeError('{0} needs to have proxy server (usually VTC)'.format(self))
+        if cmd not in self._commands:
+            file_name = self._add_command(cmd)
+            self.actuate_command(cmd, file_name)
         ans = self._proxy_to_run.run(command='expect {0}'.format(self._commands[cmd]))
         return ans
 
     def actuate(self):
         for cmd, file_name in self._commands.iteritems():
-            tmpl = '''
+            self.actuate_command(cmd, file_name)
+
+    def actuate_command(self, cmd, file_name):
+        tmpl = '''
 log_user 0
 spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}
 expect "CPU0:XRVR"
 send "terminal length 0 ; {cmd}\n"
 log_user 1
-expect eof
+expect "CPU0:XRVR"
 '''.format(p=self._ipmi_password, u=self._ipmi_username, ip=self._ip, cmd=cmd)
-            self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
+        self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
 
     def _get(self, raw, key):
         """
@@ -110,7 +128,14 @@ expect eof
         """
         import re
         try:
-            return re.search('(?<={0} ).*'.format(key), raw).group(0)
+            # First 2 lines are the called command
+            # The last line is a prompt
+            for line in raw.split('\r\n')[2:-1]:
+                if line.startswith('#'):
+                    continue
+                m = re.search('\s*(?<={0} )(.*?)\r'.format(key), line)
+                if m:
+                    return m.group(1)
         except AttributeError:
             return None
 
@@ -175,7 +200,7 @@ class Vts(Server):
     def get_vtf(self, compute_hostname):
         for vtf in self.lab().get_nodes(Vtf):
             n = vtf.get_compute_node()
-            if n.actuate_hostname() == compute_hostname:
+            if n.actuate_hostname(refresh=False) == compute_hostname:
                 return vtf
 
     def check_vtfs(self):
