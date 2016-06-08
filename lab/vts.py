@@ -251,6 +251,9 @@ class Vts(Server):
     def show_uuid_servers(self):
         pass  # ncs_cli -u admin show configuration cisco-vts uuid-servers
 
+    def disrupt(self, start_or_stop):
+        pass  # TODO: implement actual disruptor when devs ready
+
     def actuate(self):
         self.check_xrvr()
         self.check_vtfs()
