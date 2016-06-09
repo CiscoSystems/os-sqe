@@ -40,10 +40,10 @@ class Worker(object):
         time.sleep(delay)
 
         self._log.info('status=Start arguments={0}'.format(self._kwargs))
-        start_time = time.time()
-        end_time = start_time + duration
         try:
             if duration:
+                start_time = time.time()
+                end_time = start_time + duration
                 while time.time() < end_time:
                     self.loop()
                     time.sleep(period)

@@ -296,6 +296,9 @@ export OS_AUTH_URL={end_point}
         query = ' '.join(['--network-id=' + network_id if network_id else ''])
         return self.cmd('neutron port-list -f csv {q}'.format(q=query))
 
+    def show_port(self, port_id):
+        return self.cmd('neutron port-show {0} -f shell'.format(port_id))
+
     def list_networks(self):
         networks = self.cmd('neutron net-list -f csv')
         for network in networks:
