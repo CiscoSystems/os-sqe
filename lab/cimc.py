@@ -2,37 +2,36 @@ from lab.server import Server
 
 
 class CimcServer(Server):
-    _handle = None
-    _dump_xml = True
-    _logout_on_each_command = False
     LOM_ENABLED, LOM_DISABLED = 'Enabled', 'Disabled'
     POWER_UP, POWER_DOWN, POWER_CYCLE = 'up', 'down', 'cycle-immediate'
     RAID_0, RAID_1, RAID_10 = '0', '1', '10'
 
     def __init__(self, node_id, lab, role, hostname):
         super(CimcServer, self).__init__(node_id=node_id, lab=lab, role=role, hostname=hostname)
-        self._info_cache = {'adaptors': []}
+        self._handle = None
+        self._dump_xml = False
+        self._logout_on_each_command = False
 
     def logger(self, message):
         from lab.logger import lab_logger
 
-        lab_logger.info('{0}: {1}'.format(self, message))
+        lab_logger.info('{0}: CIMC {1}'.format(self, message))
         
     def form_mac(self, mac_pattern):
         return '00:{lab:02}:A0:{role_id}:{count:02}:{net}'.format(lab=self._lab.get_id(), role_id=self.lab().ROLES[self.get_role()], count=self._n, net=mac_pattern)
 
-    def cimc_login(self):
+    def _login(self):
         import ImcSdk
 
-        self.logger('Logging into CIMC')
+        self.logger('logging in')
         self._handle = ImcSdk.ImcHandle()
         oob_ip, oob_username, oob_password = self.get_oob()
         if not all([oob_ip, oob_username, oob_password]):
             raise AttributeError('To control CIMC you need to provide OOB IP, username and password.')
         self._handle.login(name=oob_ip, username=oob_username, password=self._oob_password, dump_xml=self._dump_xml)
 
-    def cimc_logout(self):
-        self.logger('Logging out from the CIMC')
+    def _logout(self):
+        self.logger('logging out')
         self._handle.logout()
         self._handle = None
 
@@ -40,32 +39,36 @@ class CimcServer(Server):
         from ImcSdk.ImcCoreMeta import ImcException
         
         if not self._handle:
-            self.cimc_login()
+            self._login()
         if cmd not in dir(self._handle):
             raise NotImplemented('{} does not exist'.format(cmd))
         func = getattr(self._handle, cmd)
         for i in range(3):  # try to repeat the command up to 3 times
             try:
                 return func(in_mo=in_mo, class_id=class_id, params=params, dump_xml=self._dump_xml)
-            except ImcException as error:
-                if error.error_code == '552':
-                    self.logger('Refreshing connection to CIMC')
+            except ImcException as ex:
+                if ex.error_code == '552':
+                    self.logger('refreshing connection')
                     self._handle.refresh(auto_relogin=True)
                     continue
+                else:
+                    raise
             finally:
                 if self._logout_on_each_command:
-                    self.cimc_logout()
+                    self._logout()
 
     def cimc_switch_lom_ports(self, status):
         self.logger('Set all LOM ports to the status: {0}'.format(status))
         params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status, 'vpLOMPort0State': status, 'vpLOMPort1State': status}
         self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
 
-    def list_lom_macs(self):
-        return map(lambda x: x.Mac, self.cimc_get_mo_by_class_id('networkAdapterEthIf'))
+    def cimc_list_lom_ports(self):
+        r = self.cimc_get_mo_by_class_id('networkAdapterEthIf')
+        return {'LOM-' + x.Id: {'mac': x.Mac, 'dn': x.Dn} for x in r}
 
-    def list_mlom_macs(self):
-        return map(lambda x: x.Mac, self.cimc_get_mo_by_class_id('adaptorHostEthIf'))
+    def cimc_list_mlom_ports(self):
+        r = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
+        return {x.Name: {'mac': x.Mac, 'uplink': x.UplinkPort, 'pci-slot': x.UsnicCount, 'dn': x.Dn, 'mtu': x.Mtu, 'name': x.Name, 'pxe-boot': x.PxeBoot} for x in r}
 
     def disable_pxe_all_intf(self, status):
         adapters = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
@@ -81,7 +84,7 @@ class CimcServer(Server):
         return self.cmd('set_imc_managedobject', in_mo=None, class_id=class_id, params=params)
 
     def cimc_enable_sol(self):
-        self.logger('Enable Serial over Lan connections')
+        self.logger('enabling SOL')
         params = {'dn': 'sys/rack-unit-1/sol-if', 'adminState': 'enable', 'speed': '115200'}
         self.cimc_set_mo_by_class_id(class_id='solIf', params=params)
 
@@ -120,26 +123,27 @@ class CimcServer(Server):
         self.cimc_set_mo_by_class_id(class_id="storageVirtualDriveCreatorUsingUnusedPhysicalDrive", params=params)
 
     def cimc_delete_all_vnics(self):
-        self.logger('Cleaning up all VNICs from the server')
+        self.logger('cleaning up all vNICs')
         adapters = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
         for adapter in adapters:
-            if adapter.Name not in ['eth0', 'eth1']:
-                self.cmd('remove_imc_managedobject', in_mo=None, class_id=adapter.class_id, params={'Dn': adapter.Dn})
-            else:
-                params = {'UplinkPort': adapter.Name[-1], 'mac': 'AUTO', 'mtu': 1500, 'dn': adapter.Dn}
-                self.cimc_set_mo_by_class_id(class_id='adaptorHostEthIf', params=params)
-                general_params = {'Dn': adapter.Dn + '/general', 'Vlan': 'NONE', 'Order': adapter.Name[-1]}
-                self.cimc_set_mo_by_class_id(class_id='AdaptorEthGenProfile', params=general_params)
+            self.cimc_delete_vnic(name=adapter.Name, dn=adapter.Dn)
+
+    def cimc_delete_vnic(self, name, dn):
+        if name not in ['eth0', 'eth1']:
+            self.cmd('remove_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params={'Dn': dn})
+        else:
+            params = {'UplinkPort': name[-1], 'mac': 'AUTO', 'mtu': 1500, 'dn': dn}
+            self.cimc_set_mo_by_class_id(class_id='adaptorHostEthIf', params=params)
+            general_params = {'Dn': dn + '/general', 'Vlan': 'NONE', 'Order': name[-1]}
+            self.cimc_set_mo_by_class_id(class_id='AdaptorEthGenProfile', params=general_params)
 
     def cimc_set_ssh_timeout(self, timeout=3600):
         self.cmd('set_imc_managedobject', in_mo=None, class_id='commHttps', params={'Dn': 'sys/svc-ext/https-svc', 'sessionTimeout': str(timeout)})
 
     def cimc_change_boot_order(self, pxe_order=1, hdd_order=2):
-        self.logger('Updating boot order. Setting PXE as #{0}, and HDD as #{1}'.format(pxe_order, hdd_order))
-        boot_configs = [{'params': {'Dn': 'sys/rack-unit-1/boot-policy/lan-read-only', 'Order': pxe_order, 'Access': 'read-only'},
-                         'class_id': 'LsbootLan'},
-                        {'params': {'Dn': 'sys/rack-unit-1/boot-policy/storage-read-write', 'Order': hdd_order, 'Access': 'read-write'},
-                         'class_id': 'LsbootStorage'}]
+        self.logger('updating boot order: PXE as #{0}, HDD as #{1}'.format(pxe_order, hdd_order))
+        boot_configs = [{'params': {'Dn': 'sys/rack-unit-1/boot-policy/lan-read-only', 'Order': pxe_order, 'Access': 'read-only'}, 'class_id': 'LsbootLan'},
+                        {'params': {'Dn': 'sys/rack-unit-1/boot-policy/storage-read-write', 'Order': hdd_order, 'Access': 'read-write'}, 'class_id': 'LsbootStorage'}]
         for boot_config in boot_configs:
             boot_device = self.cmd('get_imc_managedobject', in_mo=None, class_id=None, params={'Dn': boot_config['params']['Dn']})
             if boot_device:
@@ -147,29 +151,17 @@ class CimcServer(Server):
             else:
                 self.cmd('add_imc_managedobject', in_mo=None, class_id=boot_config['class_id'], params=boot_config['params'])
 
-    def cimc_create_vnic(self, pci_slot_id, uplink_port, nic_order, nic, native_vlan):
-        if nic.get_name() in ['eth0', 'eth1']:
-            corrected_nic_name = nic.get_name()
-            corrected_nic_order = nic.get_name()[-1]
-            corrected_mac = nic.get_mac()
-            corrected_uplink_port = nic.get_name()[-1]
-        else:
-            corrected_nic_name = nic.get_name() + '-' + str(uplink_port)
-            corrected_nic_order = str(5 + 2*int(nic_order) + int(uplink_port))  # started split order from 5
-            corrected_mac = nic.get_mac()[:-5] + corrected_nic_order.zfill(2) + nic.get_mac()[-3:]
-            corrected_uplink_port = uplink_port
-
-        params = {'UplinkPort': corrected_uplink_port, 'mac': corrected_mac, 'Name': corrected_nic_name,
-                  'dn': 'sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}'.format(pci_slot_id=pci_slot_id, nic_name=corrected_nic_name)}
-        if 'pxe' in nic.get_name():
+    def cimc_create_vnic(self, pci_slot_id, uplink_port, order, name, mac, vlan, is_pxe_enabled):
+        self.logger(message='creating vNIC {} on MLOM-{}/{} mac={} vlan={} pxe: {}'.format(name, pci_slot_id, uplink_port, mac, vlan, is_pxe_enabled))
+        params = {'UplinkPort': uplink_port, 'mac': mac, 'Name': name, 'dn': 'sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}'.format(pci_slot_id=pci_slot_id, nic_name=name)}
+        if is_pxe_enabled:
             params['PxeBoot'] = 'enabled'
-        if nic.get_name() in ['eth0', 'eth1']:
+        if name in ['eth0', 'eth1']:  # eth0 and eth1 are default, only possible to modify there parameters, no way to rename ot delete
             self.cimc_set_mo_by_class_id(class_id='adaptorHostEthIf', params=params)
         else:
             self.cmd('add_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params=params)
-        general_params = {'Dn': params['dn'] + '/general', 'Vlan': native_vlan, 'Order': corrected_nic_order}
+        general_params = {'Dn': params['dn'] + '/general', 'Vlan': vlan, 'Order': order}
         self.cmd('set_imc_managedobject', in_mo=None, class_id="AdaptorEthGenProfile", params=general_params)
-        self.logger('Creating VNIC {name} with order={order}, VLAN={vlan}'.format(name=params['Name'], order=corrected_nic_order, vlan=native_vlan))
 
     def cimc_get_power_status(self):
         return self.cimc_get_mo_by_class_id('computeRackUnit')[0].get_attr('OperPower')
@@ -182,57 +174,75 @@ class CimcServer(Server):
             state = self.POWER_UP
         if (current_power_state == 'off' and state == self.POWER_UP) or (current_power_state == 'on' and state == self.POWER_DOWN) \
                 or state == self.POWER_CYCLE:
-            self.logger('Changing power state on server to {0}'.format(state))
+            self.logger('changing power state on server to {0}'.format(state))
             params = {'dn': "sys/rack-unit-1", 'adminPower': state}
             self.cmd('set_imc_managedobject', in_mo=None, class_id='computeRackUnit', params=params)
             time.sleep(120)  # wait for the server to come up
 
     def cleanup(self):
         self.logger('Cleaning CIMC {0}'.format(self))
-        self.cimc_login()
+        self._login()
         self.cimc_switch_lom_ports(self.LOM_ENABLED)
         self.cimc_delete_all_vnics()
         self.cimc_power(self.POWER_DOWN)
-        self.cimc_logout()
+        self._logout()
 
     def cimc_recreate_vnics(self):
-        self.cimc_delete_all_vnics()
-        for nic_order, nic in enumerate(self.get_nics()):  # NIC order starts from 0
-            if nic.is_bond():
-                native_vlan = nic.get_vlans()[0]
-                for wire in self._upstream_wires:
-                    pci_slot_id, uplink_port = wire.get_own_port(node=self).split('/')
-                    if pci_slot_id not in ['lom', 'LOM']:
-                        self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, nic_order=nic_order, nic=nic, native_vlan=native_vlan)
-                    if nic.get_name() in ['eth0', 'eth1']:  # since eth0 and eth1 are special they are not split like user -> user-0, user-1
-                        break
-            else:
-                if nic.get_mac() not in self.list_lom_macs():
-                    raise ValueError('Specified MAC {mac} is not on LOM on {srv}. Edit lab config'.format(mac=nic.get_mac(), srv=self))
+        ip_in_os = self.list_ip_info()
+        actual_mloms = self.cimc_list_mlom_ports()
+        actual_loms = self.cimc_list_lom_ports()
+        for nic_order, nic in enumerate(self.get_nics().values()):  # NIC order starts from 0
+            for slave_name, slave_mac_port in sorted(nic.get_slave_nics().items()):
+                slave_mac, slave_port = slave_mac_port['mac'], slave_mac_port['port']
+                if slave_port in ['LOM-1', 'LOM-2']:
+                    actual_mac = actual_loms[slave_port]['mac']
+                    if slave_mac != actual_mac:
+                        raise ValueError('Node "{}": "{}" has "{}" while specified "{}". Edit lab config!'.format(self.get_id(), slave_port, actual_mac, slave_mac))
+                else:
+                    if slave_name in ip_in_os and slave_mac == ip_in_os[slave_name]:  # this nic is already in the system
+                        continue
+                    if slave_name in actual_mloms:
+                        if slave_mac == actual_mloms[slave_name]['mac']:  # this nic is already in CIMC
+                            continue
+                        else:
+                            self.logger('deleting {} since mac is not correct'.format(actual_mloms[slave_name]))
+                            self.cimc_delete_vnic(name=slave_name, dn=actual_mloms[slave_name]['dn'])
+                    pci_slot_id, uplink_port = slave_port.strip('MLOM-').split('/')
+                    self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order=nic_order, name=slave_name, mac=slave_mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe_enabled())
 
-    def configure(self):
-        lab_type = self.lab().get_type(0)
-        self.logger('Configuring for {}'.format(lab_type))
-        self.cimc_login()
+    def configure(self, is_debug=False):
+        self._dump_xml = is_debug
+        lab_type = self.lab().get_type()
+        self.logger('configuring for {}'.format(lab_type))
+        self._login()
         self.cimc_power(self.POWER_UP)
         self.cimc_set_hostname()
         self.cimc_change_boot_order(pxe_order=1, hdd_order=2)
-        if not self.is_deploy_by_cobbler():
-            self.cimc_switch_lom_ports(self.LOM_DISABLED)
         self.cimc_enable_sol()
-        if lab_type == self.lab().LAB_MERCURY:
-            self.create_storage('1', 2, True)
+        # if lab_type == self.lab().LAB_MERCURY:
+        #    self.create_storage('1', 2, True)
+        # self.cimc_set_mlom_adaptor(pci_slot=0, n_vnics=10)
         self.cimc_recreate_vnics()
-        self.cimc_logout()
+        self._logout()
 
     def cimc_get_adapters(self):
-        r = self.cimc_get_mo_by_class_id('AdaptorUnit')[0]
+        r = self.cimc_get_mo_by_class_id('AdaptorUnit')
         return r
+
+    def cimc_set_mlom_adaptor(self, pci_slot, n_vnics):
+        self.logger(message='allowing MLOM-{} to use up to {} vNICs'.format(pci_slot, n_vnics))
+        # self.cimc_set_mo_by_class_id(class_id='adaptorUnit', params={'dn': 'sys/rack-unit-1/adaptor-{0}'.format(pci_slot), 'description': str(self)})
+        self.cimc_set_mo_by_class_id(class_id='adaptorGenProfile', params={'dn': 'sys/rack-unit-1/adaptor-{0}/general'.format(pci_slot), 'fipMode': 'enabled', 'vntagMode': 'enabled', 'numOfVMFexIfs': n_vnics})
 
     def cimc_get_mgmt_nic(self):
         r = self.cimc_get_mo_by_class_id('mgmtIf')[0]
-        return {'mac': r.Mac, 'ip': r.ExtIp, 'hostname': r.Hostname}
+        return {'mac': r.Mac, 'ip': r.ExtIp, 'hostname': r.Hostname, 'dn': r.Dn}
 
     def cimc_set_hostname(self):
-        ru, _ = self.get_hardware_info()
-        return self.cimc_set_mo_by_class_id(class_id='mgmtIf', params={'hostname': '{}-{}'.format(ru, self.get_id())})
+        current = self.cimc_get_mgmt_nic()
+        new_cimc_hostname = '{}-ru{}-{}'.format(self.lab(), self.get_hardware_info()[0], self.get_id())
+        if new_cimc_hostname != current['hostname']:
+            self.logger(message='setting hostname to {}'.format(new_cimc_hostname))
+            self.cimc_set_mo_by_class_id(class_id='mgmtIf', params={'dn': 'sys/rack-unit-1/mgmt/if-1', 'hostname': new_cimc_hostname})
+        else:
+            self.logger(message='hostname is already {}'.format(new_cimc_hostname))

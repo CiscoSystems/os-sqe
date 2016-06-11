@@ -32,7 +32,7 @@ class Laboratory(object):
         from lab import with_config
         from lab.network import Network
 
-        self._cfg = with_config.read_config_from_file(yaml_path=config_path)
+        self._cfg = with_config.read_config_from_file(config_path=config_path)
         self._id = self._cfg['lab-id']
         self._lab_name = self._cfg['lab-name']
         self._lab_type = self._cfg['lab-type']
@@ -50,12 +50,21 @@ class Laboratory(object):
         self._nets = {}
         self._upstream_vlans = []  # list of vlans which should go out of the lab
 
+        net_markers_used = []
         for net_name, net_desc in self._cfg['nets'].items():
             try:
-                net = Network(name=net_name, cidr=net_desc['cidr'], mac_pattern=net_desc['mac-pattern'], is_ssh=net_desc['is-ssh'], vlan=net_desc['vlan'])
+                net = Network(name=net_name, cidr=net_desc['cidr'], mac_pattern=net_desc['mac-pattern'], vlan=net_desc['vlan'])
                 self._nets[net_name] = net
                 if net_desc['is-via-tor']:
                     self._upstream_vlans.append(net_desc['vlan'])
+                for is_xxx in ['pxe', 'ssh', 'vts']:
+                    if net_desc.get('is-' + is_xxx, False):
+                        if is_xxx not in net_markers_used:
+                            getattr(net, 'set_is' + is_xxx)()  # will set marker to True
+                            net_markers_used.append(is_xxx)
+                    else:
+                        raise ValueError('Check net section- more then one network is marked as is-' + is_xxx)
+
             except KeyError as ex:
                 raise ValueError('Network "{}" has no {}'.format(net_name, ex.message))
 
@@ -118,28 +127,71 @@ class Laboratory(object):
             nic_on_these_wires = filter(lambda y: y.get_own_port(own_node) in nic_info['own-ports'], own_node.get_all_wires())  # find all wires, this NIC sits on
             own_node.add_nic(nic_name=nic_info['name'], mac_or_pattern=nic_info['mac-or-pattern'], ip_or_index=nic_info['ip-or-index'], net=nic_info['net'], on_wires=nic_on_these_wires)
 
+    @staticmethod
+    def _check_port_id_correctness(klass, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25
+        from lab.cimc import CimcServer
+        from lab.n9k import Nexus
+        from lab.fi import FI, FiServer
+
+        possible_mlom = ['MLOM-0/0', 'MLOM-0/1']
+        possible_lom = ['LOM-1', 'LOM-2']
+
+        if 'MGMT' in port_id:
+            if port_id != 'MGMT':
+                raise ValueError('Port id "{}" is wrong, the only possible value is MGMT'.format(port_id))
+            return
+
+        if klass is CimcServer:
+            if 'MLOM' in port_id:
+                if port_id not in possible_mlom:
+                    raise ValueError('Ucs connected to N9K port id "{}" is wrong, possible MLOM port ids are "{}"'.format(port_id, possible_mlom))
+                return
+            if 'LOM' in port_id:
+                if port_id not in possible_lom:
+                    raise ValueError('Ucs connected to N9K port id "{}" is wrong, possible LOM port ids are "{}"'.format(port_id, possible_lom))
+                return
+        if klass in [Nexus, FI]:
+            if port_id.count('/') != 1:
+                raise ValueError('N9K or FI port id "{}" is wrong, it should contain single "/"'.format(port_id))
+            for value in port_id.split('/'):
+                try:
+                    int(value)
+                except ValueError:
+                    raise ValueError('N9K or FI port id "{}" is wrong, it have to be <number>/<number>'.format(port_id))
+        if klass is FiServer:
+            left, right = port_id.rsplit('/', 1)
+            if right not in ['a', 'b']:
+                raise ValueError('UCS connected to FI port id "{}" is wrong, it have to be finished by "/a" or "/b"'.format(port_id))
+
+            for value in left.split('/'):
+                try:
+                    int(value)
+                except ValueError:
+                    raise ValueError('UCS connected to FI port id "{}" is wrong, have to be "<number>" or "<number>/<number>" before "/a" or "/b"'.format(port_id))
+
     def _process_single_wire(self, own_node, wire_info):  # Example {MLOMl/0: {peer-id: n98,  peer-port: 1/30, own-mac: '00:FE:C8:E4:B4:CE', port-channel: pc20, vlans: [3, 4]}
         from lab.wire import Wire
         from lab.tor import Tor, Oob
         from lab.vts import Vts, Vtf, Xrvr
-        from lab.cimc import CimcServer
-        from lab.fi import FiServer
 
-        own_port, peer_info = wire_info
+        own_port_id, peer_info = wire_info
+        own_port_id = own_port_id.upper()
+        self._check_port_id_correctness(klass=type(own_node), port_id=own_port_id)
         try:
-            peer_id = peer_info['peer-id']
-            peer_port = peer_info['peer-port']
+            peer_node_id = peer_info['peer-id']
+            peer_port_id = peer_info['peer-port']
         except KeyError as ex:
-            raise ValueError('Node "{}": port "{}" has no "{}"'.format(own_node.get_id(), own_port, ex.message))
+            raise ValueError('Node "{}": port "{}" has no "{}"'.format(own_node.get_id(), own_port_id, ex.message))
 
         try:
-            peer_node = self.get_node_by_id(peer_id)
+            peer_node = self.get_node_by_id(peer_node_id)
         except ValueError:
-            if peer_id in ['None', 'none']:  # this port is not connected
+            if peer_node_id in ['None', 'none']:  # this port is not connected
                 return
-            raise ValueError('Node "{}": specified wrong peer node id: "{}"'.format(own_node.get_id(), peer_id))
+            raise ValueError('Node "{}": specified wrong peer node id: "{}"'.format(own_node.get_id(), peer_node_id))
 
-        self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_id(), peer_port), node_id=own_node.get_id())  # check that this peer_node-peer_port is unique
+        self._check_port_id_correctness(klass=type(peer_node), port_id=peer_port_id)
+        self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_id(), peer_port_id), node_id=own_node.get_id())  # check that this peer_node-peer_port is unique
         port_channel = peer_info.get('port-channel')
 
         if type(peer_node) is Tor:
@@ -153,7 +205,7 @@ class Laboratory(object):
                 vlans = peer_info['vlans']
             except KeyError:
                 raise ValueError('Node "{}": something strange with wire on "{}". Most probably this wire has wrong port-channel attribute')
-        Wire(node_n=peer_node, port_n=peer_port, node_s=own_node, port_s=own_port, port_channel=port_channel, vlans=vlans)
+        Wire(node_n=peer_node, port_n=peer_port_id, node_s=own_node, port_s=own_port_id, port_channel=port_channel, vlans=vlans)
 
     @staticmethod
     def _get_role_class(role):
@@ -163,7 +215,7 @@ class Laboratory(object):
         from lab.tor import Tor, Oob
         from lab.cobbler import CobblerServer
         from lab.cimc import CimcServer
-        from lab.vts import Vts, Vtf, Xrvr
+        from lab.vts import VtsHost, Vts, Vtf, Xrvr
 
         role = role.lower()
         if role == 'cobbler':
@@ -180,8 +232,10 @@ class Laboratory(object):
             return Oob
         elif role in ['director-fi', 'compute-fi', 'control-fi', 'ceph-fi']:
             return FiServer
-        elif role in ['director-n9', 'compute-n9', 'control-n9', 'ceph-n9', 'vts-host-n9']:
+        elif role in ['director-n9', 'compute-n9', 'control-n9', 'ceph-n9']:
             return CimcServer
+        elif role in ['vts-host-n9']:
+            return VtsHost
         elif role in ['vtc']:
             return Vts
         elif role in ['xrvr']:
@@ -205,8 +259,6 @@ class Laboratory(object):
             except KeyError as ex:
                 raise ValueError('Node "{}": has no "{}"'.format(node_id, ex.message))
 
-            if node_description.get('is-deploy-by-cobbler', False):
-                node.set_deploy_by_cobbler()
             if 'set_ucsm_id' in dir(node):
                 node.set_ucsm_id(node_description['ucsm-id'])
             if 'set_vip' in dir(node):
@@ -215,6 +267,7 @@ class Laboratory(object):
                 node.set_sriov(self._is_sriov)
             if 'director' in node.get_role():
                 self._director = node
+            node.set_hardware_info(ru=node_description.get('ru', 'Default in Laboratory._create_node()'), model=node_description.get('model', 'Default in Laboratory._create_node()'))
             self._nodes.append(node)
             return node
         except KeyError as ex:
@@ -293,7 +346,7 @@ class Laboratory(object):
         from lab.n9k import Nexus
 
         lab_logger.info('Creating config for osp7_bootstrap')
-        osp7_install_template = read_config_from_file(yaml_path='./configs/osp7/osp7-install.yaml', is_as_string=True)
+        osp7_install_template = read_config_from_file(config_path='./configs/osp7/osp7-install.yaml', is_as_string=True)
 
         # Calculate IPs for user net, VIPs and director IP
         ssh_net = filter(lambda net: net.is_ssh(), self._nets.values())[0]

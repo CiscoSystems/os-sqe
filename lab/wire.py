@@ -4,9 +4,9 @@ class Wire(object):
 
     def __init__(self, node_n, port_n, node_s, port_s, port_channel, vlans):
         self._node_N = node_n
-        self._port_N = str(port_n)
+        self._port_N = str(port_n).upper()
         self._node_S = node_s
-        self._port_S = str(port_s)
+        self._port_S = str(port_s).upper()
         self._pc_id = self._calculate_pc_id(port_channel)
         self._is_peer_link = self.is_n9_n9()
         self._vlans = vlans  # single wire may have many vlans

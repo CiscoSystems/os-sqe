@@ -138,26 +138,6 @@ class Server(LabNode):
                 with cd(in_directory):
                     return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)[0]
 
-    def get(self, remote_path, in_directory='.', local_path=None):
-        """Get remote file as string or local file if local_path is specified
-        :param remote_path:
-        :param in_directory:
-        :param local_path:
-        :return:
-        """
-        from fabric.api import get, settings, cd
-        from StringIO import StringIO
-
-        if not local_path:
-            local_path = StringIO()
-
-        use_sudo = True if remote_path.startswith('/') else False
-        with settings(**self.construct_settings(warn_only=False)):
-            with cd(in_directory):
-                get(remote_path=remote_path, local_path=local_path,  use_sudo=use_sudo)
-
-        return local_path.getvalue() if isinstance(local_path, StringIO) else local_path
-
     def get_file_from_dir(self, file_name, in_directory='.', local_path=None):
         """Get remote file as string or local file if local_path is specified
         :param file_name:
@@ -253,3 +233,28 @@ class Server(LabNode):
 
     def form_mac(self, mac_pattern):
         return '00:{lab:02}:00:{role_id}:{count:02}:{net}'.format(lab=self._lab.get_id(), role_id=self.lab().ROLES[self.get_role()], count=self._n, net=mac_pattern)
+
+    def list_ip_info(self):
+        ans_a = self.run('ip -o a')
+        ans_l = self.run('ip -o l')
+        name_ipv4_ipv6 = {}
+        for line in ans_a.split('\n'):
+            _, nic_name, other = line.split(' ', 2)
+            name_ipv4_ipv6.setdefault(nic_name, {'ipv4': None, 'ipv6': None})
+            if 'inet6' in other:
+                name_ipv4_ipv6[nic_name]['ipv6'] = other.split()[1]
+            else:
+                name_ipv4_ipv6[nic_name]['ipv4'] = other.split()[1]
+
+        result = {}
+        for line in ans_l.split('\n'):
+            number, nic_name, other = line.split(':', 2)
+            nic_name = nic_name.strip()
+            if nic_name == 'lo':
+                continue
+            status, mac_part = other.split('link/ether')
+            mac, brd = mac_part.split(' brd ')
+            ipv4 = name_ipv4_ipv6.get(nic_name, {'ipv4': None})['ipv4']
+            ipv6 = name_ipv4_ipv6.get(nic_name, {'ipv6': None})['ipv6']
+            result[nic_name] = {'mac': mac.upper(), 'ipv4': ipv4, 'ipv6': ipv6}
+        return result

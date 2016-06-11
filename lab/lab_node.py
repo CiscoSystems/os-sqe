@@ -18,7 +18,6 @@ class LabNode(object):
         self._ssh_username, self._ssh_password = 'Default in LabNode.__init__()', 'Default in LabNode.__init__()'
         self._oob_ip, self._oob_username, self._oob_password = 'Default in LabNode.__init__()', 'Default in LabNode.__init__()', 'Default in LabNode.__init__()'
         self._nics = dict()  # list of NICs
-        self._is_deploy_by_cobbler = False
         self._ru, self._model = 'Default in LabNod.__init()', 'Default in LabNod.__init()'
 
         self._upstream_wires = []
@@ -33,12 +32,6 @@ class LabNode(object):
 
     def wire_peer_link(self, wire):
         self._peer_link_wires.append(wire)
-
-    def set_deploy_by_cobbler(self):
-        self._is_deploy_by_cobbler = True
-
-    def is_deploy_by_cobbler(self):
-        return self._is_deploy_by_cobbler
 
     def get_id(self):
         return self._id
