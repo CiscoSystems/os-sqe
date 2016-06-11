@@ -1,40 +1,64 @@
-from lab.lab_node import LabNode
+from lab.server import Server
 
 
-class CobblerServer(LabNode):
+class CobblerServer(Server):
     def cmd(self, cmd):
         pass
 
-    def configure_for_osp7(self):
-        import xmlrpclib
+    def __repr__(self):
+        _, ssh_u, ssh_p = self.get_ssh()
+        ip, oob_u, oob_p = self.get_oob()
+        return u'{l} {n} | sshpass -p {p1} ssh {u1}@{ip} http://{ip}/cobbler_api with {u2}/{p2}'.format(l=self.lab(), n=self.get_id(), ip=ip, p1=ssh_p, u1=ssh_u, p2=oob_p, u2=oob_u)
+
+    def cobbler_configure_for(self, node):
+        import validators
         from lab.time_func import time_as_string
         from lab.logger import lab_logger
 
-        lab_logger.info(str(self) + ' (Re)creating cobbler profile')
-        director = self.lab().get_director()
+        lab_logger.info('{}: (Re)creating cobbler profile for {}'.format(self, node))
 
-        ipmi_ip, ipmi_username, ipmi_password = director.get_ipmi()
-        director_ip, _, _, _ = director.get_ssh()
-        ssh_net = self.lab().get_ssh_net()
-        user_gw, user_mask = str(ssh_net[1]), ssh_net.netmask
+        system_name = '{}-{}'.format(self.lab(), node.get_id())
+        comment = 'This system is created by {0} for LAB {1} at {2}'.format(__file__, self.lab(), time_as_string())
 
-        cobbler = xmlrpclib.Server(uri="http://{host}/cobbler_api".format(host=self._ip))
+        network_commands = []
+        gateway = None
+        for nic in node.get_nics().values():
+            ip, mask = nic.get_ip_and_mask()
+            ip_mask_part = '--ip-address={} --netmask={}'.format(ip, mask) if validators.ipv4(str(ip)) else ''
+            mac = nic.get_mac()
+            name = nic.get_name()
+            if nic.is_ssh():
+                gateway = nic.get_net()[0]
+            if nic.is_bond():
+                for name_slave, mac in {name + '1': mac.replace('00:', '01:'), name + '2': mac.replace('00:', '02:')}.items():
+                    network_commands.append('--interface={} --mac={} --interface-type=bond_slave --interface-master={}'.format(name_slave, mac, name))
+                network_commands.append('--interface={} --interface-type=bond --bonding-opts="miimon=100 mode=1" {}'.format(name, ip_mask_part))
+            else:
+                network_commands.append('--interface={} --mac={} {}'.format(name, mac, ip_mask_part))
 
-        token = cobbler.login(self._username, self._password)
-        handle = cobbler.get_system_handle('{0}-DIRECTOR'.format(self.lab()), token)
+        systems = self.run('cobbler system list')
+        if system_name not in systems:
+            self.run('cobbler system add --name={} --profile=RHEL7.2-x86_64 --kickstart=/var/lib/cobbler/kickstarts/sqe --comment="{}"'.format(system_name, comment))
 
-        cobbler.modify_system(handle, 'comment', 'This system is created by {0} for LAB{1} at {2}'.format(__file__, self.lab(), time_as_string()), token)
-        cobbler.modify_system(handle, 'hostname', director.hostname(), token)
-        cobbler.modify_system(handle, 'gateway', str(user_gw), token)
+        self.run('cobbler system edit --name={} --hostname={} --gateway={}'.format(system_name, node.hostname(), gateway))
 
-        for nic in director.get_nics():
-            cobbler.modify_system(handle, 'modify_interface', {'macaddress-{0}'.format(nic.get_name()): nic.get_mac()}, token)
-            if nic.get_name() == 'user':
-                cobbler.modify_system(handle, 'modify_interface', {'ipaddress-{0}'.format(nic.get_name()): str(director_ip),
-                                                                   'static-{0}'.format(nic.get_name()): True,
-                                                                   'subnet-{0}'.format(nic.get_name()): str(user_mask)}, token)
+        for cmd in network_commands:
+            self.run('cobbler system edit --name={} {}'.format(system_name, cmd))
 
-        cobbler.modify_system(handle, 'power_address', str(ipmi_ip), token)
-        cobbler.modify_system(handle, 'power_user', ipmi_username, token)
-        cobbler.modify_system(handle, 'power_pass', ipmi_password, token)
-        lab_logger.info('finished')
+        ipmi_ip, ipmi_username, ipmi_password = node.get_oob()
+        self.run('cobbler system edit --name={} --power-type=ipmilan --power-address={} --power-user={} --power-pass={}'.format(system_name, ipmi_ip, ipmi_username, ipmi_password))
+
+        return system_name
+
+    def cobbler_deploy(self):
+        import getpass
+        from lab.time_func import time_as_string
+
+        ks_meta = 'ProvTime={}-by-{}'.format(time_as_string(), getpass.getuser())
+
+        nodes = filter(lambda x: x.is_deploy_by_cobbler(), self.lab().get_nodes_by_class())
+        for node in nodes:
+            system_name = self.cobbler_configure_for(node=node)
+            if self.lab().get_type() == self.lab().LAB_MERCURY:
+                self.run('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
+                self.run('cobbler system reboot --name={}'.format(system_name))

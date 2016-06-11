@@ -50,7 +50,7 @@ def mtputty(lab):
         f.write('       <Node Type="0">\n')
         f.write('       <DisplayName>{lab_name}</DisplayName>\n'.format(lab_name=lab))
 
-        for node in lab.get_nodes():
+        for node in lab.get_nodes_by_class():
             ip, username, password, _ = node.get_ssh()
 
             f.write('       <Node Type="1">\n')
@@ -80,7 +80,7 @@ def mobaxterm(lab):
         f.write('SubRep={lab_name}\n'.format(lab_name=lab))
         f.write('ImgNum=41\n')
 
-        for node in lab.get_nodes():
+        for node in lab.get_nodes_by_class():
             ip, username, _, _ = node.get_ssh()
 
             f.write('{name} ({ip})= #132#0%{ip}%22%{username}%%0%-1%%%22%%0%0%Interactive shell%%%0%0%0%0%%1080%%0%0#MobaFont%10%0%0%0%15%236,236,236%0,0,0%180,180,192%0%-1%0%%xterm%-1%0%0,0,0%54,54,54%255,96,96%255,128,128%96,255,96%128,255,128%255,255,54%255,255,128%96,96,255%128,128,255%255,54,255%255,128,255%54,255,255%128,255,255%236,236,236%255,255,255%80%24%0%1%-1%<none>%#0\n'.format(

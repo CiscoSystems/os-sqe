@@ -213,7 +213,7 @@ exit
 
         self.cleanup()
 
-        n_servers = len(self.lab().get_nodes(FiServer))  # how many servers UCSM currently sees
+        n_servers = len(self.lab().get_nodes_by_class(FiServer))  # how many servers UCSM currently sees
 
         neutron_username, neutron_password = self.lab().get_neutron_creds()
         self.create_user(username=neutron_username, password=self._password)  # special user to be used by neutron services

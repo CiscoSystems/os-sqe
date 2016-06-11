@@ -8,7 +8,7 @@ def start(context, log, args):
     if validators.ipv4(name_or_ip):
         ip = name_or_ip
     else:
-        ip = str(context.get_node(name_or_ip).ip)
+        ip = str(context.get_node_by_id(name_or_ip).ip)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(1)

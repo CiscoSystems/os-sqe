@@ -2,11 +2,14 @@ from lab.lab_node import LabNode
 
 
 class Nexus(LabNode):
-    def __init__(self, name, role, ip, username, password, lab, hostname):
-        super(Nexus, self).__init__(name=name, role=role, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
+    def __init__(self, node_id, role, lab, hostname):
+        super(Nexus, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
         self._vpc = []
         self._pc = {}
         self._vlans = {}
+
+    def __repr__(self):
+        return super(Nexus, self).__repr__()
 
     def get_pcs_to_fi(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""
@@ -15,7 +18,8 @@ class Nexus(LabNode):
     def _allow_feature_nxapi(self):
         from fabric.api import settings, run
 
-        with settings(host_string='{user}@{ip}'.format(user=self._username, ip=self._ip), password=self._password):
+        oob_ip, oob_u, oob_p = self.get_oob()
+        with settings(host_string='{user}@{ip}'.format(user=oob_u, ip=oob_ip), password=oob_p):
             if 'disabled'in run('sh feature | i nxapi', shell=False):
                 run('conf t ; feature nxapi', shell=False)
 
@@ -25,10 +29,11 @@ class Nexus(LabNode):
         from lab.logger import lab_logger
         lab_logger.info('{0} commands: {1}'.format(self, ", ".join(commands)))
 
+        oob_ip, oob_u, oob_p = self.get_oob()
         body = [{"jsonrpc": "2.0", "method": "cli", "params": {"cmd": command, "version": 1}, "id": 1} for command in commands]
         try:
             data = json.dumps(body)
-            result = requests.post('http://{0}/ins'.format(self._ip), auth=(self._username, self._password), headers={'content-type': 'application/json-rpc'}, data=data, timeout=timeout)
+            result = requests.post('http://{0}/ins'.format(oob_ip), auth=(oob_u, oob_p), headers={'content-type': 'application/json-rpc'}, data=data, timeout=timeout)
             return result.json()
         except requests.exceptions.ConnectionError:
             self._allow_feature_nxapi()
@@ -188,11 +193,14 @@ class Nexus(LabNode):
             self.cmd(['conf t', 'no vpc domain {0}'.format(old_vpc_domain)], timeout=60)
 
     def configure_vxlan(self, asr_port):
-        lo1_ip = '1.1.1.{0}'.format(self.node_index())
-        lo2_ip = '2.2.2.{0}'.format(self.node_index())
+        import re
+
+        number_in_node_id = map(int, re.findall(r'\d+', self.get_id()))[0]
+        lo1_ip = '1.1.1.{0}'.format(number_in_node_id)
+        lo2_ip = '2.2.2.{0}'.format(number_in_node_id)
         router_ospf = '111'
         router_area = '0.0.0.0'
-        eth48_ip = '169.0.{0}.1'.format(self.node_index())
+        eth48_ip = '169.0.{0}.1'.format(number_in_node_id)
         self.cmd(['conf t', 'feature ospf'])
         self.cmd(['conf t', 'feature pim'])
         self.cmd(['conf t', 'interface loopback 1'])

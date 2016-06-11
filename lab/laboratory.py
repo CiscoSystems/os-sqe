@@ -1,132 +1,64 @@
-import tempfile
-from lab import with_config
-
-
-class LaboratoryNetworks(object):
-    IPV4 = 'IPv4'
-    MAC = 'MAC'
-
-    def __init__(self, cfg):
-        from netaddr import IPNetwork
-
-        self._unique_dict = dict()  # to make sure that all needed objects are unique
-
-        self._nets = {}
-        self._vlans = {}
-        self._ssh_net = None
-        self._ipmi_net = None
-        self._vlans_to_tor = {}
-
-        for net_name, net_desc in cfg['nets'].items():
-            self._nets[net_name] = IPNetwork(net_desc.get('cidr', '1'))
-            vlans = net_desc.get('vlan', [])
-            self._vlans[net_name] = vlans
-            if net_desc.get('is_routable', False):
-                self._vlans_to_tor[net_name] = vlans
-
-            if net_desc.get('is_ssh', False):
-                self._ssh_net = self._nets[net_name]
-            if net_desc.get('is_ipmi', False):
-                self._ipmi_net = self._nets[net_name]
-
-    def make_sure_that_object_is_unique(self, type_of_object, obj, node_name):
-        """check that given object is valid and unique
-        :param type_of_object: IPv4 MAC service-profile
-        :param obj: object
-        :param node_name: node which tries to register the object
-        """
-        import validators
-
-        self._unique_dict.setdefault(type_of_object, dict())
-        if obj in self._unique_dict[type_of_object].keys():
-            raise ValueError('{0} node is trying to use {1}={2} which is already in use by {3}'.format(node_name, type_of_object, obj, self._unique_dict[type_of_object][obj]))
-        else:
-            if type_of_object == 'MAC':
-                is_ok = validators.mac_address(obj)
-            elif type_of_object == 'IPv4':
-                is_ok = validators.ipv4(str(obj))
-            else:
-                is_ok = True
-            if not is_ok:
-                raise ValueError('{0} is not valid {1}'.format(obj, type_of_object))
-            self._unique_dict[type_of_object].update({obj: node_name})
-
-    def get_node_credentials(self, node_name, node_description):
-        import validators
-        import netaddr
-
-        ssh_ip, ssh_username, ssh_password = None, node_description.get('ssh_username'), node_description.get('ssh_password'),
-        ipmi_ip, ipmi_username, ipmi_password = None, node_description.get('ipmi_username'), node_description.get('ipmi_password'),
-
-        for ip_type in ['ssh_ip', 'ipmi_ip']:
-            ip = node_description.get(ip_type, ssh_ip)
-            try:
-                index = int(ip)
-                if index in [0, 1, 2, 3, -1]:
-                    raise ValueError('IP address index {0} is not possible since 0 is network , 1,2,3 are GWs and -1 is broadcast'.format(node_name))
-                net = self._get_net_by_name(ip_type)
-                try:
-                    ip = net[index]
-                except (IndexError, ValueError):
-                    raise ValueError('index {0} is not in {1}'.format(index, net))
-            except ValueError:
-                if validators.ipv4(str(ip)):
-                    ip = netaddr.IPAddress(ip)
-                else:
-                    raise ValueError('IP address "{0}" for node "{1}" is invalid'.format(ip, node_name))
-            if ip_type == 'ssh_ip':
-                ssh_ip = ip
-            else:
-                ipmi_ip = ip
-
-        self.make_sure_that_object_is_unique(type_of_object=self.IPV4, obj=ssh_ip, node_name=node_name)
-        if ipmi_ip != ssh_ip:
-            self.make_sure_that_object_is_unique(type_of_object=self.IPV4, obj=ipmi_ip, node_name=node_name)
-        return ssh_ip, ssh_username, ssh_password, ipmi_ip, ipmi_username, ipmi_password
-
-    def get_vlans(self, net_name):
-        return self._vlans[net_name]
-
-    def get_vlans_to_tor(self):
-        return self._vlans_to_tor
-
-    def get_ssh_net(self):
-        return self._ssh_net
-
-    def get_ipmi_net(self):
-        return self._ipmi_net
-
-    def _get_net_by_name(self, name):
-        if 'ssh' in name:
-            return self._ssh_net
-        elif 'ipmi' in name:
-            return self._ipmi_net
-
-
 class Laboratory(object):
+    SUPPORTED_LAB_TYPES = ['MERCURY', 'OSPD']
+    LAB_MERCURY, LAB_OSPD = SUPPORTED_LAB_TYPES
     SUPPORTED_TOPOLOGIES = ['VLAN', 'VXLAN']
     TOPOLOGY_VLAN, TOPOLOGY_VXLAN = SUPPORTED_TOPOLOGIES
+    ROLES = {'tor': 44,
+             'terminal': 22,
+             'cobbler': 99,
+             'oob': 33,
+             'pxe': 35,
+             'n9': 41,
+             'asr': 51,
+             'fi': 61,
+             'director-fi': 'D1',
+             'director-n9': 'D1',
+             'control-fi': 'CC',
+             'control-n9': 'CC',
+             'compute-fi': 'C1',
+             'compute-n9': 'C1',
+             'ceph-fi': 'CE',
+             'ceph-n9': 'CE',
+             'vtc': 'F1',
+             'xrvr': 'F2',
+             'vtf': 'F3',
+             'vts-host-n9': 'F4',
+             }
 
     def __repr__(self):
         return self._lab_name
 
     def __init__(self, config_path):
-        from lab.with_config import read_config_from_file
+        from lab import with_config
+        from lab.network import Network
 
-        with open(with_config.KEY_PUBLIC_PATH) as f:
-            self.public_key = f.read()
-        self._nodes = list()
-        self._director = None
-        self._cfg = read_config_from_file(yaml_path=config_path)
+        self._cfg = with_config.read_config_from_file(yaml_path=config_path)
         self._id = self._cfg['lab-id']
         self._lab_name = self._cfg['lab-name']
+        self._lab_type = self._cfg['lab-type']
+        if self._lab_type not in self.SUPPORTED_LAB_TYPES:
+            raise ValueError('"{}" is not one of supported types: {}'.format(self._lab_type, self.SUPPORTED_LAB_TYPES))
+
+        self._unique_dict = dict()  # to make sure that all needed objects are unique
+        self._nodes = list()
+        self._director = None
         self._is_sriov = self._cfg.get('use-sr-iov', False)
+        self._role_vs_count = dict()
 
-        self._ssh_username, self._ssh_password = self._cfg['cred']['ssh_username'], self._cfg['cred']['ssh_password']
-        self._ipmi_username, self._ipmi_password = self._cfg['cred']['ipmi_username'], self._cfg['cred']['ipmi_password']
-        self._neutron_username, self._neutron_password = self._cfg['cred']['neutron_username'], self._cfg['cred']['neutron_password']
+        self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
-        self._nets = LaboratoryNetworks(cfg=self._cfg)
+        self._nets = {}
+        self._upstream_vlans = []  # list of vlans which should go out of the lab
+
+        for net_name, net_desc in self._cfg['nets'].items():
+            try:
+                net = Network(name=net_name, cidr=net_desc['cidr'], mac_pattern=net_desc['mac-pattern'], is_ssh=net_desc['is-ssh'], vlan=net_desc['vlan'])
+                self._nets[net_name] = net
+                if net_desc['is-via-tor']:
+                    self._upstream_vlans.append(net_desc['vlan'])
+            except KeyError as ex:
+                raise ValueError('Network "{}" has no {}'.format(net_name, ex.message))
+
         for node_description in self._cfg['nodes']:
             self._process_single_node(node_description)
 
@@ -134,150 +66,175 @@ class Laboratory(object):
             self._director = self.get_controllers()[0]  # assign first controller as director if no director node specified in yaml config
 
         for peer in self._cfg['peer-links']:
-            pass
+            print peer
 
-    def get_ssh_net(self):
-        return self._nets.get_ssh_net()
-
-    def get_ipmi_net(self):
-        return self._nets.get_ipmi_net()
+    def count_node(self, role):
+        role = role.split('-')[0]
+        self._role_vs_count.setdefault(role, 0)
+        self._role_vs_count[role] += 1
+        return self._role_vs_count[role]
 
     def is_sriov(self):
         return self._is_sriov
 
-    def get_common_ssh_creds(self):
-        return self._ssh_username, self._ssh_password
+    def get_upstream_vlans(self):
+        return self._upstream_vlans
+
+    def get_net(self, net_name):
+        return self._nets[net_name]
 
     def _process_single_node(self, node_description):
-        from lab.wire import Wire
-
         own_node = self._create_node(node_description)
+        all_wires_of_node = node_description.get('wires', {})
 
-        peer_node = None
-        for wire in node_description.get('wires', []):  # Example {MLOMl/0: {peer: N9K-C9372PX-ru8-1/26, mac: '00:FE:C8:E4:CD:1D'}}
-            try:
-                own_port = wire['own-port']
-                own_mac = wire['own-mac']
-                peer_id = wire['peer-id']
-                peer_port = wire['peer-port']
-                vlans = wire.get('vlans', [])
-                own_nic = wire.get('nic', None)
-            except (ValueError, KeyError):
-                raise KeyError('you provided {0} as wire description, while expected something like {{own-port: 1/48, peer-id: tor-N9K-C9372PX-ru25, peer-port: 1/46, own-mac: None}}'.format(wire))
-            try:
-                peer_node = peer_node or self.get_node(peer_id)
-            except ValueError:
-                raise ValueError('Wire "{0}" specified wrong peer node id: "{1}"'.format(wire, peer_id))
-            Wire(node_n=peer_node, port_n=peer_port, node_s=own_node, port_s=own_port, mac_s=own_mac, nic_s=own_nic, vlans=vlans)
+        all_nics_of_node = []  # We need to collect all vlans (1 per NIC) to assign them to wires on which this NIC sits
+        for nic_name, ip_ports in node_description.get('nics', {}).items():  # {api: {ip: 10.23.221.184, port: pc26}, mx: {...}, ...}
+            nic_on_net = self.get_net(nic_name)  # NIC name coincides with network name on which it sits
+            nic_ip_or_index = ip_ports.get('ip')
+            nic_on_port_or_port_channel = ip_ports['port']
+            # nic port might be physical port like LOM0 or port channel like pc40, wires contains a list of physical ports, some with port-channel attribute
+            if nic_on_port_or_port_channel in all_wires_of_node:  # it's  a physical port
+                nic_on_phys_port = nic_on_port_or_port_channel
+                nic_mac_or_pattern = all_wires_of_node[nic_on_phys_port].get('own-mac', nic_on_net.get_mac_pattern())  # id mac specified in wires section - use it, else construct mac for this network
+                nic_on_these_phys_port_ids = [nic_on_phys_port]  # this NIC sits on a single physical wire
+            else:  # this nic sits on port channel, find all wires which form this port channel
+                nic_on_port_channel = nic_on_port_or_port_channel
+                nic_on_these_phys_port_ids = [x[0] for x in all_wires_of_node.items() if x[1].get('port-channel') == nic_on_port_channel]
+                if len(nic_on_these_phys_port_ids) == 0:
+                    raise ValueError('{}: NIC "{}" tries to sit on port channel "{}" which does not exist'.format(own_node, nic_name, nic_on_port_channel))
+                nic_mac_or_pattern = nic_on_net.get_mac_pattern()  # always use MAC pattern for port channels
 
-    def _create_node(self, node_description):
+            for port_id in nic_on_these_phys_port_ids:  # add vlan of this NIC to all wires concerned
+                all_wires_of_node[port_id].setdefault('vlans', [])
+                all_wires_of_node[port_id]['vlans'].append(nic_on_net.get_vlan())
+
+            all_nics_of_node.append({'name': nic_name, 'mac-or-pattern': nic_mac_or_pattern, 'ip-or-index': nic_ip_or_index, 'net': nic_on_net, 'own-ports': nic_on_these_phys_port_ids})
+
+        for wire_info in all_wires_of_node.items():  # now all vlans for wires collected, create wires and interconnect nodes by them
+            self._process_single_wire(own_node=own_node, wire_info=wire_info)
+
+        # now all wires are created and all peers of this node are connected
+        for nic_info in all_nics_of_node:  # {'name': name, 'mac-or_pattern': mac, 'ip-or-index': ip, 'net': obj_of_Network, own-ports: [phys_port1, phys_port2]}
+            nic_on_these_wires = filter(lambda y: y.get_own_port(own_node) in nic_info['own-ports'], own_node.get_all_wires())  # find all wires, this NIC sits on
+            own_node.add_nic(nic_name=nic_info['name'], mac_or_pattern=nic_info['mac-or-pattern'], ip_or_index=nic_info['ip-or-index'], net=nic_info['net'], on_wires=nic_on_these_wires)
+
+    def _process_single_wire(self, own_node, wire_info):  # Example {MLOMl/0: {peer-id: n98,  peer-port: 1/30, own-mac: '00:FE:C8:E4:B4:CE', port-channel: pc20, vlans: [3, 4]}
+        from lab.wire import Wire
+        from lab.tor import Tor, Oob
+        from lab.vts import Vts, Vtf, Xrvr
+        from lab.cimc import CimcServer
+        from lab.fi import FiServer
+
+        own_port, peer_info = wire_info
+        try:
+            peer_id = peer_info['peer-id']
+            peer_port = peer_info['peer-port']
+        except KeyError as ex:
+            raise ValueError('Node "{}": port "{}" has no "{}"'.format(own_node.get_id(), own_port, ex.message))
+
+        try:
+            peer_node = self.get_node_by_id(peer_id)
+        except ValueError:
+            if peer_id in ['None', 'none']:  # this port is not connected
+                return
+            raise ValueError('Node "{}": specified wrong peer node id: "{}"'.format(own_node.get_id(), peer_id))
+
+        self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_id(), peer_port), node_id=own_node.get_id())  # check that this peer_node-peer_port is unique
+        port_channel = peer_info.get('port-channel')
+
+        if type(peer_node) is Tor:
+            vlans = self.get_upstream_vlans()
+        elif type(peer_node) is Oob:
+            vlans = []
+        elif type(own_node) in [Vts, Vtf, Xrvr]:
+            vlans = []
+        else:
+            try:
+                vlans = peer_info['vlans']
+            except KeyError:
+                raise ValueError('Node "{}": something strange with wire on "{}". Most probably this wire has wrong port-channel attribute')
+        Wire(node_n=peer_node, port_n=peer_port, node_s=own_node, port_s=own_port, port_channel=port_channel, vlans=vlans)
+
+    @staticmethod
+    def _get_role_class(role):
         from lab.fi import FI, FiServer
         from lab.n9k import Nexus
         from lab.asr import Asr
-        from lab.tor import Tor
+        from lab.tor import Tor, Oob
         from lab.cobbler import CobblerServer
         from lab.cimc import CimcServer
         from lab.vts import Vts, Vtf, Xrvr
 
-        try:
-            node_id = node_description['id']
-        except KeyError:
-            ValueError('id for node "{0}" is not porvided'.format(node_description))
-
-        possible_roles = ['tor', 'terminal', 'cobbler', 'oob', 'pxe',
-                          'n9', 'nexus', 'asr', 'fi', 'ucsm', 'vtc', 'xrvr', 'vtf',
-                          'director-fi', 'director-n9', 'control-fi', 'control-n9' 'compute-fi', 'compute-n9', 'ceph-fi', 'ceph-n9']
-        try:
-            role = node_description['role']
-        except KeyError:
-            raise ValueError(' {0} does not define its role'.format(node_description))
-
         role = role.lower()
         if role == 'cobbler':
-            klass = CobblerServer
+            return CobblerServer
         elif role == 'asr':
-            klass = Asr
+            return Asr
         elif role == 'nexus' or role == 'n9':
-            klass = Nexus
+            return Nexus
         elif role == 'fi' or role == 'ucsm':
-            klass = FI
-        elif role in ['tor', 'pxe', 'oob', 'terminal']:
-            klass = Tor
+            return FI
+        elif role in ['tor', 'pxe', 'terminal']:
+            return Tor
+        elif role == 'oob':
+            return Oob
         elif role in ['director-fi', 'compute-fi', 'control-fi', 'ceph-fi']:
-            klass = FiServer
-        elif role in ['director-n9', 'compute-n9', 'control-n9', 'ceph-n9']:
-            klass = CimcServer
+            return FiServer
+        elif role in ['director-n9', 'compute-n9', 'control-n9', 'ceph-n9', 'vts-host-n9']:
+            return CimcServer
         elif role in ['vtc']:
-            klass = Vts
+            return Vts
         elif role in ['xrvr']:
-            klass = Xrvr
+            return Xrvr
         elif role in ['vtf']:
-            klass = Vtf
+            return Vtf
         else:
-            raise ValueError('role "{0}" is not known,  should be one of: {1}'.format(role, possible_roles))
+            raise ValueError('role "{0}" is not known,  should be one of: {1}'.format(role, Laboratory.ROLES.keys()))
 
-        ssh_ip, ssh_username, ssh_password, ipmi_ip, ipmi_username, ipmi_password = self._nets.get_node_credentials(node_name=node_id, node_description=node_description)
-        hostname = node_description.get('hostname', 'NotConfiguredInYaml')
+    def _create_node(self, node_description):
+        try:
+            node_id = node_description['id']
+            role = node_description['role']
 
-        node = klass(lab=self, name=node_id, role=role, ip=ssh_ip, username=ssh_username or self._ssh_username, password=ssh_password or self._ssh_password, hostname=hostname)
-        if 'set_ipmi' in dir(node):
-            node.set_ipmi(ip=ipmi_ip, username=ipmi_username or self._ipmi_username, password=ipmi_password or self._ipmi_password)
-        if 'set_proxy' in dir(node):
-            node.set_proxy(self.get_nodes(Vts)[0])
+            klass = self._get_role_class(role)
+            node = klass(lab=self, node_id=node_id, role=role, hostname=node_description.get('hostname', 'Default in Laboratory.__create_node() since not in lab yaml'))
 
-        # if type(node) is FiServer:
-        #     node.set_ucsm_id(port_id)
-        # elif type(node) is FI:
-        #     node.set_vip(node_description['vip'])
-        #     node.set_sriov(self._is_sriov)
+            try:
+                node.set_oob_creds(ip=node_description['oob-ip'], username=node_description['oob-username'], password=node_description['oob-password'])
+                node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'])
+            except KeyError as ex:
+                raise ValueError('Node "{}": has no "{}"'.format(node_id, ex.message))
 
-        # if type(node) in [FiServer, CimcServer]:
-        #     for nic_name in node_description.get('nets', []):
-        #         if nic_name in self._cfg['nets']:
-        #             mac = self._cfg['nets'][nic_name]['mac-net-part']
-        #         else:
-        #             raise ValueError('Node "{0}" has NIC name "{1}" which does not match any network'.format(node_id, nic_name))
-        #
-        #         self._nets.make_sure_that_object_is_unique(type_of_object=LaboratoryNetworks.MAC, obj=nic.get_mac(), node_name=node.name())
-
-        self._nodes.append(node)
-        if 'director' in node.role():
-            self._director = node
-        return node
+            if node_description.get('is-deploy-by-cobbler', False):
+                node.set_deploy_by_cobbler()
+            if 'set_ucsm_id' in dir(node):
+                node.set_ucsm_id(node_description['ucsm-id'])
+            if 'set_vip' in dir(node):
+                node.set_vip(node_description['vip'])
+            if 'set_sriov' in dir(node):
+                node.set_sriov(self._is_sriov)
+            if 'director' in node.get_role():
+                self._director = node
+            self._nodes.append(node)
+            return node
+        except KeyError as ex:
+            ValueError('"{}" for node "{}" is not provided'.format(ex.message, node_description))
 
     def get_id(self):
         return self._id
 
-    def get_nodes(self, klass=None):
+    def get_nodes_by_class(self, klass=None):
         if klass:
             return filter(lambda x: isinstance(x, klass), self._nodes)
         else:
             return self._nodes
 
-    def get_node(self, node_id):
-        nodes = list(filter(lambda x: x.name() == node_id, self._nodes))
+    def get_node_by_id(self, node_id):
+        nodes = list(filter(lambda x: x.get_id() == node_id, self._nodes))
         if len(nodes) == 1:
             return nodes[0]
         else:
             raise ValueError('Something strange with node_id={0}, list of nodes with this id: {1}'.format(node_id, nodes))
-
-    def get_fi(self):
-        from lab.fi import FI
-
-        return self.get_nodes(FI)
-
-    def get_n9(self):
-        from lab.n9k import Nexus
-
-        return self.get_nodes(Nexus)
-
-    def get_asr1ks(self):
-        from lab.asr import Asr
-
-        return self.get_nodes(Asr)
-
-    def get_cobbler(self):
-        return self._get_servers_for_role('cobbler')[0]
 
     def get_director(self):
         return self._director
@@ -294,16 +251,7 @@ class Laboratory(object):
     def get_cimc_servers(self):
         from lab.cimc import CimcServer
 
-        return self.get_nodes(klass=CimcServer)
-
-    def get_all_vlans(self):
-        return sorted(set(reduce(lambda l, x: l + (x['vlan']), self._cfg['nets'].values(), [])))
-
-    def get_vlans_to_tor(self):
-        return sorted(self._nets.get_vlans_to_tor())
-
-    def get_net_vlans(self, net_name):
-        return self._nets.get_vlans(net_name)
+        return self.get_nodes_by_class(klass=CimcServer)
 
     def get_neutron_creds(self):
         return self._neutron_username, self._neutron_password
@@ -321,30 +269,34 @@ class Laboratory(object):
         return self._cfg['logstash']
 
     def configure_for_osp7(self, topology=TOPOLOGY_VLAN):
+        from lab.fi import FI
+        from lab.n9k import Nexus
+        from lab.asr import Asr
+        from lab.cobbler import CobblerServer
+
         if topology not in self.SUPPORTED_TOPOLOGIES:
             raise ValueError('"{0}" topology is not supported. Correct values: {1}'.format(topology, self.SUPPORTED_TOPOLOGIES))
         self.create_config_file_for_osp7_install(topology)
-        self.get_cobbler().configure_for_osp7()
-        map(lambda x: x.cleanup(), self.get_n9())
-        map(lambda x: x.configure_for_lab(topology), self.get_n9())
+        self.get_nodes_by_class(CobblerServer)[0].cobbler_deploy()
+        map(lambda x: x.cleanup(), self.get_nodes_by_class(Nexus))
+        map(lambda x: x.configure_for_lab(topology), self.get_nodes_by_class(Nexus))
         map(lambda x: x.configure_for_osp7(), self.get_cimc_servers())
-        map(lambda x: x.configure_for_osp7(topology), self.get_asr1ks())
-        self.get_fi()[0].configure_for_osp7()
-
-    def configure_for_mercury(self, topology):
-        map(lambda x: x.configure_for_lab(topology), self.get_n9())
+        map(lambda x: x.configure_for_osp7(topology), self.get_nodes_by_class(Asr))
+        self.get_nodes_by_class(FI)[0].configure_for_osp7()
 
     def create_config_file_for_osp7_install(self, topology=TOPOLOGY_VLAN):
         import os
         from lab.logger import lab_logger
         from lab.with_config import read_config_from_file
         from lab.cimc import CimcServer
+        from lab.fi import FI
+        from lab.n9k import Nexus
 
         lab_logger.info('Creating config for osp7_bootstrap')
         osp7_install_template = read_config_from_file(yaml_path='./configs/osp7/osp7-install.yaml', is_as_string=True)
 
         # Calculate IPs for user net, VIPs and director IP
-        ssh_net = self._nets.get_ssh_net()
+        ssh_net = filter(lambda net: net.is_ssh(), self._nets.values())[0]
         overcloud_network_cidr, overcloud_external_gateway, overcloud_external_ip_start, overcloud_external_ip_end = ssh_net.cidr, ssh_net[1], ssh_net[4+1], ssh_net[-3]
 
         eth0_mac_versus_service_profile = {}
@@ -385,7 +337,7 @@ class Laboratory(object):
 
         nexus_section = []
         switch_tempest_section = []
-        for n9 in self.get_n9():
+        for n9 in self.get_nodes_by_class(Nexus):
             common_pcs_part = ': {"ports": "port-channel:' + str(n9.get_peer_link_id())  # all pcs n9k-n9k and n9k-fi
             fi_pc_part = ',port-channel:' + ',port-channel:'.join(n9.get_pcs_to_fi())
             mac_port_lines = []
@@ -424,7 +376,7 @@ class Laboratory(object):
         eth1_vlans = self._cfg['nets']['eth1']['vlan']
         ext_vlan, test_vlan, stor_vlan, stor_mgmt_vlan, tenant_vlan, fip_vlan = eth1_vlans[1], pxe_int_vlans[1], pxe_int_vlans[2], pxe_int_vlans[3], pxe_int_vlans[4], eth1_vlans[0]
 
-        ucsm_vip = self.get_fi()[0].get_vip()
+        ucsm_vip = self.get_nodes_by_class(FI)[0].get_vip()
 
         cfg = osp7_install_template.format(director_node_hostname=director_hostname, director_node_ssh_ip=director_node_ssh_ip,
 
@@ -463,3 +415,17 @@ class Laboratory(object):
         with open(file_path, 'w') as f:
             f.write(cfg)
         lab_logger.info('finished. Execute osp7_bootstrap --config {0}'.format(file_path))
+
+    def make_sure_that_object_is_unique(self, obj, node_id):
+        """check that given object is unique
+        :param obj: object
+        :param node_id: node which tries to register the object
+        """
+
+        if str(obj) in self._unique_dict.keys():
+            raise ValueError('{} node tries to own {} which is already in use by {}'.format(node_id, obj, self._unique_dict[obj]))
+        else:
+            self._unique_dict[str(obj)] = node_id
+
+    def get_type(self):
+        return self._lab_type

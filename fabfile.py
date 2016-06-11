@@ -14,7 +14,7 @@ def cmd(config_path):
     from six import print_
 
     l = Laboratory(config_path=config_path)
-    nodes = sorted(map(lambda node: node.name(), l.get_nodes()))
+    nodes = sorted(map(lambda node: node.get_id(), l.get_nodes_by_class()))
     while True:
         device_name = prompt(text='{lab} has: "cloud" and:\n {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=nodes))
         if device_name == 'cloud':
@@ -26,7 +26,7 @@ def cmd(config_path):
             print_(device_name, 'is not available')
             continue
         else:
-            device = l.get_node(device_name)
+            device = l.get_node_by_id(device_name)
         method_names = [x for x in dir(device) if not x.startswith('_')]
         print_(device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)')
         while True:

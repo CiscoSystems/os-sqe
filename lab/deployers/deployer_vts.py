@@ -34,7 +34,7 @@ class DeployerVts(Deployer):
         ssh_prefixlen = ssh_net.prefixlen
         loc_net = IPNetwork('10.11.12.0/24')
         loc_prefixlen = loc_net.prefixlen
-        ssh_username, ssh_password = controller.lab().get_common_ssh_creds()
+        ssh_username, ssh_password = None, None
 
         controller.run('yum groupinstall "Virtualization Platform" -y')
 

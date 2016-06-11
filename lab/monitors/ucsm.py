@@ -10,7 +10,7 @@ def start(lab, log, args):
         ucsm_password = args['password']
         fi = fi.FI(name='NotDefined', ip=ucsm_ip, username=ucsm_username, password=ucsm_password, lab=lab, hostname='NoDefined')
     else:
-        fi = lab.get_fi()[0]
+        fi = lab.get_nodes_by_class(fi.FI)[0]
 
     vlan_profiles = sorted([x.split()[0] for x in fi.list_vlans()])
     log.info('n_vlans={0} {1}'.format(len(vlan_profiles), 'details={0}'.format('+'.join(vlan_profiles)) if is_show_details else ''))
