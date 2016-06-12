@@ -19,17 +19,25 @@ class DeployerMercury(Deployer):
 
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
-        from lab.providers.provider_cobbler import ProviderCobbler
+        from lab.cobbler import CobblerServer
 
         build_node = self._lab.get_director()
-        cobbler_ip, cobbler_username, cobbler_password, _ = self._lab.get_cobbler().get_ssh()
-
-        cobbler_system_name = '{0}-DIRECTOR'.format(self._lab)
-        cobbler = ProviderCobbler(config={'host': cobbler_ip, 'user': cobbler_username, 'password': cobbler_password, 'system_password': 'cisco123', 'selector': {'name': cobbler_system_name}, 'force_pxe_boot': True})
-        cobbler.wait_for_servers()
+        cobbler = self._lab.get_nodes_by_class(CobblerServer)
+        cobbler.deploy_cobbler()
 
         build_node.create_user('jenkins')
         build_node.wget_file(url=self._installer_image, to_directory='.', checksum=self._installer_checksum)
+
+        installer_config_template = self.read_config_from_file(config_path='mercury.template', directory='mercury', is_as_string=True)
+        installer_config_body = installer_config_template
+        installer_config_path = build_node.put_string_as_file_in_dir(string_to_put=installer_config_body, file_name='mercury-{}.yaml'.format(self._lab))
+
+        mercury_repo_path = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
+
+        build_node.run('sudo rm -f /var/log/mercury/*.tar.gz')
+        build_node.run('cd {}/installer && sudo ./bootstrap.sh'.format(mercury_repo_path))
+
+        build_node.run('cd {}/installer && sudo ./runner/runner.py -y --file {}'.format(mercury_repo_path, installer_config_path))
 
         return Cloud(cloud='mercury', user='demo', admin='admin', tenant='demo', password=self.cloud_password)
 

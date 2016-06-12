@@ -21,7 +21,7 @@ class WithConfig(object):
 
     @staticmethod
     def read_config_from_file(config_path, directory='', is_as_string=False):
-        return read_config_from_file(yaml_path=config_path, directory=directory, is_as_string=is_as_string)
+        return read_config_from_file(config_path=config_path, directory=directory, is_as_string=is_as_string)
 
     @staticmethod
     def get_log_file_names():
@@ -57,13 +57,13 @@ class LabConfigError(Exception):
                                                                                                                                provided=self.__config))
 
 
-def read_config_from_file(yaml_path, directory='', is_as_string=False):
+def read_config_from_file(config_path, directory='', is_as_string=False):
     import yaml
     import requests
     import validators
     from lab.logger import lab_logger
 
-    actual_path = actual_path_to_config(path=yaml_path, directory=directory)
+    actual_path = actual_path_to_config(path=config_path, directory=directory)
 
     lab_logger.info('Taking config from {0}'.format(actual_path))
     if validators.url(actual_path):

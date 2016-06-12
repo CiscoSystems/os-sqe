@@ -4,13 +4,13 @@ from lab.server import Server
 class Vtf(Server):
     COMMANDS = ['show vxlan tunnel', 'show version', 'show ip fib', 'show l2fib verbose', 'show br', 'show br 5000 detail' 'trace add dpdk-input 100']  # supported- expect files are pre-created
 
-    def __init__(self, name, role, ip, lab, username, password, hostname):
-        super(Vtf, self).__init__(name, role, ip, lab, username, password, hostname)
-        self._commands = {cmd: '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self._name) for cmd in self.COMMANDS}
+    def __init__(self, node_id, role, lab, hostname):
+        super(Vtf, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
+        self._commands = {cmd: '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self.get_id()) for cmd in self.COMMANDS}
         self._proxy_to_run = None
 
     def __repr__(self):
-        return u'{0} proxy {1}'.format(self._name, self._proxy_to_run)
+        return u'{0} proxy {1}'.format(self.get_id(), self._proxy_to_run)
 
     def set_proxy(self, proxy):
         self._proxy_to_run = proxy
@@ -24,7 +24,8 @@ class Vtf(Server):
     def run(self, command, in_directory='.', warn_only=False):  # this one imply runs the command on vtf host (without telnet)
         if not self._proxy_to_run:
             raise RuntimeError('{0} needs to have proxy server (usually VTC)'.format(self))
-        return self._proxy_to_run.run(command='sshpass -p {p} ssh {u}@{ip} '.format(p=self._password, u=self._username, ip=self._ip) + command)
+        ip, username, password = self.get_ssh()
+        return self._proxy_to_run.run(command='sshpass -p {p} ssh {u}@{ip} '.format(p=password, u=username, ip=ip) + command)
 
     def show_vxlan_tunnel(self):
         return self.cmd('show vxlan tunnel')
@@ -45,6 +46,7 @@ class Vtf(Server):
         return self.run('trace add dpdk-input 100')
 
     def actuate(self):
+        ip, username, password = self.get_ssh()
         for cmd, file_name in self._commands.iteritems():
             tmpl = '''
 log_user 0
@@ -54,7 +56,7 @@ send "{cmd}\r"
 log_user 1
 send "quit\r"
 expect eof
-'''.format(p=self._password, u=self._username, ip=self._ip, cmd=cmd)
+'''.format(p=password, u=username, ip=ip, cmd=cmd)
             self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
         self.cmd('show version')
 
@@ -64,18 +66,19 @@ expect eof
             if 'compute' in n.role():
                 return n
 
+
 class Xrvr(Server):
     COMMANDS = ['show running-config', 'show running-config evpn']  # supported- expect files are pre-created
 
-    def __init__(self, name, role, ip, lab, username, password, hostname):
-        super(Xrvr, self).__init__(name, role, ip, lab, username, password, hostname)
-        self._commands = {}
+    def __init__(self, node_id, role, lab, hostname):
+        super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
+        self._commands = {cmd: '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self.get_id()) for cmd in self.COMMANDS}
         self._proxy_to_run = None
 
         self._init_commands()
 
     def _add_command(self, cmd):
-        file_name = '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self._name)
+        file_name = '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self.get_id())
         self._commands[cmd] = file_name
         return file_name
 
@@ -101,6 +104,7 @@ class Xrvr(Server):
             self.actuate_command(cmd, file_name)
 
     def actuate_command(self, cmd, file_name):
+        ip, username, password = self.get_oob()
         tmpl = '''
 log_user 0
 spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}
@@ -108,10 +112,11 @@ expect "CPU0:XRVR"
 send "terminal length 0 ; {cmd}\n"
 log_user 1
 expect "CPU0:XRVR"
-'''.format(p=self._ipmi_password, u=self._ipmi_username, ip=self._ip, cmd=cmd)
+'''.format(p=password, u=username, ip=ip, cmd=cmd)
         self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
 
-    def _get(self, raw, key):
+    @staticmethod
+    def _get(raw, key):
         """
         Return values of a key element found in raw text.
         :param raw: looks like :
@@ -179,8 +184,9 @@ class Vts(Server):
         urllib3.disable_warnings()  # Suppressing warning due to self-signed certificate
 
         resource = resource.strip('/')
-        url = 'https://{ip}:{port}/{resource}'.format(ip=self._ipmi_ip, port=8888, resource=resource)
-        auth = (self._ipmi_username, self._ipmi_password)
+        ip, username, password = self.get_oob()
+        url = 'https://{ip}:{port}/{resource}'.format(ip=ip, port=8888, resource=resource)
+        auth = (username, password)
         headers = {'Accept': 'application/vnd.yang.data+json'}
 
         # noinspection PyBroadException
@@ -198,7 +204,7 @@ class Vts(Server):
         return ans
 
     def get_vtf(self, compute_hostname):
-        for vtf in self.lab().get_nodes(Vtf):
+        for vtf in self.lab().get_nodes_by_class(Vtf):
             n = vtf.get_compute_node()
             if n.actuate_hostname(refresh=False) == compute_hostname:
                 return vtf
@@ -207,7 +213,7 @@ class Vts(Server):
         self.check_or_install_packages('sshpass')
         ans = self._rest_api(resource='/api/running/cisco-vts')
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
-        vtf_nodes = self.lab().get_nodes(Vtf)
+        vtf_nodes = self.lab().get_nodes_by_class(Vtf)
         for vtf in vtf_nodes:
             ip, _, _, _ = vtf.get_ssh()
             if str(ip) not in vtf_ips_from_vtc:
@@ -216,7 +222,7 @@ class Vts(Server):
         return vtf_nodes
 
     def check_xrvr(self):
-        xrvr_nodes = self.lab().get_nodes(Xrvr)
+        xrvr_nodes = self.lab().get_nodes_by_class(Xrvr)
         items = self.json_api_get_network_inventory()['items']
         xrvr_ips_from_vtc = [x['ip_address'] for x in items if 'ASR9K' == x['devicePlaform'] and 'xrvr' in x['id'].lower()]
         for xrvr in xrvr_nodes:
@@ -228,14 +234,14 @@ class Vts(Server):
 
     def json_api_url(self, resource):
         import os
-        url = 'https://{ip}:{port}/VTS'.format(ip=self._ipmi_ip, port=8443)
+        url = 'https://{ip}:{port}/VTS'.format(ip=self._oob_ip, port=8443)
         return os.path.join(url, resource)
 
     def json_api_session(self):
         import requests
 
         s = requests.Session()
-        auth = s.post(self.json_api_url('j_spring_security_check'), data={'j_username': self._ipmi_username, 'j_password': self._ipmi_password, 'Submit': 'Login'}, verify=False)
+        auth = s.post(self.json_api_url('j_spring_security_check'), data={'j_username': self._oob_username, 'j_password': self._oob_password, 'Submit': 'Login'}, verify=False)
         if 'Invalid username or passphrase' in auth.text:
             raise Exception('Invalid username or passphrase')
 
@@ -259,16 +265,16 @@ class Vts(Server):
         return self.json_api_get('rs/ncs/query/networkInventory')
 
     def restart_dl_server(self):
-        return map(lambda xrvr: xrvr.restart_dl_server(), self.lab().get_nodes(Xrvr))
+        return map(lambda xrvr: xrvr.restart_dl_server(), self.lab().get_nodes_by_class(Xrvr))
 
     def show_evpn(self):
-        return map(lambda xrvr: xrvr.show_evpn(), self.lab().get_nodes(Xrvr))
+        return map(lambda xrvr: xrvr.show_evpn(), self.lab().get_nodes_by_class(Xrvr))
 
     def show_connections_xrvr_vtf(self):
-        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.lab().get_nodes(Vtf)) + map(lambda xrvr: xrvr.show_connections_xrvr_vtf(), self.lab().get_nodes(Xrvr))
+        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Vtf)) + map(lambda xrvr: xrvr.show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Xrvr))
 
     def show_vxlan_tunnel(self):
-        return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_nodes(Vtf))
+        return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_nodes_by_class(Vtf))
 
     def show_logs(self, what='error'):
         self.run('grep -i {0} /var/log/ncs/*'.format(what), warn_only=True)

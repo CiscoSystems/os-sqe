@@ -1,34 +1,6 @@
 from lab.lab_node import LabNode
 
 
-class Nic(object):
-    def __repr__(self):
-        return u'{0} {1} vlans={2}'.format(self._name, self._mac, self._vlans)
-
-    def __init__(self, name, mac, node, vlans=None):
-        import validators
-
-        self._node = node  # nic belongs to the node
-        self._name = name
-        self._vlans = vlans or []
-        if validators.mac_address(mac):
-            self._mac, self._is_vnic = mac, False
-        else:
-            self._mac, self._is_vnic = node.form_mac(mac), True
-
-    def get_mac(self):
-        return self._mac
-
-    def get_name(self):
-        return self._name
-
-    def get_vlans(self):
-        return self._vlans
-
-    def is_vnic(self):
-        return self._is_vnic
-
-
 class Server(LabNode):
 
     _temp_dir = None
@@ -49,42 +21,12 @@ class Server(LabNode):
             #     self._tmp_dir_exists = self.run('mkdir -p {0}'.format(self._temp_dir)).return_code == 0
         return self._temp_dir if self._tmp_dir_exists else None
 
-    def __init__(self, name, role, ip, lab, username='??InServer', password='ssh_key', hostname='??InServer'):
+    def __init__(self, node_id, role, lab, hostname):
         self._tmp_dir_exists = False
         self._package_manager = None
-        self._ipmi_ip, self._ipmi_username, self._ipmi_password = None, None, None
         self._mac_server_part = None
-        self._nics = list()  # list of NICs
-        self._is_nics_formed = False
 
-        super(Server, self).__init__(name=name, role=role, ip=ip, username=username, password=password, lab=lab, hostname=hostname)
-
-    def __repr__(self):
-        return '{s} | ipmitool -I lanplus -H {i} -U {u} -P {p}'.format(s=super(Server, self).__repr__(), i=self._ipmi_ip, u=self._ipmi_username, p=self._ipmi_password)
-
-    def set_ipmi(self, ip, username, password):
-        self._ipmi_ip, self._ipmi_username, self._ipmi_password = ip, username, password
-
-    def get_ipmi(self):
-        return self._ipmi_ip, self._ipmi_username, self._ipmi_password
-
-    def add_nic(self, nic_name, mac, vlans):
-        nic = Nic(name=nic_name, mac=mac, node=self, vlans=vlans)
-        self._nics.append(nic)
-        return nic
-
-    def get_nic(self, nic):
-        return filter(lambda x: x.get_name() == nic, self._nics)
-
-    def get_nics(self):
-        return self._nics
-
-    def get_vlans(self):
-        """ Get all vlans which need to reach this server"""
-        vlans = []
-        for nic in self.get_nics():
-            vlans.extend(nic.get_vlans())
-        return vlans
+        super(Server, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
 
     def get_package_manager(self):
         if not self._package_manager:
@@ -98,15 +40,19 @@ class Server(LabNode):
         return self._package_manager
 
     def construct_settings(self, warn_only):
+        import validators
         from lab import with_config
 
-        kwargs = {'host_string': '{user}@{ip}'.format(user=self._username, ip=self._ip),
+        ssh_ip, ssh_username, ssh_password = self.get_ssh()
+        ssh_ip = ssh_ip if validators.ipv4(ssh_ip) else self.get_oob()[0]
+
+        kwargs = {'host_string': '{user}@{ip}'.format(user=ssh_username, ip=ssh_ip),
                   'connection_attempts': 100,
                   'warn_only': warn_only}
-        if self._password == 'ssh_key':
+        if ssh_password == 'ssh_key':
             kwargs['key_filename'] = with_config.KEY_PRIVATE_PATH
         else:
-            kwargs['password'] = self._password
+            kwargs['password'] = ssh_password
         return kwargs
 
     def cmd(self, cmd):
@@ -121,7 +67,7 @@ class Server(LabNode):
         """
         from fabric.api import run, sudo, settings, cd
 
-        if self._ip == 'localhost' or self._ip == '127.0.0.1':
+        if str(self.get_ssh_ip()) in ['localhost', '127.0.0.1']:
             return self.run_local(command, in_directory=in_directory, warn_only=warn_only)
 
         run_or_sudo = run
@@ -183,7 +129,7 @@ class Server(LabNode):
         if in_directory != '.':
             self.run(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
 
-        if self._ip == 'localhost' or self._ip == '127.0.0.1':
+        if str(self.get_ssh_ip()) in ['localhost', '127.0.0.1']:
             with lcd(in_directory):
                 local('echo "{0}" > {1}'.format(string_to_put, file_name))
                 return os.path.abspath(os.path.join(in_directory, file_name))
@@ -191,26 +137,6 @@ class Server(LabNode):
             with settings(**self.construct_settings(warn_only=False)):
                 with cd(in_directory):
                     return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)[0]
-
-    def get(self, remote_path, in_directory='.', local_path=None):
-        """Get remote file as string or local file if local_path is specified
-        :param remote_path:
-        :param in_directory:
-        :param local_path:
-        :return:
-        """
-        from fabric.api import get, settings, cd
-        from StringIO import StringIO
-
-        if not local_path:
-            local_path = StringIO()
-
-        use_sudo = True if remote_path.startswith('/') else False
-        with settings(**self.construct_settings(warn_only=False)):
-            with cd(in_directory):
-                get(remote_path=remote_path, local_path=local_path,  use_sudo=use_sudo)
-
-        return local_path.getvalue() if isinstance(local_path, StringIO) else local_path
 
     def get_file_from_dir(self, file_name, in_directory='.', local_path=None):
         """Get remote file as string or local file if local_path is specified
@@ -273,19 +199,18 @@ class Server(LabNode):
     def create_user(self, new_username):
         from lab import with_config
 
-        password = 'cisco123'
+        tmp_password = 'cisco123'
         if not self.run(command='grep {0} /etc/passwd'.format(new_username), warn_only=True):
-            encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(password))
+            encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(tmp_password))
             self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
             self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
             self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
-        self._username = new_username
-        self._password = 'cisco123'
+        self.set_ssh_creds(username=new_username, password=tmp_password)
         with open(with_config.KEY_PUBLIC_PATH) as f:
             self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
         self.run(command='sudo chmod 700 .ssh')
         self.run(command='sudo chmod 600 .ssh/authorized_keys')
-        self._password = 'ssh_key'
+        self.set_ssh_creds(username=new_username, password='ssh_key')
 
     def ping(self, port=22):
         import socket
@@ -293,7 +218,7 @@ class Server(LabNode):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
         try:
-            s.connect((str(self._ip), port))
+            s.connect((str(self.get_ssh_ip()), port))
             res = True
         except (socket.timeout, socket.error):
             res = False
@@ -305,3 +230,31 @@ class Server(LabNode):
         if not hasattr(self, '_hostname') or refresh:
             self._hostname = self.run('hostname').stdout.strip()
         return self._hostname
+
+    def form_mac(self, mac_pattern):
+        return '00:{lab:02}:00:{role_id}:{count:02}:{net}'.format(lab=self._lab.get_id(), role_id=self.lab().ROLES[self.get_role()], count=self._n, net=mac_pattern)
+
+    def list_ip_info(self):
+        ans_a = self.run('ip -o a')
+        ans_l = self.run('ip -o l')
+        name_ipv4_ipv6 = {}
+        for line in ans_a.split('\n'):
+            _, nic_name, other = line.split(' ', 2)
+            name_ipv4_ipv6.setdefault(nic_name, {'ipv4': None, 'ipv6': None})
+            if 'inet6' in other:
+                name_ipv4_ipv6[nic_name]['ipv6'] = other.split()[1]
+            else:
+                name_ipv4_ipv6[nic_name]['ipv4'] = other.split()[1]
+
+        result = {}
+        for line in ans_l.split('\n'):
+            number, nic_name, other = line.split(':', 2)
+            nic_name = nic_name.strip()
+            if nic_name == 'lo':
+                continue
+            status, mac_part = other.split('link/ether')
+            mac, brd = mac_part.split(' brd ')
+            ipv4 = name_ipv4_ipv6.get(nic_name, {'ipv4': None})['ipv4']
+            ipv6 = name_ipv4_ipv6.get(nic_name, {'ipv6': None})['ipv6']
+            result[nic_name] = {'mac': mac.upper(), 'ipv4': ipv4, 'ipv6': ipv6}
+        return result

@@ -1,15 +1,15 @@
 class Wire(object):
     def __repr__(self):
-        return u'S:{sn}:{sp} -> N:{nn}:{np} ({pc}) on vlans: {vlan}'.format(sn=self.get_node_s().name(), sp=self.get_port_s(), nn=self.get_node_n().name(), np=self.get_port_n(), pc=self.get_pc_id(), vlan=self._vlans)
+        return u'S:{sn}:{sp} -> N:{nn}:{np} ({pc}) on vlans: {vlan}'.format(sn=self.get_node_s().get_id(), sp=self.get_port_s(), nn=self.get_node_n().get_id(), np=self.get_port_n(), pc=self.get_pc_id(), vlan=self._vlans)
 
-    def __init__(self, node_n, port_n, node_s, port_s, mac_s, nic_s, vlans):
+    def __init__(self, node_n, port_n, node_s, port_s, port_channel, vlans):
         self._node_N = node_n
-        self._port_N = str(port_n)
+        self._port_N = str(port_n).upper()
         self._node_S = node_s
-        self._port_S = str(port_s)
-        self._pc_id = self._calculate_pc_id(name='super')
+        self._port_S = str(port_s).upper()
+        self._pc_id = self._calculate_pc_id(port_channel)
         self._is_peer_link = self.is_n9_n9()
-        self._vlans = vlans
+        self._vlans = vlans  # single wire may have many vlans
 
         self._is_intentionally_down = False
 
@@ -19,21 +19,19 @@ class Wire(object):
         else:
             self._node_N.wire_downstream(self)
             self._node_S.wire_upstream(self)
-            if nic_s:
-                self._node_S.add_nic(nic_name=nic_s, mac=mac_s, vlans=vlans)
 
-    def _calculate_pc_id(self, name):
-        """Split pc_id in integer and name part. Example 81-fi-1 will give 81, fi-1
-        :param pc_id_name:
+    def _calculate_pc_id(self, pc_id):
+        """S
+        :param pc_id:
         """
         import re
 
-        if not name:
+        if pc_id is None:
             return None
 
         try:
-            return int(re.findall('^(\d+)', name)[0])
-        except IndexError:  # since pc_id_name provided in lab config yaml doesn't starts with int we assign it here based on connection type
+            return int(re.findall('^(\d+)', pc_id)[0])
+        except IndexError:
             if self.is_n9_tor():
                 pc_id = 300
             elif self.is_n9_n9():
@@ -43,7 +41,7 @@ class Wire(object):
                 if pc_id >= 256:
                     raise ValueError('Node {0} has index which is not suitable for (v)PC- more then 256'.format(self._node_S))
             else:
-                pc_id = name  # other connection types do not require (v)PC
+                pc_id = pc_id  # other connection types do not require (v)PC
             return pc_id
 
     def down_port(self):
@@ -116,3 +114,6 @@ class Wire(object):
         from lab.cobbler import CobblerServer
 
         return isinstance(self._node_N, Nexus) and isinstance(self._node_S, CobblerServer)
+
+    def get_vlans(self):
+        return self._vlans
