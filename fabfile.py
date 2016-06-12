@@ -9,9 +9,9 @@ def cmd(config_path):
         :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
     """
     from fabric.operations import prompt
+    from six import print_
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
-    from six import print_
 
     l = Laboratory(config_path=config_path)
     nodes = sorted(map(lambda node: node.get_id(), l.get_nodes_by_class()))
@@ -62,23 +62,6 @@ def cmd(config_path):
 
 
 @task
-@decorators.print_time
-def deploy(config_path, is_for_mercury=False, topology='VLAN'):
-    """fab deploy:g10\t\t\t\tDeploy the lab from scratch.
-        :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
-        :param is_for_mercury: True if mercury installer will be used, False if RH OSP
-        :param topology: VLAN or VXLAN
-     """
-    from lab.laboratory import Laboratory
-
-    l = Laboratory(config_path=config_path)
-    if is_for_mercury:
-        l.configure_for_mercury(topology=topology)
-    else:
-        l.configure_for_osp7(topology=topology)
-
-
-@task
 def ha(lab, test_regex, do_not_clean=False, is_tims=False):
     """fab ha:g10,tc-vts,no_clean\t\tRun all VTS tests on lab g10
         :param lab: which lab to use
@@ -117,18 +100,6 @@ def ha(lab, test_regex, do_not_clean=False, is_tims=False):
             local('easypy artifacts/pyats_job.py -no_archive ' + ('-tims_post -tims_dns "tims/Tcbr2p"' if is_tims else ''))
         except:
             pass
-
-
-@task
-@decorators.print_time
-def osp7(config_path):
-    """fab osp7:g10\t\t\t\tMake conf file for OSP7. No work with hardware.
-        :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
-    """
-    from lab.laboratory import Laboratory
-
-    l = Laboratory(config_path=config_path)
-    l.create_config_file_for_osp7_install()
 
 
 @task

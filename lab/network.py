@@ -57,8 +57,14 @@ class Nic(object):
             except ValueError:
                 self._slave_nics[name] = {'mac': self._mac, 'port': own_port_id}
 
-    def is_pxe_enabled(self):
-        return self._net.is_pxe_enabled()
+    def is_pxe(self):
+        return self._net.is_pxe()
+
+    def is_vts(self):
+        return self._net.is_vts()
+
+    def is_ssh(self):
+        return self._net.is_ssh()
 
     def get_slave_nics(self):
         return self._slave_nics
@@ -74,9 +80,6 @@ class Nic(object):
         """
         ip = self._net[self._net_index] if type(self._net_index) is int else self._net_index
         return str(ip), str(self._net.netmask)
-
-    def is_ssh(self):
-        return self._net.is_ssh()
 
     def get_net(self):
         return self._net

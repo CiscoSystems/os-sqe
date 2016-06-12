@@ -1,0 +1,15 @@
+<interface type='bridge'>
+     <source bridge='br-inst'/>
+     <vlan>
+       <tag id='{vlan}'/>
+     </vlan>
+     <virtualport type='openvswitch'/>
+     <target dev='{role}-private'/>
+     <model type='virtio'/>
+</interface>
+<interface type='bridge'>
+     <source bridge='br-ex'/>
+     <virtualport type='openvswitch'/>
+     <target dev='{role}-public'/>
+     <model type='virtio'/>
+</interface>

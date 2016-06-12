@@ -21,10 +21,10 @@ class DeployerMercury(Deployer):
         from lab.cloud import Cloud
         from lab.cobbler import CobblerServer
 
-        build_node = self._lab.get_director()
         cobbler = self._lab.get_nodes_by_class(CobblerServer)
         cobbler.deploy_cobbler()
 
+        build_bode = self._lab.get_director()
         build_node.create_user('jenkins')
         build_node.wget_file(url=self._installer_image, to_directory='.', checksum=self._installer_checksum)
 

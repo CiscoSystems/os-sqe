@@ -45,6 +45,7 @@ class Laboratory(object):
         self._is_sriov = self._cfg.get('use-sr-iov', False)
         self._role_vs_count = dict()
 
+        self._dns, self._ntp = self._cfg['dns'], self._cfg['ntp']
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
         self._nets = {}
@@ -55,15 +56,15 @@ class Laboratory(object):
             try:
                 net = Network(name=net_name, cidr=net_desc['cidr'], mac_pattern=net_desc['mac-pattern'], vlan=net_desc['vlan'])
                 self._nets[net_name] = net
-                if net_desc['is-via-tor']:
+                if net_desc.get('is-via-tor', False):
                     self._upstream_vlans.append(net_desc['vlan'])
                 for is_xxx in ['pxe', 'ssh', 'vts']:
                     if net_desc.get('is-' + is_xxx, False):
                         if is_xxx not in net_markers_used:
-                            getattr(net, 'set_is' + is_xxx)()  # will set marker to True
+                            getattr(net, 'set_is_' + is_xxx)()  # will set marker to True
                             net_markers_used.append(is_xxx)
-                    else:
-                        raise ValueError('Check net section- more then one network is marked as is-' + is_xxx)
+                        else:
+                            raise ValueError('Check net section- more then one network is marked as is-' + is_xxx)
 
             except KeyError as ex:
                 raise ValueError('Network "{}" has no {}'.format(net_name, ex.message))
@@ -482,3 +483,9 @@ class Laboratory(object):
 
     def get_type(self):
         return self._lab_type
+
+    def get_dns(self):
+        return self._dns
+
+    def get_ntp(self):
+        return self._ntp
