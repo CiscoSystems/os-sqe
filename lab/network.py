@@ -89,3 +89,6 @@ class Nic(object):
 
     def get_vlan(self):
         return self._net.get_vlan()
+
+    def get_mac(self):
+        return self._mac

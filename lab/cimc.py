@@ -188,7 +188,6 @@ class CimcServer(Server):
         self._logout()
 
     def cimc_recreate_vnics(self):
-        ip_in_os = self.list_ip_info(connection_attempts=1)
         actual_mloms = self.cimc_list_mlom_ports()
         actual_loms = self.cimc_list_lom_ports()
         for nic_order, nic in enumerate(self.get_nics().values()):  # NIC order starts from 0
@@ -196,11 +195,9 @@ class CimcServer(Server):
                 slave_mac, slave_port = slave_mac_port['mac'], slave_mac_port['port']
                 if slave_port in ['LOM-1', 'LOM-2']:
                     actual_mac = actual_loms[slave_port]['mac']
-                    if slave_mac != actual_mac:
+                    if slave_mac != actual_mac.upper():
                         raise ValueError('Node "{}": "{}" has "{}" while specified "{}". Edit lab config!'.format(self.get_id(), slave_port, actual_mac, slave_mac))
                 else:
-                    if slave_name in ip_in_os and slave_mac == ip_in_os[slave_name]:  # this nic is already in the system
-                        continue
                     if slave_name in actual_mloms:
                         if slave_mac == actual_mloms[slave_name]['mac']:  # this nic is already in CIMC
                             continue

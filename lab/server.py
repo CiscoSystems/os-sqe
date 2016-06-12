@@ -61,7 +61,6 @@ class Server(LabNode):
     def run(self, command, in_directory='.', warn_only=False, connection_attempts=100):
         from fabric.api import run, sudo, settings, cd
         from fabric.exceptions import NetworkError
-        from lab.logger import lab_logger
 
         if str(self.get_ssh_ip()) in ['localhost', '127.0.0.1']:
             return self.run_local(command, in_directory=in_directory, warn_only=warn_only)
@@ -77,7 +76,7 @@ class Server(LabNode):
                     return run_or_sudo(command)
                 except NetworkError as ex:
                     if warn_only:
-                        lab_logger.warning('{}: {}'.format(self, ex.message))
+                        self.log(message=ex.message, level='warning')
                         return ''
                     else:
                         raise
@@ -262,3 +261,19 @@ class Server(LabNode):
             ipv6 = name_ipv4_ipv6.get(nic_name, {'ipv6': None})['ipv6']
             result[nic_name] = {'mac': mac.upper(), 'ipv4': ipv4, 'ipv6': ipv6}
         return result
+
+    def is_nics_correct(self):
+        actual_nics = self.list_ip_info(connection_attempts=1)
+        if not actual_nics:
+            return False
+
+        for nic in self.get_nics().values():
+            for nic_name, mac_port in sorted(nic.get_slave_nics().items()):
+                mac = mac_port['mac']
+                if nic_name not in actual_nics:
+                    self.log(message='has no NIC {}'.format(nic_name), level='warning')
+                    return False
+                if actual_nics[nic_name]['mac'].upper() != mac.upper():
+                    self.log(message='has no NIC {}'.format(nic_name), level='warning')
+                    return False
+        return True

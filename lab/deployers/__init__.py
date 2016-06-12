@@ -9,3 +9,6 @@ class Deployer(WithConfig):
         :param list_of_servers: list of server provided during provisioning phase
         """
         pass
+
+    def __repr__(self):
+        return u'{}'.format(type(self).__name__)

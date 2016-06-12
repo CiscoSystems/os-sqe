@@ -252,7 +252,7 @@ class Laboratory(object):
             role = node_description['role']
 
             klass = self._get_role_class(role)
-            node = klass(lab=self, node_id=node_id, role=role, hostname=node_description.get('hostname', 'Default in Laboratory.__create_node() since not in lab yaml'))
+            node = klass(lab=self, node_id=node_id, role=role, hostname=node_description.get('hostname', '{}-{}.ctocllab.cisco.com'.format(self, node_id)))
 
             try:
                 node.set_oob_creds(ip=node_description['oob-ip'], username=node_description['oob-username'], password=node_description['oob-password'])
