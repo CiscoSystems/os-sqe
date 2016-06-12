@@ -188,7 +188,7 @@ class CimcServer(Server):
         self._logout()
 
     def cimc_recreate_vnics(self):
-        ip_in_os = self.list_ip_info()
+        ip_in_os = self.list_ip_info(connection_attempts=1)
         actual_mloms = self.cimc_list_mlom_ports()
         actual_loms = self.cimc_list_lom_ports()
         for nic_order, nic in enumerate(self.get_nics().values()):  # NIC order starts from 0
@@ -210,19 +210,19 @@ class CimcServer(Server):
                     pci_slot_id, uplink_port = slave_port.strip('MLOM-').split('/')
                     self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order=nic_order, name=slave_name, mac=slave_mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe_enabled())
 
-    def configure(self, is_debug=False):
+    def cimc_configure(self, is_debug=False):
         self._dump_xml = is_debug
         lab_type = self.lab().get_type()
         self.logger('configuring for {}'.format(lab_type))
         self._login()
         self.cimc_power(self.POWER_UP)
+        self.cimc_recreate_vnics()
         self.cimc_set_hostname()
         self.cimc_change_boot_order(pxe_order=1, hdd_order=2)
         self.cimc_enable_sol()
         # if lab_type == self.lab().LAB_MERCURY:
         #    self.create_storage('1', 2, True)
         # self.cimc_set_mlom_adaptor(pci_slot=0, n_vnics=10)
-        self.cimc_recreate_vnics()
         self._logout()
 
     def cimc_get_adapters(self):

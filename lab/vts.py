@@ -197,6 +197,40 @@ expect "CPU0:XRVR"
     def show_connections_xrvr_vtf(self):
         return self.run('netstat -ant |grep 21345')
 
+    def get_config_and_net_part_bodies(self):
+        from lab import with_config
+
+        cfg_tmpl = with_config.read_config_from_file(config_path='xrnc_vm_config.txt', directory='vts', is_as_string=True)
+        net_part_tmpl = with_config.read_config_from_file(config_path='xrnc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
+
+        dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
+        lab_name = str(self.lab())
+
+        _, username, password = self.get_ssh()
+
+        nic_ssh_net = filter(lambda x: x.is_ssh(), self.get_nics().values())[0]  # Vtc sits on out-of-tor network marked is_ssh
+        dl_ssh_ip, ssh_netmask = nic_ssh_net.get_ip_and_mask()
+        ssh_gw = nic_ssh_net.get_net()[1]
+        ssh_prefixlen = nic_ssh_net.get_net().prefixlen
+
+        nic_vts_net = filter(lambda x: x.is_vts(), self.get_nics().values())[0]  # also sits on local network marked is_vts
+        dl_loc_ip, loc_netmask = nic_vts_net.get_ip_and_mask()
+        vlan = nic_vts_net.get_net().get_vlan()
+        loc_prefixlen = nic_ssh_net.get_net().prefixlen
+
+        # TODO: parametrize xrvr_ip and vtc_vip
+        xrvr_loc_ip = nic_vts_net.get_net()[170 + int(self.get_id()[-1])]
+        xrvr_ssh_ip = nic_vts_net.get_net()[42 + int(self.get_id()[-1])]
+        vtc_vip = '10.23.221.150'
+
+        # XRVR is a VM sitting in a VM which runs on vts-host. outer VM called DL inner VM called XRVR , so 2 IPs on ssh and vts networks needed
+        cfg_body = cfg_tmpl.format(ssh_ip_dl=dl_ssh_ip, ssh_ip_xrvr=xrvr_ssh_ip, ssh_netmask=ssh_netmask, ssh_prefixlen=ssh_prefixlen, ssh_gw=ssh_gw,
+                                   loc_ip_dl=dl_loc_ip, loc_ip_xrvr=xrvr_loc_ip, loc_netmask=loc_netmask, loc_prefixlen=loc_prefixlen, dns_ip=dns_ip, ntp_ip=ntp_ip,
+                                   vtc_ssh_ip=vtc_vip, username=username, password=password, lab_name=lab_name)
+        net_part = net_part_tmpl.format(vlan=vlan)
+
+        return cfg_body, net_part
+
 
 class Vts(Server):
     def _rest_api(self, resource, params=None):
@@ -401,3 +435,28 @@ class Vts(Server):
         vms = self.get_overlay_vms()['items']
         instances_synced = len(vms) == len(os_instances)
         return instances_synced
+
+    def get_config_and_net_part_bodies(self):
+        from lab import with_config
+
+        cfg_tmpl = with_config.read_config_from_file(config_path='vtc_vm_config.txt', directory='vts', is_as_string=True)
+        net_part_tmpl = with_config.read_config_from_file(config_path='vtc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
+
+        dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
+        lab_name = str(self.lab())
+
+        _, ssh_username, ssh_password = self.get_ssh()
+
+        nic_ssh_net = filter(lambda x: x.is_ssh(), self.get_nics().values())[0]  # Vtc sits on out-of-tor network marked is_ssh
+        ssh_ip, ssh_netmask = nic_ssh_net.get_ip_and_mask()
+        ssh_gw = nic_ssh_net.get_net()[1]
+
+        nic_vts_net = filter(lambda x: x.is_vts(), self.get_nics().values())[0]  # also sits on  local network marked is_vts
+        loc_ip, loc_netmask = nic_vts_net.get_ip_and_mask()
+        vlan = nic_vts_net.get_net().get_vlan()
+
+        cfg_body = cfg_tmpl.format(ssh_ip=ssh_ip, ssh_netmask=ssh_netmask, ssh_gw=ssh_gw, loc_ip=loc_ip, loc_netmask=loc_netmask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=ssh_username, password=ssh_password,
+                                   lab_name=lab_name)
+        net_part = net_part_tmpl.format(vlan=vlan)
+
+        return cfg_body, net_part

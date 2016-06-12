@@ -16,7 +16,7 @@ class BaseLab(WithStatusMixIn):
         self.servers = []
         self.clouds = []
 
-        config = read_config_from_file(yaml_path=yaml_name, directory='run')
+        config = read_config_from_file(config_path=yaml_name, directory='run')
         for section_name, class_path_vs_config in sorted(config.iteritems()):
             module_class_path, class_config = class_path_vs_config.items()[0]
             module_path, class_name = module_class_path.rsplit('.', 1)

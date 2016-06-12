@@ -53,12 +53,19 @@ class CobblerServer(Server):
     def cobbler_deploy(self):
         import getpass
         from lab.time_func import time_as_string
+        from lab.fi import FiServer
+        from lab.cimc import CimcServer
 
         ks_meta = 'ProvTime={}-by-{}'.format(time_as_string(), getpass.getuser())
 
-        nodes = filter(lambda x: x.is_deploy_by_cobbler(), self.lab().get_nodes_by_class())
-        for node in nodes:
+        nodes_to_deploy_by_cobbler = []
+        for node in self.lab().get_nodes_by_class(FiServer) + self.lab().get_nodes_by_class(CimcServer):
+            if filter(lambda x: x.is_pxe(), node.get_nics().values()):
+                nodes_to_deploy_by_cobbler.append(node)
+        for node in nodes_to_deploy_by_cobbler:
+            node.cimc_configure()
             system_name = self.cobbler_configure_for(node=node)
             if self.lab().get_type() == self.lab().LAB_MERCURY:
                 self.run('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
                 self.run('cobbler system reboot --name={}'.format(system_name))
+        return nodes_to_deploy_by_cobbler

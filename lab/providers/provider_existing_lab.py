@@ -13,20 +13,14 @@ class ProviderExistingLab(Provider):
 
         super(ProviderExistingLab, self).__init__(config=config)
 
-        director = Laboratory(config_path=config['hardware-lab-config']).get_director()
-        self.servers = [director]
+        self._lab = Laboratory(config_path=config['hardware-lab-config']).get_director()
 
     def create_servers(self):
-        return self.servers
+        return self._lab.get_nodes_by_class()
 
     def wait_for_servers(self):
-        from lab.server import Nic
 
         servers = self.create_servers()
         for server in servers:
             server.actuate_hostname()
-            ip, _, _, _ = server.get_ssh()
-            nic_name = server.run(command='ip -o address | grep {0} | cut -f2 -d " "'.format(ip))
-            nic_mac = server.run(command='ip -o link | grep {0} | cut -f18 -d " "'.format(nic_name))
-            server.add_nics([Nic(name=nic_name, mac=nic_mac, node=server)])
         return servers
