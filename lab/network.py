@@ -53,7 +53,7 @@ class Nic(object):
             own_port_id = wire.get_own_port(node)
             uplink = own_port_id.split('/')[-1]
             try:
-                self._slave_nics[name + uplink] = {'mac': self._mac.replace('00:', '{:02}:'.format(int(uplink))), 'port': own_port_id}
+                self._slave_nics[name + uplink] = {'mac': self._mac.replace('00:', '{:02}:'.format(int(uplink) * 10)), 'port': own_port_id}
             except ValueError:
                 self._slave_nics[name] = {'mac': self._mac, 'port': own_port_id}
 

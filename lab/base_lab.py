@@ -39,18 +39,22 @@ class BaseLab(WithStatusMixIn):
 
     def run(self):
         import time
+        from lab.logger import lab_logger
 
         results = {}
         self.status()
         for provider in self.providers:
             start_time = time.time()
+            lab_logger.info('Running {}'.format(provider))
             self.servers.extend(provider.wait_for_servers())
             results[str(provider)] = 'spent_time={0}'.format(time.time() - start_time)
         for deployer in self.deployers:
+            lab_logger.info('Running {}'.format(deployer))
             start_time = time.time()
             self.clouds.append(deployer.wait_for_cloud(self.servers))
             results[str(deployer)] = 'spent_time={0}'.format(time.time() - start_time)
         for runner in self.runners:
+            lab_logger.info('Running {}'.format(runner))
             start_time = time.time()
             runner.execute(self.clouds, self.servers)
             results[str(runner)] = 'spent_time={0}'.format(time.time() - start_time)
