@@ -1,4 +1,5 @@
-deployer1: {lab.deployers.deployer_vts.DeployerVts: {images-location': 'http://172.29.173.233/vts/nightly-2016-03-14/'}}
-deployer2: {lab.deployers.deployer_mercury.DeployerMercury: {'installer-image': 'http://cloud-releases.cisco.com/mercury/releases/mercury-sprints/20160605_1508-mercury-rhel7-osp7/installer.20160605_1508-mercury-rhel7-osp7.tgz',
-                                                            'installer-checksum': '79432e5fb8ac9c2c0d5c90f468bcd548d90a07b94d89963eec558ceeb04f54d0',
-                                                            'hardware-lab-config': 'artifacts/g7-2.yaml'}}
+provider1: {lab.providers.provider_existing_lab.ProviderExsitingLab: {hardware-lab-config: g7-2}}
+provider2: {lab.providers.provider_cobbler_lab.ProviderCobblerLab: {hardware-lab-config: g7-2}}
+deployer1: {lab.deployers.deployer_vts.DeployerVts: {images-location: 'http://172.29.173.233/vts/nightly-2016-03-14/'}}
+deployer2: {lab.deployers.deployer_mercury.DeployerMercury: {installer-image: 'http://cloud-releases.cisco.com/mercury/releases/mercury-sprints/20160605_1508-mercury-rhel7-osp7/installer.20160605_1508-mercury-rhel7-osp7.tgz',
+                                                             installer-checksum: '79432e5fb8ac9c2c0d5c90f468bcd548d90a07b94d89963eec558ceeb04f54d0'}}

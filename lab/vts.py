@@ -1,4 +1,9 @@
 from lab.server import Server
+from lab.cimc import CimcServer
+
+
+class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
+    pass
 
 
 class Vtf(Server):
@@ -65,6 +70,26 @@ expect eof
             n = w.get_peer_node(self)
             if 'compute' in n.role():
                 return n
+
+    def get_config_and_net_part_bodies(self):
+        from lab import with_config
+
+        config_tmpl = with_config.read_config_from_file(config_path='vtf_vm_config.txt', directory='vts', is_as_string=True)
+        net_part_tmpl = with_config.read_config_from_file(config_path='vtf-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
+        compute = self.get_all_wires()[0].get_peer_node(self)
+
+        compute_hostname = compute.hostname()
+        nic_vts_net = filter(lambda x: x.is_vts(), self.get_nics().values())[0]
+        loc_ip, loc_netmask = nic_vts_net.get_ip_and_mask()
+        loc_gw = nic_vts_net.get_net()[1]
+        vlan = nic_vts_net.get_net().get_vlan()
+        dns_ip = self.lab().get_dns()[0]
+        ntp_ip = self.lab().get_ntp()[0]
+        _, ssh_username, ssh_password = self.get_ssh()
+        config_body = config_tmpl.format(loc_ip=loc_ip, loc_netmask=loc_netmask, loc_gw=loc_gw, dns_ip=dns_ip, ntp_ip=ntp_ip, vtc_loc_ip=' TODO: ',  # TODO
+                                         username=ssh_username, password=ssh_password, compute_hostname=compute_hostname)
+        net_part = net_part_tmpl.format(vlan=vlan)
+        return config_body, net_part
 
 
 class Xrvr(Server):
