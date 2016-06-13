@@ -5,7 +5,7 @@ class VtsDisruptor(Worker):
 
     # noinspection PyAttributeOutsideInit
     def setup(self):
-        from lab.vts import Vts
+        from lab.vts_classes.vtc import Vts
 
         possible_nodes = ['active-vtc', 'passive-vtc', 'active-dl', 'passive-dl']
         possible_methods = ['isolate-from-management', 'isolate-from-api', 'reboot-vm', 'reboot-host']

@@ -17,7 +17,8 @@ class DeployerVts(Deployer):
         self._images_location = config['images-location']
 
     def deploy_vts(self, list_of_servers):
-        from lab.vts import VtsHost, Vtf
+        from lab.vts_classes.vtf import Vtf
+        from lab.vts_classes.vtc import VtsHost
         # according to https://cisco.jiveon.com/docs/DOC-1443548
 
         vts_hosts = filter(lambda x: type(x) is VtsHost, list_of_servers) or filter(lambda x: 'control' in x.role(), list_of_servers)
@@ -42,7 +43,8 @@ class DeployerVts(Deployer):
                 raise RuntimeError('Failed to set libvirt to nested mode')
 
     def deploy_single_vtc_an_xrvr(self, vts_host):
-        from lab.vts import Vts, Xrvr
+        from lab.vts_classes.xrvr import Xrvr
+        from lab.vts_classes.vtc import Vts
 
         self._common_prepare_host(vts_host)
 

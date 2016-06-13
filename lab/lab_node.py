@@ -189,21 +189,21 @@ class LabNode(object):
         return type(self) in [FiCeph, CimcCeph]
 
     def is_vts_host(self):
-        from lab.vts import VtsHost
+        from lab.vts_classes.vtc import VtsHost
 
         return type(self) == VtsHost
 
     def is_vtc(self):
-        from lab.vts import Vts
+        from lab.vts_classes.vtc import Vts
 
         return type(self) == Vts
 
     def is_xrvr(self):
-        from lab.vts import Xrvr
+        from lab.vts_classes.xrvr import Xrvr
 
         return type(self) == Xrvr
 
     def is_vtf(self):
-        from lab.vts import Vtf
+        from lab.vts_classes.vtf import Vtf
 
         return type(self) == Vtf

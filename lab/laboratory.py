@@ -174,7 +174,9 @@ class Laboratory(object):
     def _process_single_wire(self, own_node, wire_info):  # Example {MLOMl/0: {peer-id: n98,  peer-port: 1/30, own-mac: '00:FE:C8:E4:B4:CE', port-channel: pc20, vlans: [3, 4]}
         from lab.wire import Wire
         from lab.tor import Tor, Oob
-        from lab.vts import Vts, Vtf, Xrvr
+        from lab.vts_classes.xrvr import Xrvr
+        from lab.vts_classes.vtf import Vtf
+        from lab.vts_classes.vtc import Vts
         from lab.n9k import Nexus
 
         own_port_id, peer_info = wire_info
@@ -220,7 +222,10 @@ class Laboratory(object):
         from lab.tor import Tor, Oob
         from lab.cobbler import CobblerServer
         from lab.cimc import CimcDirector, CimcController, CimcCompute, CimcCeph
-        from lab.vts import VtsHost, Vts, Vtf, Xrvr
+        from lab.vts_classes.xrvr import Xrvr
+        from lab.vts_classes.vtf import Vtf
+        from lab.vts_classes.vtc import VtsHost
+        from lab.vts_classes.vtc import Vts
 
         role = role.lower()
         if role == 'cobbler':
