@@ -210,12 +210,12 @@ class Laboratory(object):
 
     @staticmethod
     def _get_role_class(role):
-        from lab.fi import FI, FiServer
+        from lab.fi import FI, FiDirector, FiController, FiCompute, FiCeph
         from lab.n9k import Nexus
         from lab.asr import Asr
         from lab.tor import Tor, Oob
         from lab.cobbler import CobblerServer
-        from lab.cimc import CimcServer
+        from lab.cimc import CimcDirector, CimcController, CimcCompute, CimcCeph
         from lab.vts import VtsHost, Vts, Vtf, Xrvr
 
         role = role.lower()
@@ -231,10 +231,22 @@ class Laboratory(object):
             return Tor
         elif role == 'oob':
             return Oob
-        elif role in ['director-fi', 'compute-fi', 'control-fi', 'ceph-fi']:
-            return FiServer
-        elif role in ['director-n9', 'compute-n9', 'control-n9', 'ceph-n9']:
-            return CimcServer
+        elif role == 'director-fi':
+            return FiDirector
+        elif role == 'control-fi':
+            return FiController
+        elif role == 'compute-fi':
+            return FiCompute
+        elif role == 'ceph-fi':
+            return FiCeph
+        elif role == 'director-n9':
+            return CimcDirector
+        elif role == 'control-n9':
+            return CimcController
+        elif role == 'compute-n9':
+            return CimcCompute
+        elif role == 'ceph-n9':
+            return CimcCeph
         elif role in ['vts-host-n9']:
             return VtsHost
         elif role in ['vtc']:

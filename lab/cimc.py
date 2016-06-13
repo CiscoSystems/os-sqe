@@ -243,3 +243,19 @@ class CimcServer(Server):
             self.cimc_set_mo_by_class_id(class_id='mgmtIf', params={'dn': 'sys/rack-unit-1/mgmt/if-1', 'hostname': new_cimc_hostname})
         else:
             self.logger(message='hostname is already {}'.format(new_cimc_hostname))
+
+
+class CimcDirector(CimcServer):
+    pass
+
+
+class CimcController(CimcServer):
+    pass
+
+
+class CimcCompute(CimcServer):
+    pass
+
+
+class CimcCeph(CimcServer):
+    pass
