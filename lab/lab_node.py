@@ -69,7 +69,7 @@ class LabNode(object):
         import validators
         from lab.network import Nic
 
-        ip_or_index = ip_or_index or self._get_deafult_ip_index(net)
+        ip_or_index = ip_or_index or self._assign_default_ip_index(net)
 
         try:
             index = int(ip_or_index)  # this is shift in the network
@@ -99,9 +99,27 @@ class LabNode(object):
         return nic
 
     def _assign_default_ip_index(self, net):
-        ranges = (net.size - 5) / 6  # bld/director, controls, computes, vts_hosts, vtc, xrvr, vtf
-        if self.is_controller():
-            shift = 1 * ranges
+        chunk_size = (net.size - 5) / 6  # bld/director, controls, computes, vts_hosts, vtc, xrvr, vtf
+        
+        if self.is_director():
+            return 4
+        elif self.is_controller():
+            chunk = 0            
+        elif self.is_compute():
+            chunk = 1
+        elif self.is_ceph():
+            chunk = 2
+        elif self.is_vts_host():
+            chunk = 3
+        elif self.is_vtc():
+            chunk = 4
+        elif self.is_xrvr():
+            chunk = 5
+        elif self.is_vtf():
+            chunk = 6
+        else:
+            raise ValueError('{} Can not detect the role of server'.format(self))
+        return 4 + chunk * chunk_size + self._n
 
     def get_nic(self, nic):
         try:
@@ -146,12 +164,36 @@ class LabNode(object):
     def is_cimc_server(self):
         from lab.cimc import CimcServer
 
-        return type(self) == CimcServer
+        return isinstance(self, CimcServer)
 
     def is_fi_server(self):
         from lab.fi import FiServer
 
-        return type(self) == FiServer
+        return isinstance(self, FiServer)
+
+    def is_director(self):
+        from lab.fi import FiDirector
+        from lab.cimc import CimcDirector
+
+        return type(self) in [FiDirector, CimcDirector]
+    
+    def is_controller(self):
+        from lab.fi import FiController
+        from lab.cimc import CimcController
+
+        return type(self) in [FiController, CimcController]
+
+    def is_compute(self):
+        from lab.fi import FiCompute
+        from lab.cimc import CimcCompute
+    
+        return type(self) in [FiCompute, CimcCompute]
+
+    def is_ceph(self):
+        from lab.fi import FiCeph
+        from lab.cimc import CimcCeph
+
+        return type(self) in [FiCeph, CimcCeph]
 
     def is_vts_host(self):
         from lab.vts import VtsHost
@@ -168,5 +210,7 @@ class LabNode(object):
 
         return type(self) == Xrvr
 
-    def is_controller(self):
-        return ''
+    def is_vtf(self):
+        from lab.vts import Vtf
+
+        return type(self) == Vtf

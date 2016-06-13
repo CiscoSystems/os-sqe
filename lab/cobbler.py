@@ -31,6 +31,7 @@ class CobblerServer(Server):
                 gateway = nic.get_net()[0]
             if nic.is_bond():
                 for name_slave, mac_port in nic.get_slave_nics().items():
+                    mac = mac_port['mac']
                     network_commands.append('--interface={} --mac={} --interface-type=bond_slave --interface-master={}'.format(name_slave, mac, name))
                 network_commands.append('--interface={} --interface-type=bond --bonding-opts="miimon=100 mode=1" {}'.format(name, ip_mask_part))
             else:
