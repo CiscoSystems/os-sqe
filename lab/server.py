@@ -245,9 +245,9 @@ class Server(LabNode):
             _, nic_name, other = line.split(' ', 2)
             name_ipv4_ipv6.setdefault(nic_name, {'ipv4': None, 'ipv6': None})
             if 'inet6' in other:
-                name_ipv4_ipv6[nic_name]['ipv6'] = other.split()[1]
+                name_ipv4_ipv6[nic_name]['ipv6'] = other.split()[1].strip()
             else:
-                name_ipv4_ipv6[nic_name]['ipv4'] = other.split()[1]
+                name_ipv4_ipv6[nic_name]['ipv4'] = other.split()[1].strip()
 
         result = {}
         for line in ans_l.split('\n'):
@@ -256,7 +256,7 @@ class Server(LabNode):
             if nic_name == 'lo':
                 continue
             status, mac_part = other.split('link/ether')
-            mac, brd = mac_part.split(' brd ')
+            mac = mac_part.split(' brd ')[0].strip()
             ipv4 = name_ipv4_ipv6.get(nic_name, {'ipv4': None})['ipv4']
             ipv6 = name_ipv4_ipv6.get(nic_name, {'ipv6': None})['ipv6']
             result[nic_name] = {'mac': mac.upper(), 'ipv4': ipv4, 'ipv6': ipv6}
@@ -268,12 +268,24 @@ class Server(LabNode):
             return False
 
         for nic in self.get_nics().values():
-            for nic_name, mac_port in sorted(nic.get_slave_nics().items()):
-                mac = mac_port['mac']
-                if nic_name not in actual_nics:
-                    self.log(message='has no NIC {}'.format(nic_name), level='warning')
+            mac = nic.get_mac()  # be careful : after bonding all interfaces of the bond get mac of the first one
+            ip, _ = nic.get_ip_and_mask()
+            prefix_len = nic.get_net().prefixlen
+            ip = ip + '/' + str(prefix_len)
+            master_nic_name = nic.get_name()
+            if master_nic_name not in actual_nics:
+                self.log(message='has no master NIC {}'.format(master_nic_name), level='warning')
+                return False
+            actual_ip = actual_nics[master_nic_name]['ipv4']
+            if ip != actual_ip:
+                self.log(message='NIC {} has different IP  actual: {}  requested: {}'.format(nic.get_name(), actual_ip, ip), level='warning')
+                return False
+            for slave_nic_name, _ in sorted(nic.get_slave_nics().items()):
+                if slave_nic_name not in actual_nics:
+                    self.log(message='has no slave NIC {}'.format(slave_nic_name), level='warning')
                     return False
-                if actual_nics[nic_name]['mac'].upper() != mac.upper():
-                    self.log(message='has no NIC {}'.format(nic_name), level='warning')
+                actual_mac = actual_nics[slave_nic_name]['mac'].upper()
+                if actual_mac != mac.upper():
+                    self.log(message='NIC {} has different mac: actual {} requested {}'.format(slave_nic_name, actual_mac, mac), level='warning')
                     return False
         return True

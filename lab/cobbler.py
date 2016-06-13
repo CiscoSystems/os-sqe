@@ -68,8 +68,8 @@ class CobblerServer(Server):
         for node in nodes_to_deploy_by_cobbler:
             if node.is_nics_correct():
                 continue
-            node.cimc_configure()
             system_name = self.cobbler_configure_for(node=node)
+            node.cimc_configure()
             if self.lab().get_type() == self.lab().LAB_MERCURY:
                 self.run('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
                 node.cimc_power(node.POWER_CYCLE)
