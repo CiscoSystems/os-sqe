@@ -90,8 +90,8 @@ class Laboratory(object):
     def get_upstream_vlans(self):
         return self._upstream_vlans
 
-    def get_net(self, net_name):
-        return self._nets[net_name]
+    def get_all_nets(self):
+        return self._nets
 
     def _process_single_node(self, node_description):
         own_node = self._create_node(node_description)
@@ -99,7 +99,7 @@ class Laboratory(object):
 
         all_nics_of_node = []  # We need to collect all vlans (1 per NIC) to assign them to wires on which this NIC sits
         for nic_name, ip_ports in node_description.get('nics', {}).items():  # {api: {ip: 10.23.221.184, port: pc26}, mx: {...}, ...}
-            nic_on_net = self.get_net(nic_name)  # NIC name coincides with network name on which it sits
+            nic_on_net = self._nets[nic_name]  # NIC name coincides with network name on which it sits
             nic_ip_or_index = ip_ports.get('ip')
             nic_on_port_or_port_channel = ip_ports['port']
             # nic port might be physical port like LOM0 or port channel like pc40, wires contains a list of physical ports, some with port-channel attribute

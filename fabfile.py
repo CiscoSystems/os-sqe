@@ -12,6 +12,7 @@ def cmd(config_path):
     from six import print_
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
+    from lab.logger import lab_logger
 
     l = Laboratory(config_path=config_path)
     nodes = sorted(map(lambda node: node.get_id(), l.get_nodes_by_class()))
@@ -30,18 +31,23 @@ def cmd(config_path):
         method_names = [x for x in dir(device) if not x.startswith('_')]
         print_(device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)')
         while True:
-            method_name = prompt(text='\n\n>>{0}<< operation?: '.format(device))
-            if method_name in ['quit', 'q', 'exit']:
+            input_method_name = prompt(text='\n\n>>{0}<< operation?: '.format(device))
+            if input_method_name in ['quit', 'q', 'exit']:
                 return
-            elif method_name == 'node':
+            elif input_method_name == 'node':
                 break
-            elif method_name in ['r', 'rpt']:
+            elif input_method_name in ['r', 'rpt']:
                 print_(device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)')
                 continue
-            elif method_name not in method_names:
-                print_(method_name, 'is not available')
-                continue
-            method_to_execute = getattr(device, method_name)
+            else:
+                methods_in_filter = filter(lambda mth: input_method_name in mth, method_names)
+                if len(methods_in_filter) == 0:
+                    lab_logger.info('{} is not available'.format(input_method_name))
+                    continue
+                elif len(methods_in_filter) > 1:
+                    lab_logger.info('input  "{}" matches:\n{}'.format(input_method_name, '\n'.join(methods_in_filter)))
+                    continue
+            method_to_execute = getattr(device, input_method_name)
             parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
             arguments = []
             for parameter in parameters:
@@ -56,9 +62,9 @@ def cmd(config_path):
             # noinspection PyBroadException
             try:
                 results = method_to_execute(*arguments)
-                print_('\n>>{0}<< RESULTS:\n\n'.format(device), results)
+                lab_logger.info('\n>>{}<< RESULTS:\n\n{}\n'.format(device, results))
             except Exception as ex:
-                print_('\n Exception: ', ex)
+                lab_logger.exception('\n Exception: {0}'.format(ex))
 
 
 @task

@@ -17,7 +17,7 @@ def start(lab, log, args):
     port_channels = nx.show_port_channel_summary()
 
     # Vlans
-    vlans = nx.show_vlan()
+    vlans = nx.n9_show_vlans()
     log.info('ip={ip} n_vlans={n} {det}'.format(ip=n9k_ip, n=len(vlans),
                                                 det='list={0}'.format(vlans) if is_show_details else ''))
 
@@ -28,5 +28,5 @@ def start(lab, log, args):
                                                                   det='list={0}'.format(allowed_vlans) if is_show_details else ''))
     # User sessions
     if is_show_details:
-        users = nx.show_users()
+        users = nx.n9_show_users()
         log.info('ip={ip} n_user_sessions={n} list={l}'.format(ip=n9k_ip, n=len(users), l=users))
