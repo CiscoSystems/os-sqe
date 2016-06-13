@@ -130,13 +130,6 @@ class LabNode(object):
     def get_nics(self):
         return self._nics
 
-    def get_vlans(self):
-        """ Get all vlans which need to reach this server"""
-        vlans = []
-        for nic in self.get_nics():
-            vlans.extend(nic.get_vlans())
-        return vlans
-
     @abc.abstractmethod
     def cmd(self, cmd):
         pass  # this method allows to do OOB commands like e.g. CIMC or NXAPI

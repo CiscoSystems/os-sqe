@@ -1,6 +1,6 @@
 class Wire(object):
     def __repr__(self):
-        return u'S:{sn}:{sp} -> N:{nn}:{np} ({pc}) on vlans: {vlan}'.format(sn=self.get_node_s().get_id(), sp=self.get_port_s(), nn=self.get_node_n().get_id(), np=self.get_port_n(), pc=self.get_pc_id(), vlan=self._vlans)
+        return u'S:{sn}:{sp} -> N:{nn}:{np} ({pc}) on vlans: {vlan}'.format(sn=self._node_S.get_id(), sp=self._port_S, nn=self._node_N.get_id(), np=self._port_N, pc=self.get_pc_id(), vlan=self._vlans)
 
     def __init__(self, node_n, port_n, node_s, port_s, port_channel, vlans):
         self._node_N = node_n
@@ -21,27 +21,28 @@ class Wire(object):
             self._node_S.wire_upstream(self)
 
     def _calculate_pc_id(self, pc_id):
-        """S
+        """This method is to make sure that port is gets a proper int value
         :param pc_id:
         """
         import re
 
-        if pc_id is None:
+        if pc_id is None:  # this means that this wire does not participate in port channel
             return None
 
         try:
-            return int(re.findall('^(\d+)', pc_id)[0])
+            pc_id = int(re.findall('(\d+)', pc_id)[0])  # tries to find int - if ok then use it
+            if self.is_n9_fi() and pc_id >= 256:
+                raise ValueError('Node {}: has port-channel id {} is not suitable for FI (v)PC- more then 256'.format(self._node_S, pc_id))
+            return pc_id
         except IndexError:
             if self.is_n9_tor():
                 pc_id = 300
             elif self.is_n9_n9():
                 pc_id = 100
             elif self.is_n9_fi():
-                pc_id = self._node_S.node_index()
-                if pc_id >= 256:
-                    raise ValueError('Node {0} has index which is not suitable for (v)PC- more then 256'.format(self._node_S))
-            else:
-                pc_id = pc_id  # other connection types do not require (v)PC
+                pc_id = 250
+            elif self.is_n9_ucs():  # we assign port id as port-channel id
+                pc_id = self._port_N.split('/')[1]
             return pc_id
 
     def down_port(self):
@@ -50,9 +51,6 @@ class Wire(object):
 
     def is_port_intentionally_down(self):
         return self._is_intentionally_down
-
-    def get_node_n(self):
-        return self._node_N
 
     def get_peer_node(self, node):
         return self._node_N if node == self._node_S else self._node_S
@@ -102,7 +100,7 @@ class Wire(object):
         from lab.n9k import Nexus
         from lab.cimc import CimcServer
 
-        return isinstance(self._node_N, Nexus) and isinstance(self._node_S, CimcServer)
+        return type(self._node_N) is Nexus and isinstance(self._node_S, CimcServer)
 
     def is_fi_ucs(self):
         from lab.fi import FI, FiServer

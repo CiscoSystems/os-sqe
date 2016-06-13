@@ -124,7 +124,7 @@ class Nexus(LabNode):
         # create port channel
         vlans_string = ','.join(map(lambda x: str(x), vlans)) if type(vlans) == list else vlans
         existing_port_ids = self._actual_pc.get(str(pc_id), [])
-        if existing_port_ids:  # port channel with this id already exists, so we assume it's shared with some other lab
+        if existing_port_ids:  # port channel with this id already exists
             if existing_port_ids != ports:  # make sure that the list of ports on this port channel is the same as requested list of ports
                 raise RuntimeError('{sw} has different list of ports ({e_p}) then requested ({r_p})'.format(sw=self, e_p=existing_port_ids, r_p=ports))
             self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'switchport trunk allowed vlan {0}'.format(vlans_string)])
@@ -264,7 +264,7 @@ class Nexus(LabNode):
             else:
                 self.cmd(['conf t', 'vlan {}'.format(vlan_id), 'name ' + vlan_name, 'no shut'])
 
-    def configure_for_lab(self, topology):
+    def n9_configure_for_lab(self, topology):
         from lab.logger import lab_logger
 
         lab_logger.info('Configuring {0}'.format(self))
@@ -291,11 +291,11 @@ class Nexus(LabNode):
             self.create_port_channel(pc_id=pc_id, pc_name='peer', ports=ports, vlans=vlans, speed=10000, is_peer_link_pc=True)
 
         for w in self._downstream_wires:
-            ucs = w.get_peer_node(self)
-            vlans = ucs.get_vlans()
+            peer_node = w.get_peer_node(self)
+            vlans = w.get_vlans()  # all vlans which goes on this wire
             ports = [w.get_own_port(self)]
             pc_id = w.get_pc_id()
-            self.create_port_channel(pc_id=pc_id, pc_name=str(ucs), ports=ports, vlans=vlans, speed=10000)
+            self.create_port_channel(pc_id=pc_id, pc_name=str(peer_node), ports=ports, vlans=vlans, speed=10000)
             if self._peer_link_wires:
                 self.n9_create_vpc(pc_id)
 

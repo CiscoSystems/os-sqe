@@ -345,7 +345,7 @@ class Laboratory(object):
         self.create_config_file_for_osp7_install(topology)
         self.get_nodes_by_class(CobblerServer)[0].cobbler_deploy()
         map(lambda x: x.cleanup(), self.get_nodes_by_class(Nexus))
-        map(lambda x: x.configure_for_lab(topology), self.get_nodes_by_class(Nexus))
+        map(lambda x: x.n9_configure_for_lab(topology), self.get_nodes_by_class(Nexus))
         map(lambda x: x.configure_for_osp7(), self.get_cimc_servers())
         map(lambda x: x.configure_for_osp7(topology), self.get_nodes_by_class(Asr))
         self.get_nodes_by_class(FI)[0].configure_for_osp7()
@@ -410,7 +410,7 @@ class Laboratory(object):
             for server in self.get_controllers() + self.get_computes():
                 mac = server.get_nic('pxe-int')[0].get_mac()
                 if isinstance(server, CimcServer):
-                    individual_ports_part = ','.join([x.get_port_n() for x in server.get_all_wires() if x.get_node_n() == n9])  # add if wired to this n9k only
+                    individual_ports_part = ','.join([x.get_peer_node(server) for x in server.get_all_wires() if x.get_peer_node(server) == n9])  # add if wired to this n9k only
                     if individual_ports_part:
                         individual_ports_part = ',' + individual_ports_part
                 else:
