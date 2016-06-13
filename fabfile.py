@@ -44,6 +44,8 @@ def cmd(config_path):
                 if len(methods_in_filter) == 0:
                     lab_logger.info('{} is not available'.format(input_method_name))
                     continue
+                elif len(methods_in_filter) == 1:
+                    input_method_name = methods_in_filter[0]
                 elif len(methods_in_filter) > 1:
                     lab_logger.info('input  "{}" matches:\n{}'.format(input_method_name, '\n'.join(methods_in_filter)))
                     continue

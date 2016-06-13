@@ -111,30 +111,54 @@ class Nexus(LabNode):
             if port_ids:
                 self.cmd(['conf t', 'int ethernet {0}'.format(','.join(port_ids)), 'description --'])
 
-    def create_port_channel(self, pc_id, pc_name, ports, speed, vlans, is_peer_link_pc=False):
+    def n9_configure_port(self, pc_id, port_id, vlans_string, desc, speed):
+        actual_port_info = self._actual_ports['Ethernet' + port_id]
+        actual_state, actual_desc = actual_port_info['state'], actual_port_info.get('name', '')
+
+        if actual_state == 'xcvrAbsent':
+            raise RuntimeError('N9K {}: Port {} seems to be not connected. Check your configuration'.format(self, port_id))
+
+        actual_port_channel = filter(lambda x: pc_id in int(x[1]), self._actual_pc.items())
+        actual_pc_id = actual_port_channel[0] if actual_port_channel else 0
+
+        if actual_pc_id:
+            if actual_pc_id == pc_id:  # this port already part of required port-channel, so just change description once again
+                self.cmd(['conf t', 'int ether ' + port_id, 'desc {0}'.format(desc)])
+                return
+            else:
+                raise RuntimeError('N9K {}: Port {} belongs to different port-channel {}. Check your configuration'.format(self, port_id, actual_pc_id))
+        # at hist point we know that port does not participate in port-channel
+        if actual_desc:  # if description is not empty try to check which lab using it
+            if not actual_desc.startswith(str(self.lab())):  # if it says the current lab, (almost) nothing to worry about
+                raise RuntimeError('N9K {}: Port {} seems to belong to other lab (with description {}). Check your configuration'.format(self, port_id, actual_desc))
+        # at this point we known that this port is not in port-channel and not possible belongs to other lab, so configure it
+        if actual_state == 'down':
+            self.cmd(['conf t', 'int ether ' + port_id, 'no shut'])
+        self.cmd(['conf t', 'int ether ' + port_id, 'desc {0}'.format(desc), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed)])
+
+    def n9_create_port_channel(self, pc_id, desc, port_ids, speed, vlans_string, is_peer_link_pc=False):
         """
         :param is_peer_link_pc:
-        :param pc_name: some text to describe port channel and it's ports
-        :param vlans: array of vlans like [1, 12, 333] or string like '1, 12, 333-444'
+        :param desc: some text to describe port channel and it's ports
+        :param vlans_string: string like '1, 12, 333-444'
         :param speed: int like 10000
-        :param ports: array of ports like ['1/15', '1/16']
+        :param port_ids: port like '1/15'  it's a single value, one need to call this method few times with different port_id to add more ports to port-channel
         :param pc_id: id in range 1-4096
         :return:
         """
-        # create port channel
-        vlans_string = ','.join(map(lambda x: str(x), vlans)) if type(vlans) == list else vlans
-        existing_port_ids = self._actual_pc.get(str(pc_id), [])
-        if existing_port_ids:  # port channel with this id already exists
-            if existing_port_ids != ports:  # make sure that the list of ports on this port channel is the same as requested list of ports
-                raise RuntimeError('{sw} has different list of ports ({e_p}) then requested ({r_p})'.format(sw=self, e_p=existing_port_ids, r_p=ports))
-            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'switchport trunk allowed vlan {0}'.format(vlans_string)])
+        for port_id in port_ids:
+            self.n9_configure_port(pc_id=pc_id, port_id=port_id, vlans_string=vlans_string, desc=desc, speed=speed)
+
+        actual_port_ids = self._actual_pc.get(str(pc_id), [])
+        if actual_port_ids:  # port channel with this id already exists
+            if port_ids != actual_port_ids:  # make sure that requested list of port-ids equals to actual list
+                raise RuntimeError('{}: port-channel {} has different list of ports ({}) then requested ({})'.format(self, pc_id, actual_port_ids, port_ids))
+            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'switchport trunk allowed vlan add {0}'.format(vlans_string)])
         else:  # port channel is not yet created
-            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'description {0}'.format(pc_name),
-                      'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan add {0}'.format(vlans_string),
+            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'descr {0}'.format(desc), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan add {0}'.format(vlans_string),
                       'spanning-tree port type edge trunk', 'speed {0}'.format(speed), 'shut', 'no lacp suspend-individual', 'no shut'])
-            for port in ports:  # add ports to the port-channel
-                self.cmd(['conf t', 'int ethernet ' + port, 'description {0}'.format(pc_name), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan add {0}'.format(vlans_string),
-                          'speed {0}'.format(speed), 'channel-group {0} mode active'.format(pc_id)])
+            for port_id in port_ids:  # add ports to the port-channel
+                self.cmd(['conf t', 'int ethernet ' + port_id, 'channel-group {0} force mode active'.format(pc_id)])
             if is_peer_link_pc:
                 self.n9_create_vpc_peer_link(pc_id)
 
@@ -151,12 +175,14 @@ class Nexus(LabNode):
         self._actual_ports = self.n9_show_ports()
 
     def n9_show_ports(self):
-        ans = self.cmd(['sh int brief'])
-        if ans['result']:
-            list_of_dicts = ans['result']['body'][u'TABLE_interface'][u'ROW_interface']
-            return {x['interface']: x for x in list_of_dicts}
-        else:
-            return {}
+        ans_st = self.cmd(['sh int st'])
+        ans_br = self.cmd(['sh int br'])
+
+        list_of_dicts = ans_br['result']['body'][u'TABLE_interface'][u'ROW_interface']
+        result = {x['interface']: x for x in list_of_dicts}
+        for dic in ans_st['result']['body'][u'TABLE_interface'][u'ROW_interface']:
+            result[dic['interface']]['name'] = dic.get('name', '')
+        return result
 
     def n9_show_vpc(self):
         ans = self.cmd(['sh vpc'])
@@ -230,7 +256,7 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'interface ethernet {0}'.format(asr_port), 'ip address {0}/30'.format(eth48_ip)])
         self.cmd(['conf t', 'interface ethernet {0}'.format(asr_port), 'ip router ospf {0} area {1}'.format(router_ospf, router_area)])
 
-    def configure_vpc_domain(self, peer_ip, domain_id=1):
+    def n9_configure_vpc_domain(self, peer_ip, domain_id=1):
         self.cmd(['conf t', 'feature vpc'])
         self.cmd(['conf t', 'vpc domain {0}'.format(domain_id), 'peer-keepalive destination {0}'.format(peer_ip)], timeout=60)
 
@@ -251,10 +277,12 @@ class Nexus(LabNode):
     def n9_configure_vlans(self):
         if not self._actual_vlans:
             self.n9_get_status()
+        vlans = []
         for net in self.lab().get_all_nets().values():
             vlan_id = str(net.get_vlan())
             if vlan_id == '1':
                 continue
+            vlans.append(vlan_id)
             vlan_name = '{}-{}{}{}'.format(self._lab, net.get_name(), '-VTS' if net.is_vts() else '', '-SSH' if net.is_ssh() else '')
             if vlan_id in self._actual_vlans:
                 actual_vlan_name, actual_vlan_ports = self._actual_vlans[vlan_id]['name'], self._actual_vlans[vlan_id]['ports']
@@ -263,6 +291,7 @@ class Nexus(LabNode):
                 self.log(message='VLAN id={} already active'.format(vlan_id))
             else:
                 self.cmd(['conf t', 'vlan {}'.format(vlan_id), 'name ' + vlan_name, 'no shut'])
+        return vlans
 
     def n9_configure_for_lab(self, topology):
         from lab.logger import lab_logger
@@ -272,45 +301,65 @@ class Nexus(LabNode):
         self.n9_get_status()
         self.cmd(['conf t', 'feature lacp'])
 
-        self.n9_configure_vlans()
+        all_vlan_ids = self.n9_configure_vlans()
 
-        def get_pc_info(wires):
-            peers = map(lambda x: x.get_peer_node(self), self._peer_link_wires)
-            if len(set(peers)) > 1:
-                raise ValueError('{0} has a peer-link config which has wrong peer nodes info - not all of them are the same: {1}'.format(self, wires))
-            pc_ids = map(lambda x: x.get_pc_id(), self._peer_link_wires)
-            if len(set(peers)) > 1:
-                raise ValueError('{0} has a peer-link config which has wrong pc_id info - not all of them are the same: {1}'.format(self, wires))
-            return pc_ids[0], peers[0], map(lambda x: x.get_own_port(self), wires)
-
-        if self._peer_link_wires:
-            pc_id, peer, ports = get_pc_info(self._peer_link_wires)
-            vlans = self.lab().get_vlans_to_tor()
-            ip, _, _, _ = peer.get_ssh()
-            self.configure_vpc_domain(peer_ip=ip)
-            self.create_port_channel(pc_id=pc_id, pc_name='peer', ports=ports, vlans=vlans, speed=10000, is_peer_link_pc=True)
-
-        for w in self._downstream_wires:
-            peer_node = w.get_peer_node(self)
-            vlans = w.get_vlans()  # all vlans which goes on this wire
-            ports = [w.get_own_port(self)]
-            pc_id = w.get_pc_id()
-            self.create_port_channel(pc_id=pc_id, pc_name=str(peer_node), ports=ports, vlans=vlans, speed=10000)
-            if self._peer_link_wires:
-                self.n9_create_vpc(pc_id)
-
-        for w in self._upstream_wires:
-            ports = [w.get_own_port(self)]
-            pc_id = w.get_pc_id()
-            vlans = self.lab().get_vlans_to_tor()
-            self.create_port_channel(pc_id=pc_id, pc_name='tor', ports=ports, vlans=vlans, speed=10000)
-            if self._peer_link_wires:
-                self.n9_create_vpc(pc_id)
+        self.n9_configure_peer_link(all_vlan_ids=all_vlan_ids)
+        self.n9_configure_ports(wires=self._upstream_wires)
+        self.n9_configure_ports(wires=self._downstream_wires)
 
         if topology == self.lab().TOPOLOGY_VXLAN:
-            self.cmd(['conf t', 'int po{0}'.format(self.get_peer_link_id()), 'shut'])
-            asr = filter(lambda x: x.is_n9_asr(), self._upstream_wires)
-            self.n9_configure_vxlan(asr[0].get_own_port(self))
+            self.n9_configure_asr1k()
+
+    def n9_configure_ports(self, wires):
+        pc_id_vs_list_of_wires_dict = self.collect_port_channels(wires)
+        for pc_id, wires in pc_id_vs_list_of_wires_dict.items():
+            ports = reduce(lambda lst, w: lst + [w.get_own_port(self)], wires, [])
+            if 'MGMT' in ports:  # don;t process MGMT ports
+                continue
+            description = str(wires[0].get_peer_node(self)) if not wires[0].is_n9_tor() else 'TOR uplink'
+            vlans_string = ','.join(map(lambda x: str(x), wires[0].get_vlans()))  # the same list of vlans should on each wire
+            if str(pc_id).startswith('FAKE-PC-ID'):  # this is actually a single port not participating in port-channel
+                self.n9_configure_port(pc_id=pc_id, port_id=ports[0], vlans_string=vlans_string, desc=description, speed=10000)
+            else:
+                self.n9_create_port_channel(pc_id=pc_id, desc=description, port_ids=ports, vlans_string=vlans_string, speed=10000)
+                if self._peer_link_wires:
+                    self.n9_create_vpc(pc_id)
+
+    @staticmethod
+    def collect_port_channels(wires):
+        pc_id_vs_list_of_wires_dict = {}
+        no_pc_wires_count = 0
+        for wire in wires:
+            pc_id = wire.get_pc_id()
+            if pc_id is None:
+                no_pc_wires_count += 1
+                pc_id = 'FAKE-PC-ID-' + str(no_pc_wires_count)
+            pc_id_vs_list_of_wires_dict.setdefault(pc_id, [])
+            pc_id_vs_list_of_wires_dict[pc_id].append(wire)
+        return pc_id_vs_list_of_wires_dict
+
+    def n9_configure_peer_link(self, all_vlan_ids):
+        if not self._peer_link_wires:  # this N9K is not in per-link configuration
+            return
+        pc_id_vs_list_of_wires_dict = self.collect_port_channels(self._peer_link_wires)
+        if len(pc_id_vs_list_of_wires_dict) != 1:
+            raise ValueError('{}: Check lab config since peer-link port-channel needs to be formed from wires on the same port-channel-id')
+        pc_id, wires = pc_id_vs_list_of_wires_dict.items()[0]
+        peer_n9ks = map(lambda x: x.get_peer_node(self), wires)
+        if len(set(peer_n9ks)) != 1:
+            raise ValueError('{}: Check lab config since peer-link port-channel is form from ports wired to different devices: {}'.format(self, peer_n9ks))
+
+        ports = map(lambda x: x.get_own_port(self), wires)
+
+        vlans_string = ','.join(map(lambda x: str(x), all_vlan_ids))  # all vlans which go via peer-link: actually all lab vlans
+        ip, _, _ = peer_n9ks[0].get_oob()
+        self.n9_configure_vpc_domain(peer_ip=ip)
+        self.n9_create_port_channel(pc_id=pc_id, desc='N9K peer-link', port_ids=ports, vlans_string=vlans_string, speed=10000, is_peer_link_pc=True)
+
+    def n9_configure_asr1k(self):
+        self.cmd(['conf t', 'int po{0}'.format(self.get_peer_link_id()), 'shut'])
+        asr = filter(lambda x: x.is_n9_asr(), self._upstream_wires)
+        self.n9_configure_vxlan(asr[0].get_own_port(self))
 
     def form_mac(self, pattern):
         pass

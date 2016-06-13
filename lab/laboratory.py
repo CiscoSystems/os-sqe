@@ -75,8 +75,9 @@ class Laboratory(object):
         if not self._director:
             self._director = self.get_controllers()[0]  # assign first controller as director if no director node specified in yaml config
 
-        for peer in self._cfg['peer-links']:
-            print peer
+        for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
+            own_node = self.get_node_by_id(peer_link['own-id'])
+            self._process_single_wire(own_node=own_node, wire_info=(peer_link['own-port'], {'peer-id': peer_link['peer-id'], 'peer-port': peer_link['peer-port'], 'port-channel': peer_link['port-channel']}))
 
     def count_node(self, role):
         role = role.split('-')[0]
@@ -174,6 +175,7 @@ class Laboratory(object):
         from lab.wire import Wire
         from lab.tor import Tor, Oob
         from lab.vts import Vts, Vtf, Xrvr
+        from lab.n9k import Nexus
 
         own_port_id, peer_info = wire_info
         own_port_id = own_port_id.upper()
@@ -199,6 +201,8 @@ class Laboratory(object):
             vlans = self.get_upstream_vlans()
         elif type(peer_node) is Oob:
             vlans = []
+        elif type(peer_node) is Nexus and type(own_node) is Nexus:
+            vlans = reduce(lambda lst, n: lst + [n.get_vlan()], self._nets.values(), [])
         elif type(own_node) in [Vts, Vtf, Xrvr]:
             vlans = []
         else:

@@ -30,7 +30,7 @@ class Wire(object):
             return None
 
         try:
-            pc_id = int(re.findall('(\d+)', pc_id)[0])  # tries to find int - if ok then use it
+            pc_id = int(re.findall('(\d+)', str(pc_id))[0])  # tries to find int - if ok then use it
             if self.is_n9_fi() and pc_id >= 256:
                 raise ValueError('Node {}: has port-channel id {} is not suitable for FI (v)PC- more then 256'.format(self._node_S, pc_id))
             return pc_id
@@ -76,7 +76,7 @@ class Wire(object):
     def is_n9_n9(self):
         from lab.n9k import Nexus
 
-        return isinstance(self._node_N, Nexus) and isinstance(self._node_S, Nexus)
+        return type(self._node_N) is Nexus and type(self._node_S) is Nexus
 
     def is_n9_tor(self):
         from lab.n9k import Nexus

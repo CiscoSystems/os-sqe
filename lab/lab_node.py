@@ -63,7 +63,7 @@ class LabNode(object):
 
     def get_all_wires(self):
         """Returns all ires"""
-        return self._downstream_wires + self._upstream_wires
+        return self._downstream_wires + self._upstream_wires + self._peer_link_wires
 
     def add_nic(self, nic_name, mac_or_pattern, ip_or_index, net, on_wires):
         import validators
