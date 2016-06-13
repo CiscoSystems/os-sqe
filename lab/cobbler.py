@@ -24,7 +24,7 @@ class CobblerServer(Server):
         gateway = None
         for nic in node.get_nics().values():
             ip, mask = nic.get_ip_and_mask()
-            ip_mask_part = '--ip-address={} --netmask={} --static'.format(ip, mask) if validators.ipv4(str(ip)) else ''
+            ip_mask_part = '--ip-address={} --netmask={} --static 1'.format(ip, mask) if validators.ipv4(str(ip)) else ''
             mac = nic.get_mac()
             name = nic.get_name()
             if nic.is_ssh():
@@ -72,5 +72,5 @@ class CobblerServer(Server):
             system_name = self.cobbler_configure_for(node=node)
             if self.lab().get_type() == self.lab().LAB_MERCURY:
                 self.run('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
-                node.cimc_reboot()
+                node.cimc_power(node.POWER_CYCLE)
         return nodes_to_deploy_by_cobbler
