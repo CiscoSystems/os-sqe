@@ -30,15 +30,17 @@ class CobblerServer(Server):
             if nic.is_ssh():
                 gateway = nic.get_net()[0]
             if nic.is_bond():
-                for name_slave, mac in {name + '1': mac.replace('00:', '01:'), name + '2': mac.replace('00:', '02:')}.items():
+                for name_slave, mac_port in nic.get_slave_nics().items():
                     network_commands.append('--interface={} --mac={} --interface-type=bond_slave --interface-master={}'.format(name_slave, mac, name))
                 network_commands.append('--interface={} --interface-type=bond --bonding-opts="miimon=100 mode=1" {}'.format(name, ip_mask_part))
             else:
                 network_commands.append('--interface={} --mac={} {}'.format(name, mac, ip_mask_part))
 
         systems = self.run('cobbler system list')
-        if system_name not in systems:
-            self.run('cobbler system add --name={} --profile=RHEL7.2-x86_64 --kickstart=/var/lib/cobbler/kickstarts/sqe --comment="{}"'.format(system_name, comment))
+        if system_name in systems:
+            self.run('cobbler system remove --name={}'.format(system_name))
+
+        self.run('cobbler system add --name={} --profile=RHEL7.2-x86_64 --kickstart=/var/lib/cobbler/kickstarts/sqe --comment="{}"'.format(system_name, comment))
 
         self.run('cobbler system edit --name={} --hostname={} --gateway={}'.format(system_name, node.hostname(), gateway))
 
@@ -53,12 +55,21 @@ class CobblerServer(Server):
     def cobbler_deploy(self):
         import getpass
         from lab.time_func import time_as_string
+        from lab.fi import FiServer
+        from lab.cimc import CimcServer
 
         ks_meta = 'ProvTime={}-by-{}'.format(time_as_string(), getpass.getuser())
 
-        nodes = filter(lambda x: x.is_deploy_by_cobbler(), self.lab().get_nodes_by_class())
-        for node in nodes:
+        nodes_to_deploy_by_cobbler = []
+        for node in self.lab().get_nodes_by_class(FiServer) + self.lab().get_nodes_by_class(CimcServer):
+            if filter(lambda x: x.is_pxe(), node.get_nics().values()):
+                nodes_to_deploy_by_cobbler.append(node)
+        for node in nodes_to_deploy_by_cobbler:
+            if node.is_nics_correct():
+                continue
+            node.cimc_configure()
             system_name = self.cobbler_configure_for(node=node)
             if self.lab().get_type() == self.lab().LAB_MERCURY:
                 self.run('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
                 self.run('cobbler system reboot --name={}'.format(system_name))
+        return nodes_to_deploy_by_cobbler

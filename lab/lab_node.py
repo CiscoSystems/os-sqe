@@ -69,26 +69,26 @@ class LabNode(object):
         import validators
         from lab.network import Nic
 
-        if ip_or_index:
+        ip_or_index = ip_or_index or self._get_deafult_ip_index(net)
+
+        try:
+            index = int(ip_or_index)  # this is shift in the network
+            if index in [0, 1, 2, 3, -1]:
+                raise ValueError('{}:  index={} is not possible since 0 =>  network address [1,2,3] => GW addresses -1 => broadcast address'.format(self.get_id(), index))
             try:
-                index = int(ip_or_index)  # this is shift in the network
-                if index in [0, 1, 2, 3, -1]:
-                    raise ValueError('{}:  index={} is not possible since 0 =>  network address [1,2,3] => GW addresses -1 => broadcast address'.format(self.get_id(), index))
+                ip = net[index]
+            except (IndexError, ValueError):
+                raise ValueError('{}: index {} is out of bound of {}'.format(self.get_id(), index, net))
+        except ValueError:
+            if validators.ipv4(str(ip_or_index)):
                 try:
-                    ip = net[index]
-                except (IndexError, ValueError):
-                    raise ValueError('{}: index {} is out of bound of {}'.format(self.get_id(), index, net))
-            except ValueError:
-                if validators.ipv4(str(ip_or_index)):
-                    try:
-                        index, ip = {x: str(net[x]) for x in range(net.size) if str(ip_or_index) in str(net[x])}.items()[0]
-                    except IndexError:
-                        raise ValueError('{}: ip {} is out of bound of {}'.format(self.get_id(), ip_or_index, net))
-                else:
-                    raise ValueError('{}: specified value "{}" is neither ip nor index in network'.format(self.get_id(), ip_or_index))
-            self.lab().make_sure_that_object_is_unique(obj=ip, node_id=self.get_id())
-        else:
-            index = 'Not defined in lab yaml as detected by LabNode.add_nic()'
+                    index, ip = {x: str(net[x]) for x in range(net.size) if str(ip_or_index) in str(net[x])}.items()[0]
+                except IndexError:
+                    raise ValueError('{}: ip {} is out of bound of {}'.format(self.get_id(), ip_or_index, net))
+            else:
+                raise ValueError('{}: specified value "{}" is neither ip nor index in network'.format(self.get_id(), ip_or_index))
+
+        self.lab().make_sure_that_object_is_unique(obj=ip, node_id=self.get_id())
 
         mac = mac_or_pattern if validators.mac_address(str(mac_or_pattern)) else self.form_mac(mac_or_pattern)
 
@@ -97,6 +97,11 @@ class LabNode(object):
         nic = Nic(name=nic_name, mac=mac, node=self, net=net, net_index=index, on_wires=on_wires)
         self._nics[nic_name] = nic
         return nic
+
+    def _assign_default_ip_index(self, net):
+        ranges = (net.size - 5) / 6  # bld/director, controls, computes, vts_hosts, vtc, xrvr, vtf
+        if self.is_controller():
+            shift = 1 * ranges
 
     def get_nic(self, nic):
         try:
@@ -126,3 +131,42 @@ class LabNode(object):
 
     def get_hardware_info(self):
         return self._ru, self._model
+
+    def log(self, message, level='info'):
+        from lab.logger import lab_logger
+
+        message = '{}: {}'.format(self, message)
+        if level == 'info':
+            lab_logger.info(message)
+        elif level == 'warning':
+            lab_logger.warning(message)
+        else:
+            raise RuntimeError('Specified "{}" logger level is not known'.format(level))
+
+    def is_cimc_server(self):
+        from lab.cimc import CimcServer
+
+        return type(self) == CimcServer
+
+    def is_fi_server(self):
+        from lab.fi import FiServer
+
+        return type(self) == FiServer
+
+    def is_vts_host(self):
+        from lab.vts import VtsHost
+
+        return type(self) == VtsHost
+
+    def is_vtc(self):
+        from lab.vts import Vts
+
+        return type(self) == Vts
+
+    def is_xrvr(self):
+        from lab.vts import Xrvr
+
+        return type(self) == Xrvr
+
+    def is_controller(self):
+        return ''

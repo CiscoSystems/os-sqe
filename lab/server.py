@@ -39,7 +39,7 @@ class Server(LabNode):
                 raise RuntimeError('do not know which package manager to use: neither of {0} found'.format(possible_packages))
         return self._package_manager
 
-    def construct_settings(self, warn_only):
+    def construct_settings(self, warn_only, connection_attempts=100):
         import validators
         from lab import with_config
 
@@ -47,7 +47,7 @@ class Server(LabNode):
         ssh_ip = ssh_ip if validators.ipv4(ssh_ip) else self.get_oob()[0]
 
         kwargs = {'host_string': '{user}@{ip}'.format(user=ssh_username, ip=ssh_ip),
-                  'connection_attempts': 100,
+                  'connection_attempts': connection_attempts,
                   'warn_only': warn_only}
         if ssh_password == 'ssh_key':
             kwargs['key_filename'] = with_config.KEY_PRIVATE_PATH
@@ -58,14 +58,9 @@ class Server(LabNode):
     def cmd(self, cmd):
         raise NotImplementedError
 
-    def run(self, command, in_directory='.', warn_only=False):
-        """Do run with possible sudo on remote server
-        :param command:
-        :param in_directory:
-        :param warn_only:
-        :return:
-        """
+    def run(self, command, in_directory='.', warn_only=False, connection_attempts=100):
         from fabric.api import run, sudo, settings, cd
+        from fabric.exceptions import NetworkError
 
         if str(self.get_ssh_ip()) in ['localhost', '127.0.0.1']:
             return self.run_local(command, in_directory=in_directory, warn_only=warn_only)
@@ -75,10 +70,16 @@ class Server(LabNode):
             command = command.replace('sudo ', '')
             run_or_sudo = sudo
 
-        with settings(**self.construct_settings(warn_only=warn_only)):
+        with settings(**self.construct_settings(warn_only=warn_only, connection_attempts=connection_attempts)):
             with cd(in_directory):
-                result = run_or_sudo(command)
-                return result
+                try:
+                    return run_or_sudo(command)
+                except NetworkError as ex:
+                    if warn_only:
+                        self.log(message=ex.message, level='warning')
+                        return ''
+                    else:
+                        raise
 
     def reboot(self, wait=300):
         """Reboot this server
@@ -234,9 +235,11 @@ class Server(LabNode):
     def form_mac(self, mac_pattern):
         return '00:{lab:02}:00:{role_id}:{count:02}:{net}'.format(lab=self._lab.get_id(), role_id=self.lab().ROLES[self.get_role()], count=self._n, net=mac_pattern)
 
-    def list_ip_info(self):
-        ans_a = self.run('ip -o a')
-        ans_l = self.run('ip -o l')
+    def list_ip_info(self, connection_attempts=100):
+        ans_a = self.run('ip -o a', connection_attempts=connection_attempts, warn_only=True)
+        if not ans_a:
+            return {}
+        ans_l = self.run('ip -o l', connection_attempts=connection_attempts, warn_only=True)
         name_ipv4_ipv6 = {}
         for line in ans_a.split('\n'):
             _, nic_name, other = line.split(' ', 2)
@@ -258,3 +261,19 @@ class Server(LabNode):
             ipv6 = name_ipv4_ipv6.get(nic_name, {'ipv6': None})['ipv6']
             result[nic_name] = {'mac': mac.upper(), 'ipv4': ipv4, 'ipv6': ipv6}
         return result
+
+    def is_nics_correct(self):
+        actual_nics = self.list_ip_info(connection_attempts=1)
+        if not actual_nics:
+            return False
+
+        for nic in self.get_nics().values():
+            for nic_name, mac_port in sorted(nic.get_slave_nics().items()):
+                mac = mac_port['mac']
+                if nic_name not in actual_nics:
+                    self.log(message='has no NIC {}'.format(nic_name), level='warning')
+                    return False
+                if actual_nics[nic_name]['mac'].upper() != mac.upper():
+                    self.log(message='has no NIC {}'.format(nic_name), level='warning')
+                    return False
+        return True

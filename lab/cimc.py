@@ -188,7 +188,6 @@ class CimcServer(Server):
         self._logout()
 
     def cimc_recreate_vnics(self):
-        ip_in_os = self.list_ip_info()
         actual_mloms = self.cimc_list_mlom_ports()
         actual_loms = self.cimc_list_lom_ports()
         for nic_order, nic in enumerate(self.get_nics().values()):  # NIC order starts from 0
@@ -196,11 +195,9 @@ class CimcServer(Server):
                 slave_mac, slave_port = slave_mac_port['mac'], slave_mac_port['port']
                 if slave_port in ['LOM-1', 'LOM-2']:
                     actual_mac = actual_loms[slave_port]['mac']
-                    if slave_mac != actual_mac:
+                    if slave_mac != actual_mac.upper():
                         raise ValueError('Node "{}": "{}" has "{}" while specified "{}". Edit lab config!'.format(self.get_id(), slave_port, actual_mac, slave_mac))
                 else:
-                    if slave_name in ip_in_os and slave_mac == ip_in_os[slave_name]:  # this nic is already in the system
-                        continue
                     if slave_name in actual_mloms:
                         if slave_mac == actual_mloms[slave_name]['mac']:  # this nic is already in CIMC
                             continue
@@ -208,21 +205,21 @@ class CimcServer(Server):
                             self.logger('deleting {} since mac is not correct'.format(actual_mloms[slave_name]))
                             self.cimc_delete_vnic(name=slave_name, dn=actual_mloms[slave_name]['dn'])
                     pci_slot_id, uplink_port = slave_port.strip('MLOM-').split('/')
-                    self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order=nic_order, name=slave_name, mac=slave_mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe_enabled())
+                    self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order=nic_order, name=slave_name, mac=slave_mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe())
 
-    def configure(self, is_debug=False):
+    def cimc_configure(self, is_debug=False):
         self._dump_xml = is_debug
         lab_type = self.lab().get_type()
         self.logger('configuring for {}'.format(lab_type))
         self._login()
         self.cimc_power(self.POWER_UP)
+        # self.cimc_set_mlom_adaptor(pci_slot=0, n_vnics=10)
+        self.cimc_recreate_vnics()
         self.cimc_set_hostname()
         self.cimc_change_boot_order(pxe_order=1, hdd_order=2)
         self.cimc_enable_sol()
         # if lab_type == self.lab().LAB_MERCURY:
         #    self.create_storage('1', 2, True)
-        # self.cimc_set_mlom_adaptor(pci_slot=0, n_vnics=10)
-        self.cimc_recreate_vnics()
         self._logout()
 
     def cimc_get_adapters(self):
@@ -246,3 +243,19 @@ class CimcServer(Server):
             self.cimc_set_mo_by_class_id(class_id='mgmtIf', params={'dn': 'sys/rack-unit-1/mgmt/if-1', 'hostname': new_cimc_hostname})
         else:
             self.logger(message='hostname is already {}'.format(new_cimc_hostname))
+
+
+class CimcDirector(CimcServer):
+    pass
+
+
+class CimcController(CimcServer):
+    pass
+
+
+class CimcCompute(CimcServer):
+    pass
+
+
+class CimcCeph(CimcServer):
+    pass

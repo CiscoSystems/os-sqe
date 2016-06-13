@@ -16,7 +16,7 @@ class BaseLab(WithStatusMixIn):
         self.servers = []
         self.clouds = []
 
-        config = read_config_from_file(yaml_path=yaml_name, directory='run')
+        config = read_config_from_file(config_path=yaml_name, directory='run')
         for section_name, class_path_vs_config in sorted(config.iteritems()):
             module_class_path, class_config = class_path_vs_config.items()[0]
             module_path, class_name = module_class_path.rsplit('.', 1)
@@ -39,18 +39,22 @@ class BaseLab(WithStatusMixIn):
 
     def run(self):
         import time
+        from lab.logger import lab_logger
 
         results = {}
         self.status()
         for provider in self.providers:
             start_time = time.time()
+            lab_logger.info('Running {}'.format(provider))
             self.servers.extend(provider.wait_for_servers())
             results[str(provider)] = 'spent_time={0}'.format(time.time() - start_time)
         for deployer in self.deployers:
+            lab_logger.info('Running {}'.format(deployer))
             start_time = time.time()
             self.clouds.append(deployer.wait_for_cloud(self.servers))
             results[str(deployer)] = 'spent_time={0}'.format(time.time() - start_time)
         for runner in self.runners:
+            lab_logger.info('Running {}'.format(runner))
             start_time = time.time()
             runner.execute(self.clouds, self.servers)
             results[str(runner)] = 'spent_time={0}'.format(time.time() - start_time)

@@ -4,27 +4,19 @@ from lab.deployers import Deployer
 class DeployerMercury(Deployer):
 
     def sample_config(self):
-        return {'installer-image': 'http://cloud-releases.cisco.com/mercury/releases/mercury-sprints/20160317_1759-mercury-rhel7-osp7/installer.20160317_1759-mercury-rhel7-osp7.tgz',
-                'installer-checksum': '79432e5fb8ac9c2c0d5c90f468bcd548d90a07b94d89963eec558ceeb04f54d0',
-                'hardware-lab-config': 'hardware-lab'}
+        return {'installer-image': 'http://path-to-mercury-release-server',
+                'installer-checksum': 'check-sum'}
 
     def __init__(self, config):
-        from lab.laboratory import Laboratory
-
         super(DeployerMercury, self).__init__(config=config)
 
         self._installer_image = config['installer-image']
         self._installer_checksum = config['installer-checksum']
-        self._lab = Laboratory(config['hardware-lab-config'])
 
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
-        from lab.cobbler import CobblerServer
 
-        cobbler = self._lab.get_nodes_by_class(CobblerServer)
-        cobbler.deploy_cobbler()
-
-        build_bode = self._lab.get_director()
+        build_node = filter(lambda x: 'director' in x.role(), list_of_servers)
         build_node.create_user('jenkins')
         build_node.wget_file(url=self._installer_image, to_directory='.', checksum=self._installer_checksum)
 

@@ -6,6 +6,9 @@ class FiServer(Server):
     _server_id = None
     _service_profile_name = None
 
+    def cmd(self, cmd):
+        pass
+
     def set_ucsm_id(self, server_port):
         a_or_b = server_port[-2:]
         if a_or_b not in ['/a', '/b']:
@@ -23,6 +26,22 @@ class FiServer(Server):
 
     def get_ucsm_info(self):
         return self._server_id, self._service_profile_name
+
+
+class FiDirector(FiServer):
+    pass
+
+
+class FiController(FiServer):
+    pass
+
+
+class FiCompute(FiServer):
+    pass
+
+
+class FiCeph(FiServer):
+    pass
 
 
 class FI(LabNode):
