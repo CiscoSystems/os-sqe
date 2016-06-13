@@ -2,6 +2,7 @@ from lab.lab_node import LabNode
 
 
 class Nexus(LabNode):
+
     def __init__(self, node_id, role, lab, hostname):
         super(Nexus, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
         self._vpc = []
@@ -9,7 +10,8 @@ class Nexus(LabNode):
         self._vlans = {}
 
     def __repr__(self):
-        return super(Nexus, self).__repr__()
+        ip, username, password = self.get_oob()
+        return u'{l} {id} sshpass -p {p} ssh {u}@{ip} use http://{ip} for NX-API'.format(l=self.lab(), id=self.get_id(), p=password, u=username, ip=ip)
 
     def get_pcs_to_fi(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""
@@ -161,7 +163,10 @@ class Nexus(LabNode):
         if vlans['result']:
             vlans = vlans['result']['body'][u'TABLE_vlanbrief'][u'ROW_vlanbrief']
             vlans = [vlans] if isinstance(vlans, dict) else vlans
-            return vlans
+            result = {x['vlanshowbr-vlanid-utf']: {'name': x['vlanshowbr-vlanname'], 'ports': x['vlanshowplist-ifidx']} for x in vlans}
+            return result
+        else:
+            return {}
 
     def show_cdp_neighbor(self):
         cdp_neis = self.cmd(['sh cdp nei det'])
@@ -279,3 +284,6 @@ class Nexus(LabNode):
             self.cmd(['conf t', 'int po{0}'.format(self.get_peer_link_id()), 'shut'])
             asr = filter(lambda x: x.is_n9_asr(), self._upstream_wires)
             self.configure_vxlan(asr[0].get_own_port(self))
+
+    def form_mac(self, pattern):
+        pass

@@ -172,8 +172,7 @@ class CimcServer(Server):
         current_power_state = self.cimc_get_power_status()
         if current_power_state == 'off' and state == self.POWER_CYCLE:
             state = self.POWER_UP
-        if (current_power_state == 'off' and state == self.POWER_UP) or (current_power_state == 'on' and state == self.POWER_DOWN) \
-                or state == self.POWER_CYCLE:
+        if (current_power_state == 'off' and state == self.POWER_UP) or (current_power_state == 'on' and state == self.POWER_DOWN) or state == self.POWER_CYCLE:
             self.logger('changing power state on server to {0}'.format(state))
             params = {'dn': "sys/rack-unit-1", 'adminPower': state}
             self.cmd('set_imc_managedobject', in_mo=None, class_id='computeRackUnit', params=params)
