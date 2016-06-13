@@ -4,11 +4,11 @@ from lab.worker import Worker
 class XrvrMonitor(Worker):
 
     def setup(self):
-        from lab.vts_classes.vtc import Vts
+        from lab.vts_classes.vtc import Vtc
         from lab.vts_classes.xrvr import Xrvr
 
         self._lab = self._cloud.mediator.lab()
-        self._vtc = Vts(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes(Vts)[0]
+        self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes(Vtc)[0]
 
         xrvr_nodes = self._lab.get_nodes(Xrvr)
         if len(xrvr_nodes) > 0:

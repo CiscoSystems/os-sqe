@@ -5,10 +5,10 @@ class VtsOverlayMonitor(Worker):
 
     # noinspection PyAttributeOutsideInit
     def setup(self):
-        from lab.vts_classes.vtc import Vts
+        from lab.vts_classes.vtc import Vtc
 
         self._lab = self._cloud.mediator.lab()
-        self._vtc = Vts(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes_by_class(Vts)[0]
+        self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes_by_class(Vtc)[0]
 
     def loop(self):
         networks = self._cloud.list_networks()

@@ -194,9 +194,9 @@ class LabNode(object):
         return type(self) == VtsHost
 
     def is_vtc(self):
-        from lab.vts_classes.vtc import Vts
+        from lab.vts_classes.vtc import Vtc
 
-        return type(self) == Vts
+        return type(self) == Vtc
 
     def is_xrvr(self):
         from lab.vts_classes.xrvr import Xrvr

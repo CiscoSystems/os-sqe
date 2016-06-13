@@ -4,7 +4,7 @@ from lab.vts_classes.xrvr import Xrvr
 from lab.vts_classes.vtf import Vtf
 
 
-class Vts(Server):
+class Vtc(Server):
     def _rest_api(self, resource, params=None):
         import requests
         import json

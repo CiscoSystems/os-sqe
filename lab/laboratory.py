@@ -176,7 +176,7 @@ class Laboratory(object):
         from lab.tor import Tor, Oob
         from lab.vts_classes.xrvr import Xrvr
         from lab.vts_classes.vtf import Vtf
-        from lab.vts_classes.vtc import Vts
+        from lab.vts_classes.vtc import Vtc
         from lab.n9k import Nexus
 
         own_port_id, peer_info = wire_info
@@ -205,7 +205,7 @@ class Laboratory(object):
             vlans = []
         elif type(peer_node) is Nexus and type(own_node) is Nexus:
             vlans = reduce(lambda lst, n: lst + [n.get_vlan()], self._nets.values(), [])
-        elif type(own_node) in [Vts, Vtf, Xrvr]:
+        elif type(own_node) in [Vtc, Vtf, Xrvr]:
             vlans = []
         else:
             try:
@@ -225,7 +225,7 @@ class Laboratory(object):
         from lab.vts_classes.xrvr import Xrvr
         from lab.vts_classes.vtf import Vtf
         from lab.vts_classes.vtc import VtsHost
-        from lab.vts_classes.vtc import Vts
+        from lab.vts_classes.vtc import Vtc
 
         role = role.lower()
         if role == 'cobbler':
@@ -259,7 +259,7 @@ class Laboratory(object):
         elif role in ['vts-host-n9']:
             return VtsHost
         elif role in ['vtc']:
-            return Vts
+            return Vtc
         elif role in ['xrvr']:
             return Xrvr
         elif role in ['vtf']:

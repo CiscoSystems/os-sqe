@@ -5,7 +5,7 @@ class VtsDisruptor(Worker):
 
     # noinspection PyAttributeOutsideInit
     def setup(self):
-        from lab.vts_classes.vtc import Vts
+        from lab.vts_classes.vtc import Vtc
 
         possible_nodes = ['active-vtc', 'passive-vtc', 'active-dl', 'passive-dl']
         possible_methods = ['isolate-from-management', 'isolate-from-api', 'reboot-vm', 'reboot-host']
@@ -21,7 +21,7 @@ class VtsDisruptor(Worker):
         except KeyError:
             raise ValueError('This monitor requires downtime and node-to-disrupt')
         lab = self._cloud.mediator.lab()
-        self._vtc = Vts(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else lab.get_nodes_by_class(Vts)[0]
+        self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else lab.get_nodes_by_class(Vtc)[0]
 
     def loop(self):
         import time

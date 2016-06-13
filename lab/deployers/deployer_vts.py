@@ -44,14 +44,14 @@ class DeployerVts(Deployer):
 
     def deploy_single_vtc_an_xrvr(self, vts_host):
         from lab.vts_classes.xrvr import Xrvr
-        from lab.vts_classes.vtc import Vts
+        from lab.vts_classes.vtc import Vtc
 
         self._common_prepare_host(vts_host)
 
         vtc, xrvr = None, None
         for wire in vts_host.get_all_wires():
             peer_node = wire.get_peer_node(self)
-            if type(peer_node) is Vts:
+            if type(peer_node) is Vtc:
                 vtc = peer_node
             if type(peer_node) is Xrvr:
                 xrvr = peer_node
