@@ -113,13 +113,13 @@ class Nexus(LabNode):
 
     def n9_configure_port(self, pc_id, port_id, vlans_string, desc, speed):
         actual_port_info = self._actual_ports['Ethernet' + port_id]
-        actual_state, actual_desc = actual_port_info['state'], actual_port_info.get('name', '')
+        actual_state, actual_desc = actual_port_info['state'], actual_port_info.get('name', '--')  # for port with no description this field either -- or not in dict
 
         if actual_state == 'xcvrAbsent':
             raise RuntimeError('N9K {}: Port {} seems to be not connected. Check your configuration'.format(self, port_id))
 
-        actual_port_channel = filter(lambda x: pc_id in int(x[1]), self._actual_pc.items())
-        actual_pc_id = actual_port_channel[0] if actual_port_channel else 0
+        actual_port_channel = filter(lambda x: port_id in x[1], self._actual_pc.items())
+        actual_pc_id = int(actual_port_channel[0][0]) if actual_port_channel else 0
 
         if actual_pc_id:
             if actual_pc_id == pc_id:  # this port already part of required port-channel, so just change description once again
@@ -128,12 +128,14 @@ class Nexus(LabNode):
             else:
                 raise RuntimeError('N9K {}: Port {} belongs to different port-channel {}. Check your configuration'.format(self, port_id, actual_pc_id))
         # at hist point we know that port does not participate in port-channel
-        if actual_desc:  # if description is not empty try to check which lab using it
+
+        if actual_state == 'down':
+            self.cmd(['conf t', 'int ether ' + port_id, 'no shut'])
+
+        if actual_desc != '--':  # if description is not default try to check which lab using it
             if not actual_desc.startswith(str(self.lab())):  # if it says the current lab, (almost) nothing to worry about
                 raise RuntimeError('N9K {}: Port {} seems to belong to other lab (with description {}). Check your configuration'.format(self, port_id, actual_desc))
         # at this point we known that this port is not in port-channel and not possible belongs to other lab, so configure it
-        if actual_state == 'down':
-            self.cmd(['conf t', 'int ether ' + port_id, 'no shut'])
         self.cmd(['conf t', 'int ether ' + port_id, 'desc {0}'.format(desc), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string), 'speed {0}'.format(speed)])
 
     def n9_create_port_channel(self, pc_id, desc, port_ids, speed, vlans_string, is_peer_link_pc=False):
