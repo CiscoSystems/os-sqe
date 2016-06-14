@@ -4,17 +4,26 @@ from lab.deployers import Deployer
 class DeployerVts(Deployer):
 
     def sample_config(self):
-        return {'images-location': 'http://172.29.173.233/vts/nightly-2016-03-14/'}
+        return {'images-location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel-subsription-creds': 'http://wwwin-nfv-orch.cisco.com/mercury/latest/ver-1.0.2/'}
 
     def __init__(self, config):
         super(DeployerVts, self).__init__(config=config)
+        import requests
+        import json
+
+        self._rhel_creds_source = config['rhel-subsription-creds']
+        text = requests.get(self._rhel_creds_source).text
+        rhel_json = json.loads(text)
+        self._rhel_username = rhel_json['rhel-username']
+        self._rhel_password = rhel_json['rhel-password']
+        self._rhel_pool_id = rhel_json['rhel-pool-id']
 
         self._vts_service_dir = '/tmp/vts_preparation'
 
         self._libvirt_domain_tmpl = self.read_config_from_file(config_path='domain_template.txt', directory='libvirt', is_as_string=True)
         self._disk_part_tmpl = self.read_config_from_file(config_path='disk-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
-        self._images_location = config['images-location']
+        self._vts_images_location = config['images-location']
 
     def deploy_vts(self, list_of_servers):
         from lab.vts_classes.vtf import Vtf
@@ -26,14 +35,31 @@ class DeployerVts(Deployer):
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
         for vts_host in vts_hosts:
+            vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
             self.deploy_single_vtc_an_xrvr(vts_host)
 
         for vtf in filter(lambda x: type(x) is Vtf, list_of_servers):
             self.deploy_single_vtf(vtf)
 
-    @staticmethod
-    def _common_prepare_host(server):
+    def _common_prepare_host(self, server):
+        repos_to_enable = ['--enable=rhel-7-server-rpms',
+                           '--enable=rhel-7-server-optional-rpms',
+                           '--enable=rhel-7-server-extras-rpms',
+                           '--enable=rhel-7-server-openstack-7.0-rpms',
+                           '--enable=rhel-7-server-openstack-7.0-director-rpms']
+        status = server.run(command='subscription-manager status', warn_only=True)
+        if 'Overall Status: Current' not in status:
+            server.run(command='sudo subscription-manager register --username={0} --password={1}'.format(self._rhel_username, self._rhel_password))
+            available_pools = server.run(command='sudo subscription-manager list --available')
+            if self._rhel_pool_id not in available_pools:
+                raise ValueError('Provided RHEL pool id "{}" is not in the list of available pools, plz check your RHEL credentials here {}'.format(self._rhel_pool_id, self._rhel_creds_source))
+
+            server.run(command='sudo subscription-manager attach --pool={0}'.format(self._rhel_pool_id))
+            server.run(command='sudo subscription-manager repos --disable=*')
+            server.run(command='sudo subscription-manager repos ' + ' '.join(repos_to_enable))
+        server.run(command='sudo yum update -y')
         server.run('yum groupinstall "Virtualization Platform" -y')
+        server.run('yum install genisoimage openvswitch -y')
 
         if server.run('cat /sys/module/kvm_intel/parameters/nested') == 'N':
             server.run('echo "options kvm-intel nested=1" | sudo tee /etc/modprobe.d/kvm-intel.conf')
@@ -41,6 +67,8 @@ class DeployerVts(Deployer):
             server.run('modprobe kvm_intel')
             if server.run('cat /sys/module/kvm_intel/parameters/nested') != 'Y':
                 raise RuntimeError('Failed to set libvirt to nested mode')
+        server.run('systemctl start libvirtd')
+        server.run('systemctl start openvswitch')
 
     def deploy_single_vtc_an_xrvr(self, vts_host):
         from lab.vts_classes.xrvr import Xrvr
@@ -60,7 +88,7 @@ class DeployerVts(Deployer):
         self._common_part(server=vts_host, role='vtc', config_file_name='config.txt', config_body=cfg_body, net_part=net_part)
 
         cfg_body, net_part = xrvr.get_config_and_net_part_bodies()
-        self._common_part(server=vts_host, role='xrnc', config_file_name='system.cfg', config_body=cfg_body, net_part=net_part)
+        self._common_part(server=vts_host, role='XRVR', config_file_name='system.cfg', config_body=cfg_body, net_part=net_part)
 
     def _common_part(self, server, role, config_file_name, config_body, net_part):
             config_iso_path = self._vts_service_dir + '/{0}_config.iso'.format(role)
@@ -68,9 +96,8 @@ class DeployerVts(Deployer):
             server.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
             server.run('mv {0} {1}_config.txt'.format(config_file_name, role), in_directory=self._vts_service_dir)
 
-            image_url = self._images_location + role + '.qcow2'
-            check_sum = server.run('curl {0}'.format(image_url + '.sha256sum.txt')).split()[0]
-            qcow_file = server.wget_file(url=image_url, to_directory=self._vts_service_dir, checksum=check_sum)
+            image_url = self._vts_images_location + role + '.qcow2'
+            qcow_file = server.wget_file(url=image_url, to_directory=self._vts_service_dir, checksum=None)
 
             disk_part = self._disk_part_tmpl.format(qcow_path=qcow_file, iso_path=config_iso_path)
             domain_body = self._libvirt_domain_tmpl.format(hostname=role, disk_part=disk_part, net_part=net_part, emulator='/usr/libexec/qemu-kvm')

@@ -1,11 +1,7 @@
 import logging
 import os
-from fabric.api import local, hide, settings
 
-with hide('running', 'warnings'):
-    with settings(warn_only=True):
-        REPO_TAG = local('git describe --always', capture=True)
-
+REPO_TAG = os.system('git describe --always')
 JENKINS_TAG = os.getenv('BUILD_TAG', 'NA')
 OSP7_INFO = 'NA'
 

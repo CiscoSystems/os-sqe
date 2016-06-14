@@ -162,7 +162,7 @@ class Server(LabNode):
         else:
             return body
 
-    def wget_file(self, url, to_directory='.', checksum='in-file'):
+    def wget_file(self, url, to_directory='.', checksum=None):
         loc = url.split('/')[-1]
         if to_directory != '.':
             self.run('mkdir -p {0}'.format(to_directory))
@@ -171,9 +171,12 @@ class Server(LabNode):
             checksum = self.run('curl {0}'.format(url + '.sha256sum.txt')).split()[0]
 
         calc_checksum = self.run(command='sha256sum {loc}'.format(loc=loc), in_directory=to_directory)
-        if calc_checksum.split()[0] != checksum:
-            self.run(command='rm {0}'.format(loc), in_directory=to_directory)
-            raise RuntimeError('I deleted image {0} since it is broken (checksum is not matched). Re-run the script'.format(loc))
+        if checksum:
+            if calc_checksum.split()[0] != checksum:
+                self.run(command='rm {0}'.format(loc), in_directory=to_directory)
+                raise RuntimeError('I deleted image {}  taken from {} since it is broken (checksum is not matched). Re-run the script'.format(loc, url + '.sha256sum.txt'))
+        else:
+            self.log('Checksum was not provided and not found in <url>.sha256sum.txt. Calculated checksum is {}'.format(calc_checksum))
         return self.run(command='readlink -f {0}'.format(loc), in_directory=to_directory)
 
     def check_or_install_packages(self, package_names):

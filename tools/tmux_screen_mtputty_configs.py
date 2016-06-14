@@ -51,11 +51,11 @@ def mtputty(lab):
         f.write('       <DisplayName>{lab_name}</DisplayName>\n'.format(lab_name=lab))
 
         for node in lab.get_nodes_by_class():
-            ip, username, password, _ = node.get_ssh()
+            ip, username, password = node.get_ssh()
 
             f.write('       <Node Type="1">\n')
             f.write('           <SavedSession>Default Settings</SavedSession>\n')
-            f.write('           <DisplayName>{node_name}</DisplayName>\n'.format(node_name=node.name()))
+            f.write('           <DisplayName>{node_name}</DisplayName>\n'.format(node_name=node.get_id()))
             f.write('           <ServerName>{ip}</ServerName>\n'.format(ip=ip))
             f.write('           <PuttyConType>4</PuttyConType>\n')
             f.write('           <Port>0</Port>\n')
@@ -73,6 +73,9 @@ def mtputty(lab):
 
 def mobaxterm(lab):
     import os
+    from lab.n9k import Nexus
+    from lab.fi import FI
+    from lab.tor import Tor
 
     file_path = os.path.expanduser('~/Desktop/mobaXterm-{lab}.mxtsessions'.format(lab=lab))
     with open(file_path, 'w') as f:
@@ -81,10 +84,10 @@ def mobaxterm(lab):
         f.write('ImgNum=41\n')
 
         for node in lab.get_nodes_by_class():
-            ip, username, _, _ = node.get_ssh()
+            ip, username, _ = node.get_oob() if type(node) in [Tor, Nexus, FI] else node.get_ssh()
 
             f.write('{name} ({ip})= #132#0%{ip}%22%{username}%%0%-1%%%22%%0%0%Interactive shell%%%0%0%0%0%%1080%%0%0#MobaFont%10%0%0%0%15%236,236,236%0,0,0%180,180,192%0%-1%0%%xterm%-1%0%0,0,0%54,54,54%255,96,96%255,128,128%96,255,96%128,255,128%255,255,54%255,255,128%96,96,255%128,128,255%255,54,255%255,128,255%54,255,255%128,255,255%236,236,236%255,255,255%80%24%0%1%-1%<none>%#0\n'.format(
-                name=node.name(), ip=ip, username=username
+                name=node.get_id(), ip=ip, username=username
             ))
 
     print('mobaXterm config for lab {lab} written to {path}. Please import it!'.format(lab=l, path=file_path))
@@ -94,7 +97,7 @@ if __name__ == '__main__':
     import platform
     from lab.laboratory import Laboratory
 
-    l = Laboratory(config_path='artifacts/g7-2.yaml')
+    l = Laboratory(config_path='g7-2')
 
     if platform.system() == 'Windows':
         mtputty(l)
