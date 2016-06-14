@@ -340,14 +340,31 @@ export OS_AUTH_URL={end_point}
         self._instance_counter += 1
         return instance_name
 
-    def wait_instances_ready(self, names=None):
+    def server_reboot(self, name, hard=False):
+        flags = ['--hard' if hard else '--soft']
+        self.cmd('openstack server reboot {flags} {name}'.format(flags=' '.join(flags), name=name))
+        self.wait_instances_ready(names=[name])
+
+    def server_rebuild(self, name, image):
+        self.cmd('openstack server rebuild {name} --image {image}'.format(name=name, image=image))
+        self.wait_instances_ready(names=[name])
+
+    def server_suspend(self, name):
+        self.cmd('openstack server suspend {name}'.format(name=name))
+        self.wait_instances_ready(names=[name], status='SUSPENDED')
+
+    def server_resume(self, name):
+        self.cmd('openstack server resume {name}'.format(name=name))
+        self.wait_instances_ready(names=[name])
+
+    def wait_instances_ready(self, names=None, status='ACTIVE'):
         import time
 
         while True:
             all_instances = self.cmd(self._list_server_cmd)
             our_instances = filter(lambda x: x['Name'] in names, all_instances) if names else all_instances
             instances_in_error = filter(lambda x: x['Status'] == 'ERROR', our_instances)
-            instances_in_active = filter(lambda x: x['Status'] == 'ACTIVE', our_instances)
+            instances_in_active = filter(lambda x: x['Status'] == status, our_instances)
             if len(instances_in_active) == len(names):
                 return
             if instances_in_error:
