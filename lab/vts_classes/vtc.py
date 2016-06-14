@@ -229,7 +229,7 @@ class Vtc(Server):
 
         cfg_body = cfg_tmpl.format(ssh_ip=ssh_ip, ssh_netmask=ssh_netmask, ssh_gw=ssh_gw, loc_ip=loc_ip, loc_netmask=loc_netmask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=ssh_username, password=ssh_password,
                                    lab_name=lab_name)
-        net_part = net_part_tmpl.format(vlan=vlan)
+        net_part = net_part_tmpl.format(ssh_nic_name=nic_ssh_net.get_name(), vts_nic_name=nic_vts_net.get_name(), vlan=vlan)
 
         return cfg_body, net_part
 

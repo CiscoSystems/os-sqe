@@ -84,6 +84,19 @@ class DeployerVts(Deployer):
             if type(peer_node) is Xrvr:
                 xrvr = peer_node
 
+        for nic in filter(lambda x: x.is_vts() or x.is_ssh(),  vts_host.get_nics().values()):
+            if 'br-'.format(nic.get_name()) not in vts_host.run('ovs-vsctl show'):
+                vts_host.run('ovs-vsctl add-br br-{}'.format(nic.get_name()))
+                ip, _ = nic.get_ip_netmask()
+                net_pref = nic.get_net().prefixlen
+                vts_host.run('ip a flush dev {n} && ip a a {ip}/{net_pref} dev {n} && ovs-vsctl add-port br-{n} {n}'.format(n=nic.get_name(), ip=ip, net_pref=net_pref))
+                if nic.is_vts():
+                    vts_host.run('ip l a dev vlan{} type dummy'.format(nic.get_vlan()))
+                    vts_host.run('ovs-vsctl add-port br-{} vlan{}'.format(nic.get_name(), nic.get_vlan()))
+                    vts_host.run('ovs-vsctl set interface vlan{} type=internal'.format(nic.get_vlan()))
+                    vts_host.run('ovs-vsctl set port vlan{0} tag={0}'.format(nic.get_vlan()))
+                    vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
+
         cfg_body, net_part = vtc.get_config_and_net_part_bodies()
         self._common_part(server=vts_host, role='vtc', config_file_name='config.txt', config_body=cfg_body, net_part=net_part)
 
@@ -110,12 +123,6 @@ class DeployerVts(Deployer):
         compute = vtf.get_ocompute()
         self._common_part(server=compute, role='vtf', config_file_name='system.cfg', config_body=config_body, net_part=net_part)
 
-        # ovs-vsctl add-port br-inst vlan3777
-        # ovs-vsctl set interface vlan3777 type=internal
-        # ovs-vsctl set port vlan3777 tag=3777
-        # ovs-vsctl show
-        # ip l set dev vlan3777 up
-        # ip a a 10.11.12.set dev vlan3777 up
         # sun in DL sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh 0.0.0.0
         # on VTC: cat /var/log/ncs/localhost:8888.access
         # on VTC ncs_cli: configure set devices device XT{TAB} asr -- bgp[TAB] bgp-asi 23 commit

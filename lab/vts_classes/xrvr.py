@@ -136,6 +136,6 @@ expect "CPU0:XRVR"
         cfg_body = cfg_tmpl.format(ssh_ip_dl=dl_ssh_ip, ssh_ip_xrvr=xrvr_ssh_ip, ssh_netmask=ssh_netmask, ssh_prefixlen=ssh_prefixlen, ssh_gw=ssh_gw,
                                    loc_ip_dl=dl_loc_ip, loc_ip_xrvr=xrvr_loc_ip, loc_netmask=loc_netmask, loc_prefixlen=loc_prefixlen, dns_ip=dns_ip, ntp_ip=ntp_ip,
                                    vtc_ssh_ip=vtc_vip, username=username, password=password, lab_name=lab_name)
-        net_part = net_part_tmpl.format(vlan=vlan)
+        net_part = net_part_tmpl.format(ssh_nic_name=nic_ssh_net.get_name(), vts_nic_name=nic_vts_net.get_name(), vlan=vlan)
 
         return cfg_body, net_part
