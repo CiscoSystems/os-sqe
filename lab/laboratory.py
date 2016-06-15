@@ -314,14 +314,17 @@ class Laboratory(object):
     def get_director(self):
         return self._director
 
-    def _get_servers_for_role(self, role):
-        return list(filter(lambda x: role in x.role(), self._nodes))
-
     def get_controllers(self):
-        return self._get_servers_for_role('control')
+        from lab.cimc import CimcController
+        from lab.fi import FiController
+
+        return filter(lambda x: type(x) in [CimcController, FiController], self._nodes)
 
     def get_computes(self):
-        return self._get_servers_for_role('compute')
+        from lab.cimc import CimcCompute
+        from lab.fi import FiCompute
+
+        return filter(lambda x: type(x) in [CimcCompute, FiCompute], self._nodes)
 
     def get_cimc_servers(self):
         from lab.cimc import CimcServer
