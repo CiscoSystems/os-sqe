@@ -4,19 +4,12 @@ from lab.deployers import Deployer
 class DeployerVts(Deployer):
 
     def sample_config(self):
-        return {'images-location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel-subsription-creds': 'http://wwwin-nfv-orch.cisco.com/mercury/latest/ver-1.0.2/'}
+        return {'images-location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel-subsription-creds': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json'}
 
     def __init__(self, config):
         super(DeployerVts, self).__init__(config=config)
-        import requests
-        import json
 
         self._rhel_creds_source = config['rhel-subsription-creds']
-        text = requests.get(self._rhel_creds_source).text
-        rhel_json = json.loads(text)
-        self._rhel_username = rhel_json['rhel-username']
-        self._rhel_password = rhel_json['rhel-password']
-        self._rhel_pool_id = rhel_json['rhel-pool-id']
 
         self._vts_service_dir = '/tmp/vts_preparation'
 
@@ -56,21 +49,7 @@ class DeployerVts(Deployer):
             self.deploy_single_vtf(vtf)
 
     def _common_prepare_host(self, server):
-        repos_to_enable = ['--enable=rhel-7-server-rpms',
-                           '--enable=rhel-7-server-optional-rpms',
-                           '--enable=rhel-7-server-extras-rpms',
-                           '--enable=rhel-7-server-openstack-7.0-rpms',
-                           '--enable=rhel-7-server-openstack-7.0-director-rpms']
-        status = server.run(command='subscription-manager status', warn_only=True)
-        if 'Overall Status: Current' not in status:
-            server.run(command='sudo subscription-manager register --force --username={0} --password={1}'.format(self._rhel_username, self._rhel_password))
-            available_pools = server.run(command='sudo subscription-manager list --available')
-            if self._rhel_pool_id not in available_pools:
-                raise ValueError('Provided RHEL pool id "{}" is not in the list of available pools, plz check your RHEL credentials here {}'.format(self._rhel_pool_id, self._rhel_creds_source))
-
-            server.run(command='sudo subscription-manager attach --pool={0}'.format(self._rhel_pool_id))
-            server.run(command='sudo subscription-manager repos --disable=*')
-            server.run(command='sudo subscription-manager repos ' + ' '.join(repos_to_enable))
+        server.register_rhel(self._rhel_creds_source)
         server.run(command='sudo yum update -y')
         server.run('yum groupinstall "Virtualization Platform" -y')
         server.run('yum install genisoimage openvswitch qemu-kvm -y')

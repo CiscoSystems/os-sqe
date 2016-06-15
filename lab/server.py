@@ -293,3 +293,29 @@ class Server(LabNode):
                     self.log(message='NIC {} has different mac: actual {} requested {}'.format(slave_nic_name, actual_mac, mac), level='warning')
                     return False
         return True
+
+    def register_rhel(self, rhel_subscription_creds_url):
+        import requests
+        import json
+
+        text = requests.get(rhel_subscription_creds_url).text
+        rhel_json = json.loads(text)
+        rhel_username = rhel_json['rhel-username']
+        rhel_password = rhel_json['rhel-password']
+        rhel_pool_id = rhel_json['rhel-pool-id']
+
+        repos_to_enable = ['--enable=rhel-7-server-rpms',
+                           '--enable=rhel-7-server-optional-rpms',
+                           '--enable=rhel-7-server-extras-rpms',
+                           '--enable=rhel-7-server-openstack-7.0-rpms',
+                           '--enable=rhel-7-server-openstack-7.0-director-rpms']
+        status = self.run(command='subscription-manager status', warn_only=True)
+        if 'Overall Status: Current' not in status:
+            self.run(command='sudo subscription-manager register --force --username={0} --password={1}'.format(rhel_username, rhel_password))
+            available_pools = self.run(command='sudo subscription-manager list --available')
+            if rhel_pool_id not in available_pools:
+                raise ValueError('Provided RHEL pool id "{}" is not in the list of available pools, plz check your RHEL credentials here {}'.format(rhel_pool_id, rhel_subscription_creds_url))
+
+            self.run(command='sudo subscription-manager attach --pool={0}'.format(rhel_pool_id))
+            self.run(command='sudo subscription-manager repos --disable=*')
+            self.run(command='sudo subscription-manager repos ' + ' '.join(repos_to_enable))
