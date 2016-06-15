@@ -5,10 +5,13 @@ class DeployerMercury(Deployer):
 
     def sample_config(self):
         return {'installer-image': 'http://path-to-mercury-release-server',
-                'installer-checksum': 'check-sum'}
+                'installer-checksum': 'check-sum',
+                'rhel-subsription-creds': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json'}
 
     def __init__(self, config):
         super(DeployerMercury, self).__init__(config=config)
+
+        self._rhel_creds_source = config['rhel-subsription-creds']
 
         self._installer_source = config['installer-image']
         self._installer_checksum = config['installer-checksum']
@@ -18,6 +21,9 @@ class DeployerMercury(Deployer):
         from lab.cimc import CimcDirector
 
         build_node = filter(lambda x: type(x) is CimcDirector, list_of_servers)[0]
+        build_node.register_rhel(self._rhel_creds_source)
+        build_node.run('yum install -y docker')
+
         build_node.create_user('jenkins')
 
         installer_config_template = self.read_config_from_file(config_path='mercury.template', directory='mercury', is_as_string=True)
@@ -75,7 +81,7 @@ class DeployerMercury(Deployer):
         build_node.run('sudo rm -f /var/log/mercury/*.tar.gz')
         build_node.run('cd {} && sudo ./bootstrap.sh'.format(installer_dir))
 
-        build_node.run('cd {}/installer && sudo ./runner/runner.py -y --file {}'.format(installer_dir, installer_config_path))
+        build_node.run('cd {} && sudo ./runner/runner.py -y --file {}'.format(installer_dir, installer_config_path))
 
         return Cloud(cloud='mercury', user='demo', admin='admin', tenant='demo', password='????')
 
