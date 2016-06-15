@@ -1,0 +1,30 @@
+########################
+### Mandatory fields ###
+#######################
+
+###Virtual Ip of VTC Master on the public interface
+vip_public={vip_ssh}
+
+###VTC1 Information
+master_name=vtc1-{lab_name}
+master_ip={vtc1_ip_ssh}
+master_network_interface=eth0
+
+###VTC2 Information
+slave_name=vtc2-{lab_name}
+slave_ip={vtc2_ip_ssh}
+slave_network_interface=eth0
+
+
+###In the event that a network failure occurs evenly between the two routers, the cluster needs an outside ip to determine where the failure lies
+###This can be any external ip such as your vmm ip or a dns but it is recommended to be a stable ip within your environment
+external_ip={bld_ip_ssh}
+
+############################
+### Non-mandatory fields ###
+############################
+
+###If you intend to use a virtual topology forwarder (VTF) in your environment, please fill out the following two fields. Otherwise, leave blank
+###Virtual Ip of VTC Master on the private interface
+vip_private={vip_vts}
+private_network_interface=eth1

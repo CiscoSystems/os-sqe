@@ -5,6 +5,10 @@ from lab.vts_classes.vtf import Vtf
 
 
 class Vtc(Server):
+    def __init__(self, node_id, role, lab, hostname):
+        super(Server, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
+        self._vip = 'Default in Vtc.__init()'
+
     def _rest_api(self, resource, params=None):
         import requests
         import json
@@ -26,6 +30,13 @@ class Vtc(Server):
             return json.loads(res.text)
         except:
             lab_logger.exception('Url={url} auth={auth},vtc headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params))
+
+    def set_vip(self, vip):
+        self._vip = vip
+
+    def get_vip(self):
+        vip_vts = filter(lambda x: x.is_vts(), self.get_nics().values())[0].get_net()[250]
+        return self._vip, vip_vts
 
     def cmd(self, cmd, **kwargs):
         return self._rest_api(resource=cmd)
@@ -232,6 +243,19 @@ class Vtc(Server):
         net_part = net_part_tmpl.format(ssh_nic_name=nic_ssh_net.get_name(), vts_nic_name=nic_vts_net.get_name(), vlan=vlan)
 
         return cfg_body, net_part
+
+    def get_cluster_conf_body(self):
+        from lab import with_config
+
+        vip_ssh, vip_vts = self.get_vip()
+        ip_ssh = []
+        for node_id in ['bld', 'vtc1', 'vtc2']:
+            ip = self.lab().get_node_by_id(node_id=node_id).get_nics()['api'].get_ip_and_mask()[0]
+            ip_ssh.append(ip)
+
+        cfg_tmpl = with_config.read_config_from_file(config_path='cluster.conf.template', directory='vts', is_as_string=True)
+        cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_ssh=vip_ssh, vtc1_ip_ssh=ip_ssh[1], vtc2_ip_ssh=ip_ssh[2], bld_ip_ssh=ip_ssh[0], vip_vts=vip_vts)
+        return cfg_body
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
