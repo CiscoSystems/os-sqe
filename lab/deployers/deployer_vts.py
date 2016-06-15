@@ -27,16 +27,30 @@ class DeployerVts(Deployer):
 
     def deploy_vts(self, list_of_servers):
         from lab.vts_classes.vtf import Vtf
-        from lab.vts_classes.vtc import VtsHost
+        from lab.vts_classes.vtc import VtsHost, Vtc
+        from lab.cimc import CimcController
         # according to https://cisco.jiveon.com/docs/DOC-1443548
 
-        vts_hosts = filter(lambda x: type(x) is VtsHost, list_of_servers) or filter(lambda x: 'control' in x.role(), list_of_servers)
+        vts_hosts = filter(lambda x: type(x) in [VtsHost, CimcController], list_of_servers)
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
-        for vts_host in vts_hosts:
-            vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
-            self.deploy_single_vtc_an_xrvr(vts_host)
+        lab = vts_hosts[0].lab()
+
+        # for vts_host in vts_hosts:
+        #     vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
+        #     self.deploy_single_vtc_an_xrvr(vts_host)
+
+        vtcs = lab.get_nodes_by_class(Vtc)
+        for vtc in vtcs:
+            cfg_body = vtc.get_cluster_conf_body()
+            vtc.run(command='sudo cp cluster.conf cluster.conf.orig', in_directory='/opt/cisco/package/vtc/bin', warn_only=True)
+            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory='/opt/cisco/package/vtc/bin')
+            vtc.run(command='sudo /opt/cisco/package/vtc/bin/modify_host_vtc.sh')
+        for vtc in vtcs:
+            vtc.run(command='sudo /opt/cisco/package/vtc/bin/cluster_install.sh')
+
+        vtcs[0].run(command='sudo /opt/cisco/package/vtc/bin/master_node_install.sh')  # to be run on VTC master only
 
         for vtf in filter(lambda x: type(x) is Vtf, list_of_servers):
             self.deploy_single_vtf(vtf)
@@ -49,7 +63,7 @@ class DeployerVts(Deployer):
                            '--enable=rhel-7-server-openstack-7.0-director-rpms']
         status = server.run(command='subscription-manager status', warn_only=True)
         if 'Overall Status: Current' not in status:
-            server.run(command='sudo subscription-manager register --username={0} --password={1}'.format(self._rhel_username, self._rhel_password))
+            server.run(command='sudo subscription-manager register --force --username={0} --password={1}'.format(self._rhel_username, self._rhel_password))
             available_pools = server.run(command='sudo subscription-manager list --available')
             if self._rhel_pool_id not in available_pools:
                 raise ValueError('Provided RHEL pool id "{}" is not in the list of available pools, plz check your RHEL credentials here {}'.format(self._rhel_pool_id, self._rhel_creds_source))
@@ -59,7 +73,7 @@ class DeployerVts(Deployer):
             server.run(command='sudo subscription-manager repos ' + ' '.join(repos_to_enable))
         server.run(command='sudo yum update -y')
         server.run('yum groupinstall "Virtualization Platform" -y')
-        server.run('yum install genisoimage openvswitch -y')
+        server.run('yum install genisoimage openvswitch qemu-kvm -y')
 
         if server.run('cat /sys/module/kvm_intel/parameters/nested') == 'N':
             server.run('echo "options kvm-intel nested=1" | sudo tee /etc/modprobe.d/kvm-intel.conf')
@@ -85,11 +99,12 @@ class DeployerVts(Deployer):
                 xrvr = peer_node
 
         for nic in filter(lambda x: x.is_vts() or x.is_ssh(),  vts_host.get_nics().values()):
-            if 'br-'.format(nic.get_name()) not in vts_host.run('ovs-vsctl show'):
-                vts_host.run('ovs-vsctl add-br br-{}'.format(nic.get_name()))
-                ip, _ = nic.get_ip_netmask()
-                net_pref = nic.get_net().prefixlen
-                vts_host.run('ip a flush dev {n} && ip a a {ip}/{net_pref} dev {n} && ovs-vsctl add-port br-{n} {n}'.format(n=nic.get_name(), ip=ip, net_pref=net_pref))
+            if 'br-{}'.format(nic.get_name()) not in vts_host.run('ovs-vsctl show'):
+                vts_host.run('ovs-vsctl add-br br-{0} && ip l s dev br-{0} up'.format(nic.get_name()))
+                ip_nic, _ = nic.get_ip_and_mask()
+                net_bits = nic.get_net().prefixlen
+                default_route_part = '&& ip r a default via {}'.format(nic.get_net()[1]) if nic.is_ssh() else ''
+                vts_host.run('ip a flush dev {n} && ip a a {ip}/{nb} dev br-{n} && ovs-vsctl add-port br-{n} {n} {rp}'.format(n=nic.get_name(), ip=ip_nic, nb=net_bits, rp=default_route_part))
                 if nic.is_vts():
                     vts_host.run('ip l a dev vlan{} type dummy'.format(nic.get_vlan()))
                     vts_host.run('ovs-vsctl add-port br-{} vlan{}'.format(nic.get_name(), nic.get_vlan()))
@@ -101,7 +116,7 @@ class DeployerVts(Deployer):
         self._common_part(server=vts_host, role='vtc', config_file_name='config.txt', config_body=cfg_body, net_part=net_part)
 
         cfg_body, net_part = xrvr.get_config_and_net_part_bodies()
-        self._common_part(server=vts_host, role='XRVR', config_file_name='system.cfg', config_body=cfg_body, net_part=net_part)
+        self._common_part(server=vts_host, role='XRNC', config_file_name='system.cfg', config_body=cfg_body, net_part=net_part)
 
     def _common_part(self, server, role, config_file_name, config_body, net_part):
             config_iso_path = self._vts_service_dir + '/{0}_config.iso'.format(role)
