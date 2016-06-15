@@ -1,6 +1,10 @@
 from lab.worker import Worker
 
 
+class XrvrNotSynced(Exception):
+    pass
+
+
 class XrvrMonitor(Worker):
 
     def setup(self):
@@ -44,3 +48,5 @@ class XrvrMonitor(Worker):
                     xrvr_sync &= host['mac'].replace('.', '').lower() == mac.replace(':', '').lower()
                     xrvr_sync &= host['switch'] == str(vtf._ip)
         self._log.info('xrvr={0}; synced={1}'.format(self._xrvr._ip, xrvr_sync))
+        if not xrvr_sync:
+            raise XrvrNotSynced('XRVR {0} is not synced'.format(xrvr_sync))

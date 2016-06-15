@@ -1,6 +1,10 @@
 from lab.worker import Worker
 
 
+class VtfNotSynced(Exception):
+    pass
+
+
 class VtfMonitor(Worker):
 
     def setup(self):
@@ -42,3 +46,7 @@ class VtfMonitor(Worker):
 
         for vtf_ip, sync in vtf_sync.items():
             self._log.info('vtf={0}; sync={1}'.format(vtf_ip, sync))
+            if not sync:
+                raise VtfNotSynced("VTF {0} is not synced".format(vtf_ip))
+
+        return vtf_sync
