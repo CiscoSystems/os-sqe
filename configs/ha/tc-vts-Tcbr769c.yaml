@@ -1,0 +1,20 @@
+---
+# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr769c ShortDesription=Shut off an instance. Start an instance
+- class: lab.scenarios.vts_scenario.VtsScenario
+  delay: 10
+  how-many-networks: 1
+  how-many-servers: 1
+
+- class: lab.monitors.vtf_monitor.VtfMonitor
+  delay: 50
+  how-many-times: 1
+
+- class: lab.scenarios.server_suspend.ServerSuspend
+  delay: 60
+
+- class: lab.scenarios.server_resume.ServerResume
+  delay: 80
+
+- class: lab.monitors.vtf_monitor.VtfMonitor
+  delay: 120
+  how-many-times: 1
