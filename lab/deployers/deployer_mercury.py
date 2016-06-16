@@ -22,9 +22,6 @@ class DeployerMercury(Deployer):
 
         build_node = filter(lambda x: type(x) is CimcDirector, list_of_servers)[0]
         build_node.register_rhel(self._rhel_creds_source)
-        build_node.run('yum install -y docker')
-
-        build_node.create_user('jenkins')
 
         installer_config_template = self.read_config_from_file(config_path='mercury.template', directory='mercury', is_as_string=True)
 
@@ -75,13 +72,15 @@ class DeployerMercury(Deployer):
             installer_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git') + 'installer'
         else:
             tar_path = build_node.wget_file(url=self._installer_source, to_directory='.', checksum=self._installer_checksum)
-            build_node.run('tar xzf {}'.format(tar_path))
-            installer_dir = 'installer'
+            ans = build_node.run('tar xzvf {}'.format(tar_path))
+            installer_dir = ans.split('\n')[-1].split('/')[1]
 
-        build_node.run('sudo rm -f /var/log/mercury/*.tar.gz')
-        build_node.run('cd {} && sudo ./bootstrap.sh'.format(installer_dir))
+        build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
 
-        build_node.run('cd {} && sudo ./runner/runner.py -y --file {}'.format(installer_dir, installer_config_path))
+        build_node.run('rm -f /var/log/mercury/*.tar.gz')
+        build_node.run(command='./bootstrap.sh', in_directory=installer_dir)
+
+        build_node.run(command='source setup.sh && ./runner/runner.py -y --file {}'.format(installer_config_path), in_directory=installer_dir)
 
         return Cloud(cloud='mercury', user='demo', admin='admin', tenant='demo', password='????')
 
