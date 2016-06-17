@@ -1,0 +1,18 @@
+---
+# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr766c ShortDesription=Hard Reboot instance
+- class: lab.scenarios.vts_scenario.VtsScenario
+  delay: 10
+  how-many-networks: 1
+  how-many-servers: 1
+
+- class: lab.monitors.vtf_monitor.VtfMonitor
+  delay: 50
+  how-many-times: 1
+
+- class: lab.scenarios.server_reboot.ServerReboot
+  delay: 60
+  hard: True
+
+- class: lab.monitors.vtf_monitor.VtfMonitor
+  delay: 100
+  how-many-times: 1
