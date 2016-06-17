@@ -4,7 +4,7 @@ from lab.deployers import Deployer
 class DeployerMercury(Deployer):
 
     def sample_config(self):
-        return {'installer-image': 'http://path-to-mercury-release-server',
+        return {'installer-source': 'http://path-to-mercury-release-server',
                 'installer-checksum': 'check-sum',
                 'rhel-subsription-creds': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json'}
 
@@ -13,7 +13,7 @@ class DeployerMercury(Deployer):
 
         self._rhel_creds_source = config['rhel-subsription-creds']
 
-        self._installer_source = config['installer-image']
+        self._installer_source = config['installer-source']
         self._installer_checksum = config['installer-checksum']
 
     def deploy_cloud(self, list_of_servers):
@@ -68,19 +68,18 @@ class DeployerMercury(Deployer):
                                                                  )
         installer_config_path = build_node.put_string_as_file_in_dir(string_to_put=installer_config_body, file_name='mercury-{}.yaml'.format(lab))
 
-        if 'git' in self._installer_source:
-            installer_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git') + 'installer'
-        else:
-            tar_path = build_node.wget_file(url=self._installer_source, to_directory='.', checksum=self._installer_checksum)
-            ans = build_node.run('tar xzvf {}'.format(tar_path))
-            installer_dir = ans.split('\n')[-1].split('/')[1]
+        tar_path = build_node.wget_file(url=self._installer_source, to_directory='.', checksum=self._installer_checksum)
+        ans = build_node.run('tar xzvf {}'.format(tar_path))
+        installer_dir = ans.split('\n')[0].strip('/\r')
+
+        repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
 
         build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
 
         build_node.run('rm -f /var/log/mercury/*.tar.gz')
-        build_node.run(command='./bootstrap.sh', in_directory=installer_dir)
+        build_node.run(command='./bootstrap.sh', in_directory=repo_dir + '/internal')
 
-        build_node.run(command='source setup.sh && ./runner/runner.py -y --file {}'.format(installer_config_path), in_directory=installer_dir)
+        build_node.run(command='./runner/runner.py -y --file {}'.format(installer_config_path), in_directory=installer_dir)
 
         return Cloud(cloud='mercury', user='demo', admin='admin', tenant='demo', password='????')
 
