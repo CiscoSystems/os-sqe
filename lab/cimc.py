@@ -152,7 +152,7 @@ class CimcServer(Server):
                 self.cmd('add_imc_managedobject', in_mo=None, class_id=boot_config['class_id'], params=boot_config['params'])
 
     def cimc_create_vnic(self, pci_slot_id, uplink_port, order, name, mac, vlan, is_pxe_enabled):
-        self.logger(message='creating vNIC {} on MLOM-{}/{} mac={} vlan={} pxe: {}'.format(name, pci_slot_id, uplink_port, mac, vlan, is_pxe_enabled))
+        self.logger(message='creating vNIC {} on PCI id {} uplink {} mac={} vlan={} pxe: {}'.format(name, pci_slot_id, uplink_port, mac, vlan, is_pxe_enabled))
         params = {'UplinkPort': uplink_port, 'mac': mac, 'Name': name, 'dn': 'sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}'.format(pci_slot_id=pci_slot_id, nic_name=name)}
         if is_pxe_enabled:
             params['PxeBoot'] = 'enabled'
@@ -203,8 +203,8 @@ class CimcServer(Server):
                         else:
                             self.logger('deleting {} since mac is not correct'.format(actual_mloms[slave_name]))
                             self.cimc_delete_vnic(name=slave_name, dn=actual_mloms[slave_name]['dn'])
-                    pci_slot_id, uplink_port = slave_port.strip('MLOM-').split('/')
-                    self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order=nic_order, name=slave_name, mac=slave_mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe())
+                    pci_slot_id, uplink_port = slave_port.split('/')
+                    self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order='ANY', name=slave_name, mac=slave_mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe())
 
     def cimc_configure(self, is_debug=False):
         self._dump_xml = is_debug
