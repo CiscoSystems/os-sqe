@@ -67,8 +67,14 @@ class CimcServer(Server):
         return {'LOM-' + x.Id: {'mac': x.Mac, 'dn': x.Dn} for x in r}
 
     def cimc_list_mlom_ports(self):
-        r = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
-        return {x.Name: {'mac': x.Mac, 'uplink': x.UplinkPort, 'pci-slot': x.UsnicCount, 'dn': x.Dn, 'mtu': x.Mtu, 'name': x.Name, 'pxe-boot': x.PxeBoot} for x in r}
+        ans1 = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
+        ans2 = self.cimc_get_mo_by_class_id('adaptorEthGenProfile')
+        vnics = {x.Name: {'mac': x.Mac, 'uplink': x.UplinkPort, 'pci-slot': x.UsnicCount, 'dn': x.Dn, 'mtu': x.Mtu, 'name': x.Name, 'pxe-boot': x.PxeBoot} for x in ans1}
+        vlans_dict = {x.Dn.replace('/general', ''): {'vlan': x.Vlan, 'vlan_mode': x.VlanMode} for x in ans2}
+        for vnic in vnics.values():
+            vlans = vlans_dict[vnic['dn']]
+            vnic.update(vlans)
+        return vnics
 
     def disable_pxe_all_intf(self, status):
         adapters = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
@@ -126,16 +132,18 @@ class CimcServer(Server):
         self.logger('cleaning up all vNICs')
         adapters = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
         for adapter in adapters:
-            self.cimc_delete_vnic(name=adapter.Name, dn=adapter.Dn)
+            self.cimc_delete_vnic(dn=adapter.Dn)
 
-    def cimc_delete_vnic(self, name, dn):
-        if name not in ['eth0', 'eth1']:
-            self.cmd('remove_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params={'Dn': dn})
-        else:
-            params = {'UplinkPort': name[-1], 'mac': 'AUTO', 'mtu': 1500, 'dn': dn}
+    def cimc_delete_vnic(self, dn):
+        if 'eth0' in dn or 'eth1' in dn:  # no way to delete eth0 or eth1, so reset them to default
+            self.logger(message='Resetting vNIC ' + dn)
+            params = {'UplinkPort': dn[-1], 'mac': 'AUTO', 'mtu': 1500, 'dn': dn}
             self.cimc_set_mo_by_class_id(class_id='adaptorHostEthIf', params=params)
-            general_params = {'Dn': dn + '/general', 'Vlan': 'NONE', 'Order': name[-1]}
+            general_params = {'Dn': dn + '/general', 'Vlan': 'NONE', 'Order': 'ANY'}
             self.cimc_set_mo_by_class_id(class_id='AdaptorEthGenProfile', params=general_params)
+        else:
+            self.logger(message='Deleting vNIC ' + dn)
+            self.cmd('remove_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params={'Dn': dn})
 
     def cimc_set_ssh_timeout(self, timeout=3600):
         self.cmd('set_imc_managedobject', in_mo=None, class_id='commHttps', params={'Dn': 'sys/svc-ext/https-svc', 'sessionTimeout': str(timeout)})
@@ -189,6 +197,7 @@ class CimcServer(Server):
     def cimc_recreate_vnics(self):
         actual_mloms = self.cimc_list_mlom_ports()
         actual_loms = self.cimc_list_lom_ports()
+
         for nic_order, nic in enumerate(self.get_nics().values()):  # NIC order starts from 0
             for slave_name, slave_mac_port in sorted(nic.get_slave_nics().items()):
                 slave_mac, slave_port = slave_mac_port['mac'], slave_mac_port['port']
@@ -197,12 +206,17 @@ class CimcServer(Server):
                     if slave_mac != actual_mac.upper():
                         raise ValueError('Node "{}": "{}" has "{}" while specified "{}". Edit lab config!'.format(self.get_id(), slave_port, actual_mac, slave_mac))
                 else:
+                    if 'eth' not in self.get_nics() and nic.is_ssh():  # if no NIC called eth and it's nic on ssh network, use default eth0, eth1
+                        if slave_name in actual_mloms:
+                            self.cimc_delete_vnic(dn=actual_mloms[slave_name]['dn'])
+                        slave_name = 'eth' + slave_name[-1]
                     if slave_name in actual_mloms:
-                        if slave_mac == actual_mloms[slave_name]['mac']:  # this nic is already in CIMC
+                        if slave_mac == actual_mloms[slave_name]['mac'] and str(nic.get_vlan()) == str(actual_mloms[slave_name]['vlan']):  # this nic is already in CIMC
+                            self.logger(message='vNIC {} is already configured'.format(slave_name))
                             continue
                         else:
                             self.logger('deleting {} since mac is not correct'.format(actual_mloms[slave_name]))
-                            self.cimc_delete_vnic(name=slave_name, dn=actual_mloms[slave_name]['dn'])
+                            self.cimc_delete_vnic(dn=actual_mloms[slave_name]['dn'])
                     pci_slot_id, uplink_port = slave_port.split('/')
                     self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order='ANY', name=slave_name, mac=slave_mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe())
 
