@@ -24,16 +24,17 @@ class CobblerServer(Server):
         gateway = None
         for nic in node.get_nics().values():
             ip, mask = nic.get_ip_and_mask()
-            ip_mask_part = '--ip-address={} --netmask={} --static 1'.format(ip, mask) if validators.ipv4(str(ip)) else ''
+            ip_mask_part = '--ip-address={} --netmask={} --static 1'.format(ip, mask) if not nic.is_pxe() and validators.ipv4(str(ip)) else ''
             mac = nic.get_mac()
             name = nic.get_name()
             if nic.is_ssh():
-                gateway = nic.get_net()[0]
+                gateway = nic.get_net()[1]
             if nic.is_bond():
+                bond_mode = '802.3ad' if nic.is_ssh() else 'balance-xor'
                 for name_slave, mac_port in nic.get_slave_nics().items():
                     mac = mac_port['mac']
                     network_commands.append('--interface={} --mac={} --interface-type=bond_slave --interface-master={}'.format(name_slave, mac, name))
-                network_commands.append('--interface={} --interface-type=bond --bonding-opts="miimon=100 mode=1" {}'.format(name, ip_mask_part))
+                network_commands.append('--interface={} --interface-type=bond --bonding-opts="lacp_rate=1,miimon=50,xmit_hash_policy=1,updelay=0,downdelay=0,mode={}" {}'.format(name, bond_mode, ip_mask_part))
             else:
                 network_commands.append('--interface={} --mac={} {}'.format(name, mac, ip_mask_part))
 
@@ -65,12 +66,22 @@ class CobblerServer(Server):
         for node in self.lab().get_nodes_by_class(FiServer) + self.lab().get_nodes_by_class(CimcServer):
             if filter(lambda x: x.is_pxe(), node.get_nics().values()):
                 nodes_to_deploy_by_cobbler.append(node)
+
+        nodes_to_check = []
         for node in nodes_to_deploy_by_cobbler:
             if node.is_nics_correct():
                 continue
+            nodes_to_check.append(node)
             system_name = self.cobbler_configure_for(node=node)
             node.cimc_configure()
             if self.lab().get_type() == self.lab().LAB_MERCURY:
                 self.run('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
                 node.cimc_power(node.POWER_CYCLE)
+
+        for node in nodes_to_check:
+            when_provided = node.run(command='cat ProvTime')
+            if when_provided != ks_meta:
+                raise RuntimeError('Wrong provisioning attempt- timestamps are not matched')
+            node.actuate_hostname()
+
         return nodes_to_deploy_by_cobbler

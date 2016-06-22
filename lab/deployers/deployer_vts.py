@@ -30,9 +30,9 @@ class DeployerVts(Deployer):
 
         lab = vts_hosts[0].lab()
 
-        # for vts_host in vts_hosts:
-        #     vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
-        #     self.deploy_single_vtc_an_xrvr(vts_host)
+        for vts_host in vts_hosts:
+            vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
+            self.deploy_single_vtc_an_xrvr(vts_host)
 
         vtcs = lab.get_nodes_by_class(Vtc)
         for vtc in vtcs:
