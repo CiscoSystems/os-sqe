@@ -49,15 +49,14 @@ class Laboratory(object):
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
         self._nets = {}
-        self._upstream_vlans = []  # list of vlans which should go out of the lab
 
         net_markers_used = []
         for net_name, net_desc in self._cfg['nets'].items():
             try:
-                net = Network(name=net_name, cidr=net_desc['cidr'], mac_pattern=net_desc['mac-pattern'], vlan=net_desc['vlan'])
+                net = Network(name=net_name, cidr=net_desc['cidr'], mac_pattern=net_desc['mac-pattern'], vlan=str(net_desc['vlan']))
                 self._nets[net_name] = net
                 if net_desc.get('is-via-tor', False):
-                    self._upstream_vlans.append(net_desc['vlan'])
+                    net.set_is_via_tor()
                 for is_xxx in ['pxe', 'ssh', 'vts']:
                     if net_desc.get('is-' + is_xxx, False):
                         if is_xxx not in net_markers_used:
@@ -87,9 +86,6 @@ class Laboratory(object):
 
     def is_sriov(self):
         return self._is_sriov
-
-    def get_upstream_vlans(self):
-        return self._upstream_vlans
 
     def get_all_nets(self):
         return self._nets
@@ -173,11 +169,6 @@ class Laboratory(object):
 
     def _process_single_wire(self, own_node, wire_info):  # Example {MLOMl/0: {peer-id: n98,  peer-port: 1/30, own-mac: '00:FE:C8:E4:B4:CE', port-channel: pc20, vlans: [3, 4]}
         from lab.wire import Wire
-        from lab.tor import Tor, Oob
-        from lab.vts_classes.xrvr import Xrvr
-        from lab.vts_classes.vtf import Vtf
-        from lab.vts_classes.vtc import Vtc
-        from lab.n9k import Nexus
 
         own_port_id, peer_info = wire_info
         own_port_id = own_port_id.upper()
@@ -199,19 +190,7 @@ class Laboratory(object):
         self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_id(), peer_port_id), node_id=own_node.get_id())  # check that this peer_node-peer_port is unique
         port_channel = peer_info.get('port-channel')
 
-        if type(peer_node) is Tor:
-            vlans = self.get_upstream_vlans()
-        elif type(peer_node) is Oob:
-            vlans = []
-        elif type(peer_node) is Nexus and type(own_node) is Nexus:
-            vlans = reduce(lambda lst, n: lst + [n.get_vlan()], self._nets.values(), [])
-        elif type(own_node) in [Vtc, Vtf, Xrvr]:
-            vlans = []
-        else:
-            try:
-                vlans = peer_info['vlans']
-            except KeyError:
-                raise ValueError('Node "{}": something strange with wire on "{}". Most probably this wire has wrong port-channel attribute')
+        vlans = peer_info.get('vlans', [])
         Wire(node_n=peer_node, port_n=peer_port_id, node_s=own_node, port_s=own_port_id, port_channel=port_channel, vlans=vlans)
 
     @staticmethod
@@ -219,7 +198,7 @@ class Laboratory(object):
         from lab.fi import FI, FiDirector, FiController, FiCompute, FiCeph
         from lab.n9k import Nexus
         from lab.asr import Asr
-        from lab.tor import Tor, Oob
+        from lab.tor import Tor, Oob, Pxe
         from lab.cobbler import CobblerServer
         from lab.cimc import CimcDirector, CimcController, CimcCompute, CimcCeph
         from lab.vts_classes.xrvr import Xrvr
@@ -236,8 +215,10 @@ class Laboratory(object):
             return Nexus
         elif role == 'fi' or role == 'ucsm':
             return FI
-        elif role in ['tor', 'pxe', 'terminal']:
+        elif role in ['tor', 'terminal']:
             return Tor
+        elif role == 'pxe':
+            return Pxe
         elif role == 'oob':
             return Oob
         elif role == 'director-fi':
@@ -407,9 +388,9 @@ class Laboratory(object):
                           '"pm_addr"': '"{0}"'.format(ipmi_ip),
                           '"pm_user"': '"{0}"'.format(ipmi_username),
                           '"pm_password"': '"{0}"'.format(ipmi_password)}
-            overcloud_section.append(',\n\t  '.join(['{0}:{1}'.format(x, y) for x, y in sorted(descriptor.iteritems())]))
+            overcloud_section.append(',\n\t  '.join(['{0}:{1}'.format(x, y) for x, y in sorted(descriptor.items())]))
 
-        network_ucsm_host_list = ','.join(['{0}:{1}'.format(name, mac) for name, mac in eth0_mac_versus_service_profile.iteritems()])
+        network_ucsm_host_list = ','.join(['{0}:{1}'.format(name, mac) for name, mac in eth0_mac_versus_service_profile.items()])
 
         overcloud_nodes = '{{"nodes":[\n\t{{\n\t  {0}\n\t}}\n    ]\n }}'.format('\n\t},\n\t{\n\t  '.join(overcloud_section))
 
