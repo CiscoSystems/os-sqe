@@ -229,7 +229,7 @@ class Vtc(Server):
     def get_config_and_net_part_bodies(self):
         from lab import with_config
 
-        cfg_tmpl = with_config.read_config_from_file(config_path='vtc_vm_config.txt', directory='vts', is_as_string=True)
+        cfg_tmpl = with_config.read_config_from_file(config_path='vtc-vm-config.txt', directory='vts', is_as_string=True)
         net_part_tmpl = with_config.read_config_from_file(config_path='vtc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
         dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
@@ -237,17 +237,17 @@ class Vtc(Server):
 
         _, ssh_username, ssh_password = self.get_ssh()
 
-        nic_ssh_net = filter(lambda x: x.is_ssh(), self.get_nics().values())[0]  # Vtc sits on out-of-tor network marked is_ssh
-        ssh_ip, ssh_netmask = nic_ssh_net.get_ip_and_mask()
-        ssh_gw = nic_ssh_net.get_net()[1]
+        a_nic = self.get_nic('a')  # Vtc sits on out-of-tor network marked is_ssh
+        a_ip, a_net_mask = a_nic.get_ip_and_mask()
+        a_gw = a_nic.get_net()[1]
 
-        nic_vts_net = filter(lambda x: x.is_vts(), self.get_nics().values())[0]  # also sits on  local network marked is_vts
-        loc_ip, loc_netmask = nic_vts_net.get_ip_and_mask()
-        vlan = nic_vts_net.get_net().get_vlan()
+        mx_nic = self.get_nic('mx')  # also sits on mx network
+        mx_ip, mx_net_mask = mx_nic.get_ip_and_mask()
+        mx_vlan = mx_nic.get_net().get_vlan()
 
-        cfg_body = cfg_tmpl.format(ssh_ip=ssh_ip, ssh_netmask=ssh_netmask, ssh_gw=ssh_gw, loc_ip=loc_ip, loc_netmask=loc_netmask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=ssh_username, password=ssh_password,
+        cfg_body = cfg_tmpl.format(vtc_a_ip=a_ip, a_net_mask=a_net_mask, a_gw=a_gw, vtc_mx_ip=mx_ip, mx_net_mask=mx_net_mask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=ssh_username, password=ssh_password,
                                    lab_name=lab_name)
-        net_part = net_part_tmpl.format(ssh_nic_name=nic_ssh_net.get_name(), vts_nic_name=nic_vts_net.get_name(), vlan=vlan)
+        net_part = net_part_tmpl.format(a_nic_name=a_nic.get_name(), mx_nic_name=mx_nic.get_name(), mx_vlan=mx_vlan)
 
         return cfg_body, net_part
 

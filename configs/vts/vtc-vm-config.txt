@@ -1,0 +1,14 @@
+Hostname=VTC-{lab_name}
+ManagementIPv4Method=Static
+ManagementIPv4Address={vtc_a_ip}
+ManagementIPv4Netmask={a_net_mask}
+ManagementIPv4Gateway={a_gw}
+UnderlayIPv4Method=Static
+UnderlayIPv4Address={vtc_mx_ip}
+UnderlayIPv4Netmask={mx_net_mask}
+DNSv4={dns_ip}
+Domain=cisco.com
+NTPv4={ntp_ip}
+AdministrativeUser={username}
+AdministrativePassword={password}
+vts-adminPassword={password}

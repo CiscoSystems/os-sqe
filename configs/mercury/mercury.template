@@ -149,8 +149,8 @@ VTS_USERNAME: admin #Username for VTS access
     #BGP_ASN_NUMBER: ??                            # Required parameter when VTS is enabled The ASN number advertised by the VTS solution
     #BGP_LOOPBACK_NUM: ??                          # Required parameter when VTS is enabled The loopback number to be used for BGP connections with peers
     #BGP_LOOPBACK_IP: ??                           # Required parameter when VTS is enabled The loopback ip address to be used for BGP connections with peers
-    VTS_VNI_RANGE:  1002:1004                     # Required parameter when VTS is enabled The range of VNI values the operator wants to use for the VXLAN encapsulated packets
-    VTS_VTC_API_IP: {vtc_vip}                     # Required parameter when VTS is enabled The IP address of the VTC on the API network for external access
+    VTS_VNI_RANGE:  1002:1004                      # Required parameter when VTS is enabled The range of VNI values the operator wants to use for the VXLAN encapsulated packets
+    VTS_VTC_API_IP: {vtc_vip}                      # Required parameter when VTS is enabled The IP address of the VTC on the API network for external access
     #VTS_NCS_IP: ??                                # Optional required only for EFT The IP address the VTF's will use to register.  This is only required for EFT
 
 #############################################

@@ -1,30 +1,24 @@
+# https://cisco.jiveon.com/docs/DOC-1502924 VTC HA: Cluster.conf (May not be needed)
 ########################
 ### Mandatory fields ###
 #######################
 
 ###Virtual Ip of VTC Master on the public interface
-vip_public={vip_ssh}
+vip_public={vip_api} #<a-net VTC VIP in a.b.c.d form>
 
 ###VTC1 Information
-master_name=vtc1-{lab_name}
-master_ip={vtc1_ip_ssh}
+master_name=vtc1-{lab_name} #<hostname of first VTC VM>
+master_ip={vtc1-a-ip}       #<a-net IP of first VTC VM in a.b.c.d form>
 master_network_interface=eth0
 
 ###VTC2 Information
-slave_name=vtc2-{lab_name}
-slave_ip={vtc2_ip_ssh}
+slave_name=vtc1-{lab_name} #<hostname of 2nd VTC VM>
+slave_ip={vtc2-a-ip}       #<a-net IP of 2nd VTC VM in a.b.c.d form>
 slave_network_interface=eth0
 
-
 ###In the event that a network failure occurs evenly between the two routers, the cluster needs an outside ip to determine where the failure lies
-###This can be any external ip such as your vmm ip or a dns but it is recommended to be a stable ip within your environment
-external_ip={bld_ip_ssh}
+external_ip={lb_a_ip} #<same value as setup_data.yaml::external_lb_vip_address>
 
-############################
-### Non-mandatory fields ###
-############################
-
-###If you intend to use a virtual topology forwarder (VTF) in your environment, please fill out the following two fields. Otherwise, leave blank
-###Virtual Ip of VTC Master on the private interface
-vip_private={vip_vts}
-private_network_interface=eth1
+###VTC Underlay Addresses , maps to mercury management network
+vtc1_underlay={vtc1_mx_ip} #<mx-net IP of first VTC VM in a.b.c.d form>
+vtc2_underlay={vtc2_mx_ip} #<mx-net IP of 2nd VTC VM in a.b.c.d form>
