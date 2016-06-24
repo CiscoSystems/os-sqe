@@ -1,15 +1,15 @@
 <interface type='bridge'>
-     <source bridge='br-{ssh_nic_name}'/>
+     <source bridge='br-{a_nic_name}'/>
      <virtualport type='openvswitch'/>
-     <target dev='vtc-api-port'/>
+     <target dev='vtc-{a_nic_name}-port'/>
      <model type='virtio'/>
 </interface>
 <interface type='bridge'>
-     <source bridge='br-{vts_nic_name}'/>
+     <source bridge='br-{mx_nic_name}'/>
      <vlan>
-       <tag id='{vlan}'/>
+       <tag id='{mx_vlan}'/>
      </vlan>
      <virtualport type='openvswitch'/>
-     <target dev='vtc-mx-port'/>
+     <target dev='vtc-{mx_nic_name}-port'/>
      <model type='virtio'/>
 </interface>

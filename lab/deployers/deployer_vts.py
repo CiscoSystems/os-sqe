@@ -77,7 +77,9 @@ class DeployerVts(Deployer):
             if type(peer_node) is Xrvr:
                 xrvr = peer_node
 
-        for nic in filter(lambda x: x.is_vts() or x.is_ssh(),  vts_host.get_nics().values()):
+        for nic in vts_host.get_nics().values():
+            if nic.is_pxe():
+                continue
             if 'br-{}'.format(nic.get_name()) not in vts_host.run('ovs-vsctl show'):
                 vts_host.run('ovs-vsctl add-br br-{0} && ip l s dev br-{0} up'.format(nic.get_name()))
                 ip_nic, _ = nic.get_ip_and_mask()
