@@ -80,7 +80,7 @@ class CobblerServer(Server):
 
         for node in nodes_to_check:
             when_provided = node.run(command='cat ProvTime')
-            if when_provided != ks_meta:
+            if 'ProvTime=' + when_provided != ks_meta:
                 raise RuntimeError('Wrong provisioning attempt- timestamps are not matched')
             node.actuate_hostname()
 

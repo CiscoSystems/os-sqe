@@ -19,6 +19,7 @@ class DeployerMercury(Deployer):
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
         from lab.cimc import CimcDirector
+        from fabric.operations import prompt
 
         build_node = filter(lambda x: type(x) is CimcDirector, list_of_servers)[0]
         build_node.register_rhel(self._rhel_creds_source)
@@ -66,18 +67,24 @@ class DeployerMercury(Deployer):
                                                                  lb_ip_api=lb_ip_api, lb_ip_mx=lb_ip_mx,
                                                                  vtc_vip=vtc_ip, vtc_username=vtc_username, common_ssh_username=common_ssh_username
                                                                  )
-        installer_config_path = build_node.put_string_as_file_in_dir(string_to_put=installer_config_body, file_name='mercury-{}.yaml'.format(lab))
+        if self._installer_source.endswith('.iso'):
+            while True:
+                ans = prompt('Run remote mounted ISO installation on {}, print FINISH when ready'.format(build_node.get_oob()))
+                if ans == 'FINISH':
+                    break
+            installer_dir = build_node.run('find . -name installer*')
+        else:
+            tar_path = build_node.wget_file(url=self._installer_source, to_directory='.', checksum=self._installer_checksum)
+            ans = build_node.run('tar xzvf {}'.format(tar_path))
+            installer_dir = ans.split('\n')[0].strip('/\r')
 
-        tar_path = build_node.wget_file(url=self._installer_source, to_directory='.', checksum=self._installer_checksum)
-        ans = build_node.run('tar xzvf {}'.format(tar_path))
-        installer_dir = ans.split('\n')[0].strip('/\r')
+            repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
 
-        repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
-
-        build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
+            build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
+            build_node.run(command='./bootstrap.sh', in_directory=repo_dir + '/internal')
 
         build_node.run('rm -f /var/log/mercury/*.tar.gz')
-        build_node.run(command='./bootstrap.sh', in_directory=repo_dir + '/internal')
+        installer_config_path = build_node.put_string_as_file_in_dir(string_to_put=installer_config_body, file_name='mercury-{}.yaml'.format(lab))
 
         build_node.run(command='./runner/runner.py -y --file {}'.format(installer_config_path), in_directory=installer_dir)
 
