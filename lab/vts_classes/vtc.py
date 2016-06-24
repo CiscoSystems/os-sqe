@@ -9,14 +9,14 @@ class Vtc(Server):
         super(Server, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
         self._vip = 'Default in Vtc.__init()'
 
-    def _rest_api(self, resource, params=None):
+    def _rest_api(self, resource, params=None, type_of_call='get'):
         import requests
         import json
         from lab.logger import lab_logger
 
-        from requests.packages import urllib3
+        # from requests.packages import urllib3
 
-        urllib3.disable_warnings()  # Suppressing warning due to self-signed certificate
+        # urllib3.disable_warnings()  # Suppressing warning due to self-signed certificate
 
         resource = resource.strip('/')
         ip, username, password = self.get_oob()
@@ -26,10 +26,17 @@ class Vtc(Server):
 
         # noinspection PyBroadException
         try:
-            res = requests.get(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
+            call = getattr(requests, type_of_call)
+            res = call(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
             return json.loads(res.text)
         except:
-            lab_logger.exception('Url={url} auth={auth},vtc headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params))
+            lab_logger.exception('Url={url} auth={auth}, headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params))
+
+    def vtc_get_call(self, resource, params=None):
+        return self._rest_api(resource=resource, params=params, type_of_call='get')
+
+    def vtc_patch_call(self, resource, params=None):
+        return self._rest_api(resource=resource, params=params, type_of_call='patch1')
 
     def set_vip(self, vip):
         self._vip = vip
@@ -42,7 +49,7 @@ class Vtc(Server):
         return self._rest_api(resource=cmd)
 
     def get_vni_pool(self):
-        ans = self._rest_api(resource='/api/running/resource-pools/vni-pool/vnipool')
+        ans = self.vtc_get_call(resource='/api/running/resource-pools/vni-pool/vnipool')
         return ans
 
     def get_vtf(self, compute_hostname):
@@ -53,7 +60,7 @@ class Vtc(Server):
 
     def check_vtfs(self):
         self.check_or_install_packages('sshpass')
-        ans = self._rest_api(resource='/api/running/cisco-vts')
+        ans = self.vtc_get_call(resource='/api/running/cisco-vts')
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
         vtf_nodes = self.lab().get_nodes_by_class(Vtf)
         for vtf in vtf_nodes:
@@ -256,6 +263,13 @@ class Vtc(Server):
         cfg_tmpl = with_config.read_config_from_file(config_path='cluster.conf.template', directory='vts', is_as_string=True)
         cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_ssh=vip_ssh, vtc1_ip_ssh=ip_ssh[1], vtc2_ip_ssh=ip_ssh[2], bld_ip_ssh=ip_ssh[0], vip_vts=vip_vts)
         return cfg_body
+
+    def vtc_change_user(self):
+        _, username, password = self.get_oob()
+        self.set_oob_creds(ip=self.get_ssh_ip(), username='admin', password='admin')
+        users = self.vtc_get_call(resource='/api/running/aaa/authentication/users/user/{}'.format('admin'))
+        self.vtc_patch_call(resource='/api/running/aaa/authentication/users/user')
+        self.set_oob_creds(ip=self.get_ssh_ip(), username=username, password=password)
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer

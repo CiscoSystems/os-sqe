@@ -82,7 +82,13 @@ class Wire(object):
         from lab.n9k import Nexus
         from lab.tor import Tor
 
-        return isinstance(self._node_N, Tor) and isinstance(self._node_S, Nexus)
+        return type(self._node_N) is Tor and type(self._node_S) is Nexus
+
+    def is_n9_pxe(self):
+        from lab.n9k import Nexus
+        from lab.tor import Pxe
+
+        return type(self._node_N) is Pxe and type(self._node_S) is Nexus
 
     def is_n9_asr(self):
         from lab.n9k import Nexus

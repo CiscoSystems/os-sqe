@@ -13,6 +13,7 @@ def cmd(config_path):
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.logger import lab_logger
+    from pprint import pprint
 
     l = Laboratory(config_path=config_path)
     nodes = sorted(map(lambda node: node.get_id(), l.get_nodes_by_class()))
@@ -31,7 +32,7 @@ def cmd(config_path):
         method_names = [x for x in dir(device) if not x.startswith('_')]
         print_(device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)')
         while True:
-            input_method_name = prompt(text='\n\n>>{0}<< operation?: '.format(device))
+            input_method_name = prompt(text='>>{0}<< operation?: '.format(device))
             if input_method_name in ['quit', 'q', 'exit']:
                 return
             elif input_method_name == 'node':
@@ -64,7 +65,8 @@ def cmd(config_path):
             # noinspection PyBroadException
             try:
                 results = method_to_execute(*arguments)
-                lab_logger.info('\n>>{}<< RESULTS:\n\n{}\n'.format(device, results))
+                lab_logger.info('\n>>{}<< RESULTS:\n\n'.format(device))
+                pprint(results)
             except Exception as ex:
                 lab_logger.exception('\n Exception: {0}'.format(ex))
 

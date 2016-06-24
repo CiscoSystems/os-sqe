@@ -9,7 +9,8 @@ class Network(IPNetwork):
         self._mac_pattern = mac_pattern
         self._is_pxe = False  # NICs on this network will be configured as PXE enabled
         self._is_ssh = False  # Credentials on this network will be used to ssh to servers
-        self._is_vts = False  # VTS compnents will be deployed on this network, if requested
+        self._is_vts = False  # VTS components will be deployed on this network, if requested
+        self._is_via_tor = False  # this network if supposed to go our of lab's TOR
 
     def get_name(self):
         return self._name
@@ -37,6 +38,12 @@ class Network(IPNetwork):
 
     def set_is_vts(self):
         self._is_vts = True
+
+    def set_is_via_tor(self):
+        self._is_via_tor = True
+
+    def is_via_tor(self):
+        return self._is_via_tor
 
 
 class Nic(object):

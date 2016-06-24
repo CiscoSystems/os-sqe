@@ -93,6 +93,7 @@ class DeployerVts(Deployer):
 
         cfg_body, net_part = vtc.get_config_and_net_part_bodies()
         self._common_part(server=vts_host, role='vtc', config_file_name='config.txt', config_body=cfg_body, net_part=net_part)
+        vtc.vtc_change_user()
 
         cfg_body, net_part = xrvr.get_config_and_net_part_bodies()
         self._common_part(server=vts_host, role='XRNC', config_file_name='system.cfg', config_body=cfg_body, net_part=net_part)
