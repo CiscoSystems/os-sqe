@@ -1,5 +1,5 @@
 provider1: {lab.providers.provider_cobbler_lab.ProviderCobblerLab: {hardware-lab-config: g7-2}}
-deployer1: {lab.deployers.deployer_vts.DeployerVts: {images-location: 'http://wwwin-nfv-orch.cisco.com/mercury/latest/ver-1.0.2/', rhel-subsription-creds: 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json'}}
-deployer2: {lab.deployers.deployer_mercury.DeployerMercury: {installer-source: 'http://172.29.172.152/downloads/installer_06152016.tar.gz',
-                                                             installer-checksum: '9c0f42ba4314e7d9c5e836db300e2c82f98a11bff2701db6c0e59853d1328ccc',
+deployer1: {lab.deployers.deployer_vts.DeployerVts: {images-location: 'http://wwwin-nfv-orch.cisco.com/mercury/latest/ver-1.0.3/', rhel-subsription-creds: 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json'}}
+deployer2: {lab.deployers.deployer_mercury.DeployerMercury: {installer-source: 'http://cloud-releases.cisco.com/mercury-releases/mercury-rhel7-osp8/development/4388/buildnode.iso',
+                                                             installer-checksum: '?????',
                                                              'rhel-subsription-creds': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json'}}
