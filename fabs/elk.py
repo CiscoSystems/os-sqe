@@ -35,7 +35,7 @@ def json_to_es():
             for line in l:
                 e.write('{ "index" : { "_index" : "sqe", "_type" : "type1"} }\n')
                 e.write(line)
-    Server.run_local('curl -s -XPOST 172.29.173.236:9999/_bulk --data-binary @elk')
+    Server.r_local('curl -s -XPOST 172.29.173.236:9999/_bulk --data-binary @elk')
 
 
 @task
@@ -45,4 +45,4 @@ def kill_index(index):
     """
     from lab.server import Server
 
-    Server.run_local('curl -s -XDELETE 172.29.173.236:9999/{index}'.format(index=index))
+    Server.r_local('curl -s -XDELETE 172.29.173.236:9999/{index}'.format(index=index))

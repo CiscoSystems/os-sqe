@@ -20,7 +20,7 @@ class DeployerVts(Deployer):
 
     def deploy_vts(self, list_of_servers):
         from lab.vts_classes.vtf import Vtf
-        from lab.vts_classes.vtc import VtsHost, Vtc
+        from lab.vts_classes.vtc import VtsHost
         from lab.cimc import CimcController
         # according to https://cisco.jiveon.com/docs/DOC-1443548
 
@@ -28,25 +28,27 @@ class DeployerVts(Deployer):
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
-        lab = vts_hosts[0].lab()
-
         for vts_host in vts_hosts:
             vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
             self.deploy_single_vtc_an_xrvr(vts_host)
 
-        vtcs = lab.get_nodes_by_class(Vtc)
-        for vtc in vtcs:
-            cfg_body = vtc.get_cluster_conf_body()
-            vtc.run(command='sudo cp cluster.conf cluster.conf.orig', in_directory='/opt/cisco/package/vtc/bin', warn_only=True)
-            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory='/opt/cisco/package/vtc/bin')
-            vtc.run(command='sudo /opt/cisco/package/vtc/bin/modify_host_vtc.sh')
-        for vtc in vtcs:
-            vtc.run(command='sudo /opt/cisco/package/vtc/bin/cluster_install.sh')
-
-        vtcs[0].run(command='sudo /opt/cisco/package/vtc/bin/master_node_install.sh')  # to be run on VTC master only
-
+        self.make_cluster(lab=vts_hosts[0].lab())
         for vtf in filter(lambda x: type(x) is Vtf, list_of_servers):
             self.deploy_single_vtf(vtf)
+
+    @staticmethod
+    def make_cluster(lab):
+        from lab.vts_classes.vtc import Vtc
+
+        vtc_list = lab.get_nodes_by_class(Vtc)
+        for vtc in vtc_list:
+            cfg_body = vtc.get_cluster_conf_body()
+            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf')
+            # vtc.run(command='sudo /opt/cisco/package/vtc/bin/modify_host_vtc.sh')
+        # for vtc in vtc_list:
+            # vtc.run(command='sudo /opt/cisco/package/vtc/bin/cluster_install.sh')
+
+        # vtc_list[0].run(command='sudo /opt/cisco/package/vtc/bin/master_node_install.sh')  # to be run on VTC master only
 
     def _common_prepare_host(self, server):
         server.register_rhel(self._rhel_creds_source)

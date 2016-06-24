@@ -4,20 +4,20 @@
 #######################
 
 ###Virtual Ip of VTC Master on the public interface
-vip_public={vip_api} #<a-net VTC VIP in a.b.c.d form>
+vip_public={vip_a} #<a-net VTC VIP in a.b.c.d form>
 
 ###VTC1 Information
 master_name=vtc1-{lab_name} #<hostname of first VTC VM>
-master_ip={vtc1-a-ip}       #<a-net IP of first VTC VM in a.b.c.d form>
+master_ip={vtc1_a_ip}       #<a-net IP of first VTC VM in a.b.c.d form>
 master_network_interface=eth0
 
 ###VTC2 Information
-slave_name=vtc1-{lab_name} #<hostname of 2nd VTC VM>
-slave_ip={vtc2-a-ip}       #<a-net IP of 2nd VTC VM in a.b.c.d form>
+slave_name=vtc2-{lab_name} #<hostname of 2nd VTC VM>
+slave_ip={vtc2_a_ip}       #<a-net IP of 2nd VTC VM in a.b.c.d form>
 slave_network_interface=eth0
 
 ###In the event that a network failure occurs evenly between the two routers, the cluster needs an outside ip to determine where the failure lies
-external_ip={lb_a_ip} #<same value as setup_data.yaml::external_lb_vip_address>
+external_ip={special_ip} #<same value as setup_data.yaml::external_lb_vip_address>
 
 ###VTC Underlay Addresses , maps to mercury management network
 vtc1_underlay={vtc1_mx_ip} #<mx-net IP of first VTC VM in a.b.c.d form>

@@ -9,34 +9,43 @@ class Vtc(Server):
         super(Server, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
         self._vip = 'Default in Vtc.__init()'
 
-    def _rest_api(self, resource, params=None, type_of_call='get'):
+    def __repr__(self):
+        ssh_ip, ssh_u, ssh_p = self.get_ssh()
+        oob_ip, oob_u, oob_p = self.get_oob()
+        return u'{l} {n} | sshpass -p {p1} ssh {u1}@{ip1}  https://{ip1} with {u2}/{p2}'.format(l=self.lab(), n=self.get_id(), ip1=ssh_ip, p1=ssh_p, u1=ssh_u, ip2=oob_ip, p2=oob_p, u2=oob_u)
+
+    def _rest_api(self, resource, data=None, params=None, type_of_call='get'):
         import requests
-        import json
-        from lab.logger import lab_logger
 
         # from requests.packages import urllib3
 
         # urllib3.disable_warnings()  # Suppressing warning due to self-signed certificate
 
         resource = resource.strip('/')
-        ip, username, password = self.get_oob()
+        _, username, password = self.get_oob()
+        ip = self.get_ssh_ip()
         url = 'https://{ip}:{port}/{resource}'.format(ip=ip, port=8888, resource=resource)
         auth = (username, password)
         headers = {'Accept': 'application/vnd.yang.data+json'}
 
         # noinspection PyBroadException
         try:
-            call = getattr(requests, type_of_call)
-            res = call(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
-            return json.loads(res.text)
+            if type_of_call == 'get':
+                return requests.get(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
+            elif type_of_call == 'patch':
+                return requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
+            else:
+                raise ValueError('Unsupported type of call: "{}"'.format(type_of_call))
+        except AttributeError:
+            self.log(message='Possible methods get, post, patch', level='exception')
         except:
-            lab_logger.exception('Url={url} auth={auth}, headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params))
+            self.log(message='Url={url} auth={auth}, headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params), level='exception')
 
     def vtc_get_call(self, resource, params=None):
         return self._rest_api(resource=resource, params=params, type_of_call='get')
 
-    def vtc_patch_call(self, resource, params=None):
-        return self._rest_api(resource=resource, params=params, type_of_call='patch1')
+    def vtc_patch_call(self, resource, data):
+        return self._rest_api(resource=resource, data=data, type_of_call='patch')
 
     def set_vip(self, vip):
         self._vip = vip
@@ -48,7 +57,7 @@ class Vtc(Server):
     def cmd(self, cmd, **kwargs):
         return self._rest_api(resource=cmd)
 
-    def get_vni_pool(self):
+    def vtc_get_vni_pool(self):
         ans = self.vtc_get_call(resource='/api/running/resource-pools/vni-pool/vnipool')
         return ans
 
@@ -254,21 +263,29 @@ class Vtc(Server):
     def get_cluster_conf_body(self):
         from lab import with_config
 
-        vip_ssh, vip_vts = self.get_vip()
-        ip_ssh = []
+        vip_a, vip_mx = self.get_vip()
+        a_ip = []
+        mx_ip = []
         for node_id in ['bld', 'vtc1', 'vtc2']:
-            ip = self.lab().get_node_by_id(node_id=node_id).get_nics()['api'].get_ip_and_mask()[0]
-            ip_ssh.append(ip)
+            a_ip.append(self.lab().get_node_by_id(node_id=node_id).get_nic('a').get_ip_and_mask()[0])
+            mx_ip.append(self.lab().get_node_by_id(node_id=node_id).get_nic('mx').get_ip_and_mask()[0])
 
         cfg_tmpl = with_config.read_config_from_file(config_path='cluster.conf.template', directory='vts', is_as_string=True)
-        cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_ssh=vip_ssh, vtc1_ip_ssh=ip_ssh[1], vtc2_ip_ssh=ip_ssh[2], bld_ip_ssh=ip_ssh[0], vip_vts=vip_vts)
+        cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_a=vip_a, vtc1_a_ip=a_ip[1], vtc2_a_ip=a_ip[2], vtc1_mx_ip=mx_ip[1], vtc2_mx_ip=mx_ip[2], special_ip=a_ip[0])
         return cfg_body
 
     def vtc_change_user(self):
+        import json
+
         _, username, password = self.get_oob()
         self.set_oob_creds(ip=self.get_ssh_ip(), username='admin', password='admin')
-        users = self.vtc_get_call(resource='/api/running/aaa/authentication/users/user/{}'.format('admin'))
-        self.vtc_patch_call(resource='/api/running/aaa/authentication/users/user')
+        response = self.vtc_get_call(resource='/api/running/aaa/authentication/users/user/{}'.format('admin'))  # openssl passwd -1 -salt xxx Cisco123!
+        if response.ok:
+            d = json.loads(response.text)
+            user = d['tailf-aaa:user']
+            user.pop('operations')
+            user['password'] = password
+            a1 = self.vtc_patch_call(resource='/api/running/aaa/authentication/users/user', data=json.dumps({'user': user}))
         self.set_oob_creds(ip=self.get_ssh_ip(), username=username, password=password)
 
 

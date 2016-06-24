@@ -63,7 +63,7 @@ class Server(LabNode):
         from fabric.exceptions import NetworkError
 
         if str(self.get_ssh_ip()) in ['localhost', '127.0.0.1']:
-            return self.run_local(command, in_directory=in_directory, warn_only=warn_only)
+            return self.r_local(command, in_directory=in_directory, warn_only=warn_only)
 
         run_or_sudo = run
         if command.startswith('sudo '):
@@ -90,7 +90,7 @@ class Server(LabNode):
             reboot(wait=wait)
 
     @staticmethod
-    def run_local(command, in_directory='.', warn_only=False):
+    def r_local(command, in_directory='.', warn_only=False):
         from fabric.api import local, settings, lcd
 
         if in_directory != '.':
