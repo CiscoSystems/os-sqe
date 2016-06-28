@@ -48,7 +48,6 @@ class DeployerMercury(Deployer):
             build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)
             build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
             build_node.run(command='./bootstrap.sh -T {}'.format(installer_dir[-4:]), in_directory=repo_dir + '/internal')
-            build_node.run(command='./unbootstrap.sh', in_directory=repo_dir + '/internal')
 
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
 
