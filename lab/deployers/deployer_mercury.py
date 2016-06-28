@@ -39,6 +39,7 @@ class DeployerMercury(Deployer):
             installer_dir = build_node.run('find . -name installer*')
         else:
             # build_node.register_rhel(self._rhel_creds_source)
+            # build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
             tar_path = build_node.wget_file(url=self._installer_source, to_directory='.', checksum=self._installer_checksum)
             ans = build_node.run('tar xzvf {}'.format(tar_path))
             installer_dir = ans.split('\r\n')[-1].split('/')[1]
@@ -46,7 +47,6 @@ class DeployerMercury(Deployer):
             build_node.run('rm -rf mercury')
             repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
             build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)
-            build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
             build_node.run(command='./bootstrap.sh -T {}'.format(installer_dir[-4:]), in_directory=repo_dir + '/internal')
 
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
