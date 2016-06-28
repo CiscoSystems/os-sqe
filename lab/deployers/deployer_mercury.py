@@ -51,7 +51,7 @@ class DeployerMercury(Deployer):
 
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
 
-        build_node.run('rm -f /var/log/mercury/*.tar.gz')
+        build_node.run('rm -rf /var/log/mercury/*')
 
         build_node.run(command='./runner/runner.py -y', in_directory=installer_dir)
 
