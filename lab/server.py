@@ -281,8 +281,10 @@ class Server(LabNode):
                 return False
             actual_ip = actual_nics[master_nic_name]['ipv4']
             if nic.is_pxe() == False and ip != actual_ip:  # this ip might be re-assign to the bridge which has this NIC inside
-                self.log(message='NIC "{}" has different IP  actual: {}  requested: {}'.format(nic.get_name(), actual_ip, ip), level='warning')
-                return False
+                br_name = 'br-' + master_nic_name
+                if br_name not in actual_nics or ip != actual_nics[br_name]['ipv4']:
+                    self.log(message='NIC "{}" has different IP  actual: {}  requested: {}'.format(nic.get_name(), actual_ip, ip), level='warning')
+                    return False
             for slave_nic_name, _ in sorted(nic.get_slave_nics().items()):
                 if slave_nic_name not in actual_nics:
                     self.log(message='has no slave NIC {}'.format(slave_nic_name), level='warning')
