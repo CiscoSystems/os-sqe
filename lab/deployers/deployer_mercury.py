@@ -43,6 +43,7 @@ class DeployerMercury(Deployer):
             ans = build_node.run('tar xzvf {}'.format(tar_path))
             installer_dir = ans.split('\r\n')[-1].split('/')[1]
 
+            build_node.run('rm -rf mercury')
             repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
             build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)
             build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
