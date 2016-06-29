@@ -158,10 +158,10 @@ class Nexus(LabNode):
         if actual_port_ids:  # port channel with this id already exists
             if port_ids != actual_port_ids:  # make sure that requested list of port-ids equals to actual list
                 raise RuntimeError('{}: port-channel {} has different list of ports ({}) then requested ({})'.format(self, pc_id, actual_port_ids, port_ids))
-            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'switchport trunk allowed vlan add {0}'.format(vlans_string)])
+            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'switchport trunk allowed vlan {0}'.format(vlans_string)])
         else:  # port channel is not yet created
-            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'descr {0}'.format(desc), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan add {0}'.format(vlans_string),
-                      'spanning-tree port type edge trunk', 'shut', 'no lacp suspend-individual', 'no shut'])
+            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'descr {0}'.format(desc), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string),
+                      'spanning-tree port type edge trunk'])  # , 'shut', 'no lacp suspend-individual', 'no shut'
             for port_id in port_ids:  # add ports to the port-channel
                 self.cmd(['conf t', 'int ethernet ' + port_id, 'channel-group {0} force mode active'.format(pc_id)])
             if is_peer_link_pc:

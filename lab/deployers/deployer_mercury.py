@@ -58,6 +58,8 @@ class DeployerMercury(Deployer):
         return Cloud(cloud='mercury', user='demo', admin='admin', tenant='demo', password='????')
 
     def create_setup_yaml(self, build_node, installer_dir):
+        from lab.with_config import open_artifact
+
         installer_config_template = self.read_config_from_file(config_path='mercury.template', directory='mercury', is_as_string=True)
 
         lab = build_node.lab()
@@ -105,6 +107,9 @@ class DeployerMercury(Deployer):
                                                                  controllers_part=controllers_part, computes_part=computes_part, servers_part=servers_part,
                                                                  lb_ip_api=lb_ip_api, lb_ip_mx=lb_ip_mx,
                                                                  vtc_mx_vip=vtc_mx_ip, vtc_username=vtc_username, vtc_password=vtc_password, common_ssh_username=common_ssh_username)
+
+        with open_artifact('setup_data.yaml', 'w') as f:
+            f.write(installer_config_body)
 
         return build_node.put_string_as_file_in_dir(string_to_put=installer_config_body, file_name='setup_data.yaml', in_directory=installer_dir + '/openstack-configs')
 
