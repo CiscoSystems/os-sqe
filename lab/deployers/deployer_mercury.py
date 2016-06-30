@@ -116,3 +116,28 @@ class DeployerMercury(Deployer):
     def wait_for_cloud(self, list_of_servers):
         cloud = self.deploy_cloud(list_of_servers=list_of_servers)
         return cloud.verify_cloud()
+
+# [root@g7-2-bld ~]# iptables -S
+# -P INPUT ACCEPT
+# -P FORWARD ACCEPT
+# -P OUTPUT ACCEPT
+# -N DOCKER
+# -A FORWARD -o docker0 -j DOCKER
+# -A FORWARD -o docker0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+# -A FORWARD -i docker0 ! -o docker0 -j ACCEPT
+# -A FORWARD -i docker0 -o docker0 -j ACCEPT
+# -A FORWARD -i br_mgmt -j ACCEPT
+# [root@g7-2-bld ~]# iptables -S -t NAT
+# iptables v1.4.21: can't initialize iptables table `NAT': Table does not exist (do you need to insmod?)
+# Perhaps iptables or your kernel needs to be upgraded.
+# [root@g7-2-bld ~]# iptables -S -t nat
+# -P PREROUTING ACCEPT
+# -P INPUT ACCEPT
+# -P OUTPUT ACCEPT
+# -P POSTROUTING ACCEPT
+# -N DOCKER
+# -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
+# -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
+# -A POSTROUTING -s 169.254.99.0/24 ! -o docker0 -j MASQUERADE
+# -A POSTROUTING -o br_api -j MASQUERADE
+# [root@g7-2-bld ~]#

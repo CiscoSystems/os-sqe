@@ -1,4 +1,4 @@
-Hostname=VTC-{lab_name}
+Hostname={hostname}
 ManagementIPv4Method=Static
 ManagementIPv4Address={vtc_a_ip}
 ManagementIPv4Netmask={a_net_mask}

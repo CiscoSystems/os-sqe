@@ -251,7 +251,7 @@ class Vtc(Server):
         net_part_tmpl = with_config.read_config_from_file(config_path='vtc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
         dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
-        lab_name = str(self.lab())
+        hostname = '{}-{}'.format(self.lab(), self.get_id())
 
         _, ssh_username, ssh_password = self.get_ssh()
 
@@ -263,8 +263,7 @@ class Vtc(Server):
         mx_ip, mx_net_mask = mx_nic.get_ip_and_mask()
         mx_vlan = mx_nic.get_net().get_vlan()
 
-        cfg_body = cfg_tmpl.format(vtc_a_ip=a_ip, a_net_mask=a_net_mask, a_gw=a_gw, vtc_mx_ip=mx_ip, mx_net_mask=mx_net_mask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=ssh_username, password=ssh_password,
-                                   lab_name=lab_name)
+        cfg_body = cfg_tmpl.format(vtc_a_ip=a_ip, a_net_mask=a_net_mask, a_gw=a_gw, vtc_mx_ip=mx_ip, mx_net_mask=mx_net_mask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=ssh_username, password=ssh_password, hostname=hostname)
         net_part = net_part_tmpl.format(a_nic_name=a_nic.get_name(), mx_nic_name=mx_nic.get_name(), mx_vlan=mx_vlan)
 
         return cfg_body, net_part

@@ -68,6 +68,7 @@ class DeployerVts(Deployer):
     def deploy_single_vtc_an_xrvr(self, vts_host):
         from lab.vts_classes.xrvr import Xrvr
         from lab.vts_classes.vtc import Vtc
+        from fabric.api import prompt
 
         self._common_prepare_host(vts_host)
 
@@ -99,10 +100,14 @@ class DeployerVts(Deployer):
         for role in ['XRNC', 'vtc']:
             if role in ans:
                 vts_host.run('virsh destroy {}'.format(role))
+        vts_host.run('rm -rf {}'.format(self._vts_service_dir))
 
         cfg_body, net_part = vtc.get_config_and_net_part_bodies()
         self._common_part(server=vts_host, role='vtc', config_file_name='config.txt', config_body=cfg_body, net_part=net_part)
-        vtc.vtc_change_user()
+        while True:
+            ans = prompt('Got to WEB GUI  of {} as admin/admin and set provided oob password, say READY when finished> '.format(vtc))
+            if ans == 'READY':
+                break
 
         cfg_body, net_part = xrvr.get_config_and_net_part_bodies()
         self._common_part(server=vts_host, role='XRNC', config_file_name='system.cfg', config_body=cfg_body, net_part=net_part)
@@ -133,24 +138,6 @@ class DeployerVts(Deployer):
         # on VTC ncs_cli: show running-config evpn
         # on DL cat /etc/vpe/vsocsr/dl_server.ini
         # on DL ps -ef | grep dl -> then restart dl_vts_reg.py
-        # on switch :
-        # sh running - config | i feature
-        # install feature-set fex
-        # allow feature-set fex
-        # feature - set fex
-        # feature telnet
-        # feature nxapi
-        # feature bash-shell
-        # feature ospf
-        # feature bgp
-        # feature pim
-        # feature interface-vlan
-        # feature vn-segment-vlan-based
-        # feature lacp
-        # feature dhcp
-        # feature vpc
-        # feature lldp
-        # feature nv overlay
 
     def wait_for_cloud(self, list_of_servers):
         self.deploy_vts(list_of_servers=list_of_servers)
