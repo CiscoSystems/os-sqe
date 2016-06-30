@@ -30,11 +30,11 @@ class CobblerServer(Server):
             if nic.is_ssh():
                 gateway = nic.get_net()[1]
             if nic.is_bond():
-                bond_mode = '802.3ad' if nic.is_ssh() else 'balance-xor'
+                bond_mode = 'mode=802.3ad lacp_rate=1' if nic.is_ssh() else 'mode=balance-xor'
                 for name_slave, mac_port in nic.get_slave_nics().items():
                     mac = mac_port['mac']
                     network_commands.append('--interface={} --mac={} --interface-type=bond_slave --interface-master={}'.format(name_slave, mac, name))
-                network_commands.append('--interface={} --interface-type=bond --bonding-opts="mode={} miimon=50 xmit_hash_policy=1 updelay=0 downdelay=0 lacp_rate=1" {}'.format(name, bond_mode, ip_mask_part))
+                network_commands.append('--interface={} --interface-type=bond --bonding-opts="{} miimon=50 xmit_hash_policy=1 updelay=0 downdelay=0 " {}'.format(name, bond_mode, ip_mask_part))
             else:
                 network_commands.append('--interface={} --mac={} {}'.format(name, mac, ip_mask_part))
 
