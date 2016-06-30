@@ -16,6 +16,7 @@ class Vtc(Server):
 
     def _rest_api(self, resource, data=None, params=None, type_of_call='get'):
         import requests
+        import json
 
         # from requests.packages import urllib3
 
@@ -26,16 +27,24 @@ class Vtc(Server):
         ip = self.get_ssh_ip()
         url = 'https://{ip}:{port}/{resource}'.format(ip=ip, port=8888, resource=resource)
         auth = (username, password)
-        headers = {'Accept': 'application/vnd.yang.data+json'}
+        headers = None
 
         # noinspection PyBroadException
         try:
             if type_of_call == 'get':
-                return requests.get(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
+                ans = requests.get(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
             elif type_of_call == 'patch':
-                return requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
+                ans = requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
             else:
                 raise ValueError('Unsupported type of call: "{}"'.format(type_of_call))
+            if ans.ok:
+                d = {'call': resource}
+                if ans.text:
+                    d.update(json.loads(ans.text))
+                return d
+            else:
+                self.log(message='{}'.format(ans))
+                return ans
         except AttributeError:
             self.log(message='Possible methods get, post, patch', level='exception')
         except:
@@ -287,6 +296,17 @@ class Vtc(Server):
             user['password'] = password
             a1 = self.vtc_patch_call(resource='/api/running/aaa/authentication/users/user', data=json.dumps({'user': user}))
         self.set_oob_creds(ip=self.get_ssh_ip(), username=username, password=password)
+
+    def vtc_get_os_network(self):
+        ans = self.vtc_get_call(resource='/api/running/openstack/network')  # ans.text == '' or ans.txt == '????'
+        ans = self.vtc_get_call(resource='/api/running/openstack/subnet')
+        return ans
+
+    def vtc_get_os_ports(self):
+        return self.vtc_get_call(resource='/api/running/openstack/port')
+
+    def vtc_get_cluster_info(self):
+        return self.vtc_get_call(resource='/api/operational/ha-cluster/members')  # curl -v -k -X GET -u <vtc-username>:<vtc-password> https://<VTC_IP>:8888/api/operational/ha-cluster/members
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
