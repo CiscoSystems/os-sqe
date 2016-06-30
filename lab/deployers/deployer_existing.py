@@ -45,19 +45,16 @@ class DeployerExisting(Deployer):
 
         director = list_of_servers[0]
 
-        openrc_path = None
         openrc_body = None
-        for openrc_path in ['/home/stack/overcloudrc', 'keystonerc_admin']:
+        for openrc_path in ['/home/stack/overcloudrc', 'keystonerc_admin', 'openstack-configs/openrc']:
             ans = director.run(command='cat {0}'.format(openrc_path), warn_only=True)
             if 'No such file or directory' not in ans:
                 openrc_body = ans
                 break
 
-        if not openrc_path:
+        if not openrc_body:
             raise RuntimeError('Provided lab does not contain any valid cloud')
 
-        for host in list_of_servers:
-            host.actuate_hostname()
         return Cloud.from_openrc(name=self._cloud_name, mediator=director, openrc_as_string=openrc_body)
 
     def wait_for_cloud(self, list_of_servers):

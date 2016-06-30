@@ -26,5 +26,7 @@ XRVR_STATIC_MGMT_IP="{xrvr_mx_ip}/{mx_net_len}"
 XRVR_STATIC_UNDERLAY_IP="{xrvr_te_ip}/{te_net_len}"
 XRVR_NAME="XRVR-{lab_name}"
 
+ALL_VTFS_MODE="vhost"
+
 # <VNI range for VTS to use--must match VTS_PARAMETERS.VTS_VNI_RANGE>
-XRVR_BGP_COMMUNITY="1002:1004 "
+XRVR_BGP_COMMUNITY="1002:1004"
