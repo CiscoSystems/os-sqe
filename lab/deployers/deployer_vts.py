@@ -95,6 +95,11 @@ class DeployerVts(Deployer):
                     vts_host.run('ovs-vsctl set port vlan{0} tag={0}'.format(nic.get_vlan()))
                     vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
 
+        ans = vts_host.run('virsh list')
+        for role in ['XRNC', 'vtc']:
+            if role in ans:
+                vts_host.run('virsh destroy {}'.format(role))
+
         cfg_body, net_part = vtc.get_config_and_net_part_bodies()
         self._common_part(server=vts_host, role='vtc', config_file_name='config.txt', config_body=cfg_body, net_part=net_part)
         vtc.vtc_change_user()
