@@ -21,6 +21,9 @@ class Network(IPNetwork):
     def get_mac_pattern(self):
         return self._mac_pattern
 
+    def get_gw(self):
+        return self[1]
+
     def is_pxe(self):
         return self._is_pxe
 
@@ -90,6 +93,9 @@ class Nic(object):
 
     def get_net(self):
         return self._net
+
+    def get_gw(self):
+        return self._net.get_gw()
 
     def is_bond(self):
         return len(self._on_wires) > 1  # NIC sits on 2 wires, meaning this is bond

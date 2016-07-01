@@ -251,7 +251,7 @@ class Vtc(Server):
         net_part_tmpl = with_config.read_config_from_file(config_path='vtc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
         dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
-        hostname = '{}-{}'.format(self.lab(), self.get_id())
+        hostname = '{id}-{lab}'.format(lab=self.lab(), id=self.get_id())
 
         _, ssh_username, ssh_password = self.get_ssh()
 
@@ -276,12 +276,17 @@ class Vtc(Server):
         vip_a, vip_mx = self.get_vip()
         a_ip = []
         mx_ip = []
+        mx_gw = None
         for node_id in ['bld', 'vtc1', 'vtc2']:
             a_ip.append(self.lab().get_node_by_id(node_id=node_id).get_nic('a').get_ip_and_mask()[0])
-            mx_ip.append(self.lab().get_node_by_id(node_id=node_id).get_nic('mx').get_ip_and_mask()[0])
+            mx_nic = self.lab().get_node_by_id(node_id=node_id).get_nic('mx')
+            mx_gw = mx_nic.get_gw()
 
+            mx_ip.append(mx_nic.get_ip_and_mask()[0])
         cfg_tmpl = with_config.read_config_from_file(config_path='cluster.conf.template', directory='vts', is_as_string=True)
-        cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_a=vip_a, vtc1_a_ip=a_ip[1], vtc2_a_ip=a_ip[2], vtc1_mx_ip=mx_ip[1], vtc2_mx_ip=mx_ip[2], special_ip=a_ip[0])
+        cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_a=vip_a, vtc1_a_ip=a_ip[1], vtc2_a_ip=a_ip[2], vtc1_mx_ip=mx_ip[1], vtc2_mx_ip=mx_ip[2], special_ip=a_ip[0], mx_gw=mx_gw)
+        with with_config.open_artifact('cluster.conf', 'w') as f:
+            f.write(cfg_body)
         return cfg_body
 
     def vtc_change_user(self):

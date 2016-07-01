@@ -92,7 +92,8 @@ class DeployerVts(Deployer):
         vts_host.run('yum install genisoimage openvswitch qemu-kvm -y')
         vts_host.run('subscription-manager unregister')
         vts_host.run('wget http://172.29.173.233/redhat/sshpass-1.05-1.el7.rf.x86_64.rpm')
-        vts_host.run('rpm -ivh sshpass-1.05-1.el7.rf.x86_64.rpm')
+        vts_host.run(command='rpm -ivh sshpass-1.05-1.el7.rf.x86_64.rpm', warn_only=True)
+        vts_host.run(command='rm -f sshpass-1.05-1.el7.rf.x86_64.rpm')
 
         vts_host.run('systemctl start libvirtd')
         vts_host.run('systemctl start openvswitch')
@@ -116,11 +117,10 @@ class DeployerVts(Deployer):
                 net_bits = nic.get_net().prefixlen
                 default_route_part = '&& ip r a default via {}'.format(nic.get_net()[1]) if nic.is_ssh() else ''
                 vts_host.run('ip a flush dev {n} && ip a a {ip}/{nb} dev br-{n} && ovs-vsctl add-port br-{n} {n} {rp}'.format(n=nic.get_name(), ip=ip_nic, nb=net_bits, rp=default_route_part))
-                if nic.is_vts():
-                    vts_host.run('ip l a dev vlan{} type dummy'.format(nic.get_vlan()))
-                    vts_host.run('ovs-vsctl add-port br-{} vlan{}'.format(nic.get_name(), nic.get_vlan()))
-                    vts_host.run('ovs-vsctl set interface vlan{} type=internal'.format(nic.get_vlan()))
-                    vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
+                vts_host.run('ip l a dev vlan{} type dummy'.format(nic.get_vlan()))
+                vts_host.run('ovs-vsctl add-port br-{} vlan{}'.format(nic.get_name(), nic.get_vlan()))
+                vts_host.run('ovs-vsctl set interface vlan{} type=internal'.format(nic.get_vlan()))
+                vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
 
     def deploy_single_vtc(self, vts_host, vtc):
         from fabric.api import prompt

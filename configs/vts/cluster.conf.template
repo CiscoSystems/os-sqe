@@ -22,3 +22,4 @@ external_ip={special_ip} #<same value as setup_data.yaml::external_lb_vip_addres
 ###VTC Underlay Addresses , maps to mercury management network
 vtc1_underlay={vtc1_mx_ip} #<mx-net IP of first VTC VM in a.b.c.d form>
 vtc2_underlay={vtc2_mx_ip} #<mx-net IP of 2nd VTC VM in a.b.c.d form>
+vtc2_private_gateway={mx_gw}    #mx-net GW .1
