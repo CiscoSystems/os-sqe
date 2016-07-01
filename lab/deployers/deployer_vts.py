@@ -90,6 +90,9 @@ class DeployerVts(Deployer):
         vts_host.run(command='sudo yum update -y')
         vts_host.run('yum groupinstall "Virtualization Platform" -y')
         vts_host.run('yum install genisoimage openvswitch qemu-kvm -y')
+        vts_host.run('subcription-manager unregister')
+        vts_host.run('wget http://172.29.173.233/redhat/sshpass-1.05-1.el7.rf.x86_64.rpm')
+        vts_host.run('rpm -ivh sshpass-1.05-1.el7.rf.x86_64.rpm')
 
         vts_host.run('systemctl start libvirtd')
         vts_host.run('systemctl start openvswitch')

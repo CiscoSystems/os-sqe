@@ -304,8 +304,15 @@ class Server(LabNode):
         rhel_json = json.loads(text)
         rhel_username = rhel_json['rhel-username']
         rhel_password = rhel_json['rhel-password']
+        rhel_pool_id = rhel_json['rhel-pool-id']
 
-        status = self.run(command='subscription-manager status', warn_only=True)
-        if 'Overall Status: Current' not in status:
-            self.run(command='sudo subscription-manager register --force --username={0} --password={1}'.format(rhel_username, rhel_password))
-            self.run(command='sudo subscription-manager attach --auto')
+        repos_to_enable = ' '.join(['--enable=rhel-7-server-rpms',
+                                    '--enable=rhel-7-server-optional-rpms',
+                                    '--enable=rhel-7-server-extras-rpms',
+                                    '--enable=rhel-7-server-openstack-7.0-rpms',
+                                    '--enable=rhel-7-server-openstack-7.0-director-rpms'])
+
+        self.run(command='subscription-manager register --force --username={0} --password={1}'.format(rhel_username, rhel_password))
+        self.run(command='subscription-manager attach --pool={}'.format(rhel_pool_id))
+        self.run(command='subscription-manager repos --disable=*')
+        self.run(command='subscription-manager repos {}'.format(repos_to_enable))
