@@ -35,7 +35,6 @@ class DeployerVts(Deployer):
                 peer_node = wire.get_peer_node(self)
                 if type(peer_node) is Vtc:
                     vtc = peer_node
-            vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
             self._install_needed_rpms(vts_host)
             self._make_netsted_libvirt(vts_host=vts_host)
             self._delete_previous_libvirt_vms(vts_host=vts_host)
@@ -86,17 +85,19 @@ class DeployerVts(Deployer):
         raise RuntimeError('Failed to form VTC cluster after 100 attempts')
 
     def _install_needed_rpms(self, vts_host):
-        vts_host.register_rhel(self._rhel_creds_source)
-        vts_host.run(command='sudo yum update -y')
-        vts_host.run('yum groupinstall "Virtualization Platform" -y')
-        vts_host.run('yum install genisoimage openvswitch qemu-kvm -y')
-        vts_host.run('subscription-manager unregister')
-        vts_host.run('wget http://172.29.173.233/redhat/sshpass-1.05-1.el7.rf.x86_64.rpm')
-        vts_host.run(command='rpm -ivh sshpass-1.05-1.el7.rf.x86_64.rpm', warn_only=True)
-        vts_host.run(command='rm -f sshpass-1.05-1.el7.rf.x86_64.rpm')
+        if self._vts_images_location not in vts_host.run('cat VTS-VERSION'):
+            vts_host.register_rhel(self._rhel_creds_source)
+            vts_host.run(command='sudo yum update -y')
+            vts_host.run('yum groupinstall "Virtualization Platform" -y')
+            vts_host.run('yum install genisoimage openvswitch qemu-kvm -y')
+            vts_host.run('subscription-manager unregister')
+            vts_host.run('wget http://172.29.173.233/redhat/sshpass-1.05-1.el7.rf.x86_64.rpm')
+            vts_host.run(command='rpm -ivh sshpass-1.05-1.el7.rf.x86_64.rpm', warn_only=True)
+            vts_host.run(command='rm -f sshpass-1.05-1.el7.rf.x86_64.rpm')
 
-        vts_host.run('systemctl start libvirtd')
-        vts_host.run('systemctl start openvswitch')
+            vts_host.run('systemctl start libvirtd')
+            vts_host.run('systemctl start openvswitch')
+            vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
 
     @staticmethod
     def _make_netsted_libvirt(vts_host):
