@@ -43,7 +43,7 @@ class DeployerVts(Deployer):
         vtc_list = lab.get_nodes_by_class(Vtc)
         for vtc in vtc_list:
             cfg_body = vtc.get_cluster_conf_body()
-            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf')
+            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory='/opt/cisco/package/vtc/bin')
             # vtc.run(command='sudo /opt/cisco/package/vtc/bin/modify_host_vtc.sh')
         # for vtc in vtc_list:
             # vtc.run(command='sudo /opt/cisco/package/vtc/bin/cluster_install.sh')
@@ -68,17 +68,16 @@ class DeployerVts(Deployer):
     def deploy_single_vtc_an_xrvr(self, vts_host):
         from lab.vts_classes.xrvr import Xrvr
         from lab.vts_classes.vtc import Vtc
-        from fabric.api import prompt
 
         self._common_prepare_host(vts_host)
 
-        vtc, xrvr = None, None
+        vtc, xrnc = None, None
         for wire in vts_host.get_all_wires():
             peer_node = wire.get_peer_node(self)
             if type(peer_node) is Vtc:
                 vtc = peer_node
             if type(peer_node) is Xrvr:
-                xrvr = peer_node
+                xrnc = peer_node
 
         for nic in vts_host.get_nics().values():
             if nic.is_pxe():
@@ -102,35 +101,61 @@ class DeployerVts(Deployer):
                 vts_host.run('virsh destroy {}'.format(role))
         vts_host.run('rm -rf {}'.format(self._vts_service_dir))
 
+        self.deploy_vtc(vts_host=vts_host, vtc=vtc)
+        self.deploy_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
+
+    def deploy_vtc(self, vts_host, vtc):
+        from fabric.api import prompt
         cfg_body, net_part = vtc.get_config_and_net_part_bodies()
-        self._common_part(server=vts_host, role='vtc', config_file_name='config.txt', config_body=cfg_body, net_part=net_part)
+
+        config_iso_path = self._vts_service_dir + '/vtc_config.iso'
+        config_txt_path = vts_host.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='config.txt', in_directory=self._vts_service_dir)
+        vts_host.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
+
+        self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part)
         while True:
-            ans = prompt('Got to WEB GUI  of {} as admin/admin and set provided oob password, say READY when finished> '.format(vtc))
+            ans = prompt('Got to WEB GUI  of {} as admin/admin and set provided oob password, type READY when finished> '.format(vtc))
             if ans == 'READY':
                 break
 
-        cfg_body, net_part = xrvr.get_config_and_net_part_bodies()
-        self._common_part(server=vts_host, role='XRNC', config_file_name='system.cfg', config_body=cfg_body, net_part=net_part)
+    def deploy_xrnc(self, vts_host, vtc, xrnc):
+        from fabric.api import prompt
 
-    def _common_part(self, server, role, config_file_name, config_body, net_part):
-            config_iso_path = self._vts_service_dir + '/{0}_config.iso'.format(role)
-            config_txt_path = server.put_string_as_file_in_dir(string_to_put=config_body, file_name=config_file_name, in_directory=self._vts_service_dir)
-            server.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
-            server.run('mv {0} {1}_config.txt'.format(config_file_name, role), in_directory=self._vts_service_dir)
+        cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
+        iso_path = self._vts_service_dir + '/xrnc_cfg.iso'
 
-            image_url = self._vts_images_location + role + '.qcow2'
-            qcow_file = server.wget_file(url=image_url, to_directory=self._vts_service_dir, checksum=None)
+        # https://cisco.jiveon.com/docs/DOC-1455175 step 8: use sudo /opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc xrnc.cfg
+        cfg_name = 'xrnc.cfg'
+        vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name=cfg_name)
+        vtc.run('cp /opt/cisco/package/vts/bin/build_vts_config_iso.sh $HOME')
+        vtc.run('./build_vts_config_iso.sh xrnc {}'.format(cfg_name))
+        ip, username, password = vtc.get_ssh()
 
-            disk_part = self._disk_part_tmpl.format(qcow_path=qcow_file, iso_path=config_iso_path)
-            domain_body = self._libvirt_domain_tmpl.format(hostname=role, disk_part=disk_part, net_part=net_part, emulator='/usr/libexec/qemu-kvm')
-            domain_xml_path = server.put_string_as_file_in_dir(string_to_put=domain_body, file_name='{0}_domain.xml'.format(role), in_directory=self._vts_service_dir)
+        while True:
+            ans = prompt('Go to {v} and scp {u}@{ip}:xrnc_cfg.iso {d} with  password {p}, type READY when finished'.format(p=password, u=username, ip=ip, d=self._vts_service_dir, v=vts_host))
+            if ans == 'READY':
+                break
 
-            server.run('virsh create {0}'.format(domain_xml_path))
+        self._get_image_and_run_virsh(server=vts_host, role='XRNC', iso_path=iso_path, net_part=net_part)
+        # xrnc.run('ip l s dev br-underlay mtu 1400')  # https://cisco.jiveon.com/docs/DOC-1455175 step 12 about MTU
+
+    def _get_image_and_run_virsh(self, server, role, iso_path, net_part):
+        image_url = self._vts_images_location + role + '.qcow2'
+        qcow_file = server.wget_file(url=image_url, to_directory=self._vts_service_dir, checksum=None)
+
+        disk_part = self._disk_part_tmpl.format(qcow_path=qcow_file, iso_path=iso_path)
+        domain_body = self._libvirt_domain_tmpl.format(hostname=role, disk_part=disk_part, net_part=net_part, emulator='/usr/libexec/qemu-kvm')
+        domain_xml_path = server.put_string_as_file_in_dir(string_to_put=domain_body, file_name='{0}_domain.xml'.format(role), in_directory=self._vts_service_dir)
+
+        server.run('virsh create {0}'.format(domain_xml_path))
 
     def deploy_single_vtf(self, vtf):
-        net_part, config_body = vtf.get_domain_andconfig_body()
+        net_part, cfg_body = vtf.get_domain_andconfig_body()
         compute = vtf.get_ocompute()
-        self._common_part(server=compute, role='vtf', config_file_name='system.cfg', config_body=config_body, net_part=net_part)
+        config_iso_path = self._vts_service_dir + '/vtc_config.iso'
+        config_txt_path = compute.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='system.cfg', in_directory=self._vts_service_dir)
+        compute.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
+        self._get_image_and_run_virsh(server=compute, role='vtf', iso_path=config_iso_path, net_part=net_part)
 
         # sun in DL sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh 0.0.0.0
         # on VTC: cat /var/log/ncs/localhost:8888.access

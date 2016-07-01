@@ -115,7 +115,8 @@ expect "CPU0:XRVR"
         dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
         lab_name = str(self.lab())
 
-        _, username, password = self.get_ssh()
+        _, ssh_username, ssh_password = self.get_ssh()
+        _, oob_username, oob_password = self.get_oob()
 
         mx_nic = self.get_nic('mx')  # XRNC sits on mx and t nets
         te_nic = self.get_nic('t')
@@ -134,7 +135,7 @@ expect "CPU0:XRVR"
         # XRVR is a VM sitting in a VM which runs on vts-host. outer VM called DL inner VM called XRVR , so 2 IPs on ssh and vts networks needed
         cfg_body = cfg_tmpl.format(dl_mx_ip=dl_mx_ip, xrvr_mx_ip=xrvr_mx_ip, mx_net_mask=mx_net_mask, mx_net_len=mx_net_len, mx_gw=mx_gw,
                                    dl_te_ip=dl_te_ip, xrvr_te_ip=xrvr_te_ip, te_net_mask=te_net_mask, te_net_len=te_net_len, dns_ip=dns_ip, ntp_ip=ntp_ip,
-                                   vtc_mx_ip=vtc_mx_vip, xrnc_username=username, xrvr_username=username, xrvr_password=password, lab_name=lab_name)
+                                   vtc_mx_ip=vtc_mx_vip, xrnc_username=ssh_username, xrvr_username=oob_username, xrvr_password=oob_password, lab_name=lab_name)
         net_part = net_part_tmpl.format(mx_nic_name=mx_nic.get_name(), t_nic_name=te_nic.get_name(), t_vlan=te_vlan)
 
         return cfg_body, net_part
