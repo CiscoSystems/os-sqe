@@ -59,7 +59,7 @@ class Server(LabNode):
     def cmd(self, cmd):
         raise NotImplementedError
 
-    def run(self, command, in_directory='.', warn_only=False, connection_attempts=100):
+    def run(self, command, in_directory='.', warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
         from fabric.api import run, sudo, settings, cd
         from fabric.exceptions import NetworkError
 
