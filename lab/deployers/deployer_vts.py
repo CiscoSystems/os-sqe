@@ -79,9 +79,8 @@ class DeployerVts(Deployer):
             if type(peer_node) is Xrvr:
                 xrnc = peer_node
 
-        for nic in vts_host.get_nics().values():
-            if nic.is_pxe():
-                continue
+        for nic_name in ['a', 'mx', 't']:
+            nic = vts_host.get_nic(nic_name)
             if 'br-{}'.format(nic.get_name()) not in vts_host.run('ovs-vsctl show'):
                 vts_host.run('ovs-vsctl add-br br-{0} && ip l s dev br-{0} up'.format(nic.get_name()))
                 ip_nic, _ = nic.get_ip_and_mask()
@@ -92,7 +91,6 @@ class DeployerVts(Deployer):
                     vts_host.run('ip l a dev vlan{} type dummy'.format(nic.get_vlan()))
                     vts_host.run('ovs-vsctl add-port br-{} vlan{}'.format(nic.get_name(), nic.get_vlan()))
                     vts_host.run('ovs-vsctl set interface vlan{} type=internal'.format(nic.get_vlan()))
-                    vts_host.run('ovs-vsctl set port vlan{0} tag={0}'.format(nic.get_vlan()))
                     vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
 
         ans = vts_host.run('virsh list')

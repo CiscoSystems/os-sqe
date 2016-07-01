@@ -6,9 +6,6 @@
 </interface>
 <interface type='bridge'>
      <source bridge='br-{mx_nic_name}'/>
-     <vlan>
-       <tag id='{mx_vlan}'/>
-     </vlan>
      <virtualport type='openvswitch'/>
      <target dev='vtc-{mx_nic_name}-port'/>
      <model type='virtio'/>

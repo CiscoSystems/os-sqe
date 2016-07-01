@@ -1,8 +1,5 @@
 <interface type='bridge'>
      <source bridge='br-{t_nic_name}'/>
-     <vlan>
-       <tag id='{t_vlan}'/>
-     </vlan>
      <virtualport type='openvswitch'/>
      <target dev='xrnc-{t_nic_name}-port'/>
      <model type='virtio'/>
