@@ -1,14 +1,24 @@
 # https://cisco.jiveon.com/docs/DOC-1502924 XRNC's input file to build_vts_config_iso.sh
+
+# put here a VIP address of VTC on mx network
 VTS_ADDRESS="{vtc_mx_ip}"
-VTS_REGISTRATION_USERNAME="admin"
-VTS_REGISTRATION_PASSWORD="Cisco123!"
-HOSTNAME="DL-{lab_name}"
+
+# put here VTC username/password after changing the default admin/admin
+VTS_REGISTRATION_USERNAME="{vtc_username}"
+VTS_REGISTRATION_PASSWORD="{vtc_password}"
+
+HOSTNAME="{xrnc_name}"
+
 NTP_SERVER="{ntp_ip}"
 NETWORK_CONFIG_METHOD="static"
 NETWORK_NAMESERVER_IP="{dns_ip}"
+
+# info for network "t"
 UNDERLAY_NETWORK_CONFIG_METHOD="static"
 UNDERLAY_NETWORK_IP_ADDRESS="{dl_te_ip}"
 UNDERLAY_NETWORK_IP_NETMASK="{te_net_mask}"
+
+# info for network "mx"
 MGMT_NETWORK_CONFIG_METHOD="static"
 MGMT_NETWORK_IP_ADDRESS="{dl_mx_ip}"
 MGMT_NETWORK_IP_NETMASK="{mx_net_mask}"
@@ -24,7 +34,7 @@ XRVR_USERNAME="{xrvr_username}"
 XRVR_PASSWORD="{xrvr_password}"
 XRVR_STATIC_MGMT_IP="{xrvr_mx_ip}/{mx_net_len}"
 XRVR_STATIC_UNDERLAY_IP="{xrvr_te_ip}/{te_net_len}"
-XRVR_NAME="XRVR-{lab_name}"
+XRVR_NAME="{xrvr_name}"
 
 ALL_VTFS_MODE="vhost"
 

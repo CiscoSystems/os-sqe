@@ -113,8 +113,10 @@ expect "CPU0:XRVR"
         net_part_tmpl = with_config.read_config_from_file(config_path='xrnc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
         dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
-        lab_name = str(self.lab())
+        xrvr_name = '{}-{}'.format(self.lab(), self.get_id())
+        xrnc_name = xrvr_name.replace('xrvr', 'xrnc')
 
+        _, vtc_username, vtc_password = self.lab().get_node_by_id('vtc1').get_oob()
         _, ssh_username, ssh_password = self.get_ssh()
         _, oob_username, oob_password = self.get_oob()
 
@@ -135,7 +137,11 @@ expect "CPU0:XRVR"
         # XRVR is a VM sitting in a VM which runs on vts-host. outer VM called DL inner VM called XRVR , so 2 IPs on ssh and vts networks needed
         cfg_body = cfg_tmpl.format(dl_mx_ip=dl_mx_ip, xrvr_mx_ip=xrvr_mx_ip, mx_net_mask=mx_net_mask, mx_net_len=mx_net_len, mx_gw=mx_gw,
                                    dl_te_ip=dl_te_ip, xrvr_te_ip=xrvr_te_ip, te_net_mask=te_net_mask, te_net_len=te_net_len, dns_ip=dns_ip, ntp_ip=ntp_ip,
-                                   vtc_mx_ip=vtc_mx_vip, xrnc_username=ssh_username, xrvr_username=oob_username, xrvr_password=oob_password, lab_name=lab_name)
+                                   vtc_mx_ip=vtc_mx_vip,
+                                   xrnc_username=ssh_username, xrvr_username=oob_username, xrvr_password=oob_password, vtc_username=vtc_username, vtc_password=vtc_password,
+                                   xrnc_name=xrnc_name, xrvr_name=xrvr_name)
+        with with_config.open_artifact(xrnc_name, 'w') as f:
+            f.write(cfg_body)
         net_part = net_part_tmpl.format(mx_nic_name=mx_nic.get_name(), t_nic_name=te_nic.get_name(), t_vlan=te_vlan)
 
         return cfg_body, net_part
