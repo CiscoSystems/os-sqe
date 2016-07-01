@@ -3,6 +3,7 @@ from lab.lab_node import LabNode
 
 class Server(LabNode):
 
+    N_CONNECTION_ATTEMPTS = 200
     _temp_dir = None
 
     @property
@@ -39,7 +40,7 @@ class Server(LabNode):
                 raise RuntimeError('do not know which package manager to use: neither of {0} found'.format(possible_packages))
         return self._package_manager
 
-    def construct_settings(self, warn_only, connection_attempts=100):
+    def construct_settings(self, warn_only, connection_attempts):
         import validators
         from lab import with_config
 
@@ -86,7 +87,7 @@ class Server(LabNode):
         :param wait: wait for the server to come up
         """
         from fabric.api import reboot, settings
-        with settings(**self.construct_settings(warn_only=True)):
+        with settings(**self.construct_settings(warn_only=True, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
             reboot(wait=wait)
 
     @staticmethod
@@ -108,7 +109,7 @@ class Server(LabNode):
         """
         from fabric.api import put, settings
 
-        with settings(**self.construct_settings(warn_only=False)):
+        with settings(**self.construct_settings(warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
                 return put(local_path=local_path, remote_path=remote_path, use_sudo=is_sudo)
 
     def put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
@@ -135,7 +136,7 @@ class Server(LabNode):
                 local('echo "{0}" > {1}'.format(string_to_put, file_name))
                 return os.path.abspath(os.path.join(in_directory, file_name))
         else:
-            with settings(**self.construct_settings(warn_only=False)):
+            with settings(**self.construct_settings(warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
                 with cd(in_directory):
                     return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)[0]
 
@@ -151,7 +152,7 @@ class Server(LabNode):
         if '/' in file_name:
             raise SyntaxError('file_name can not contain /, use in_directory instead')
 
-        with settings(**self.construct_settings(warn_only=False)):
+        with settings(**self.construct_settings(warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
             with cd(in_directory):
                 body = sudo('cat {0}'.format(file_name))
 
