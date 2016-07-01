@@ -22,63 +22,89 @@ class DeployerVts(Deployer):
         from lab.vts_classes.vtf import Vtf
         from lab.vts_classes.vtc import VtsHost
         from lab.cimc import CimcController
-        # according to https://cisco.jiveon.com/docs/DOC-1443548
+        from lab.vts_classes.xrvr import Xrvr
+        from lab.vts_classes.vtc import Vtc
 
         vts_hosts = filter(lambda x: type(x) in [VtsHost, CimcController], list_of_servers)
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
         for vts_host in vts_hosts:
+            vtc, xrnc = None, None
+            for wire in vts_host.get_all_wires():
+                peer_node = wire.get_peer_node(self)
+                if type(peer_node) is Vtc:
+                    vtc = peer_node
             vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
-            self.deploy_single_vtc_an_xrvr(vts_host)
+            self._install_needed_rpms(vts_host)
+            self._make_netsted_libvirt(vts_host=vts_host)
+            self._delete_previous_libvirt_vms(vts_host=vts_host)
+            self._make_openvswitch(vts_host)
+            self.deploy_single_vtc(vts_host=vts_host, vtc=vtc)
 
         self.make_cluster(lab=vts_hosts[0].lab())
-        for vtf in filter(lambda x: type(x) is Vtf, list_of_servers):
+
+        for vts_host in vts_hosts:
+            vtc, xrnc = None, None
+            for wire in vts_host.get_all_wires():
+                peer_node = wire.get_peer_node(self)
+                if type(peer_node) is Vtc:
+                    vtc = peer_node
+                if type(peer_node) is Xrvr:
+                    xrnc = peer_node
+            self.deploy_single_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
+
+        for vtf in filter(lambda x: type(x) is Vtf, list_of_servers):  # mercury-VTS this list is empty
             self.deploy_single_vtf(vtf)
+
+    def _delete_previous_libvirt_vms(self, vts_host):
+        ans = vts_host.run('virsh list')
+        for role in ['XRNC', 'vtc']:
+            if role in ans:
+                vts_host.run('virsh destroy {}'.format(role))
+        vts_host.run('rm -rf {}'.format(self._vts_service_dir))
 
     @staticmethod
     def make_cluster(lab):
+        from time import sleep
         from lab.vts_classes.vtc import Vtc
 
         vtc_list = lab.get_nodes_by_class(Vtc)
         for vtc in vtc_list:
-            cfg_body = vtc.get_cluster_conf_body()
+            cfg_body = vtc.get_cluster_conf_body()  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 1
             vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory='/opt/cisco/package/vtc/bin')
-            # vtc.run(command='sudo /opt/cisco/package/vtc/bin/modify_host_vtc.sh')
-        # for vtc in vtc_list:
-            # vtc.run(command='sudo /opt/cisco/package/vtc/bin/cluster_install.sh')
+            vtc.run(command='sudo /opt/cisco/package/vtc/bin/modify_host_vtc.sh')  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 2
+        for vtc in vtc_list:
+            vtc.run(command='sudo /opt/cisco/package/vtc/bin/cluster_install.sh')  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 3
 
-        # vtc_list[0].run(command='sudo /opt/cisco/package/vtc/bin/master_node_install.sh')  # to be run on VTC master only
+        vtc_list[0].run(command='sudo /opt/cisco/package/vtc/bin/master_node_install.sh')  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 4
+        for i in range(100):
+            ans = vtc_list[0].vtc_get_cluster_info()
+            if len(ans) == 2:
+                return  # cluster is successfully formed
+            sleep(10)
+        raise RuntimeError('Failed to form VTC cluster after 100 attempts')
 
-    def _common_prepare_host(self, server):
-        server.register_rhel(self._rhel_creds_source)
-        server.run(command='sudo yum update -y')
-        server.run('yum groupinstall "Virtualization Platform" -y')
-        server.run('yum install genisoimage openvswitch qemu-kvm -y')
+    def _install_needed_rpms(self, vts_host):
+        vts_host.register_rhel(self._rhel_creds_source)
+        vts_host.run(command='sudo yum update -y')
+        vts_host.run('yum groupinstall "Virtualization Platform" -y')
+        vts_host.run('yum install genisoimage openvswitch qemu-kvm -y')
 
-        if server.run('cat /sys/module/kvm_intel/parameters/nested') == 'N':
-            server.run('echo "options kvm-intel nested=1" | sudo tee /etc/modprobe.d/kvm-intel.conf')
-            server.run('rmmod kvm_intel')
-            server.run('modprobe kvm_intel')
-            if server.run('cat /sys/module/kvm_intel/parameters/nested') != 'Y':
+        vts_host.run('systemctl start libvirtd')
+        vts_host.run('systemctl start openvswitch')
+
+    @staticmethod
+    def _make_netsted_libvirt(vts_host):
+        if vts_host.run('cat /sys/module/kvm_intel/parameters/nested') == 'N':
+            vts_host.run('echo "options kvm-intel nested=1" | sudo tee /etc/modprobe.d/kvm-intel.conf')
+            vts_host.run('rmmod kvm_intel')
+            vts_host.run('modprobe kvm_intel')
+            if vts_host.run('cat /sys/module/kvm_intel/parameters/nested') != 'Y':
                 raise RuntimeError('Failed to set libvirt to nested mode')
-        server.run('systemctl start libvirtd')
-        server.run('systemctl start openvswitch')
 
-    def deploy_single_vtc_an_xrvr(self, vts_host):
-        from lab.vts_classes.xrvr import Xrvr
-        from lab.vts_classes.vtc import Vtc
-
-        self._common_prepare_host(vts_host)
-
-        vtc, xrnc = None, None
-        for wire in vts_host.get_all_wires():
-            peer_node = wire.get_peer_node(self)
-            if type(peer_node) is Vtc:
-                vtc = peer_node
-            if type(peer_node) is Xrvr:
-                xrnc = peer_node
-
+    @staticmethod
+    def _make_openvswitch(vts_host):
         for nic_name in ['a', 'mx', 't']:
             nic = vts_host.get_nic(nic_name)
             if 'br-{}'.format(nic.get_name()) not in vts_host.run('ovs-vsctl show'):
@@ -93,16 +119,7 @@ class DeployerVts(Deployer):
                     vts_host.run('ovs-vsctl set interface vlan{} type=internal'.format(nic.get_vlan()))
                     vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
 
-        ans = vts_host.run('virsh list')
-        for role in ['XRNC', 'vtc']:
-            if role in ans:
-                vts_host.run('virsh destroy {}'.format(role))
-        vts_host.run('rm -rf {}'.format(self._vts_service_dir))
-
-        self.deploy_vtc(vts_host=vts_host, vtc=vtc)
-        self.deploy_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
-
-    def deploy_vtc(self, vts_host, vtc):
+    def deploy_single_vtc(self, vts_host, vtc):
         from fabric.api import prompt
         cfg_body, net_part = vtc.get_config_and_net_part_bodies()
 
@@ -116,7 +133,7 @@ class DeployerVts(Deployer):
             if ans == 'READY':
                 break
 
-    def deploy_xrnc(self, vts_host, vtc, xrnc):
+    def deploy_single_xrnc(self, vts_host, vtc, xrnc):
         from fabric.api import prompt
 
         cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
