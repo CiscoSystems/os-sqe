@@ -1,44 +1,43 @@
 from lab.server import Server
 
+# use telnet 0 5087 from xrnc to see the bootstrap process just after spinning up XRNC VM
+# configuration is kept in /etc/vpe/vsosrc/dl_server.ini
+# error loging in /var/log/sr/dl_registration_errors.log
+
 
 class Xrvr(Server):
-    COMMANDS = ['show running-config', 'show running-config evpn']  # supported- expect files are pre-created
-
     def __init__(self, node_id, role, lab, hostname):
         super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
-        self._commands = {cmd: '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self.get_id()) for cmd in self.COMMANDS}
+        self._expect_commands = {}
         self._proxy_to_run = None
 
-        self._init_commands()
+    def __repr__(self):
+        _, ssh_u, ssh_p = self.get_ssh()
+        _, oob_u, oob_p = self.get_oob()
+        ip = self.get_nic('mx').get_ip_and_mask()[0]
+        return u'{l} {n} | sshpass -p {p} ssh {u1}/{u2}@{ip} for XRVR/DL'.format(l=self.lab(), n=self.get_id(), ip=ip, p=ssh_p, u1=oob_u, u2=ssh_u)
 
-    def _add_command(self, cmd):
-        file_name = '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self.get_id())
-        self._commands[cmd] = file_name
-        return file_name
+    # noinspection PyMethodOverriding
+    def cmd(self, cmd, is_xrvr):  # XRVR uses redirection: ssh_username goes to DL while oob_username goes to XRVR, ip and password are the same for both
+        from lab.vts_classes.vtc import Vtc
 
-    def _init_commands(self):
-        self._commands = {}
-        for cmd in self.COMMANDS:
-            self._add_command(cmd)
-
-    def set_proxy(self, proxy):
-        self._proxy_to_run = proxy
-
-    def cmd(self, cmd):  # XRVR uses redirection: username goes to DL while ipmi_username goes to XRVR, ip is the same for both
         if not self._proxy_to_run:
-            raise RuntimeError('{0} needs to have proxy server (usually VTC)'.format(self))
-        if cmd not in self._commands:
-            file_name = self._add_command(cmd)
-            self.actuate_command(cmd, file_name)
-        ans = self._proxy_to_run.run(command='expect {0}'.format(self._commands[cmd]))
+            self._proxy_to_run = self.lab().get_nodes_by_class(Vtc)[-1]
+
+        if is_xrvr:
+            if cmd not in self._expect_commands:
+                self.create_expect_command_file(cmd=cmd)
+            ans = self._proxy_to_run.run(command='expect {0}'.format(self._expect_commands[cmd]))
+        else:
+            _, username, password = self.get_ssh()
+            ip = self.get_nic('mx').get_ip_and_mask()[0]
+            ans = self._proxy_to_run.run(command='sshpass -p {p} ssh -o StrictHostKeyChecking=no {u}@{ip} {cmd}'.format(p=password, u=username, ip=ip, cmd=cmd))
         return ans
 
-    def actuate(self):
-        for cmd, file_name in self._commands.items():
-            self.actuate_command(cmd, file_name)
-
-    def actuate_command(self, cmd, file_name):
-        ip, username, password = self.get_oob()
+    def create_expect_command_file(self, cmd):
+        _, username, password = self.get_oob()
+        ip = self.get_nic('mx').get_ip_and_mask()[0]
+        file_name = 'expect-{}-{}'.format(self.get_id(), cmd.replace(' ', '-'))
         tmpl = '''
 log_user 0
 spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}
@@ -48,6 +47,7 @@ log_user 1
 expect "CPU0:XRVR"
 '''.format(p=password, u=username, ip=ip, cmd=cmd)
         self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
+        self._expect_commands[cmd] = file_name
 
     @staticmethod
     def _get(raw, key):
@@ -79,7 +79,7 @@ expect "CPU0:XRVR"
             return None
 
     def show_running_config(self):
-        return self.cmd('show running-config')
+        return self.cmd('show running-config', is_xrvr=True)
 
     def show_host(self, evi, mac):
         # mac should look like 0010.1000.2243
@@ -87,7 +87,7 @@ expect "CPU0:XRVR"
         mac = '.'.join([mac[0:4], mac[4:8], mac[8:16]])
 
         cmd = 'show running-config evpn evi {0} network-control host mac {1}'.format(evi, mac)
-        raw = self.cmd(cmd)
+        raw = self.cmd(cmd, is_xrvr=True)
         if 'No such configuration item' not in raw:
             return {
                 'ipv4_address': self._get(raw, 'ipv4 address'),
@@ -98,7 +98,7 @@ expect "CPU0:XRVR"
         return None
 
     def show_evpn(self):
-        return self.cmd('show running-config evpn')
+        return self.cmd('show running-config evpn', is_xrvr=True)
 
     def restart_dl_server(self):
         return self.run('sudo crm resource restart dl_server')
@@ -145,3 +145,10 @@ expect "CPU0:XRVR"
         net_part = net_part_tmpl.format(mx_nic_name=mx_nic.get_name(), t_nic_name=te_nic.get_name(), t_vlan=te_vlan)
 
         return cfg_body, net_part
+
+    def get_logs(self):
+        body = ''
+        for cmd in ['cat /var/log/sr/*']:
+            ans = self.cmd(cmd=cmd, is_xrvr=False)
+            body += self._format_single_cmd_output(cmd=cmd, ans=ans)
+        return body

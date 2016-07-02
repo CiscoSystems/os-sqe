@@ -90,7 +90,7 @@ class DeployerVts(Deployer):
         raise RuntimeError('Failed to form VTC cluster after 100 attempts')
 
     def _install_needed_rpms(self, vts_host):
-        if self._vts_images_location not in vts_host.run('cat VTS-VERSION'):
+        if self._vts_images_location not in vts_host.run(command='cat VTS-VERSION', warn_only=True):
             vts_host.register_rhel(self._rhel_creds_source)
             vts_host.run(command='sudo yum update -y')
             vts_host.run('yum groupinstall "Virtualization Platform" -y')
