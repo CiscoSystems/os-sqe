@@ -46,7 +46,7 @@ class DeployerMercury(Deployer):
 
             build_node.run('rm -rf mercury')
             repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
-            build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)
+            build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678
             build_node.run(command='./bootstrap.sh -T {}'.format(installer_dir[-4:]), in_directory=repo_dir + '/internal')
 
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
@@ -85,7 +85,7 @@ class DeployerMercury(Deployer):
         bld_ip_mx = build_node.get_nic('mx').get_ip_and_mask()[0]
 
         vtc = lab.get_node_by_id('vtc1')
-        vtc_mx_ip = vtc.get_vip()[1]
+        vtc_mx_ip = vtc.get_vtc_vips()[1]
         _, vtc_username, vtc_password = vtc.get_oob()
 
         controllers_part = '\n     - '.join(map(lambda x: x.hostname(), lab.get_controllers()))

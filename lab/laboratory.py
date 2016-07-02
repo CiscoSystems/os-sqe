@@ -435,7 +435,7 @@ class Laboratory(object):
         eth1_vlans = self._cfg['nets']['eth1']['vlan']
         ext_vlan, test_vlan, stor_vlan, stor_mgmt_vlan, tenant_vlan, fip_vlan = eth1_vlans[1], pxe_int_vlans[1], pxe_int_vlans[2], pxe_int_vlans[3], pxe_int_vlans[4], eth1_vlans[0]
 
-        ucsm_vip = self.get_nodes_by_class(FI)[0].get_vip()
+        ucsm_vip = self.get_nodes_by_class(FI)[0].get_ucsm_vip()
 
         cfg = osp7_install_template.format(director_node_hostname=director_hostname, director_node_ssh_ip=director_node_ssh_ip,
 

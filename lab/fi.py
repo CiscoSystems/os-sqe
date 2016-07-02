@@ -55,7 +55,7 @@ class FI(LabNode):
     def set_vip(self, vip):
         self._vip = vip
 
-    def get_vip(self):
+    def get_ucsm_vip(self):
         return self._vip
 
     def set_sriov(self, sriov):

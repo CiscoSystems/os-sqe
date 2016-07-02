@@ -7,7 +7,7 @@ from lab.vts_classes.vtf import Vtf
 class Vtc(Server):
     def __init__(self, node_id, role, lab, hostname):
         super(Server, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
-        self._vip = 'Default in Vtc.__init()'
+        self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
 
     def __repr__(self):
         ssh_ip, ssh_u, ssh_p = self.get_ssh()
@@ -24,10 +24,10 @@ class Vtc(Server):
 
         resource = resource.strip('/')
         _, username, password = self.get_oob()
-        ip = self.get_ssh_ip()
-        url = 'https://{ip}:{port}/{resource}'.format(ip=ip, port=8888, resource=resource)
+        vip = self.get_vtc_vips()[0]
+        url = 'https://{ip}:{port}/{resource}'.format(ip=vip, port=8888, resource=resource)
         auth = (username, password)
-        headers = None
+        headers = {'Content-type': 'application/vnd.yang.data+json', 'Accept': 'application/vnd.yang.collection+json'}
 
         # noinspection PyBroadException
         try:
@@ -57,11 +57,10 @@ class Vtc(Server):
         return self._rest_api(resource=resource, data=data, type_of_call='patch')
 
     def set_vip(self, vip):
-        self._vip = vip
+        self._vip_a, self._vip_mx = vip, '111.111.111.150'
 
-    def get_vip(self):
-        vip_vts = filter(lambda x: x.is_vts(), self.get_nics().values())[0].get_net()[250]
-        return self._vip, vip_vts
+    def get_vtc_vips(self):
+        return self._vip_a, self._vip_mx
 
     def cmd(self, cmd, **kwargs):
         return self._rest_api(resource=cmd)
@@ -273,7 +272,7 @@ class Vtc(Server):
     def get_cluster_conf_body(self):
         from lab import with_config
 
-        vip_a, vip_mx = self.get_vip()
+        vip_a, vip_mx = self.get_vtc_vips()
         a_ip = []
         mx_ip = []
         mx_gw = None
@@ -312,7 +311,16 @@ class Vtc(Server):
         return self.vtc_get_call(resource='/api/running/openstack/port')
 
     def vtc_get_cluster_info(self):
-        return self.vtc_get_call(resource='/api/operational/ha-cluster/members')  # curl -v -k -X GET -u <vtc-username>:<vtc-password> https://<VTC_IP>:8888/api/operational/ha-cluster/members
+        d = self.vtc_get_call(resource='/api/operational/ha-cluster/members')  # curl -v -k -X GET -u <vtc-username>:<vtc-password> https://<VTC_IP>:8888/api/operational/ha-cluster/members
+        return d['collection']['tcm:members']
+
+    def check_cluster_is_formed(self):
+        nodes = self.lab().get_nodes_by_class(Vtc)
+        reported_ips = [x['address'] for x in self.vtc_get_cluster_info()]
+        for node in nodes:
+            if node.get_ssh_ip() not in reported_ips:
+                return False
+        return True
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer

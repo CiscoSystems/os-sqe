@@ -19,27 +19,34 @@ class DeployerVts(Deployer):
         self._vts_images_location = config['images-location']
 
     def deploy_vts(self, list_of_servers):
+        from fabric.api import prompt
         from lab.vts_classes.vtf import Vtf
         from lab.vts_classes.vtc import VtsHost
         from lab.cimc import CimcController
         from lab.vts_classes.xrvr import Xrvr
         from lab.vts_classes.vtc import Vtc
 
-        vts_hosts = filter(lambda x: type(x) in [VtsHost, CimcController], list_of_servers)
+        vts_hosts = filter(lambda host: type(host) in [VtsHost, CimcController], list_of_servers)
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
+        vtc_urls = []
+        vtc_password = None
         for vts_host in vts_hosts:
-            vtc, xrnc = None, None
-            for wire in vts_host.get_all_wires():
-                peer_node = wire.get_peer_node(self)
-                if type(peer_node) is Vtc:
-                    vtc = peer_node
+            vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
+            vtc_urls.append('https://{}'.format(vtc.get_ssh_ip()))
+            vtc_password = vtc.get_oob()[-1]
+
             self._install_needed_rpms(vts_host)
             self._make_netsted_libvirt(vts_host=vts_host)
             self._delete_previous_libvirt_vms(vts_host=vts_host)
             self._make_openvswitch(vts_host)
             self.deploy_single_vtc(vts_host=vts_host, vtc=vtc)
+
+        while True:
+            ans = prompt('Got to WEB GUI {} login as admin/admin and change password to {}, type READY when finished> '.format(' '.join(vtc_urls), vtc_password))
+            if ans == 'READY':
+                break
 
         self.make_cluster(lab=vts_hosts[0].lab())
 
@@ -53,7 +60,7 @@ class DeployerVts(Deployer):
                     xrnc = peer_node
             self.deploy_single_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
 
-        for vtf in filter(lambda x: type(x) is Vtf, list_of_servers):  # mercury-VTS this list is empty
+        for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
             self.deploy_single_vtf(vtf)
 
     def _delete_previous_libvirt_vms(self, vts_host):
@@ -67,19 +74,23 @@ class DeployerVts(Deployer):
     def make_cluster(lab):
         from time import sleep
         from lab.vts_classes.vtc import Vtc
+        from lab import with_config
 
+        cisco_bin_dir = '/opt/cisco/package/vtc/bin/'
         vtc_list = lab.get_nodes_by_class(Vtc)
         for vtc in vtc_list:
             cfg_body = vtc.get_cluster_conf_body()  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 1
-            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory='/opt/cisco/package/vtc/bin')
-            vtc.run(command='sudo /opt/cisco/package/vtc/bin/modify_host_vtc.sh')  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 2
+            with with_config.open_artifact(vtc.get_id() + '-cluster.conf.orig', 'w') as f:
+                f.write(vtc.get_file_from_dir(file_name='cluster.conf', in_directory=cisco_bin_dir))
+            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory=cisco_bin_dir)
+            vtc.run(command='sudo ./modify_host_vtc.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 2
         for vtc in vtc_list:
-            vtc.run(command='sudo /opt/cisco/package/vtc/bin/cluster_install.sh')  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 3
+            vtc.run(command='sudo ./cluster_install.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 3
 
-        vtc_list[0].run(command='sudo /opt/cisco/package/vtc/bin/master_node_install.sh')  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 4
+        vtc_list[0].run(command='sudo ./master_node_install.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 4
+
         for i in range(100):
-            ans = vtc_list[0].vtc_get_cluster_info()
-            if len(ans) == 2:
+            if vtc_list[0].check_cluster_is_fromed():
                 return  # cluster is successfully formed
             sleep(10)
         raise RuntimeError('Failed to form VTC cluster after 100 attempts')
@@ -124,7 +135,6 @@ class DeployerVts(Deployer):
                 vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
 
     def deploy_single_vtc(self, vts_host, vtc):
-        from fabric.api import prompt
         cfg_body, net_part = vtc.get_config_and_net_part_bodies()
 
         config_iso_path = self._vts_service_dir + '/vtc_config.iso'
@@ -132,10 +142,6 @@ class DeployerVts(Deployer):
         vts_host.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
 
         self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part)
-        while True:
-            ans = prompt('Got to WEB GUI  of {} as admin/admin and set provided oob password, type READY when finished> '.format(vtc))
-            if ans == 'READY':
-                break
 
     def deploy_single_xrnc(self, vts_host, vtc, xrnc):
         from fabric.api import prompt
