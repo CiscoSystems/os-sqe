@@ -23,8 +23,6 @@ class DeployerVts(Deployer):
         from lab.vts_classes.vtf import Vtf
         from lab.vts_classes.vtc import VtsHost
         from lab.cimc import CimcController
-        from lab.vts_classes.xrvr import Xrvr
-        from lab.vts_classes.vtc import Vtc
 
         vts_hosts = filter(lambda host: type(host) in [VtsHost, CimcController], list_of_servers)
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
@@ -51,13 +49,8 @@ class DeployerVts(Deployer):
         self.make_cluster(lab=vts_hosts[0].lab())
 
         for vts_host in vts_hosts:
-            vtc, xrnc = None, None
-            for wire in vts_host.get_all_wires():
-                peer_node = wire.get_peer_node(self)
-                if type(peer_node) is Vtc:
-                    vtc = peer_node
-                if type(peer_node) is Xrvr:
-                    xrnc = peer_node
+            vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
+            xrnc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_xrvr()][0]
             self.deploy_single_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
 
         for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
@@ -90,7 +83,7 @@ class DeployerVts(Deployer):
         vtc_list[0].run(command='sudo ./master_node_install.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 4
 
         for i in range(100):
-            if vtc_list[0].check_cluster_is_fromed():
+            if vtc_list[0].check_cluster_is_formed():
                 return  # cluster is successfully formed
             sleep(10)
         raise RuntimeError('Failed to form VTC cluster after 100 attempts')
@@ -144,22 +137,15 @@ class DeployerVts(Deployer):
         self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part)
 
     def deploy_single_xrnc(self, vts_host, vtc, xrnc):
-        from fabric.api import prompt
-
         cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
         iso_path = self._vts_service_dir + '/xrnc_cfg.iso'
 
-        # https://cisco.jiveon.com/docs/DOC-1455175 step 8: use sudo /opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc xrnc.cfg
         cfg_name = 'xrnc.cfg'
         vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name=cfg_name)
         vtc.run('cp /opt/cisco/package/vts/bin/build_vts_config_iso.sh $HOME')
-        vtc.run('./build_vts_config_iso.sh xrnc {}'.format(cfg_name))
+        vtc.run('./build_vts_config_iso.sh xrnc {}'.format(cfg_name))  # https://cisco.jiveon.com/docs/DOC-1455175 step 8: use sudo /opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc xrnc.cfg
         ip, username, password = vtc.get_ssh()
-
-        while True:
-            ans = prompt('Go to {v} and scp {u}@{ip}:xrnc_cfg.iso {d} with  password {p}, type READY when finished'.format(p=password, u=username, ip=ip, d=self._vts_service_dir, v=vts_host))
-            if ans == 'READY':
-                break
+        vts_host.run('sshpass -p {p} scp -o StrictHostKeyChecking=no {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
 
         self._get_image_and_run_virsh(server=vts_host, role='XRNC', iso_path=iso_path, net_part=net_part)
         # xrnc.run('ip l s dev br-underlay mtu 1400')  # https://cisco.jiveon.com/docs/DOC-1455175 step 12 about MTU

@@ -113,7 +113,7 @@ expect "CPU0:XRVR"
         net_part_tmpl = with_config.read_config_from_file(config_path='xrnc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
         dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
-        xrvr_name = '{}-{}'.format(self.lab(), self.get_id())
+        xrvr_name = '{id}-{lab}'.format(lab=self.lab(), id=self.get_id())
         xrnc_name = xrvr_name.replace('xrvr', 'xrnc')
 
         _, vtc_username, vtc_password = self.lab().get_node_by_id('vtc1').get_oob()
