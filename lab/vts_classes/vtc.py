@@ -84,7 +84,6 @@ class Vtc(Server):
             ip, _, _, _ = vtf.get_ssh()
             if str(ip) not in vtf_ips_from_vtc:
                 raise RuntimeError('{0} is not detected by {1}'.format(vtf, self))
-            vtf.actuate()
         return vtf_nodes
 
     def check_xrvr(self):
@@ -95,7 +94,6 @@ class Vtc(Server):
             ip, _, _, _ = xrvr.get_ssh()
             if str(ip) not in xrvr_ips_from_vtc:
                 raise RuntimeError('{0} is not detected by {1}'.format(xrvr, self))
-            xrvr.actuate()
         return xrvr_nodes
 
     def json_api_url(self, resource):
@@ -141,9 +139,6 @@ class Vtc(Server):
 
     def show_vxlan_tunnel(self):
         return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_nodes_by_class(Vtf))
-
-    def show_logs(self, what='error'):
-        self.run('grep -i {0} /var/log/ncs/*'.format(what), warn_only=True)
 
     def show_uuid_servers(self):
         pass  # ncs_cli -u admin show configuration cisco-vts uuid-servers
@@ -321,6 +316,20 @@ class Vtc(Server):
             if node.get_ssh_ip() not in reported_ips:
                 return False
         return True
+
+    def get_logs(self):
+        body = ''
+        for cmd in ['grep -i error /var/log/ncs/*', ' cat /var/log/ncs/localhost\:8888.access']:
+            ans = self.run(cmd)
+            body += self._format_single_cmd_output(cmd=cmd, ans=ans)
+        return body
+
+    def get_all_logs(self):
+        body = ''
+        for node in self.lab().get_nodes_by_class([Vtc, Xrvr]):
+            body += node.get_logs()
+
+        self.log_to_artifact_file(name='vts-logs.txt', body=body)
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer

@@ -52,6 +52,7 @@ class DeployerVts(Deployer):
             vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
             xrnc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_xrvr()][0]
             self.deploy_single_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
+            vtc.get_all_logs('after_{}'.format(xrnc.get_id()))
 
         for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
             self.deploy_single_vtf(vtf)
@@ -93,7 +94,7 @@ class DeployerVts(Deployer):
             vts_host.register_rhel(self._rhel_creds_source)
             vts_host.run(command='sudo yum update -y')
             vts_host.run('yum groupinstall "Virtualization Platform" -y')
-            vts_host.run('yum install genisoimage openvswitch qemu-kvm -y')
+            vts_host.run('yum install genisoimage openvswitch qemu-kvm expect -y')
             vts_host.run('subscription-manager unregister')
             vts_host.run('wget http://172.29.173.233/redhat/sshpass-1.05-1.el7.rf.x86_64.rpm')
             vts_host.run(command='rpm -ivh sshpass-1.05-1.el7.rf.x86_64.rpm', warn_only=True)
@@ -159,6 +160,7 @@ class DeployerVts(Deployer):
         domain_xml_path = server.put_string_as_file_in_dir(string_to_put=domain_body, file_name='{0}_domain.xml'.format(role), in_directory=self._vts_service_dir)
 
         server.run('virsh create {0}'.format(domain_xml_path))
+        server.run('virsh autostart {0}'.format(role))
 
     def deploy_single_vtf(self, vtf):
         net_part, cfg_body = vtf.get_domain_andconfig_body()
@@ -172,7 +174,6 @@ class DeployerVts(Deployer):
         # on VTC: cat /var/log/ncs/localhost:8888.access
         # on VTC ncs_cli: configure set devices device XT{TAB} asr -- bgp[TAB] bgp-asi 23 commit
         # on VTC ncs_cli: show running-config evpn
-        # on DL cat /etc/vpe/vsocsr/dl_server.ini
         # on DL ps -ef | grep dl -> then restart dl_vts_reg.py
 
     def wait_for_cloud(self, list_of_servers):
