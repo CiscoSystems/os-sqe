@@ -19,10 +19,10 @@ class Xrvr(Server):
 
     # noinspection PyMethodOverriding
     def cmd(self, cmd, is_xrvr):  # XRVR uses redirection: ssh_username goes to DL while oob_username goes to XRVR, ip and password are the same for both
-        from lab.vts_classes.vtc import Vtc
+        from lab.vts_classes.vtc import VtsHost
 
         if not self._proxy_to_run:
-            self._proxy_to_run = self.lab().get_nodes_by_class(Vtc)[-1]
+            self._proxy_to_run = self.lab().get_nodes_by_class(VtsHost)[-1]
 
         if is_xrvr:
             if cmd not in self._expect_commands:

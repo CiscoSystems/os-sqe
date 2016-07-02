@@ -63,7 +63,11 @@ class DeployerVts(Deployer):
         ans = vts_host.run('virsh list')
         for role in ['XRNC', 'vtc']:
             if role in ans:
-                vts_host.run('virsh destroy {}'.format(role))
+                vts_host.run('virsh destroy {role}'.format(role=role))
+        ans = vts_host.run('virsh list --all')
+        for role in ['XRNC', 'vtc']:
+            if role in ans:
+                vts_host.run('virsh undefine {role}'.format(role=role))
         vts_host.run('rm -rf {}'.format(self._vts_service_dir))
 
     @staticmethod
