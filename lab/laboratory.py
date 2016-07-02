@@ -281,7 +281,8 @@ class Laboratory(object):
 
     def get_nodes_by_class(self, klass=None):
         if klass:
-            return filter(lambda x: isinstance(x, klass), self._nodes)
+            classes = klass if type(klass) is list else [klass]
+            return filter(lambda x: type(x) in classes, self._nodes)
         else:
             return self._nodes
 
