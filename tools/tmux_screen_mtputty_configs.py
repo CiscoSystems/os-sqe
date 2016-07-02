@@ -41,33 +41,35 @@ def tmux():
 def mtputty(lab):
     import os
 
-    file_path = os.path.expanduser('~/Desktop/MTPuTTY-{lab}.xml'.format(lab=lab))
+    file_path = os.path.expanduser('~/MTPuTTY-{lab}.xml'.format(lab=lab))
     with open(file_path, 'w') as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        f.write('<Servers>\n')
-        f.write('   <Putty>\n')
+        f.write('<MTPutty version="1.0">\n')
 
-        f.write('       <Node Type="0">\n')
-        f.write('       <DisplayName>{lab_name}</DisplayName>\n'.format(lab_name=lab))
+        f.write('\t<Servers>\n')
+        f.write('\t\t<Putty>\n')
+
+        f.write('\t\t\t<Node Type="0" Expanded="1">\n')
+        f.write('\t\t\t\t<DisplayName>{lab_name}</DisplayName>\n'.format(lab_name=lab))
 
         for node in lab.get_nodes_by_class():
             ip, username, password = node.get_ssh()
 
-            f.write('       <Node Type="1">\n')
-            f.write('           <SavedSession>Default Settings</SavedSession>\n')
-            f.write('           <DisplayName>{node_name}</DisplayName>\n'.format(node_name=node.get_id()))
-            f.write('           <ServerName>{ip}</ServerName>\n'.format(ip=ip))
-            f.write('           <PuttyConType>4</PuttyConType>\n')
-            f.write('           <Port>0</Port>\n')
-            f.write('           <UserName>{username}</UserName>\n'.format(username=username))
-            f.write('           <PlainPassword>{password}</PlainPassword>\n'.format(password=password))
-            f.write('           <PasswordDelay>0</PasswordDelay>\n')
-            f.write('           <CLParams>{ip} -ssh -l {username} -pw *****</CLParams>\n'.format(ip=ip, username=username))
-            f.write('           <ScriptDelay>0</ScriptDelay>\n')
-            f.write('       </Node>\n')
+            f.write('\t\t\t\t<Node Type="1">\n')
+            f.write('\t\t\t\t\t<SavedSession>Default Settings</SavedSession>\n')
+            f.write('\t\t\t\t\t<DisplayName>{node_name}</DisplayName>\n'.format(node_name=node.get_id()))
+            f.write('\t\t\t\t\t<ServerName>{ip}</ServerName>\n'.format(ip=ip))
+            f.write('\t\t\t\t\t<PuttyConType>4</PuttyConType>\n')
+            f.write('\t\t\t\t\t<Port>0</Port>\n')
+            f.write('\t\t\t\t\t<UserName>{username}</UserName>\n'.format(username=username))
+            f.write('\t\t\t\t\t<PlainPassword>{password}</PlainPassword>\n'.format(password=password))
+            f.write('\t\t\t\t\t<PasswordDelay>0</PasswordDelay>\n')
+            f.write('\t\t\t\t\t<CLParams>{ip} -ssh -l {username} -pw *****</CLParams>\n'.format(ip=ip, username=username))
+            f.write('\t\t\t\t\t<ScriptDelay>0</ScriptDelay>\n')
+            f.write('\t\t\t\t</Node>\n')
 
-        f.write('   </Putty >\n')
-        f.write('</Servers>\n')
+        f.write('\t\t</Putty >\n')
+        f.write('\t</Servers>\n')
     print('MTPuTTY config for lab {lab} written to {path}. Please import it!'.format(lab=l, path=file_path))
 
 
@@ -77,7 +79,7 @@ def mobaxterm(lab):
     from lab.fi import FI
     from lab.tor import Tor
 
-    file_path = os.path.expanduser('~/Desktop/mobaXterm-{lab}.mxtsessions'.format(lab=lab))
+    file_path = os.path.expanduser('~/mobaXterm-{lab}.mxtsessions'.format(lab=lab))
     with open(file_path, 'w') as f:
         f.write('[Bookmarks]\n')
         f.write('SubRep={lab_name}\n'.format(lab_name=lab))
