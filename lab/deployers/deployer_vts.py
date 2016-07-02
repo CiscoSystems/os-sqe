@@ -161,8 +161,7 @@ class DeployerVts(Deployer):
         domain_body = self._libvirt_domain_tmpl.format(hostname=role, disk_part=disk_part, net_part=net_part, emulator='/usr/libexec/qemu-kvm')
         domain_xml_path = server.put_string_as_file_in_dir(string_to_put=domain_body, file_name='{0}_domain.xml'.format(role), in_directory=self._vts_service_dir)
 
-        server.run('virsh create {0}'.format(domain_xml_path))
-        server.run('virsh autostart {0}'.format(role))
+        server.run('virsh define {xml} && virsh start {role} && virsh autostart {role}'.format(xml=domain_xml_path, role=role))
 
     def deploy_single_vtf(self, vtf):
         net_part, cfg_body = vtf.get_domain_andconfig_body()

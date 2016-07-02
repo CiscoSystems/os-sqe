@@ -324,12 +324,12 @@ class Vtc(Server):
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 
-    def get_all_logs(self):
+    def get_all_logs(self, name):
         body = ''
         for node in self.lab().get_nodes_by_class([Vtc, Xrvr]):
             body += node.get_logs()
 
-        self.log_to_artifact_file(name='vts-logs.txt', body=body)
+        self.log_to_artifact_file(name='{]-vts-logs.txt'.format(name), body=body)
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
