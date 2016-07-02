@@ -28,6 +28,12 @@ class DeployerVts(Deployer):
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
+        for vts_host in vts_hosts:
+            self._install_needed_rpms(vts_host)
+            self._make_netsted_libvirt(vts_host=vts_host)
+            self._delete_previous_libvirt_vms(vts_host=vts_host)
+            self._make_openvswitch(vts_host)
+
         vtc_urls = []
         vtc_password = None
         for vts_host in vts_hosts:
@@ -35,10 +41,6 @@ class DeployerVts(Deployer):
             vtc_urls.append('https://{}'.format(vtc.get_ssh_ip()))
             vtc_password = vtc.get_oob()[-1]
 
-            self._install_needed_rpms(vts_host)
-            self._make_netsted_libvirt(vts_host=vts_host)
-            self._delete_previous_libvirt_vms(vts_host=vts_host)
-            self._make_openvswitch(vts_host)
             self.deploy_single_vtc(vts_host=vts_host, vtc=vtc)
 
         while True:
