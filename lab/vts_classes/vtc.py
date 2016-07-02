@@ -283,7 +283,7 @@ class Vtc(Server):
 
             mx_ip.append(mx_nic.get_ip_and_mask()[0])
         cfg_tmpl = with_config.read_config_from_file(config_path='cluster.conf.template', directory='vts', is_as_string=True)
-        cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_a=vip_a, vtc1_a_ip=a_ip[1], vtc2_a_ip=a_ip[2], vtc1_mx_ip=mx_ip[1], vtc2_mx_ip=mx_ip[2], special_ip=a_ip[0], mx_gw=mx_gw)
+        cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_a=vip_a, vip_mx=vip_mx, vtc1_a_ip=a_ip[1], vtc2_a_ip=a_ip[2], vtc1_mx_ip=mx_ip[1], vtc2_mx_ip=mx_ip[2], special_ip=a_ip[0], mx_gw=mx_gw)
         with with_config.open_artifact('cluster.conf', 'w') as f:
             f.write(cfg_body)
         return cfg_body

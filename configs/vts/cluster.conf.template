@@ -19,7 +19,9 @@ slave_network_interface=eth0
 ###In the event that a network failure occurs evenly between the two routers, the cluster needs an outside ip to determine where the failure lies
 external_ip={special_ip} #<same value as setup_data.yaml::external_lb_vip_address>
 
-###VTC Underlay Addresses , maps to mercury management network
-vtc1_underlay={vtc1_mx_ip} #<mx-net IP of first VTC VM in a.b.c.d form>
-vtc2_underlay={vtc2_mx_ip} #<mx-net IP of 2nd VTC VM in a.b.c.d form>
-vtc2_private_gateway={mx_gw}    #mx-net GW .1
+
+###If you intend to use a virtual topology forwarder (VTF) in your environment, please fill out the following two fields. Otherwise, leave blank
+###Virtual Ip of VTC Master on the private interface
+vip_private={vip_mx}                   #<mx-net VTC VIP in a.b.c.d form>
+private_network_interface=eth1
+private_gateway={mx_gw}                #<mx-net GW in a.b.c.d form>
