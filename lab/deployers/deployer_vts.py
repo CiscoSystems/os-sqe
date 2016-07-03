@@ -81,8 +81,6 @@ class DeployerVts(Deployer):
         vtc_list = lab.get_nodes_by_class(Vtc)
         for vtc in vtc_list:
             cfg_body = vtc.get_cluster_conf_body()  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 1
-            with with_config.open_artifact(vtc.get_id() + '-cluster.conf.orig', 'w') as f:
-                f.write(vtc.get_file_from_dir(file_name='cluster.conf', in_directory=cisco_bin_dir))
             vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory=cisco_bin_dir)
             vtc.run(command='sudo ./modify_host_vtc.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 2
         for vtc in vtc_list:
