@@ -83,5 +83,6 @@ class CobblerServer(Server):
             if 'ProvTime=' + when_provided != ks_meta:
                 raise RuntimeError('Wrong provisioning attempt- timestamps are not matched')
             node.actuate_hostname()
+            node.run('mkdir -p cobbler && mv *.ks *.log *.cfg ProvTime cobbler')
 
         return nodes_to_deploy_by_cobbler
