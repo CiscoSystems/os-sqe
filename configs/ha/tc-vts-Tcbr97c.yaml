@@ -1,5 +1,7 @@
 ---
-# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr97c ShortDesription=Active VTC VM is shut down or isolated from the network
+# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr97c
+# In this test scenario we verify the behavior to the system when the active VTC fails and recovers.
+# Active VTC VM is shut down or isolated from the network.
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2
@@ -15,4 +17,3 @@
   how-many-times: 2
   downtime: 100
   uptime: 20
-
