@@ -75,7 +75,6 @@ class DeployerVts(Deployer):
     def make_cluster(lab):
         from time import sleep
         from lab.vts_classes.vtc import Vtc
-        from lab import with_config
 
         cisco_bin_dir = '/opt/cisco/package/vtc/bin/'
         vtc_list = lab.get_nodes_by_class(Vtc)
