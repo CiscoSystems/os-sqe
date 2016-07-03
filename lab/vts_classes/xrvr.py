@@ -1,7 +1,7 @@
 from lab.server import Server
 
 # use telnet 0 5087 from xrnc to see the bootstrap process just after spinning up XRNC VM
-# configuration is kept in /etc/vpe/vsosrc/dl_server.ini
+# configuration is kept in sudo cat /etc/vpe/vsocsr/dl_server.ini on cisco@xrnc
 # error loging in /var/log/sr/dl_registration_errors.log
 
 
@@ -31,7 +31,7 @@ class Xrvr(Server):
         else:
             _, username, password = self.get_ssh()
             ip = self.get_nic('mx').get_ip_and_mask()[0]
-            ans = self._proxy_to_run.run(command='sshpass -p {p} ssh -o StrictHostKeyChecking=no {u}@{ip} {cmd}'.format(p=password, u=username, ip=ip, cmd=cmd))
+            ans = self._proxy_to_run.run(command='sshpass -p {p} ssh -o StrictHostKeyChecking=no -t {u}@{ip} {cmd}'.format(p=password, u=username, ip=ip, cmd=cmd))
         return ans
 
     def create_expect_command_file(self, cmd):
@@ -100,9 +100,6 @@ expect "CPU0:XRVR"
     def show_evpn(self):
         return self.cmd('show running-config evpn', is_xrvr=True)
 
-    def restart_dl_server(self):
-        return self.run('sudo crm resource restart dl_server')
-
     def show_connections_xrvr_vtf(self):
         return self.run('netstat -ant |grep 21345')
 
@@ -148,7 +145,19 @@ expect "CPU0:XRVR"
 
     def get_logs(self):
         body = ''
-        for cmd in ['cat /var/log/sr/*']:
+        for cmd in ['grep -i error /var/log/sr/*']:
             ans = self.cmd(cmd=cmd, is_xrvr=False)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
+
+    def dl_start_server(self):
+        own_ip = self.get_nic('t').get_ip_and_mask()[0]
+        ips = [x.get_nic('t').get_ip_and_mask()[0] for x in self.lab().get_nodes_by_class(Xrvr)]
+        opposite_ip = next(iter(set(ips) - {own_ip}))
+        self.cmd('sudo ip l s dev br-underlay mtu 1400', is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 step 12 about MTU
+        self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
+
+        return True
+
+    def restart_dl_server(self):
+        return self.cmd('sudo crm resource restart dl_server', is_xrvr=False)

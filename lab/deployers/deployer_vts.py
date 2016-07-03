@@ -50,12 +50,20 @@ class DeployerVts(Deployer):
 
         self.make_cluster(lab=vts_hosts[0].lab())
 
-        vtc = None
+        vtcs = []
+        xrncs = []
         for vts_host in vts_hosts:
             vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
+            vtcs.append(vtc)
             xrnc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_xrvr()][0]
+            xrncs.append(xrnc)
             self.deploy_single_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
-        vtc.get_all_logs('after_all_xrnc')
+        vtcs[0].get_all_logs('after_all_xrvr_registered')
+
+        dl_server_status = map(lambda dl: dl.dl_start_server(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
+        if not all(dl_server_status):
+            raise RuntimeError('Failed to start DL servers')
+        vtcs[0].get_all_logs('after_all_dl_servers_started')
 
         for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
             self.deploy_single_vtf(vtf)
@@ -153,7 +161,6 @@ class DeployerVts(Deployer):
         vts_host.run('sshpass -p {p} scp -o StrictHostKeyChecking=no {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
 
         self._get_image_and_run_virsh(server=vts_host, role='XRNC', iso_path=iso_path, net_part=net_part)
-        # xrnc.run('ip l s dev br-underlay mtu 1400')  # https://cisco.jiveon.com/docs/DOC-1455175 step 12 about MTU
 
     def _get_image_and_run_virsh(self, server, role, iso_path, net_part):
         image_url = self._vts_images_location + role + '.qcow2'
@@ -173,7 +180,6 @@ class DeployerVts(Deployer):
         compute.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
         self._get_image_and_run_virsh(server=compute, role='vtf', iso_path=config_iso_path, net_part=net_part)
 
-        # sun in DL sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh 0.0.0.0
         # on VTC: cat /var/log/ncs/localhost:8888.access
         # on VTC ncs_cli: configure set devices device XT{TAB} asr -- bgp[TAB] bgp-asi 23 commit
         # on VTC ncs_cli: show running-config evpn

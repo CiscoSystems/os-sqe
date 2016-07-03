@@ -329,7 +329,7 @@ class Vtc(Server):
         for node in self.lab().get_nodes_by_class([Vtc, Xrvr]):
             body += node.get_logs()
 
-        self.log_to_artifact_file(name='{]-vts-logs.txt'.format(name), body=body)
+        self.log_to_artifact_file(name='{}-vts-logs.txt'.format(name), body=body)
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
