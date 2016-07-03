@@ -331,6 +331,9 @@ class Vtc(Server):
 
         self.log_to_artifact_file(name='{}-vts-logs.txt'.format(name), body=body)
 
+    def vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
+        pass
+
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
     pass

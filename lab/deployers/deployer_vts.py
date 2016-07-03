@@ -65,6 +65,9 @@ class DeployerVts(Deployer):
             raise RuntimeError('Failed to start DL servers')
         vtcs[0].get_all_logs('after_all_dl_servers_started')
 
+        vtcs[0].vtc_day0_config()
+        vtcs[0].get_all_logs('after_day0_config')
+
         for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
             self.deploy_single_vtf(vtf)
 
