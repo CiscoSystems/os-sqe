@@ -50,11 +50,12 @@ class DeployerVts(Deployer):
 
         self.make_cluster(lab=vts_hosts[0].lab())
 
+        vtc = None
         for vts_host in vts_hosts:
             vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
             xrnc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_xrvr()][0]
             self.deploy_single_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
-            vtc.get_all_logs('after_{}'.format(xrnc.get_id()))
+        vtc.get_all_logs('after_all_xrnc')
 
         for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
             self.deploy_single_vtf(vtf)
