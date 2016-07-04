@@ -4,21 +4,17 @@ from lab.deployers import Deployer
 class DeployerMercury(Deployer):
 
     def sample_config(self):
-        return {'installer-source': 'http://path-to-mercury-release-server',
-                'installer-checksum': 'check-sum',
-                'hardware-lab-config': 'valid lab configuration',
-                'rhel-subsription-creds': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json'}
+        return {'installer-source': 'http://path-to-mercury-release-server-folder', 'type-of-install': 'iso or tarball', 'hardware-lab-config': 'valid lab configuration'}
 
     def __init__(self, config):
         super(DeployerMercury, self).__init__(config=config)
 
-        self._rhel_creds_source = config['rhel-subsription-creds']
-
         self._installer_source = config['installer-source']
         self._lab_path = config['hardware-lab-config']
-        self._installer_checksum = config['installer-checksum']
+        self._type_of_installe = config['type-of-install']
 
     def deploy_cloud(self, list_of_servers):
+        import requests
         from lab.cloud import Cloud
         from lab.cimc import CimcDirector
         from fabric.operations import prompt
@@ -30,27 +26,36 @@ class DeployerMercury(Deployer):
             l = Laboratory(config_path=self._lab_path)
             build_node = l.get_node_by_id('bld')
 
-        if self._installer_source.endswith('.iso'):
+        if self._type_of_installe == 'iso':
             while True:
                 ip, username, password = build_node.get_oob()
-                ans = prompt('Run remote mounted ISO installation on http://{ip} ({u}/{p}) with {url}, print FINISH when ready'.format(ip=ip, u=username, p=password, url=self._installer_source))
+                ans = prompt('Run remote mounted ISO installation on http://{ip} ({u}/{p}) with RemoteShare={url}/ RemoteFile=buildnode.iso, print FINISH when ready'.format(ip=ip, u=username, p=password, url=self._installer_source))
                 if ans == 'FINISH':
                     break
             installer_dir = build_node.run('find . -name installer*')
         else:
             # build_node.register_rhel(self._rhel_creds_source)
             # build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
-            tar_path = build_node.wget_file(url=self._installer_source, to_directory='.', checksum=self._installer_checksum)
+            build_node.run('rm -rf mercury installer* /var/log/mercury/*')
+
+            tar_url = self._installer_source + '/mercury-installer.tar.gz'
+            checksum_url = tar_url + '-checksum.txt'
+            ans = requests.get(checksum_url)
+            checksum = ans.text.split()[-1].strip()
+            tar_path = build_node.wget_file(url=tar_url, checksum=checksum, method='sha512sum')
             ans = build_node.run('tar xzvf {}'.format(tar_path))
             installer_dir = ans.split('\r\n')[-1].split('/')[1]
 
-            build_node.run('rm -rf mercury')
             repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
-            build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678
+            build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
             build_node.run(command='./bootstrap.sh -T {}'.format(installer_dir[-4:]), in_directory=repo_dir + '/internal')
+            build_node.run(command='./unbootstrap.sh -y', in_directory=repo_dir + '/installer')
+            kernel_version = build_node.run('uname -r')
+            if kernel_version != '3.10.0-327.18.2.el7.x86_64':
+                build_node.reboot()
 
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
-
+        build_node.run('./unbootstrap.sh -y', in_directory=installer_dir)
         build_node.run('rm -rf /var/log/mercury/*')
 
         build_node.run(command='./runner/runner.py -y', in_directory=installer_dir)
