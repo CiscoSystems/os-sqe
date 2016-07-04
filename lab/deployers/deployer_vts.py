@@ -28,6 +28,9 @@ class DeployerVts(Deployer):
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
+        if self.is_valid_installation(vts_hosts):
+            return
+
         for vts_host in vts_hosts:
             self._install_needed_rpms(vts_host)
             self._make_netsted_libvirt(vts_host=vts_host)
@@ -70,6 +73,9 @@ class DeployerVts(Deployer):
 
         for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
             self.deploy_single_vtf(vtf)
+
+        if not self.is_valid_installation(vts_hosts):
+            raise RuntimeError('VTS installation is invalid')
 
     def _delete_previous_libvirt_vms(self, vts_host):
         ans = vts_host.run('virsh list')
@@ -190,3 +196,10 @@ class DeployerVts(Deployer):
 
     def wait_for_cloud(self, list_of_servers):
         self.deploy_vts(list_of_servers=list_of_servers)
+
+    @staticmethod
+    def is_valid_installation(vts_hosts):
+        from lab.vts_classes.vtc import Vtc
+
+        vtc = vts_hosts[0].lab().get_nodes_by_class(Vtc)[0]
+        return len(vtc.vtc_get_xrvrs()) == 2
