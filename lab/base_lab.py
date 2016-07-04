@@ -59,3 +59,4 @@ class BaseLab(WithStatusMixIn):
             start_time = time.time()
             runner.execute(self.clouds, self.servers)
             results[str(runner)] = 'spent_time={0}'.format(time.time() - start_time)
+        return results

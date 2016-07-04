@@ -97,10 +97,10 @@ def ha(lab, test_regex, do_not_clean=False, is_tims=False):
                 f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab_name, lab_name))
             f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: "%s"}}\n' % (10*i + 1,  lab_name, lab_name, test))
 
-    run(config_path=run_config_yaml)
+    run_results = run(config_path=run_config_yaml)
 
-    results = {x: {'status': False, 'n_exceptions': 2} for x in tests}
     if 'pyats' in os.getenv('PATH'):
+        results = {x.split('-')[-1].strip('.yaml'): {'status': False, 'n_exceptions': 2} for x in tests}
         pyast_template = with_config.read_config_from_file('pyats.template', 'pyats', is_as_string=True)
         pyats_body = pyast_template.format(results)
         with with_config.open_artifact('pyats_job.py', 'w') as f:
@@ -156,4 +156,4 @@ def run(config_path):
     from lab.base_lab import BaseLab
 
     l = BaseLab(yaml_name=config_path)
-    l.run()
+    return l.run()
