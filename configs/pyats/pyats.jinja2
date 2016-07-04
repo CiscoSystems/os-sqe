@@ -1,0 +1,39 @@
+from ats import aetest
+
+
+# easypy -no_log_copy -no_archive -no_log_copy -tims_post -tims_dns "tims/Tcbr2p" ~/pyats_job.py
+
+{% for class_name, tcs in results.iteritems() %}
+{% for tc in tcs %}
+class {{ class_name }}_{{ tc['name'] }}(aetest.Testcase):
+
+    @aetest.test
+    def {{ tc['name'] }}(self):
+        import sys
+        result = {{ tc }}
+
+        if 'stdout' in result:
+            sys.stdout.writelines(result['stdout'])
+        if 'stderr' in result:
+            sys.stderr.writelines(result['stderr'])
+
+        if 'skipped' in result:
+            skip_msg = result['skipped']
+            if 'skipped_msg' in result:
+                skip_msg += '\r\n' + result['skipped_msg']
+            self.skip(skip_msg)
+
+        if 'failure' in result:
+            err_msg = result['failure']
+            if 'failure_msg' in result:
+                err_msg += '\r\n' + result['failure_msg']
+            self.failed(skip_msg)
+
+        self.passed('PASSED')
+{% endfor %}
+{% endfor %}
+
+def main():
+    from ats.easypy import run
+
+    run(testscript=__file__)

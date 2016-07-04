@@ -157,3 +157,69 @@ def run(config_path):
 
     l = BaseLab(yaml_name=config_path)
     return l.run()
+
+
+@task
+@decorators.print_time
+def junit_to_tims(filename):
+    import os
+    import xml.etree.ElementTree as ET
+    from lab import with_config
+
+    tims_ids = []
+    test_names = []
+    test_cases = {}
+
+    tree = ET.parse(filename)
+    root = tree.getroot()
+    assert root.tag == "testsuite"
+    for testcase in root:
+        assert testcase.tag == "testcase"
+
+        newcase = {}
+        name = testcase.attrib["name"]
+        name_split = name.rsplit('_', 1)
+        short_name, tims_id = '', ''
+        if len(name_split) > 1:
+            short_name, tims_id = name_split
+
+        class_path, class_name = testcase.attrib["classname"].rsplit('.', 1)
+
+        newcase['name'] = testcase.attrib["name"]
+        newcase['short_name'] = short_name
+        newcase['tims_id'] = tims_id
+        newcase['testclass'] = testcase.attrib["classname"]
+        newcase['duration'] = float(testcase.attrib["time"])
+
+        for child in testcase:
+            if child.tag == "skipped":
+                newcase['skipped'] = child.text
+                if "message" in child.attrib:
+                    newcase['skipped_msg'] = child.attrib["message"]
+            elif child.tag == "system-out":
+                newcase['stdout'] = child.text
+            elif child.tag == "system-err":
+                newcase['stderr'] = child.text
+            elif child.tag == "failure":
+                newcase['failure'] = child.text
+                if "message" in child.attrib:
+                    newcase['failure_msg'] = child.attrib["message"]
+            elif child.tag == "error":
+                newcase['failure'] = child.text
+                if "message" in child.attrib:
+                    newcase['failure_msg'] = child.attrib["message"]
+
+        tims_ids.append(tims_id)
+        test_names.append(name)
+
+        if class_name not in test_cases:
+            test_cases[class_name] = []
+        test_cases[class_name].append(newcase)
+
+
+    from jinja2 import Environment, FileSystemLoader
+    env = Environment(loader=FileSystemLoader(os.path.dirname(os.path.abspath(__file__)) + '/configs/pyats'))
+    template = env.get_template('pyats.jinja2')
+
+    with with_config.open_artifact('pyats_job.py', 'w') as f:
+        f.write(template.render(results=test_cases))
