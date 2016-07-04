@@ -9,8 +9,8 @@ class VtsMonitor(Worker):
 
         lab = self._cloud.mediator.lab()
         self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else lab.get_nodes_by_class(Vtc)[0]
-        self._vtfs = self._vtc.check_vtfs()
-        self._xrvrs = self._vtc.check_xrvr()
+        self._vtfs = self._vtc.vtc_get_vtfs()
+        self._xrvrs = self._vtc.vtc_get_xrvrs()
 
     def loop(self):
         for vtf in self._vtfs:

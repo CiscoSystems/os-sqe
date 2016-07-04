@@ -27,7 +27,7 @@ class Vtc(Server):
         vip = self.get_vtc_vips()[0]
         url = 'https://{ip}:{port}/{resource}'.format(ip=vip, port=8888, resource=resource)
         auth = (username, password)
-        headers = {'Content-type': 'application/vnd.yang.data+json', 'Accept': 'application/vnd.yang.collection+json'}
+        headers = {'Accept': 'application/vnd.yang.data+json' if 'cisco' in resource else 'application/vnd.yang.collection+json'}
 
         # noinspection PyBroadException
         try:
@@ -75,23 +75,22 @@ class Vtc(Server):
             if n.actuate_hostname(refresh=False) == compute_hostname:
                 return vtf
 
-    def check_vtfs(self):
-        self.check_or_install_packages('sshpass')
+    def vtc_get_vtfs(self):
         ans = self.vtc_get_call(resource='/api/running/cisco-vts')
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
         vtf_nodes = self.lab().get_nodes_by_class(Vtf)
         for vtf in vtf_nodes:
-            ip, _, _, _ = vtf.get_ssh()
+            ip = vtf.get_nic('t').get_ip_and_amsk()[0]
             if str(ip) not in vtf_ips_from_vtc:
                 raise RuntimeError('{0} is not detected by {1}'.format(vtf, self))
         return vtf_nodes
 
-    def check_xrvr(self):
+    def vtc_get_xrvrs(self):
         xrvr_nodes = self.lab().get_nodes_by_class(Xrvr)
-        items = self.json_api_get_network_inventory()['items']
-        xrvr_ips_from_vtc = [x['ip_address'] for x in items if 'ASR9K' == x['devicePlaform'] and 'xrvr' in x['id'].lower()]
+        devices = self.vtc_get_call(resource='/api/running/devices/device')
+        xrvr_ips_from_vtc = [x['address'] for x in devices['collection']['tailf-ncs:device']]
         for xrvr in xrvr_nodes:
-            ip, _, _, _ = xrvr.get_ssh()
+            ip = xrvr.get_nic('mx').get_ip_and_mask()[0]
             if str(ip) not in xrvr_ips_from_vtc:
                 raise RuntimeError('{0} is not detected by {1}'.format(xrvr, self))
         return xrvr_nodes
@@ -125,9 +124,6 @@ class Vtc(Server):
             s.close()
         return r
 
-    def json_api_get_network_inventory(self):
-        return self.json_api_get('rs/ncs/query/networkInventory')
-
     def restart_dl_server(self):
         return map(lambda xrvr: xrvr.restart_dl_server(), self.lab().get_nodes_by_class(Xrvr))
 
@@ -143,12 +139,8 @@ class Vtc(Server):
     def show_uuid_servers(self):
         pass  # ncs_cli -u admin show configuration cisco-vts uuid-servers
 
-    def disrupt(self, start_or_stop):
+    def disrupt(self, start_or_stop, what_to_disrupt):
         pass  # TODO: implement actual disruptor when devs ready
-
-    def actuate(self):
-        self.check_xrvr()
-        self.check_vtfs()
 
     def get_overlay_networks(self, name='admin'):
         return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + name)

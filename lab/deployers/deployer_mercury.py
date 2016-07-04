@@ -117,6 +117,16 @@ class DeployerMercury(Deployer):
         cloud = self.deploy_cloud(list_of_servers=list_of_servers)
         return cloud.verify_cloud()
 
+    def configure_nat(self):
+        pass
+# sudo sysctl -w net.ipv4.ip_forward=1
+#sudo /sbin/ip address add 111.111.111.1/24 dev br_mgmt
+##sudo /sbin/iptables --flush
+##sudo /sbin/iptables --table nat --flush
+#sudo /sbin/iptables --delete-chain
+#sudo /sbin/iptables --table nat --append POSTROUTING --out-interface br_api -j MASQUERADE
+#sudo /sbin/iptables --append FORWARD --in-interface br_mgmt -j ACCEPT
+
 # [root@g7-2-bld ~]# iptables -S
 # -P INPUT ACCEPT
 # -P FORWARD ACCEPT
