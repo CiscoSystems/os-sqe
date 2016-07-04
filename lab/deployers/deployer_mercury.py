@@ -36,7 +36,6 @@ class DeployerMercury(Deployer):
         else:
             # build_node.register_rhel(self._rhel_creds_source)
             # build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
-            build_node.run('rm -rf mercury installer* /var/log/mercury/*')
 
             tar_url = self._installer_source + '/mercury-installer.tar.gz'
             checksum_url = tar_url + '-checksum.txt'
@@ -46,10 +45,11 @@ class DeployerMercury(Deployer):
             ans = build_node.run('tar xzvf {}'.format(tar_path))
             installer_dir = ans.split('\r\n')[-1].split('/')[1]
 
+            build_node.run(command='rm -rf mercury')  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
             repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
             build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
             build_node.run(command='./bootstrap.sh -T {}'.format(installer_dir[-4:]), in_directory=repo_dir + '/internal')
-            build_node.run(command='./unbootstrap.sh -y', in_directory=repo_dir + '/installer')
+            build_node.run(command='./unbootstrap.sh -y', in_directory=repo_dir + '/installer', warn_only=True)
             kernel_version = build_node.run('uname -r')
             if kernel_version != '3.10.0-327.18.2.el7.x86_64':
                 build_node.reboot()
