@@ -8,7 +8,9 @@ class VtsMonitor(Worker):
         from lab.vts_classes.vtc import Vtc
 
         lab = self._cloud.mediator.lab()
-        self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else lab.get_nodes_by_class(Vtc)[0]
+        self._vtc = Vtc(node_id='Vtc{}'.format(self._ip), role='vtc', lab=None, hostname='NoDefined') if self._ip else lab.get_nodes_by_class(Vtc)[0]
+        if self._ip:
+            self._vtc.set_oob_creds(ip=self._ip, username=self._username, password=self._password)
         self._vtfs = self._vtc.vtc_get_vtfs()
         self._xrvrs = self._vtc.vtc_get_xrvrs()
 
