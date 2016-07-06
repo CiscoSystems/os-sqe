@@ -9,7 +9,7 @@
   how-many-networks: 1
   how-many-servers: 3
 
-- class: lab.disruptor.vts_disruptor.VtsDisruptor
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
   node-to-disrupt: passive-vtc
   method-to-disrupt: isolate-from-management

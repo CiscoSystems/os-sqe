@@ -97,7 +97,7 @@ def ha(lab, test_regex, do_not_clean=False, is_tims=False):
                 f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab_name, lab_name))
             f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: "%s"}}\n' % (10*i + 1,  lab_name, lab_name, test))
 
-    run_results = run(config_path=run_config_yaml)
+    run_results = run(config_path='artifacts/' + run_config_yaml)
 
     if 'pyats' in os.getenv('PATH'):
         results = {x.split('-')[-1].strip('.yaml'): {'status': False, 'n_exceptions': 2} for x in tests}
