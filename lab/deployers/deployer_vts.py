@@ -117,6 +117,7 @@ class DeployerVts(Deployer):
             vts_host.run('yum groupinstall "Virtualization Platform" -y')
             vts_host.run('yum install genisoimage openvswitch qemu-kvm expect -y')
             vts_host.run('subscription-manager unregister')
+            vts_host.run('subscription-manager clean')
             vts_host.run('wget http://172.29.173.233/redhat/sshpass-1.05-1.el7.rf.x86_64.rpm')
             vts_host.run(command='rpm -ivh sshpass-1.05-1.el7.rf.x86_64.rpm', warn_only=True)
             vts_host.run(command='rm -f sshpass-1.05-1.el7.rf.x86_64.rpm')
