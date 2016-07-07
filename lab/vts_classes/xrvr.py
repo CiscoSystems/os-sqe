@@ -161,3 +161,18 @@ expect "CPU0:XRVR"
 
     def restart_dl_server(self):
         return self.cmd('sudo crm resource restart dl_server', is_xrvr=False)
+
+    def xrnc_get_interfaces_config(self):
+        import re
+        interfaces_text = self.cmd('cat /etc/network/interfaces', is_xrvr=False)
+
+        config = {}
+        interface_name = ''
+        for line in interfaces_text.split('\r\n'):
+            sr = re.search('iface (?P<name>.*?) inet', line)
+            if sr:
+                interface_name = sr.group('name')
+                config[interface_name] = ''
+            if interface_name:
+                config[interface_name] += line + '\r\n'
+        return config
