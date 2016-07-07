@@ -6,12 +6,14 @@ class Vtf(Server):
         super(Vtf, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
         self._expect_commands = {}
         self._proxy_to_run = None
+        self._vtf_container_name = None
 
     def __repr__(self):
         return u'{0} proxy {1}'.format(self.get_id(), self._proxy_to_run)
 
     def set_proxy(self, proxy):
         self._proxy_to_run = proxy
+        self._vtf_container_name = 'neutron_vtf_4388'  # TODO: parametrize build number
 
     # noinspection PyMethodOverriding
     def cmd(self, cmd):
@@ -30,13 +32,13 @@ class Vtf(Server):
         file_name = 'expect-{}-{}'.format(self.get_id(), cmd.replace(' ', '-'))
         tmpl = '''
 log_user 0
-spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip} in_container telnet 0 5002
+spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t {u}@{ip} docker exec -it {c} telnet 0 5002
 expect "vpp#"
 send "{cmd}\r"
 log_user 1
 send "quit\r"
 expect eof
-'''.format(p=password, u=username, ip=ip, cmd=cmd)
+'''.format(p=password, u=username, ip=ip, cmd=cmd, c=self._vtf_container_name)
         self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
         self._expect_commands[cmd] = file_name
 
