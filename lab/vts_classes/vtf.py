@@ -2,11 +2,9 @@ from lab.server import Server
 
 
 class Vtf(Server):
-    COMMANDS = ['show vxlan tunnel', 'show version', 'show ip fib', 'show l2fib verbose', 'show br', 'show br 5000 detail' 'trace add dpdk-input 100']  # supported- expect files are pre-created
-
     def __init__(self, node_id, role, lab, hostname):
         super(Vtf, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
-        self._commands = {cmd: '{name}-{cmd}-expect'.format(cmd='-'.join(cmd.split()), name=self.get_id()) for cmd in self.COMMANDS}
+        self._expect_commands = {}
         self._proxy_to_run = None
 
     def __repr__(self):
@@ -15,50 +13,50 @@ class Vtf(Server):
     def set_proxy(self, proxy):
         self._proxy_to_run = proxy
 
-    def cmd(self, cmd):  # this one needs to run via telnet on vtf host
+    # noinspection PyMethodOverriding
+    def cmd(self, cmd):
+        from lab.vts_classes.vtc import Vtc
+
         if not self._proxy_to_run:
-            raise RuntimeError('{0} needs to have proxy server (usually VTC)'.format(self))
-        ans = self._proxy_to_run.run(command='expect {0}'.format(self._commands[cmd]))
-        return ans.split('\n')[3:-1]
+            self.lab().get_nodes_by_class(Vtc)[-1].vtc_get_vtfs()
 
-    def run(self, command, in_directory='.', warn_only=False):  # this one imply runs the command on vtf host (without telnet)
-        if not self._proxy_to_run:
-            raise RuntimeError('{0} needs to have proxy server (usually VTC)'.format(self))
-        ip, username, password = self.get_ssh()
-        return self._proxy_to_run.run(command='sshpass -p {p} ssh {u}@{ip} '.format(p=password, u=username, ip=ip) + command)
+        if cmd not in self._expect_commands:
+            self.create_expect_command_file(cmd=cmd)
+        ans = self._proxy_to_run.run(command='expect {0}'.format(self._expect_commands[cmd]))
+        return ans
 
-    def show_vxlan_tunnel(self):
-        return self.cmd('show vxlan tunnel')
-
-    def show_version(self):
-        return self.cmd('show version')
-
-    def show_ip_fib(self):
-        return self.cmd('show ip fib')
-
-    def show_l2fib(self):
-        return self.cmd('show l2fib verbose')
-
-    def show_connections_xrvr_vtf(self):
-        return self.run('netstat -ant |grep 21345')
-
-    def trace(self):
-        return self.run('trace add dpdk-input 100')
-
-    def actuate(self):
-        ip, username, password = self.get_ssh()
-        for cmd, file_name in self._commands.iteritems():
-            tmpl = '''
+    def create_expect_command_file(self, cmd):
+        ip, username, password = self.get_oob()
+        file_name = 'expect-{}-{}'.format(self.get_id(), cmd.replace(' ', '-'))
+        tmpl = '''
 log_user 0
-spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip} telnet 0 5002
+spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip} in_container telnet 0 5002
 expect "vpp#"
 send "{cmd}\r"
 log_user 1
 send "quit\r"
 expect eof
 '''.format(p=password, u=username, ip=ip, cmd=cmd)
-            self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
-        self.cmd('show version')
+        self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
+        self._expect_commands[cmd] = file_name
+
+    def vtf_show_vxlan_tunnel(self):
+        return self.cmd('show vxlan tunnel')
+
+    def vtf_show_version(self):
+        return self.cmd('show version')
+
+    def vtf_show_ip_fib(self):
+        return self.cmd('show ip fib')
+
+    def vtf_show_l2fib(self):
+        return self.cmd('show l2fib verbose')
+
+    def vtf_show_connections_xrvr_vtf(self):
+        return self.run('netstat -ant |grep 21345')
+
+    def vtf_trace(self):
+        return self.run('trace add dpdk-input 100')
 
     def get_compute_node(self):
         for w in self.get_all_wires():
@@ -85,3 +83,6 @@ expect eof
                                          username=ssh_username, password=ssh_password, compute_hostname=compute_hostname)
         net_part = net_part_tmpl.format(vlan=vlan)
         return config_body, net_part
+
+    def vtf_show_int(self):
+        return self.cmd('show int')

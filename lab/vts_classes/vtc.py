@@ -76,13 +76,14 @@ class Vtc(Server):
                 return vtf
 
     def vtc_get_vtfs(self):
+        vtf_host_last = self.lab().get_nodes_by_class(VtsHost)[-1]
         ans = self.vtc_get_call(resource='/api/running/cisco-vts')
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
         vtf_nodes = self.lab().get_nodes_by_class(Vtf)
         for vtf in vtf_nodes:
-            ip = vtf.get_nic('t').get_ip_and_amsk()[0]
-            if str(ip) not in vtf_ips_from_vtc:
-                raise RuntimeError('{0} is not detected by {1}'.format(vtf, self))
+            _, username, password = vtf.get_oob()
+            vtf.set_oob_creds(ip=vtf_ips_from_vtc.pop(0), username=username, password=password)
+            vtf.set_proxy(proxy=vtf_host_last)
         return vtf_nodes
 
     def vtc_get_xrvrs(self):
