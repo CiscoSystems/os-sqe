@@ -1,0 +1,15 @@
+---
+
+- add_host:
+    name: "{{ inventory_hostname  }}-vtc"
+    ansible_ssh_host: "{{ vtc_ip }}"
+    ansible_ssh_user: "{{ user }}"
+    ansible_ssh_pass: "{{ password }}"
+    groups: vtc
+
+- add_host:
+    name: "{{ inventory_hostname  }}-xrnc"
+    ansible_ssh_host: "{{ xrnc_mgmt_ip }}"
+    ansible_ssh_user: "cisco"
+    ansible_ssh_pass: "cisco123"
+    groups: xrnc
