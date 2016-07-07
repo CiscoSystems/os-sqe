@@ -1,0 +1,6 @@
+* Create virtualenv if needed
+* Install requirements listed in requirements.txt
+* Create config file for the tests. Use example_tests_config.cfg as a template
+* Set enviiroment variable VTS_TEST_CONFIG to location of your tests config file
+* Run tests: nosetests -v --with-xunit
+* Find results in xml file in working directory
