@@ -1,7 +1,8 @@
 ---
-# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr97c
-# In this test scenario we verify the behavior to the system when the active VTC fails and recovers.
-# Active VTC VM is shut down or isolated from the network.
+# Project: Tcbr2p
+# Id: Tcbr97c
+# Title=Fail and Recover active VTC
+# Description=In this test scenario we verify the behavior to the system when the active VTC fails and recovers. Active VTC VM is shut down or isolated from the network.
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2
@@ -14,6 +15,7 @@
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
   node-to-disrupt: active-vtc
+  method-to-disrupt: vm-shutdown
   how-many-times: 2
   downtime: 100
   uptime: 20

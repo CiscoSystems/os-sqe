@@ -1,5 +1,9 @@
 ---
-# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr557c ShortDesription=Isolate the redundant VTC VM from the API network.
+# Project: Tcbr2p
+# Title: Isolate the redundant VTC VM from the API network
+# ID: Tcbr557c
+# Description: In this test case redundant VTC VM will be isolated from the management network, but NOT from management network.
+
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2

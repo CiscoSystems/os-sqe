@@ -1,5 +1,8 @@
 ---
-# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr555c ShortDesription=Isolate the redundant VTC VM from the management network.
+# ProjectId=Tcbr2p
+# Title: Isolate the redundant VTC VM from the management network.
+# ID: Tcbr555c
+# Description:	In this test case redundant VTC VM will be isolated from the management network, but NOT from API network
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2
@@ -12,7 +15,7 @@
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
   node-to-disrupt: passive-vtc
-  method-to-disrupt: isolate-from-management
+  method-to-disrupt: isolate-from-mx
   how-many-times: 2
   downtime: 100
   uptime: 20

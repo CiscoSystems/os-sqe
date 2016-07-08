@@ -1,5 +1,8 @@
 ---
-# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr551c ShortDesription=Active DL VM is shut down or isolated from the network
+# Project: Tcbr2p
+# ID: Tcbr551c
+# Title: Fail and recovery active DL VM
+# Desription: Active DL VM is shut down or isolated from the network
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2
@@ -11,8 +14,8 @@
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
-  node-to-disrupt: active-xrvr
+  node-to-disrupt: active-dl
+  method-to-disrupt: vm-shutdown
   how-many-times: 2
   downtime: 100
   uptime: 20
-

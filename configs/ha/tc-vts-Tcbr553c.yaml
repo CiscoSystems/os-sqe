@@ -1,7 +1,10 @@
 ---
-# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr553c ShortDesription=Shut down VTC VM on node 1 and DL VM on node 2
+# Project: Tcbr2p
+# ID: Tcbr553c
+# Title: Shut down VTC VM  and DL VM on different nodes
+# Desription:
 - class: lab.monitors.vts_monitor.VtsMonitor
-  duration: 200
+  duration: 2000
   period: 2
 
 - class: lab.scenarios.vts_scenario.VtsScenario
@@ -12,13 +15,15 @@
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
   node-to-disrupt: active-vtc
+  method-to-disrupt: vm-shutdown
   how-many-times: 2
   downtime: 100
   uptime: 20
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
-  delay: 20
-  node-to-disrupt: passive-xrvr
+  delay: 30
+  node-to-disrupt: passive-dl
+  method-to-disrupt: vm-shutdown
   how-many-times: 2
   downtime: 100
   uptime: 20

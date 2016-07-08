@@ -1,5 +1,8 @@
 ---
-# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr556c ShortDesription=Isolate the active VTC VM from the API network (but not management)
+# Project: Tcbr2p
+# Title: Isolate the active VTC VM from the API network
+# ID:	Tcbr556c
+# Description: In this test case active VTC VM will be isolated from the management network, but NOT from management network.
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2

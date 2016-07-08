@@ -1,5 +1,8 @@
 ---
-# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr102c ShortDesription=One of the two VTS control nodes are rebooted - repeat for other node
+# Project: Tcbr2p
+# Id: Tcbr102c
+# Title: Fail and Recover OpenStack Controller Node
+# Desription: In this test scenario we verify the behavior of the system when one of the OpenStack Controller fails and recovers.
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2
@@ -9,7 +12,7 @@
   how-many-networks: 1
   how-many-servers: 3
 
-- class: lab.disruptors.vts_disruptor.VtsDisruptor
+- class: lab.disruptors.cloud_disruptor.VtsDisruptor
   delay: 20
   node-to-disrupt: passive-xrvr
   how-many-times: 2

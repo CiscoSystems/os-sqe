@@ -1,5 +1,6 @@
 ---
-# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr552c ShortDesription=Redundant DL VM is shut down or isolated from the network
+# TimsProjectId=Tcbr2p TimsTestCaseId=Tcbr552c
+# Title=Fail and recovery redudant DL VM Desription=Redundant DL VM is shut down or isolated from the network
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2
@@ -11,7 +12,8 @@
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
-  node-to-disrupt: passive-xrvr
+  node-to-disrupt: passive-dl
+  method-to-disrupt: vm-shutdown
   how-many-times: 2
   downtime: 100
   uptime: 20
