@@ -140,8 +140,13 @@ class Vtc(Server):
     def show_uuid_servers(self):
         pass  # ncs_cli -u admin show configuration cisco-vts uuid-servers
 
-    def disrupt(self, start_or_stop, what_to_disrupt):
-        pass  # TODO: implement actual disruptor when devs ready
+    def disrupt(self, start_or_stop, method_to_disrupt):
+        if method_to_disrupt == 'vm-shutdown':
+            self.run(command='virsh {} vtc'.format(start_or_stop))
+        elif method_to_disrupt == 'isolate-from-mx':
+            self.run('ip l s dev vtc-mx-port {}'.format('down' if start_or_stop == 'start' else 'up'))
+        elif method_to_disrupt == 'isolate-from-api':
+            self.run('ip l s dev vtc-a-port {}'.format('down' if start_or_stop == 'start' else 'up'))
 
     def get_overlay_networks(self, name='admin'):
         return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + name)
@@ -302,6 +307,10 @@ class Vtc(Server):
         d = self.vtc_get_call(resource='/api/operational/ha-cluster/members')  # curl -v -k -X GET -u <vtc-username>:<vtc-password> https://<VTC_IP>:8888/api/operational/ha-cluster/members
         return d['collection']['tcm:members']
 
+    def vtc_get_vfg(self):
+        d = self.vtc_get_call(resource='/api/operational/ha-cluster/members')  # curl -v -k -X GET -u <vtc-username>:<vtc-password> https://<VTC_IP>:8888/api/operational/ha-cluster/members
+        return d['collection']['tcm:members']
+
     def check_cluster_is_formed(self):
         nodes = self.lab().get_nodes_by_class(Vtc)
         reported_ips = [x['address'] for x in self.vtc_get_cluster_info()]
@@ -326,6 +335,11 @@ class Vtc(Server):
 
     def vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
         pass
+
+    def test_vts_asnity(self):
+        from fabric.api import local
+
+        local('')
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
