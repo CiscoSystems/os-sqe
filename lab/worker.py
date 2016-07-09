@@ -40,16 +40,19 @@ class Worker(object):
         time.sleep(delay)
 
         self._log.info('status=Start arguments={0}'.format(self._kwargs))
+        accumulated_results = {}
         try:
             if duration:
                 start_time = time.time()
                 end_time = start_time + duration
                 while time.time() < end_time:
-                    self.loop()
+                    results = self.loop()
+                    accumulated_results.update(results)
                     time.sleep(period)
             elif n_repeats:
                 for _ in range(n_repeats):
-                    self.loop()
+                    results = self.loop()
+                    accumulated_results.update(results)
                     time.sleep(period)
         except:
             self._log.exception('EXCEPTION')
@@ -60,4 +63,4 @@ class Worker(object):
 
     @abc.abstractmethod
     def loop(self):
-        pass
+        return {}

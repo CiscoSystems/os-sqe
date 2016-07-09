@@ -9,7 +9,7 @@ class Vtf(Server):
         self._vtf_container_name = None
 
     def __repr__(self):
-        return u'{0} proxy {1}'.format(self.get_id(), self._proxy_to_run)
+        return u'{id} ({ip}) proxy {p}'.format(id=self.get_id(), ip=self._oob_ip, p=self._proxy_to_run)
 
     def set_proxy(self, proxy):
         self._proxy_to_run = proxy

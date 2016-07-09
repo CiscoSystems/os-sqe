@@ -15,7 +15,7 @@ class LabNode(object):
         self._role = role  # which role this node play, possible roles are defined in Laboratory
         self._n = lab.count_node(role)  # number of this node in a list of nodes for this role
         self._hostname = hostname  # usually it's actual hostname as reported by operation system of the node
-        self._ssh_username, self._ssh_password = 'Default in LabNode.__init__()', 'Default in LabNode.__init__()'
+        self._ssh_ip, self._ssh_username, self._ssh_password = None, 'Default in LabNode.__init__()', 'Default in LabNode.__init__()'
         self._oob_ip, self._oob_username, self._oob_password = 'Default in LabNode.__init__()', 'Default in LabNode.__init__()', 'Default in LabNode.__init__()'
         self._nics = dict()  # list of NICs
         self._ru, self._model = 'Default in LabNod.__init()', 'Default in LabNod.__init()'
@@ -46,8 +46,10 @@ class LabNode(object):
         return self.get_ssh_ip(), self._ssh_username, self._ssh_password
 
     def get_ssh_ip(self):
-        ssh_nic = filter(lambda nic: nic.is_ssh(), self.get_nics().values())
-        return ssh_nic[0].get_ip_and_mask()[0] if ssh_nic else 'Not yet assigned'
+        if not self._ssh_ip:
+            ssh_nic = filter(lambda nic: nic.is_ssh(), self.get_nics().values())
+            self._ssh_ip = ssh_nic[0].get_ip_and_mask()[0] if ssh_nic else 'Not yet assigned'
+        return self._ssh_ip
 
     def get_oob(self):
         return self._oob_ip, self._oob_username, self._oob_password

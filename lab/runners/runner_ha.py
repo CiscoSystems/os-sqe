@@ -2,7 +2,8 @@ from lab.runners import Runner
 
 
 def starter(worker):
-    worker.start()
+    worker.setup()
+    return worker.start()
 
 
 class RunnerHA(Runner):
@@ -33,6 +34,7 @@ class RunnerHA(Runner):
             raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self._cloud_name))
 
         workers_to_run = []
+        path_to_module = 'Before reading task body'
         for arguments in self._task_body:
             try:
                 path_to_module, class_name = arguments['class'].rsplit('.', 1)
@@ -44,9 +46,8 @@ class RunnerHA(Runner):
             except ImportError:
                 raise ValueError('{0} failed to import'.format(path_to_module))
 
-        map(lambda worker: worker.setup(), workers_to_run)
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
 
         pool = multiprocessing.Pool(len(workers_to_run))
 
-        pool.map(starter, workers_to_run)
+        return pool.map(starter, workers_to_run)
