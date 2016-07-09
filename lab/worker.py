@@ -36,7 +36,7 @@ class Worker(object):
         period = self._kwargs.get('period', 0)
 
         if delay:
-            self._log.info('start by {0} secs...'.format(delay))
+            self._log.info('delay by {0} secs...'.format(delay))
         time.sleep(delay)
 
         self._log.info('status=Start arguments={0}'.format(self._kwargs))

@@ -7,8 +7,8 @@ class VtsDisruptor(Worker):
     def setup(self):
         from lab.vts_classes.vtc import Vtc
 
-        possible_nodes = ['active-vtc', 'passive-vtc', 'active-dl', 'passive-dl']
-        possible_methods = ['isolate-from-management', 'isolate-from-api', 'reboot-vm', 'reboot-host']
+        possible_nodes = ['master-vtc', 'slave-vtc', 'active-dl', 'passive-dl']
+        possible_methods = ['isolate-from-mx', 'isolate-from-api', 'vm-shutdown']
         try:
             self._downtime = self._kwargs['downtime']
             self._uptime = self._kwargs['uptime']
@@ -26,9 +26,10 @@ class VtsDisruptor(Worker):
             self._vtc.set_oob_creds(ip=self._ip, username=self._username, password=self._password)
         if 'vtc' in self._node_to_disrupt:
             cluster = self._vtc.vtc_get_cluster_info()
-            active_passive = self._node_to_disrupt.split('-')[0]
+            cluster = {x['role']: x['address'] for x in cluster}
+            master_slave = self._node_to_disrupt.split('-')[0]
             for vtc in lab.get_nodes_by_class(Vtc):
-                if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[active_passive]['address']:
+                if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[master_slave]['address']:
                     self._node_to_disrupt = vtc
                     break
         if 'dl' in self._node_to_disrupt:
@@ -39,6 +40,8 @@ class VtsDisruptor(Worker):
         import time
 
         self._log.info('host={}; status=going-off {}'.format(self._vtc, self._node_to_disrupt.disrupt(start_or_stop='start', method_to_disrupt=self._method_to_disrupt)))
+        self._log.info('Sleeping for {} secs downtime'.format(self._downtime))
         time.sleep(self._downtime)
         self._log.info('host={}; status=going-on {}'.format(self._vtc, self._node_to_disrupt.disrupt(start_or_stop='stop', method_to_disrupt=self._method_to_disrupt)))
+        self._log.info('Sleeping for {} secs uptime'.format(self._uptime))
         time.sleep(self._uptime)

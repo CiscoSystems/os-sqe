@@ -1,6 +1,6 @@
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
-  node-to-disrupt: active-vtc
+  node-to-disrupt: master-vtc
   method-to-disrupt: vm-shutdown
   how-many-times: 2
   downtime: 100
