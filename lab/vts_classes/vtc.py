@@ -86,6 +86,10 @@ class Vtc(Server):
             vtf.set_proxy(proxy=vtf_host_last)
         return vtf_nodes
 
+    def vtc_get_net_inventory(self):
+        ans = self.vtc_get_call(resource='/api/running/cisco-vts/devices')
+        return ans
+
     def vtc_get_xrvrs(self):
         xrvr_nodes = self.lab().get_nodes_by_class(Xrvr)
         devices = self.vtc_get_call(resource='/api/running/devices/device')

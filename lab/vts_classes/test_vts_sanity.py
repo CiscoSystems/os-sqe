@@ -43,12 +43,12 @@ class TestVtsSanity(unittest.TestCase):
             proc_id = xrvr.cmd('pgrep -fdl_server.py', is_xrvr=False)
             self.assertNotEqual(proc_id, '', 'dl_server.py is not running on {}'.format(xrvr))
 
-    def vni_pool_exists_in_vtc(self):
+    def test_vni_pool_exists_in_vtc(self):
         vni_pools = self._vtc.vtc_get_vni_pools()
         self.assertNotEqual(len(vni_pools), 0, 'VNI Pool is not specified in VTC')
 
     def test_xrvr_bgp_params(self):
-        net_inventory = self._vtc.vtc_get_network_inventory()
+        net_inventory = self._vtc.vtc_get_net_inventory()
         self.assertNotEqual(len(net_inventory), 0, 'Network inventory is empty')
 
         device_xrvr_exists = False

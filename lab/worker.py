@@ -40,7 +40,7 @@ class Worker(object):
         time.sleep(delay)
 
         self._log.info('status=Start arguments={0}'.format(self._kwargs))
-        accumulated_results = {}
+        accumulated_results = {'status': True, 'n_exceptions': 0}
         try:
             if duration:
                 start_time = time.time()
@@ -55,7 +55,10 @@ class Worker(object):
                     accumulated_results.update(results)
                     time.sleep(period)
         except:
+            accumulated_results['n_exceptions'] += 1
             self._log.exception('EXCEPTION')
+
+        return accumulated_results
 
     @abc.abstractmethod
     def setup(self, **kwargs):
