@@ -22,7 +22,7 @@ def repeat_until_not_false(n_repetitions, time_between_repetitions):
     def decorator(function):
         @functools.wraps(function)
         def decorated_func(*args, **kwargs):
-            for i in xrange(n_repetitions):
+            for i in range(n_repetitions):
                 result = function(*args, **kwargs)
                 if result:
                     return result

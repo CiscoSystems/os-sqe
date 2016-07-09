@@ -40,25 +40,24 @@ class Worker(object):
         time.sleep(delay)
 
         self._log.info('status=Start arguments={0}'.format(self._kwargs))
-        accumulated_results = {'status': True, 'n_exceptions': 0}
+        results = {'name': str(self), 'n_exceptions': 0, 'is_success': True}
         try:
             if duration:
                 start_time = time.time()
                 end_time = start_time + duration
                 while time.time() < end_time:
-                    results = self.loop()
-                    accumulated_results.update(results)
+                    self.loop()
                     time.sleep(period)
             elif n_repeats:
                 for _ in range(n_repeats):
-                    results = self.loop()
-                    accumulated_results.update(results)
+                    self.loop()
                     time.sleep(period)
         except:
-            accumulated_results['n_exceptions'] += 1
+            results['n_exceptions'] += 1
+            results['is_success'] = False
             self._log.exception('EXCEPTION')
 
-        return accumulated_results
+        return results
 
     @abc.abstractmethod
     def setup(self, **kwargs):

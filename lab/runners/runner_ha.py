@@ -2,6 +2,9 @@ from lab.runners import Runner
 
 
 def starter(worker):
+    from time import sleep
+
+    sleep(5)
     worker.setup()
     return worker.start()
 
@@ -50,4 +53,8 @@ class RunnerHA(Runner):
 
         pool = multiprocessing.Pool(len(workers_to_run))
 
-        return pool.map(starter, workers_to_run)
+        results = pool.map(starter, workers_to_run)  # a list of {'name': 'monitor m scenario or disruptor name', 'success': True or False, 'n_exceptions': 10}
+        is_success = all(map(lambda x: x['is_success'], results))
+        combined_results = {x['name']: {'is_success': x['is_success'], 'n_exceptions': x['n_exceptions']} for x in results}
+        combined_results['is_success'] = is_success
+        return combined_results

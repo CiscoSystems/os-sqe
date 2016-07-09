@@ -89,6 +89,9 @@ def ha(lab, test_regex, do_not_clean=False, is_tims=False):
     available_tc = with_config.ls_configs(directory='ha')
     tests = sorted(filter(lambda x: test_regex in x, available_tc))
 
+    if not tests:
+        raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
+
     run_config_yaml = '{lab}-ha-{regex}.yaml'.format(lab=lab_name, regex=test_regex)
     with with_config.open_artifact(run_config_yaml, 'w') as f:
         f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab))

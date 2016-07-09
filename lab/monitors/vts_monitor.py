@@ -21,4 +21,4 @@ class VtsMonitor(Worker):
         for xrvr in self._xrvrs:
             self._log.info('host={0}; vxlan={1}'.format(xrvr, xrvr.show_running_config()))
 
-        return {'status': True, 'n_exceptions': 0}
+        return {'is_success': True, 'n_exceptions': 0}
