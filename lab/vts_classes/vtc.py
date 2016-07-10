@@ -8,11 +8,15 @@ class Vtc(Server):
     def __init__(self, node_id, role, lab, hostname):
         super(Server, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
+        self._is_api_via_vip = True
 
     def __repr__(self):
         ssh_ip, ssh_u, ssh_p = self.get_ssh()
         oob_ip, oob_u, oob_p = self.get_oob()
         return u'{l} {n} | sshpass -p {p1} ssh {u1}@{ip1}  https://{ip1} with {u2}/{p2}'.format(l=self.lab(), n=self.get_id(), ip1=ssh_ip, p1=ssh_p, u1=ssh_u, ip2=oob_ip, p2=oob_p, u2=oob_u)
+
+    def disable_vip(self):
+        self._is_api_via_vip = False
 
     def _rest_api(self, resource, data=None, params=None, type_of_call='get'):
         import requests
@@ -24,7 +28,7 @@ class Vtc(Server):
 
         resource = resource.strip('/')
         _, username, password = self.get_oob()
-        vip = self.get_vtc_vips()[0]
+        vip = self.get_vtc_vips()[0] if self._is_api_via_vip else self.get_ssh_ip()
         url = 'https://{ip}:{port}/{resource}'.format(ip=vip, port=8888, resource=resource)
         auth = (username, password)
         headers = {'Accept': 'application/vnd.yang.data+json' if 'cisco' in resource else 'application/vnd.yang.collection+json'}
@@ -47,8 +51,9 @@ class Vtc(Server):
                 return ans
         except AttributeError:
             self.log(message='Possible methods get, post, patch', level='exception')
-        except:
+        except requests.ConnectTimeout:
             self.log(message='Url={url} auth={auth}, headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params), level='exception')
+            raise
 
     def vtc_get_call(self, resource, params=None):
         return self._rest_api(resource=resource, params=params, type_of_call='get')
@@ -141,16 +146,14 @@ class Vtc(Server):
     def show_vxlan_tunnel(self):
         return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_nodes_by_class(Vtf))
 
-    def show_uuid_servers(self):
-        pass  # ncs_cli -u admin show configuration cisco-vts uuid-servers
-
     def disrupt(self, start_or_stop, method_to_disrupt):
+        vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
         if method_to_disrupt == 'vm-shutdown':
-            self.run(command='virsh {} vtc'.format(start_or_stop))
+            vts_host.run(command='virsh {} vtc'.format('suspend' if start_or_stop == 'start' else 'resume'))
         elif method_to_disrupt == 'isolate-from-mx':
-            self.run('ip l s dev eth1 {}'.format('down' if start_or_stop == 'start' else 'up'))
+            vts_host.run('ip l s dev vtc-mx-port {}'.format('down' if start_or_stop == 'start' else 'up'))
         elif method_to_disrupt == 'isolate-from-api':
-            self.run('ip l s dev eth0 {}'.format('down' if start_or_stop == 'start' else 'up'))
+            vts_host.run('ip l s dev vtc-a-port {}'.format('down' if start_or_stop == 'start' else 'up'))
 
     def get_overlay_networks(self, name='admin'):
         return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + name)
@@ -296,11 +299,11 @@ class Vtc(Server):
             user = d['tailf-aaa:user']
             user.pop('operations')
             user['password'] = password
-            a1 = self.vtc_patch_call(resource='/api/running/aaa/authentication/users/user', data=json.dumps({'user': user}))
+            self.vtc_patch_call(resource='/api/running/aaa/authentication/users/user', data=json.dumps({'user': user}))
         self.set_oob_creds(ip=self.get_ssh_ip(), username=username, password=password)
 
     def vtc_get_os_network(self):
-        ans = self.vtc_get_call(resource='/api/running/openstack/network')  # ans.text == '' or ans.txt == '????'
+        self.vtc_get_call(resource='/api/running/openstack/network')  # ans.text == '' or ans.txt == '????'
         ans = self.vtc_get_call(resource='/api/running/openstack/subnet')
         return ans
 
@@ -310,6 +313,18 @@ class Vtc(Server):
     def vtc_get_cluster_info(self):
         d = self.vtc_get_call(resource='/api/operational/ha-cluster/members')  # curl -v -k -X GET -u <vtc-username>:<vtc-password> https://<VTC_IP>:8888/api/operational/ha-cluster/members
         return d['collection']['tcm:members']
+
+    def vtc_ncs_show_ha_cluster(self):
+        d = self.run('ncs_cli << EOF\nshow ha-cluster\nexit\nEOF')
+        return d
+
+    def vtc_ncs_show_openstack_port(self):
+        d = self.run('ncs_cli << EOF\nshow openstack port\nexit\nEOF')
+        return d
+
+    def vtc_ncs_show_uuid_servers(self):
+        d = self.run('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
+        return d
 
     def vtc_get_vfg(self):
         d = self.vtc_get_call(resource='/api/operational/ha-cluster/members')  # curl -v -k -X GET -u <vtc-username>:<vtc-password> https://<VTC_IP>:8888/api/operational/ha-cluster/members
@@ -340,10 +355,11 @@ class Vtc(Server):
     def vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
         pass
 
-    def test_vts_asnity(self):
+    @staticmethod
+    def test_vts_sanity():
         from fabric.api import local
 
-        local('')
+        local('python -m unittest lab.vts_classes.test_vts.sanity')
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer

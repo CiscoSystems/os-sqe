@@ -190,9 +190,7 @@ class DeployerVts(Deployer):
         compute.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
         self._get_image_and_run_virsh(server=compute, role='vtf', iso_path=config_iso_path, net_part=net_part)
 
-        # on VTC: cat /var/log/ncs/localhost:8888.access
         # on VTC ncs_cli: configure set devices device XT{TAB} asr -- bgp[TAB] bgp-asi 23 commit
-        # on VTC ncs_cli: show running-config evpn
         # on DL ps -ef | grep dl -> then restart dl_vts_reg.py
 
     def wait_for_cloud(self, list_of_servers):

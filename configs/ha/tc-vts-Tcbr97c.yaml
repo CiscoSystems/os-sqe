@@ -3,19 +3,30 @@
 # Id: Tcbr97c
 # Title=Fail and Recover active VTC
 # Description=In this test scenario we verify the behavior to the system when the active VTC fails and recovers. Active VTC VM is shut down or isolated from the network.
-- class: lab.monitors.vts_monitor.VtsMonitor
-  duration: 200
+#- class: lab.monitors.vts_monitor.VtsMonitor
+#  duration: 200
+#  period: 2
+
+- class: lab.monitors.socker_connect_to_port_monitor.SocketConnectToPort
+  duration: 20
+  ip-port: 10.23.221.150:8888
   period: 2
 
-- class: lab.scenarios.vts_scenario.VtsScenario
-  delay: 20
-  how-many-networks: 1
-  how-many-servers: 3
+- class: lab.monitors.socker_connect_to_port_monitor.SocketConnectToPort
+  duration: 20
+  ip-port: 10.23.221.151:8888
+  period: 2
 
-- class: lab.disruptors.vts_disruptor.VtsDisruptor
-  delay: 20
-  node-to-disrupt: master-vtc
-  method-to-disrupt: vm-shutdown
-  how-many-times: 2
-  downtime: 100
-  uptime: 20
+
+#- class: lab.scenarios.vts_scenario.VtsScenario
+#  delay: 20
+#  how-many-networks: 1
+#  how-many-servers: 3
+#
+#- class: lab.disruptors.vts_disruptor.VtsDisruptor
+#  delay: 20
+#  node-to-disrupt: master-vtc
+#  method-to-disrupt: vm-shutdown
+#  how-many-times: 2
+#  downtime: 100
+#  uptime: 20
