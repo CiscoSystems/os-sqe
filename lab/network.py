@@ -1,9 +1,8 @@
-from netaddr import IPNetwork
-
-
-class Network(IPNetwork):
+class Network(object):
     def __init__(self, name, cidr, vlan, mac_pattern):
-        super(Network, self).__init__(cidr)
+        from netaddr import IPNetwork
+
+        self._net = IPNetwork(cidr)
         self._name = name
         self._vlan = vlan  # single network needs to sit on single vlan
         self._mac_pattern = mac_pattern
@@ -22,7 +21,7 @@ class Network(IPNetwork):
         return self._mac_pattern
 
     def get_gw(self):
-        return self[1]
+        return self._net[1]
 
     def is_pxe(self):
         return self._is_pxe
@@ -47,6 +46,15 @@ class Network(IPNetwork):
 
     def is_via_tor(self):
         return self._is_via_tor
+
+    def get_size(self):
+        return self._net.size
+
+    def get_ip_for_index(self, index):
+        return self._net[index]
+
+    def get_netmask(self):
+        return self._net.netmask
 
 
 class Nic(object):
@@ -88,8 +96,8 @@ class Nic(object):
 
         :return: tuple of (ip, netmask)
         """
-        ip = self._net[self._net_index] if type(self._net_index) is int else self._net_index
-        return str(ip), str(self._net.netmask)
+        ip = self._net.get_ip_for_index(self._net_index) if type(self._net_index) is int else self._net_index
+        return str(ip), str(self._net.get_netmask())
 
     def get_net(self):
         return self._net

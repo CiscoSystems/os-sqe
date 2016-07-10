@@ -78,13 +78,13 @@ class LabNode(object):
             if index in [0, 1, 2, 3, -1]:
                 raise ValueError('{}:  index={} is not possible since 0 =>  network address [1,2,3] => GW addresses -1 => broadcast address'.format(self.get_id(), index))
             try:
-                ip = net[index]
+                ip = net.get_ip_for_index(index)
             except (IndexError, ValueError):
                 raise ValueError('{}: index {} is out of bound of {}'.format(self.get_id(), index, net))
         except ValueError:
             if validators.ipv4(str(ip_or_index)):
                 try:
-                    index, ip = {x: str(net[x]) for x in range(net.size) if str(ip_or_index) in str(net[x])}.items()[0]
+                    index, ip = {x: str(net.get_ip_for_index(x)) for x in range(net.get_size()) if str(ip_or_index) in str(net.get_ip_for_index(x))}.items()[0]
                 except IndexError:
                     raise ValueError('{}: ip {} is out of bound of {}'.format(self.get_id(), ip_or_index, net))
             else:
@@ -101,7 +101,7 @@ class LabNode(object):
         return nic
 
     def _assign_default_ip_index(self, net):
-        chunk_size = (net.size - 5) / 6  # bld/director, controls, computes, vts_hosts, vtc, xrvr, vtf
+        chunk_size = (net.get_size() - 5) / 6  # bld/director, controls, computes, vts_hosts, vtc, xrvr, vtf
         
         if self.is_director():
             return 4
