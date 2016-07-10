@@ -1,0 +1,5 @@
+- class: lab.monitors.socket_connect_to_port_monitor.SocketConnectToPort
+  n_repeats: 10
+  ip-port: 10.23.221.150:8888
+  timeout: 5
+  delay: 1
