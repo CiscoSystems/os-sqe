@@ -148,9 +148,9 @@ class Vtc(Server):
         if method_to_disrupt == 'vm-shutdown':
             self.run(command='virsh {} vtc'.format(start_or_stop))
         elif method_to_disrupt == 'isolate-from-mx':
-            self.run('ip l s dev vtc-mx-port {}'.format('down' if start_or_stop == 'start' else 'up'))
+            self.run('ip l s dev eth1 {}'.format('down' if start_or_stop == 'start' else 'up'))
         elif method_to_disrupt == 'isolate-from-api':
-            self.run('ip l s dev vtc-a-port {}'.format('down' if start_or_stop == 'start' else 'up'))
+            self.run('ip l s dev eth0 {}'.format('down' if start_or_stop == 'start' else 'up'))
 
     def get_overlay_networks(self, name='admin'):
         return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + name)

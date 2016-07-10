@@ -29,10 +29,10 @@ class VtsDisruptor(Worker):
             cluster = {x['role']: x['address'] for x in cluster}
             master_slave = self._node_to_disrupt.split('-')[0]
             for vtc in lab.get_nodes_by_class(Vtc):
-                if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[master_slave]['address']:
+                if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[master_slave]:
                     self._node_to_disrupt = vtc
                     break
-        if 'dl' in self._node_to_disrupt:
+        elif 'dl' in self._node_to_disrupt:
             active_passive = self._node_to_disrupt.split('-')[0]
             self._node_to_disrupt = self._vtc.vtc_get_xrvrs()[0 if active_passive == 'active' else -1]
 

@@ -15,10 +15,4 @@ class VtsMonitor(Worker):
         self._xrvrs = self._vtc.vtc_get_xrvrs()
 
     def loop(self):
-        for vtf in self._vtfs:
-            self._log.info('host={0}; vxlan={1}'.format(vtf, vtf.vtf_show_vxlan_tunnel()))
-
-        for xrvr in self._xrvrs:
-            self._log.info('host={0}; vxlan={1}'.format(xrvr, xrvr.show_running_config()))
-
-        return {'is_success': True, 'n_exceptions': 0}
+        self._log.info('cluster={}'.format(self._vtc.vtc_get_cluster_info()))

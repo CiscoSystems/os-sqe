@@ -2,9 +2,6 @@ from lab.runners import Runner
 
 
 def starter(worker):
-    from time import sleep
-
-    sleep(5)
     worker.setup()
     return worker.start()
 
