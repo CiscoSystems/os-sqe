@@ -74,6 +74,8 @@ def create_logger(name=None):
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
     logger.addHandler(json_handler)
+
+    logging.captureWarnings(True)
     return logger
 
 os.system('rm *.log')
