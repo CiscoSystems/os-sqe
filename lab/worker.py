@@ -23,7 +23,7 @@ class Worker(object):
         import time
         from lab.logger import create_logger
 
-        self._log = create_logger(name=str(type(self)))
+        self._log = create_logger(name=str(self))
         delay = self._kwargs.get('delay', 0)
         duration = self._kwargs.get('duration')
         n_repeats = self._kwargs.get('n_repeats')

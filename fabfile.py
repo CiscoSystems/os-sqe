@@ -82,6 +82,7 @@ def ha(lab, test_regex, do_not_clean=False, is_tims=False):
     import os
     from fabric.api import local
     from lab import with_config
+    from lab.logger import lab_logger
 
     lab_path = with_config.actual_path_to_config(path=lab)
     lab_name = lab_path.rsplit('/', 1)[-1].replace('.yaml', '')
@@ -102,10 +103,10 @@ def ha(lab, test_regex, do_not_clean=False, is_tims=False):
 
     run_results = run(config_path='artifacts/' + run_config_yaml)
 
+    lab_logger.info('Results: {}'.format(run_results))
     if 'pyats' in os.getenv('PATH'):
-        results = {x.split('-')[-1].strip('.yaml'): {'status': False, 'n_exceptions': 2} for x in tests}
         pyast_template = with_config.read_config_from_file('pyats.template', 'pyats', is_as_string=True)
-        pyats_body = pyast_template.format(results)
+        pyats_body = pyast_template.format(run_results)
         with with_config.open_artifact('pyats_job.py', 'w') as f:
             f.write(pyats_body)
         # noinspection PyBroadException

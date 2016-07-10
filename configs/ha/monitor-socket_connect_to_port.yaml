@@ -1,5 +1,17 @@
 - class: lab.monitors.socket_connect_to_port_monitor.SocketConnectToPort
-  n_repeats: 10
+  duration: 20
   ip-port: 10.23.221.150:8888
+  timeout: 5
+  delay: 1
+
+- class: lab.monitors.socket_connect_to_port_monitor.SocketConnectToPort
+  duration: 20
+  ip-port: 10.23.221.151:8888
+  timeout: 5
+  delay: 1
+
+- class: lab.monitors.socket_connect_to_port_monitor.SocketConnectToPort
+  duration: 20
+  ip-port: 10.23.221.152:8888
   timeout: 5
   delay: 1

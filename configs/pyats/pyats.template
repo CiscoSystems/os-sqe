@@ -10,7 +10,7 @@ class OsSqeTest(aetest.Testcase):
 
     @aetest.test
     def run_test_case(self, test_case):
-        if tc_name_versus_status[test_case]['status']:
+        if tc_name_versus_status[test_case]['is_success']:
             self.passed('PASSED')
         else:
             self.failed('tc {{}} failed: with {{}} exceptions'.format(test_case, tc_name_versus_status[test_case]['n_exceptions']))

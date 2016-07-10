@@ -51,7 +51,12 @@ class RunnerHA(Runner):
         pool = multiprocessing.Pool(len(workers_to_run))
 
         results = pool.map(starter, workers_to_run)  # a list of {'name': 'monitor m scenario or disruptor name', 'success': True or False, 'n_exceptions': 10}
-        is_success = all(map(lambda x: x['is_success'], results))
-        combined_results = {x['name']: {'is_success': x['is_success'], 'n_exceptions': x['n_exceptions']} for x in results}
-        combined_results['is_success'] = is_success
+
+        combined_results = {'is_success': True, 'n_exceptions': 0}
+        for result in results:
+            name = result.pop('name')
+            combined_results[name] = result
+            combined_results['n_exceptions'] += result['n_exceptions']
+            if not result['is_success']:
+                combined_results['is_success'] = False
         return combined_results

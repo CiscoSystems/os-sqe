@@ -3,6 +3,9 @@ from lab.worker import Worker
 
 class SocketConnectToPort(Worker):
 
+    def __repr__(self):
+        return u'SocketConnectToPort{}:{}({}s)'.format(self._ip, self._port, self._timeout)
+
     # noinspection PyAttributeOutsideInit
     def setup(self):
 
@@ -24,4 +27,4 @@ class SocketConnectToPort(Worker):
             res = 0
         finally:
             s.close()
-        self._log.info('remote={ip}:{port} status={status} with timeout={timeout} secs'.format(port=self._port, ip=self._ip, status=res, timeout=timeout))
+        self._log.info('status={status}'.format(port=self._port, ip=self._ip, status=res, timeout=timeout))
