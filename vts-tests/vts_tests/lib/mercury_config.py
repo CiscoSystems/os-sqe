@@ -162,7 +162,7 @@ class Config(object):
         if not self._openrc:
             self._openrc = {}
             b = shell_connect.ShellConnect(self.build_node)
-            openrc_info = b.run('cat ~/openstack-configs/openrc')
+            openrc_info = b.run('cat ~/openstack-configs/openrc && echo')
             for s in openrc_info.split('\r\n'):
                 g = re.search(r'export (?P<name>\w+)=(?P<value>.*)', s)
                 self._openrc[g.group('name')] = g.group('value')
