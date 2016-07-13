@@ -27,5 +27,24 @@
 - hosts: server1-xrvr
   gather_facts: False
   connection: local
+  vars_prompt:
+    - name: "vtc_password_changed"
+      prompt: "Have you changed VTC password?"
+  vars_files:
+    - config.yaml
+  vars:
+    xrvr_loopback0_ip: "{{ xrvr_loopback0_ip }}"
+    bgp_asn: "{{ bgp_asn }}"
   tasks:
     - include: tasks/xrvr_day0.yaml
+
+- hosts: server1-vtc
+  gather_facts: False
+  vars_files:
+    - config.yaml
+  vars:
+    xrvr_name: "{{ xrvr1_vm_name }}"
+    day0_config_path: "~/day0.cfg"
+    domain_group: "my-domain"
+  tasks:
+    - include: tasks/vtc_day0.yaml

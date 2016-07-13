@@ -19,6 +19,4 @@
     ansible_ssh_host: "{{ xrnc_mgmt_ip }}"
     ansible_ssh_user: "admin"
     ansible_ssh_pass: "cisco123"
-    xrvr_loopback0_ip: "{{ xrvr_loopback0_ip }}"
-    bgp_asn: "{{ bgp_asn }}"
     groups: xrvr

@@ -22,7 +22,11 @@ mgmt_cidr:
 tenant_vlan: 
 tenant_gateway: 
 tenant_netmask: 
-tenant_cidr: 
+tenant_cidr:
+
+bgp_asn:
+vni_pool_start:
+vni_pool_end:
 
 # IP ADDRESSES
 #vtc_api_vip: 
