@@ -17,13 +17,15 @@
     xrvr_name: "{{ xrvr1_vm_name }}"
     xrvr_mgmt_ip: "{{xrvr1_mgmt_ip }}"
     xrvr_tenant_ip: "{{ xrvr1_tenant_ip }}"
+    xrvr_loopback0_ip: "{{ xrvr1_loopback0_ip }}"
   tasks:
     - include: tasks/add_vts_hosts.yaml
     - include: tasks/destroy.yaml
     - include: tasks/create_vtc.yaml
     - include: tasks/create_xrnc.yaml
 
-- hosts: xrnc
+- hosts: server1-xrvr
+  gather_facts: False
+  connection: local
   tasks:
-    - command: "/opt/cisco/package/sr/bin/setupXRNC_HA.sh 0.0.0.0"
-      sudo: yes
+    - include: tasks/xrvr_day0.yaml

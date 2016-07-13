@@ -7,10 +7,9 @@
 # create xrnc config iso on the VTC side
 - template:
     src: templates/xrnc/system.cfg
-    dest: "/opt/cisco/package/vts/bin/{{ xrnc_name }}.cfg"
+    dest: "/tmp/{{ xrnc_name }}.cfg"
   delegate_to: "{{ inventory_hostname  }}-vtc"
-  sudo: yes
-- command: "/opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc /opt/cisco/package/vts/bin/{{ xrnc_name }}.cfg"
+- command: "/opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc /tmp/{{ xrnc_name }}.cfg"
   delegate_to: "{{ inventory_hostname  }}-vtc"
 - fetch: dest=/tmp/xrnc_cfg.iso src=/home/admin/xrnc_cfg.iso flat=yes
   delegate_to: "{{ inventory_hostname  }}-vtc"
@@ -26,4 +25,16 @@
     owner: qemu
     group: qemu
 - command: "/usr/bin/virsh create {{ work_dir_xrnc }}/xrnc.xml"
+
+- wait_for: host={{ xrnc_mgmt_ip }} port=22
+- pause: seconds=10
+- command: "/opt/cisco/package/sr/bin/setupXRNC_HA.sh 0.0.0.0"
+  sudo: yes
+  delegate_to: "{{ inventory_hostname  }}-xrnc"
+
+- name: "Wait for 'XRVR is up and DL server process is connected to XRVR'"
+  wait_for:
+    path: "/var/log/sr/dl_server.log"
+    search_regex: "INFO:XRVR Connection Made to peer IPv4Address"
+  delegate_to: "{{ inventory_hostname  }}-xrnc"
 

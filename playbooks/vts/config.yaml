@@ -36,10 +36,12 @@ vtc1_mgmt_ip:
 vtc2_mgmt_ip: 
 
 xrnc1_mgmt_ip: 
-xrvr1_mgmt_ip: 
+xrvr1_mgmt_ip:
+xrvr1_loopback0_ip:
 
 xrnc2_mgmt_ip: 
-xrvr2_mgmt_ip: 
+xrvr2_mgmt_ip:
+xrvr2_loopback0_ip:
 
 xrnc1_tenant_ip: 
 xrnc2_tenant_ip: 
@@ -58,5 +60,4 @@ vtc2_vm_name:
 xrnc1_vm_name: 
 xrnc2_vm_name: 
 xrvr1_vm_name: 
-xrvr2_vm_name: 
-vtf_vm_name:
+xrvr2_vm_name:
