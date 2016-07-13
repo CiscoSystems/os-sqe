@@ -1,0 +1,9 @@
+---
+
+- template:
+    src: "templates/vtc/day0.jinja2"
+    dest: "{{ day0_config_path }}"
+- template:
+    src: "templates/vtc/day0_expect.jinja2"
+    dest: "~/day0_expect.expect"
+- command: "/usr/bin/expect ~/day0_expect.expect"
