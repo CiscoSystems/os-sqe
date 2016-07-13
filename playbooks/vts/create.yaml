@@ -1,0 +1,31 @@
+---
+
+- hosts: server1
+  gather_facts: False
+  vars_files:
+    - config.yaml
+  vars:
+    work_dir: "{{ workspace }}/server1"
+    work_dir_vtc: "{{ work_dir }}/vtc"
+    work_dir_xrnc: "{{ work_dir }}/xrnc"
+    vtc_name: "{{ vtc1_vm_name }}"
+    vtc_ip: "{{ vtc1_api_ip }}"
+    vtc_mgmt_ip: "{{ vtc1_mgmt_ip }}"
+    xrnc_name: "{{ xrnc1_vm_name }}"
+    xrnc_mgmt_ip: "{{xrnc1_mgmt_ip }}"
+    xrnc_tenant_ip: "{{ xrnc1_tenant_ip }}"
+    xrvr_name: "{{ xrvr1_vm_name }}"
+    xrvr_mgmt_ip: "{{xrvr1_mgmt_ip }}"
+    xrvr_tenant_ip: "{{ xrvr1_tenant_ip }}"
+    xrvr_loopback0_ip: "{{ xrvr1_loopback0_ip }}"
+  tasks:
+    - include: tasks/add_vts_hosts.yaml
+    - include: tasks/destroy.yaml
+    - include: tasks/create_vtc.yaml
+    - include: tasks/create_xrnc.yaml
+
+- hosts: server1-xrvr
+  gather_facts: False
+  connection: local
+  tasks:
+    - include: tasks/xrvr_day0.yaml

@@ -1,0 +1,24 @@
+---
+
+- add_host:
+    name: "{{ inventory_hostname  }}-vtc"
+    ansible_ssh_host: "{{ vtc_ip }}"
+    ansible_ssh_user: "{{ user }}"
+    ansible_ssh_pass: "{{ password }}"
+    groups: vtc
+
+- add_host:
+    name: "{{ inventory_hostname  }}-xrnc"
+    ansible_ssh_host: "{{ xrnc_mgmt_ip }}"
+    ansible_ssh_user: "cisco"
+    ansible_ssh_pass: "cisco123"
+    groups: xrnc
+
+- add_host:
+    name: "{{ inventory_hostname  }}-xrvr"
+    ansible_ssh_host: "{{ xrnc_mgmt_ip }}"
+    ansible_ssh_user: "admin"
+    ansible_ssh_pass: "cisco123"
+    xrvr_loopback0_ip: "{{ xrvr_loopback0_ip }}"
+    bgp_asn: "{{ bgp_asn }}"
+    groups: xrvr

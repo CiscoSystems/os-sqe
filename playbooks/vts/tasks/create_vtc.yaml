@@ -1,0 +1,20 @@
+---
+
+- file: dest={{ work_dir }} state=directory
+- file: dest={{ work_dir_vtc }} state=directory recurse=yes mode=0744 owner=qemu group=qemu
+
+# Create VTC
+- template: src=templates/vtc/config.txt dest={{ work_dir_vtc }}
+- template: src=templates/vtc/vtc.xml dest={{ work_dir_vtc }}
+- command: "/usr/bin/mkisofs -o {{ work_dir_vtc }}/config.iso {{ work_dir_vtc }}/config.txt"
+- command: "/usr/bin/curl {{ vtc_qcow }} -o {{ work_dir_vtc }}/vtc.qcow2"
+- file:
+    dest: "{{ work_dir_vtc }}/vtc.qcow2"
+    owner: qemu
+    group: qemu
+- command: "/usr/bin/virsh create {{ work_dir_vtc }}/vtc.xml"
+- wait_for: host={{ vtc_ip }} port=8443
+- wait_for: host={{ vtc_ip }} port=22
+
+# pause for a minute. Sometimes connecttion to VTC gets rejected. Give it a minute to configure everything
+- pause: minutes=1

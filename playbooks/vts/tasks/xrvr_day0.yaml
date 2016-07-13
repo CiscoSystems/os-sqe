@@ -1,0 +1,8 @@
+---
+
+- name: "Push day0 configuration onto {{ ansible_ssh_host }}"
+  iosxr_template:
+    src: "templates/xrvr/day0.jinja2"
+    host: "{{ ansible_ssh_host }}"
+    username: "{{ ansible_ssh_user }}"
+    password: "{{ ansible_ssh_pass }}"
