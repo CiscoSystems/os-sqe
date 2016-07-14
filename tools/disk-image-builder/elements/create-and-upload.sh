@@ -19,8 +19,5 @@ cat >${image_name}.sha256sum.txt<<EOF
 $(sha256sum ${image_name})
 EOF
 
-sshpass -p ubuntu scp ${image_name} localadmin@172.29.173.233:/var/www/fedora/
-sshpass -p ubuntu scp ${image_name}.sha256sum.txt localadmin@172.29.173.233:/var/www/fedora/
-
 cd -
 rm -rf ${workspace}
