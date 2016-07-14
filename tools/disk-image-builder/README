@@ -1,3 +1,5 @@
+How to build new image
+
 Preperation:
     git clone https://git.openstack.org/openstack/diskimage-builder
     git clone https://git.openstack.org/openstack/dib-utils
@@ -10,6 +12,8 @@ Export the elements forlder:
 Run:
      disk-image-create fedora vm selinux-permissive dnsmasq users ip-addresses -a amd64 -o imagename.qcow2
 
+
+How to use the image
 
 Use MAC address patterns to:
 * 10:XX:XX:XX:XX:XX - Start dnsmasq service. Last 4 octets are IP address in HEX format.

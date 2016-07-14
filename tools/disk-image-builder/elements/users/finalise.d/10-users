@@ -13,3 +13,7 @@ EOF
 }
 
 user_add localadmin ubuntu
+user_add admin cisco123
+
+# TODO: Move it to another place
+sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
