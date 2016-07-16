@@ -1,0 +1,15 @@
+---
+
+- name: "Kill dl_vts_reg.py"
+  command: "/usr/bin/pkill -f dl_vts_reg.py"
+  become: yes
+  become_method: sudo
+- pause: seconds=5
+- name: "Run 'setupXRNC_HA.sh 0.0.0.0'"
+  command: "/opt/cisco/package/sr/bin/setupXRNC_HA.sh 0.0.0.0"
+  become: yes
+  become_method: sudo
+- name: "Wait for 'XRVR is up and DL server process is connected to XRVR'"
+  wait_for:
+    path: "/var/log/sr/dl_server.log"
+    search_regex: "INFO:XRVR Connection Made to peer IPv4Address"

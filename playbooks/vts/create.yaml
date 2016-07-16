@@ -23,17 +23,25 @@
     - include: tasks/destroy.yaml
     - include: tasks/create_vtc.yaml
     - include: tasks/create_xrnc.yaml
+    - name: "Change VTC UI admin password to {{ vtc_password }}"
+      vtcui_password_change:
+        vtc_ip: "{{ vtc_ip }}"
+        user: "{{ user }}"
+        password: "admin"
+        new_password: "{{ vtc_password }}"
+
+- hosts: server1-xrnc
+  gather_facts: False
+  tasks:
+    - include: tasks/setupXRNC_HA_0.0.0.0.yaml
 
 - hosts: server1-xrvr
   gather_facts: False
   connection: local
-  vars_prompt:
-    - name: "vtc_password_changed"
-      prompt: "Have you changed VTC password?"
   vars_files:
     - config.yaml
   vars:
-    xrvr_loopback0_ip: "{{ xrvr_loopback0_ip }}"
+    xrvr_loopback0_ip: "{{ xrvr1_loopback0_ip }}"
     bgp_asn: "{{ bgp_asn }}"
   tasks:
     - include: tasks/xrvr_day0.yaml
