@@ -32,7 +32,6 @@ def main():
         result['changed'] = False
         result['stdout'] = java_script_servlet.text
         result['stderr'] = 'OWASP_CSRFTOKEN token has not been found'
-        raise Exception('OWASP_CSRFTOKEN token has not been found')
 
     response = session.put(api_url('rs/ncs/user?updatePassword=true&isEnforcePassword=true'),
                            data=json.dumps({'resource': {'user': {'user_name': user, 'password': new_password, 'currentPassword': password}}}),
