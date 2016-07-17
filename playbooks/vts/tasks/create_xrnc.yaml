@@ -5,36 +5,33 @@
 
 # Create XRNC
 # create xrnc config iso on the VTC side
-- template:
+- name: "Upload system.cfg (XRNC config) to VTC virtual machine"
+  template:
     src: templates/xrnc/system.cfg
     dest: "/tmp/{{ xrnc_name }}.cfg"
   delegate_to: "{{ inventory_hostname  }}-vtc"
-- command: "/opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc /tmp/{{ xrnc_name }}.cfg"
+- name: "Run build_vts_config_iso.sh script on the VTC side"
+  command: "/opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc /tmp/{{ xrnc_name }}.cfg"
   delegate_to: "{{ inventory_hostname  }}-vtc"
-- fetch: dest=/tmp/xrnc_cfg.iso src=/home/admin/xrnc_cfg.iso flat=yes
+- name: "Fetch XRNC config.iso"
+  fetch: dest=/tmp/xrnc_cfg.iso src=/home/admin/xrnc_cfg.iso flat=yes
   delegate_to: "{{ inventory_hostname  }}-vtc"
 - fetch: dest=/tmp/system.cfg src=/home/admin/xrnc_cfg_tmp/system.cfg flat=yes
   delegate_to: "{{ inventory_hostname  }}-vtc"
-- copy: src=/tmp/xrnc_cfg.iso dest={{ work_dir_xrnc }}
+- name: "Upload XRNC config.iso to a server where XRNC vm will be created"
+  copy: src=/tmp/xrnc_cfg.iso dest={{ work_dir_xrnc }}
 - copy: src=/tmp/system.cfg dest={{ work_dir_xrnc }}
 # launch XRNC vm
 - template: src=templates/xrnc/xrnc.xml dest={{ work_dir_xrnc }}
-- command: "/usr/bin/curl {{ xrnc_qcow }} -o {{ work_dir_xrnc }}/xrnc.qcow2"
+- name: "Download XRNC image {{ xrnc_qcow }}"
+  command: "/usr/bin/curl {{ xrnc_qcow }} -o {{ work_dir_xrnc }}/xrnc.qcow2"
 - file:
     dest: "{{ work_dir_xrnc }}/xrnc.qcow2"
     owner: qemu
     group: qemu
-- command: "/usr/bin/virsh create {{ work_dir_xrnc }}/xrnc.xml"
-
-- wait_for: host={{ xrnc_mgmt_ip }} port=22
-- pause: seconds=10
-- command: "/opt/cisco/package/sr/bin/setupXRNC_HA.sh 0.0.0.0"
-  sudo: yes
-  delegate_to: "{{ inventory_hostname  }}-xrnc"
-
-- name: "Wait for 'XRVR is up and DL server process is connected to XRVR'"
-  wait_for:
-    path: "/var/log/sr/dl_server.log"
-    search_regex: "INFO:XRVR Connection Made to peer IPv4Address"
-  delegate_to: "{{ inventory_hostname  }}-xrnc"
-
+- name: "Create XRNC virtual machine"
+  command: "/usr/bin/virsh create {{ work_dir_xrnc }}/xrnc.xml"
+- name: "Wait for XRNC port 22"
+  wait_for: host={{ xrnc_mgmt_ip }} port=22
+  # Let XRVR to boot and configure itself
+- pause: minutes=5

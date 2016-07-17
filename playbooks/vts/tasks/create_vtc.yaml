@@ -4,17 +4,26 @@
 - file: dest={{ work_dir_vtc }} state=directory recurse=yes mode=0744 owner=qemu group=qemu
 
 # Create VTC
-- template: src=templates/vtc/config.txt dest={{ work_dir_vtc }}
-- template: src=templates/vtc/vtc.xml dest={{ work_dir_vtc }}
-- command: "/usr/bin/mkisofs -o {{ work_dir_vtc }}/config.iso {{ work_dir_vtc }}/config.txt"
-- command: "/usr/bin/curl {{ vtc_qcow }} -o {{ work_dir_vtc }}/vtc.qcow2"
+- name: "Download VTC image {{ vtc_qcow }}"
+  command: "/usr/bin/curl {{ vtc_qcow }} -o {{ work_dir_vtc }}/vtc.qcow2"
 - file:
     dest: "{{ work_dir_vtc }}/vtc.qcow2"
     owner: qemu
     group: qemu
-- command: "/usr/bin/virsh create {{ work_dir_vtc }}/vtc.xml"
-- wait_for: host={{ vtc_ip }} port=8443
-- wait_for: host={{ vtc_ip }} port=22
-
-# pause for a minute. Sometimes connecttion to VTC gets rejected. Give it a minute to configure everything
-- pause: minutes=1
+- template: src=templates/vtc/config.txt dest={{ work_dir_vtc }}
+- template: src=templates/vtc/vtc.xml dest={{ work_dir_vtc }}
+- name: "Create config.iso for VTC virtual machine"
+  command: "/usr/bin/mkisofs -o {{ work_dir_vtc }}/config.iso {{ work_dir_vtc }}/config.txt"
+- name: "Create VTC virtual machine"
+  command: "/usr/bin/virsh create {{ work_dir_vtc }}/vtc.xml"
+- name: "Wait for VTC port 22"
+  wait_for: host={{ vtc_ip }} port=22
+- name: "Wait for VTC port 8443"
+  wait_for: host={{ vtc_ip }} port=8443
+#- pause: seconds=60
+#- name: "Open VTC UI first time"
+#  uri:
+#    url: "https://{{ vtc_ip }}:8443/VTS/"
+#    validate_certs: no
+#    timeout: 180
+#  ignore_errors: yes

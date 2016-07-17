@@ -1,4 +1,5 @@
 set resource-pools vni-pool vnipool range {{ vni_pool_start }} {{ vni_pool_end }}
+request devices device {{ xrvr_name }} sync-from
 set devices device {{ xrvr_name }} asr9k-extension:device-info device-use leaf
 set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info bgp-asn 23
 set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info loopback-if-num 0

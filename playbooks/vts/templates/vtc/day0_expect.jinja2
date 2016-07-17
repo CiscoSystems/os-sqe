@@ -2,7 +2,7 @@ set f [open "{{ day0_config_path }}"]
 set config_lines [split [read $f] "\n"]
 close $f
 
-spawn ncs_cli
+spawn /opt/ncs/current/bin/ncs_cli
 expect "admin@ncs>"
 send "config\r"
 expect "admin@ncs%"
