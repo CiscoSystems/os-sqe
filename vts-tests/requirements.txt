@@ -3,3 +3,6 @@ requests
 python-openstackclient
 python-neutronclient
 nose
+fabric
+pycrypto
+netaddr

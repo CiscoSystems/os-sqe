@@ -6,6 +6,7 @@ class VtcUI(object):
         self._ui_ip = ui_ip
         self._ui_user = ui_user
         self._ui_password = ui_password
+        self._session = None
 
     def json_api_url(self, resource):
         import os
@@ -14,13 +15,22 @@ class VtcUI(object):
 
     def json_api_session(self):
         import requests
+        import re
 
-        s = requests.Session()
-        auth = s.post(self.json_api_url('j_spring_security_check'), data={'j_username': self._ui_user, 'j_password': self._ui_password, 'Submit': 'Login'}, verify=False)
-        if 'Invalid username or passphrase' in auth.text:
-            raise Exception('Invalid username or passphrase')
+        if not self._session:
+            self._session = requests.Session()
+            auth = self._session.post(self.json_api_url('j_spring_security_check'), data={'j_username': self._ui_user, 'j_password': self._ui_password, 'Submit': 'Login'}, verify=False)
+            if 'Invalid username or passphrase' in auth.text:
+                raise Exception('Invalid username or passphrase')
 
-        return s
+            url = self.json_api_url('JavaScriptServlet')
+            resp_csrftoken = self._session.get(url, verify=False)
+            owasp_csrftoken = ''.join(re.findall('OWASP_CSRFTOKEN", "(.*?)", requestPageTokens', resp_csrftoken.text))
+            if not owasp_csrftoken:
+                raise Exception('OWASP_CSRFTOKEN token has not been found')
+            self._owasp_csrftoken = owasp_csrftoken
+
+        return self._session
 
     def json_api_get(self, resource):
         s = None
@@ -28,17 +38,41 @@ class VtcUI(object):
         try:
             s = self.json_api_session()
             url = self.json_api_url(resource.strip('/'))
-            sys.stdout.writelines('VTC request: {0}'.format(url))
-            response = s.get(self.json_api_url(resource.strip('/')))
+            sys.stdout.writelines('\nVTC request: {0}\n'.format(url))
+            response = s.get(self.json_api_url(resource.strip('/')), verify=False)
             if response.status_code == 200:
                 r = response.json()
-            sys.stdout.writelines('VTC response: {0}'.format(r))
+            sys.stdout.writelines('\nVTC response: {0}\n'.format(r))
         except Exception as e:
             raise e
         finally:
             if s:
                 s.close()
         return r
+
+    def json_api_put(self, resource, data):
+        s = None
+        response = None
+        try:
+            s = self.json_api_session()
+            url = self.json_api_url(resource.strip('/'))
+            sys.stdout.writelines('\nVTC put request: {0}, {1}\n'.format(url, data))
+
+            headers = {'Accept': 'application/json, text/plain, */*',
+                       'Accept-Encoding': 'gzip, deflate, sdch, br',
+                       'Content-Type': 'application/json;charset=UTF-8'}
+            if self._owasp_csrftoken:
+                headers['OWASP_CSRFTOKEN'] = self._owasp_csrftoken
+                headers['X-Requested-With'] = 'OWASP CSRFGuard Project'
+            response = s.put(self.json_api_url(resource.strip('/')), data=data, headers=headers, verify=False)
+            sys.stdout.writelines('\nVTC r.text: {0}\n'.format(response.text))
+            sys.stdout.writelines('\nVTC response: {0}\n'.format(response))
+        except Exception as e:
+            raise e
+        finally:
+            if s:
+                s.close()
+        return response
 
     def get_network_inventory(self):
         return self.json_api_get('rs/ncs/query/networkInventory')['items']
@@ -102,6 +136,24 @@ class VtcUI(object):
     def get_vni_pools(self):
         resource = 'rs/ncs/vni-pool'
         return self.json_api_get(resource)['items']
+
+    def get_ethernet_mappings(self, device_name):
+        resource = 'rs/ncs/query/ethernet-mappings?deviceNameTOR={0}&limit=2147483647'.format(device_name)
+        return self.json_api_get(resource)['items']
+
+    def get_tenants(self):
+        resource = 'rs/ncs/query/tenants?limit=2147483647'
+        return self.json_api_get(resource)['items']
+
+    def get_tenant(self):
+        tenants = self.get_tenants()
+        for tenant in tenants:
+            if self._ui_user == tenant['name']:
+                return tenant
+
+    def put_network_port(self, network_id, data):
+        resource = 'rs/vtsService/tenantTopology/admin/admin/network/{0}'.format(network_id)
+        return self.json_api_put(resource, data)
 
     def verify_network(self, os_network):
         overlay_network = self.get_overlay_network(os_network['id'])
