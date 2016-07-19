@@ -33,5 +33,6 @@
   command: "/usr/bin/virsh create {{ work_dir_xrnc }}/xrnc.xml"
 - name: "Wait for XRNC port 22"
   wait_for: host={{ xrnc_mgmt_ip }} port=22
-  # Let XRVR to boot and configure itself
+# Let XRVR to boot and configure itself
 - pause: minutes=5
+

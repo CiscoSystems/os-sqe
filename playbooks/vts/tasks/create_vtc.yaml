@@ -20,10 +20,15 @@
   wait_for: host={{ vtc_ip }} port=22
 - name: "Wait for VTC port 8443"
   wait_for: host={{ vtc_ip }} port=8443
-#- pause: seconds=60
-#- name: "Open VTC UI first time"
-#  uri:
-#    url: "https://{{ vtc_ip }}:8443/VTS/"
-#    validate_certs: no
-#    timeout: 180
-#  ignore_errors: yes
+- pause: seconds=60
+- name: "Open VTC UI first time"
+  uri:
+    url: "https://{{ vtc_ip }}:8443/VTS/"
+    validate_certs: no
+    timeout: 180
+- name: "Change VTC UI admin password to {{ vtc_password }}"
+  vtcui_password_change:
+    vtc_ip: "{{ vtc_ip }}"
+    user: "{{ user }}"
+    password: "admin"
+    new_password: "{{ vtc_password }}"
