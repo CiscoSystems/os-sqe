@@ -165,7 +165,7 @@ def run(config_path):
 
 @task
 @decorators.print_time
-def junit_to_tims(filename):
+def junit_to_tims(junitxml, outpyats_jobfile):
     import os
     import xml.etree.ElementTree as ET
     from lab import with_config
@@ -174,7 +174,7 @@ def junit_to_tims(filename):
     test_names = []
     test_cases = {}
 
-    tree = ET.parse(filename)
+    tree = ET.parse(junitxml)
     root = tree.getroot()
     assert root.tag == "testsuite"
     for testcase in root:
@@ -225,5 +225,5 @@ def junit_to_tims(filename):
     env = Environment(loader=FileSystemLoader(os.path.dirname(os.path.abspath(__file__)) + '/configs/pyats'))
     template = env.get_template('pyats.jinja2')
 
-    with with_config.open_artifact('pyats_job.py', 'w') as f:
+    with with_config.open_artifact(outpyats_jobfile, 'w') as f:
         f.write(template.render(results=test_cases))
