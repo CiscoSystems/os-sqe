@@ -5,13 +5,15 @@
     ansible_ssh_host: "{{ vtc_ip }}"
     ansible_ssh_user: "{{ user }}"
     ansible_ssh_pass: "{{ password }}"
+    ansible_become_pass: "{{ password }}"
     groups: vtc
 
 - add_host:
     name: "{{ inventory_hostname  }}-xrnc"
     ansible_ssh_host: "{{ xrnc_mgmt_ip }}"
     ansible_ssh_user: "cisco"
-    ansible_ssh_pass: "cisco123"
+    ansible_ssh_pass: "{{ password }}"
+    ansible_become_pass: "{{ password }}"
     groups: xrnc
 
 - add_host:
