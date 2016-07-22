@@ -74,6 +74,30 @@ class VtcUI(object):
                 s.close()
         return response
 
+    def json_api_delete(self, resource):
+        s = None
+        response = None
+        try:
+            s = self.json_api_session()
+            url = self.json_api_url(resource.strip('/'))
+            sys.stdout.writelines('\nVTC delete request: {0}\n'.format(url))
+
+            headers = {'Accept': 'application/json, text/plain, */*',
+                       'Accept-Encoding': 'gzip, deflate, sdch, br',
+                       'Content-Type': 'application/json;charset=UTF-8'}
+            if self._owasp_csrftoken:
+                headers['OWASP_CSRFTOKEN'] = self._owasp_csrftoken
+                headers['X-Requested-With'] = 'OWASP CSRFGuard Project'
+            response = s.delete(self.json_api_url(resource.strip('/')), headers=headers, verify=False)
+            sys.stdout.writelines('\nVTC r.text: {0}\n'.format(response.text))
+            sys.stdout.writelines('\nVTC response: {0}\n'.format(response))
+        except Exception as e:
+            raise e
+        finally:
+            if s:
+                s.close()
+        return response
+
     def get_network_inventory(self):
         return self.json_api_get('rs/ncs/query/networkInventory')['items']
 
@@ -154,6 +178,10 @@ class VtcUI(object):
     def put_network_port(self, network_id, data):
         resource = 'rs/vtsService/tenantTopology/admin/admin/network/{0}'.format(network_id)
         return self.json_api_put(resource, data)
+
+    def delete_network_port(self, port_id):
+        resource = 'rs/vtsService/tenantTopology/admin/admin/ports/{0}'.format(port_id)
+        return self.json_api_delete(resource)
 
     def verify_network(self, os_network):
         overlay_network = self.get_overlay_network(os_network['id'])

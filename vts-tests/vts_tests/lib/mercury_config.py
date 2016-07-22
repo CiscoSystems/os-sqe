@@ -31,6 +31,7 @@ class Config(object):
         self._computes = None
         self._secrets = None
         self._openrc = None
+        self._test_server_cfg = None
 
     @property
     def vts_test_config(self):
@@ -167,3 +168,12 @@ class Config(object):
                 g = re.search(r'export (?P<name>\w+)=(?P<value>.*)', s)
                 self._openrc[g.group('name')] = g.group('value')
         return self._openrc
+
+    @property
+    def test_server_cfg(self):
+        if not self._test_server_cfg and self.vts_test_config.has_section('tests_server'):
+            self._test_server_cfg = \
+                {'tor_name': self.vts_test_config.get('tests_server', 'tor_name'),
+                 'tor_port': self.vts_test_config.get('tests_server', 'tor_port'),
+                 'ovs_bridge': self.vts_test_config.get('tests_server', 'ovs_bridge')}
+        return self._test_server_cfg

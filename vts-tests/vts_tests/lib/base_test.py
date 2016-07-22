@@ -1,8 +1,12 @@
+import json
 import random
+import subprocess
+import time
 import unittest
 
 from vts_tests.lib import cloud, vtcui, xrnc_node_connect, shell_connect
 from vts_tests.lib import mercury_config as config
+from vts_tests.tools import ports
 
 
 class BaseTest(unittest.TestCase):
@@ -64,9 +68,49 @@ class BaseTest(unittest.TestCase):
         self.networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
 
         self.ports = self.cloud.create_ports(instance_name=prefix, on_nets=self.networks, is_fixed_ip=True)
-        self.cloud.create_key_pair()
+        if not hasattr(self.cloud, '_keypair_name'):
+            self.cloud.create_key_pair()
         self.instance, self.instance_status = self.cloud.create_instance(name=prefix,
                                                                          flavor=self.config.flavor,
                                                                          image=self.config.image_name,
                                                                          on_ports=self.ports)
         return self.instance, self.instance_status
+
+    def create_access_ports(self):
+        cfg = self.config.test_server_cfg
+        if cfg:
+            ports.create_ports(self.vtc_ui, cfg['tor_name'], cfg['tor_port'], cfg['ovs_bridge'])
+            return True
+
+    def delete_access_ports(self):
+        cfg = self.config.test_server_cfg
+        if cfg:
+            ports.delete_ports(self.vtc_ui, cfg['tor_name'], cfg['tor_port'], cfg['ovs_bridge'])
+            return True
+
+    def get_port_ip(self, port):
+        return json.loads(port['fixed_ips'].replace('\\', ''))['ip_address']
+
+    def cmd(self, cmd):
+        res = True
+        try:
+            print subprocess.check_output(cmd, shell=True)
+        except subprocess.CalledProcessError:
+            res = False
+        return res
+
+    def ping_ip(self, ip):
+        res = False
+        for i in range(6):
+            res = self.cmd('ping -W 120 -c 5 {ip}'.format(ip=ip))
+            if res:
+                break
+            time.sleep(5)
+        return res
+
+    def ping_ports(self, ports):
+        res = []
+        for p in ports:
+            ip = self.get_port_ip(p)
+            res.append(self.ping_ip(ip))
+        return res

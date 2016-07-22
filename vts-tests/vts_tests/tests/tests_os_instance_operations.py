@@ -16,6 +16,10 @@ class TestOSInstanceOperations(base_test.BaseTest):
 
         self.assertTrue(self.vtc_ui.verify_instances(self.ports), 'Instance synced')
 
+        if self.create_access_ports():
+            self.assertTrue(all(self.ping_ports(self.ports)), 'Could not reach instance. Ping failed')
+            self.delete_access_ports()
+
         self.cloud.cleanup()
 
         # TODO: Remove sleep
@@ -29,23 +33,31 @@ class TestOSInstanceOperations(base_test.BaseTest):
     def test_instance_soft_reboot(self):
         self.create_net_subnet_port_instance()
         self.cloud.server_reboot(self.instance['name'], hard=False)
-        # TODO: add asserts
+        if self.create_access_ports():
+            self.assertTrue(all(self.ping_ports(self.ports)), 'Could not reach instance. Ping failed')
 
     def test_instance_hard_reboot(self):
         self.create_net_subnet_port_instance()
         self.cloud.server_reboot(self.instance['name'], hard=True)
-        # TODO: add asserts
+        if self.create_access_ports():
+            self.assertTrue(all(self.ping_ports(self.ports)), 'Could not reach instance. Ping failed')
 
     def test_instance_rebuild(self):
         self.create_net_subnet_port_instance()
         self.cloud.server_rebuild(self.instance['name'], image=self.config.image_name)
-        # TODO: add asserts
+        if self.create_access_ports():
+            self.assertTrue(all(self.ping_ports(self.ports)), 'Could not reach instance. Ping failed')
 
     def test_instance_suspend_resume(self):
         self.create_net_subnet_port_instance()
         self.cloud.server_suspend(self.instance['name'])
         self.cloud.server_resume(self.instance['name'])
-        # TODO: add asserts
+        if self.create_access_ports():
+            self.assertTrue(all(self.ping_ports(self.ports)), 'Could not reach instance. Ping failed')
 
     def tearDown(self):
+        try:
+            self.delete_access_ports()
+        except:
+            pass
         self.cloud.cleanup()

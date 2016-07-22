@@ -147,3 +147,4 @@ def delete_ports(vtc_ui_client, device_name, device_port, ovs_bridge):
             vlan_number = str(p['vlan_number'])
             if vlan_number in ovs_ports_dict:
                 local('sudo ovs-vsctl del-port {0} {1}'.format(ovs_bridge, ovs_ports_dict[vlan_number]['name']))
+                vtc_ui_client.delete_network_port(p['id'])
