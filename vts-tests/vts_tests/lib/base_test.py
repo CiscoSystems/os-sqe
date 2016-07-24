@@ -101,10 +101,12 @@ class BaseTest(unittest.TestCase):
 
     def ping_ip(self, ip):
         res = False
-        for i in range(6):
+        sleep_sec = 5
+        for i in range(12):
             res = self.cmd('ping -W 120 -c 5 {ip}'.format(ip=ip))
             if res:
                 break
+            print "Ping failed. Sleep for {0} seconds".format(sleep_sec)
             time.sleep(5)
         return res
 
