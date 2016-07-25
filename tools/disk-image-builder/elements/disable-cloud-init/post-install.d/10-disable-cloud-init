@@ -1,0 +1,4 @@
+sudo systemctl disable cloud-config
+sudo systemctl disable cloud-final
+sudo systemctl disable cloud-init-local
+sudo systemctl disable cloud-init
