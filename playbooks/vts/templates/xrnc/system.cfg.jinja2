@@ -2,24 +2,24 @@
 # Copyright (c) 2015 cisco Systems
 
 # VTS Information
-VTS_ADDRESS="{{ vtc_mgmt_ip }}"
+VTS_ADDRESS="{{ vtc_mgmt_vip }}"
 VTS_REGISTRATION_USERNAME="{{ user }}"
 VTS_REGISTRATION_PASSWORD="{{ vtc_password }}"
 
 # VTC/VTF Network Configuration
-HOSTNAME="{{ xrnc_name }}"
+HOSTNAME="{{ xrnc['hostname'] }}"
 NTP_SERVER="{{ ntpv4 }}"
 NETWORK_CONFIG_METHOD="static"
 NETWORK_NAMESERVER_IP="{{ dnsv4 }}"
 UNDERLAY_NETWORK_CONFIG_METHOD="static"
-UNDERLAY_NETWORK_IP_ADDRESS="{{ xrnc_tenant_ip }}"
-UNDERLAY_NETWORK_IP_NETMASK="{{ tenant_netmask }}"
-UNDERLAY_NETWORK_IP_GATEWAY="{{ tenant_gateway }}"
+UNDERLAY_NETWORK_IP_ADDRESS="{{ xrnc['tenant_ip'] }}"
+UNDERLAY_NETWORK_IP_NETMASK="{{ networks['tenant']['netmask'] }}"
+UNDERLAY_NETWORK_IP_GATEWAY="{{ networks['tenant']['gateway'] }}"
 
 MGMT_NETWORK_CONFIG_METHOD="static"
-MGMT_NETWORK_IP_ADDRESS="{{ xrnc_mgmt_ip }}"
-MGMT_NETWORK_IP_NETMASK="{{ mgmt_netmask }}"
-MGMT_NETWORK_IP_GATEWAY="{{ mgmt_gateway }}"
+MGMT_NETWORK_IP_ADDRESS="{{ xrnc['mgmt_ip'] }}"
+MGMT_NETWORK_IP_NETMASK="{{ networks['mgmt']['netmask'] }}"
+MGMT_NETWORK_IP_GATEWAY="{{ networks['mgmt']['gateway'] }}"
 
 AUX_NETWORK_CONFIG_METHOD="none"
 XRVR_MGMT_NETWORK_VRF_NAME="none"
@@ -36,8 +36,7 @@ PASSWORD_HASH='$1$xxx$J3aa90XAPYg6HSNUUUD2o1'
 # XRVR Specific Settings (VTC only)
 XRVR_USERNAME="{{ user }}"
 XRVR_PASSWORD="{{ password }}"
-XRVR_STATIC_MGMT_IP="{{ xrvr_mgmt_ip }}/{{ mgmt_cidr }}"
-XRVR_STATIC_UNDERLAY_IP="{{ xrvr_tenant_ip }}/{{ tenant_cidr }}"
-XRVR_NAME="{{ xrvr_name }}"
-XRVR_BGP_COMMUNITY="{{ vni_pool_start }}:{{ vni_pool_end }}"
-
+XRVR_STATIC_MGMT_IP="{{ xrvr['mgmt_ip'] }}/{{ networks['mgmt']['cidr'] }}"
+XRVR_STATIC_UNDERLAY_IP="{{ xrvr['tenant_ip'] }}/{{ networks['tenant']['cidr'] }}"
+XRVR_NAME="{{ xrvr['hostname'] }}"
+XRVR_BGP_COMMUNITY="{{ vni_pool['start'] }}:{{ vni_pool['end'] }}"

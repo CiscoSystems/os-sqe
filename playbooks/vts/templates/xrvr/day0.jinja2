@@ -1,5 +1,5 @@
 router ospf 100
- router-id {{ xrvr_loopback0_ip }}
+ router-id {{ props['loopback0_ip'] }}
  address-family ipv4 unicast
  area 0.0.0.0
   default-cost 10
@@ -10,11 +10,11 @@ router ospf 100
 exit
 
 interface Loopback0
- ipv4 address {{ xrvr_loopback0_ip }} 255.255.255.255
+ ipv4 address {{ props['loopback0_ip'] }} 255.255.255.255
 exit
 
 router bgp {{ bgp_asn }}
- bgp router-id {{ xrvr_loopback0_ip }}
+ bgp router-id {{ props['loopback0_ip'] }}
  address-family ipv4 unicast
  address-family l2vpn evpn
   retain route-target all

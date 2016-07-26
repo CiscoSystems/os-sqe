@@ -8,60 +8,71 @@ dnsv4:
 ntpv4: 
 
 # NETWORKS
-# api
-api_vlan: 
-api_gateway: 
-api_netmask: 
-api_cidr: 
-# mgmt
-mgmt_vlan: 
-mgmt_gateway: 
-mgmt_netmask: 
-mgmt_cidr: 
-# tenant
-tenant_vlan: 
-tenant_gateway: 
-tenant_netmask: 
-tenant_cidr:
+networks: 
+  api: 
+    vlan: 
+    gateway: 
+    netmask: 
+    cidr: 
+  mgmt: 
+    vlan: 
+    gateway: 
+    netmask: 
+    cidr: 
+  tenant: 
+    vlan: 
+    gateway: 
+    netmask: 
+    cidr: 
 
-bgp_asn:
-vni_pool_start:
-vni_pool_end:
+vni_pool: 
+  start: 
+  end: 
+
+bgp_asn: 
+domain_group: 
 
 # IP ADDRESSES
 #vtc_api_vip: 
-vtc_api_vip: 
-vtc1_api_ip: 
-vtc2_api_ip: 
-
 #vtc_mgmt_vip: 
+
+vtc_api_vip: 
 vtc_mgmt_vip: 
-vtc1_mgmt_ip: 
-vtc2_mgmt_ip: 
 
-xrnc1_mgmt_ip: 
-xrvr1_mgmt_ip:
-xrvr1_loopback0_ip:
+vts_hosts: 
+  server1: 
+    vtc: 
+      hostname: 
+      api_ip: 
+      mgmt_ip: 
+      master: 
+    xrnc: 
+      hostname: 
+      mgmt_ip: 
+      tenant_ip: 
+    xrvr: 
+      hostname: 
+      mgmt_ip: 
+      tenant_ip: 
+      loopback0_ip: 
+  server2: 
+    vtc: 
+      hostname: 
+      api_ip: 
+      mgmt_ip: 
+    xrnc: 
+      hostname: 
+      mgmt_ip: 
+      tenant_ip: 
+    xrvr: 
+      hostname: 
+      mgmt_ip: 
+      tenant_ip: 
+      loopback0_ip: 
 
-xrnc2_mgmt_ip: 
-xrvr2_mgmt_ip:
-xrvr2_loopback0_ip:
-
-xrnc1_tenant_ip: 
-xrnc2_tenant_ip: 
-
-xrvr1_tenant_ip: 
-xrvr2_tenant_ip: 
-
+# IMAGES
 vtc_qcow: 
 xrnc_qcow: 
 
 # No slash at the end
 workspace: 
-
-vtc1_vm_name: 
-vtc2_vm_name: 
-xrnc1_vm_name: 
-xrnc2_vm_name: 
-xrvr1_vm_name: 
-xrvr2_vm_name:

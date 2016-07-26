@@ -1,5 +1,6 @@
 ---
 
+- set_fact: day0_config_path="~/day0.cfg"
 - template:
     src: "templates/vtc/day0.jinja2"
     dest: "{{ day0_config_path }}"

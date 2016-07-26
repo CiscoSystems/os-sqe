@@ -1,13 +1,14 @@
-<domain type='kvm' id='1039'>
-  <name>{{ xrnc_name }}</name>
-  <memory unit='KiB'>33554432</memory>
-  <currentMemory unit='KiB'>33554432</currentMemory>
+<domain type='kvm' id='3'>
+  <name>{{ vtc['hostname'] }}</name>
+  <memory unit='KiB'>16777216</memory>
+  <currentMemory unit='KiB'>8388608</currentMemory>
   <vcpu placement='static'>8</vcpu>
   <resource>
     <partition>/machine</partition>
   </resource>
   <os>
     <type arch='x86_64' machine='pc-i440fx-rhel7.0.0'>hvm</type>
+    <boot dev='cdrom'/>
     <boot dev='hd'/>
   </os>
   <features>
@@ -27,18 +28,17 @@
     <emulator>/usr/libexec/qemu-kvm</emulator>
     <disk type='file' device='disk'>
       <driver name='qemu' type='qcow2' cache='none'/>
-      <source file='{{ work_dir_xrnc }}/xrnc.qcow2'/>
+      <source file='{{ work_dir_vtc }}/vtc.qcow2'/>
       <target dev='vda' bus='virtio'/>
       <alias name='virtio-disk0'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
     </disk>
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
-      <source file='{{ work_dir_xrnc }}/xrnc_cfg.iso'/>
+      <source file='{{ work_dir_vtc }}/config.iso'/>
       <target dev='hdc' bus='ide'/>
       <readonly/>
-      <alias name='ide0-1-0'/>
-      <address type='drive' controller='0' bus='1' target='0' unit='0'/>
+      <address type='drive' controller='0' bus='1' unit='0'/>
     </disk>
     <controller type='usb' index='0'>
       <alias name='usb0'/>
@@ -51,20 +51,16 @@
       <alias name='virtio-serial0'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
     </controller>
-    <controller type='ide' index='0'>
-      <alias name='ide0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
-    </controller>
     <interface type='bridge'>
-      <source bridge='br-tenant'/>
+      <source bridge='br-api'/>
       <virtualport type='openvswitch'/>
-      <target dev='{{ xrnc_name }}-vnet1'/>
+      <target dev='{{ vtc["hostname"]}}-api'/>
       <model type='virtio'/>
     </interface>
     <interface type='bridge'>
       <source bridge='br-mgmt'/>
       <virtualport type='openvswitch'/>
-      <target dev='{{ xrnc_name }}-vnet2'/>
+      <target dev='{{ vtc["hostname"]}}-mgmt'/>
       <model type='virtio'/>
     </interface>
     <input type='mouse' bus='ps2'/>
@@ -84,5 +80,6 @@
       <alias name='balloon0'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/>
     </memballoon>
-  </devices>  
+  </devices>
 </domain>
+

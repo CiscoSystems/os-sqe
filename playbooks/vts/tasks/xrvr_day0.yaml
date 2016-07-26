@@ -1,6 +1,6 @@
 ---
 
-- name: "Push day0 configuration onto {{ ansible_ssh_host }}"
+- name: "Push day0 configuration onto XRVR {{ ansible_ssh_host }}"
   iosxr_template:
     src: "templates/xrvr/day0.jinja2"
     host: "{{ ansible_ssh_host }}"

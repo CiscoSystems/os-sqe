@@ -1,0 +1,14 @@
+Hostname={{ vtc['hostname'] }}
+ManagementIPv4Method=Static
+ManagementIPv4Address={{ vtc['api_ip'] }}
+ManagementIPv4Netmask={{ networks['api']['netmask'] }}
+ManagementIPv4Gateway={{ networks['api']['gateway'] }}
+UnderlayIPv4Method=Static
+UnderlayIPv4Address={{ vtc['mgmt_ip'] }}
+UnderlayIPv4Netmask={{ networks['mgmt']['netmask'] }}
+DNSv4={{ dnsv4 }}
+Domain=cisco.com
+NTPv4={{ ntpv4 }}
+vts-adminPassword={{ password }}
+AdministrativeUser=admin
+AdministrativePassword={{ password }}

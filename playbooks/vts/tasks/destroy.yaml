@@ -1,8 +1,8 @@
 ---
 
 - name: Destroy old VTC virtual machine
-  command: "/usr/bin/virsh destroy {{ vtc_name }}"
+  command: "/usr/bin/virsh destroy {{ vtc['hostname'] }}"
   ignore_errors: yes
 - name: Destroy old XRNC virtual machine
-  command: "/usr/bin/virsh destroy {{ xrnc_name }}"
+  command: "/usr/bin/virsh destroy {{ xrnc['hostname'] }}"
   ignore_errors: yes

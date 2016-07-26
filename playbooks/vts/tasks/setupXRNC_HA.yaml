@@ -1,7 +1,7 @@
 ---
 
-- name: "Run 'setupXRNC_HA.sh 0.0.0.0'"
-  command: "/opt/cisco/package/sr/bin/setupXRNC_HA.sh 0.0.0.0"
+- name: "Run 'setupXRNC_HA.sh {{ peer_xrnc_ip }}'"
+  command: "/opt/cisco/package/sr/bin/setupXRNC_HA.sh {{ peer_xrnc_ip }}"
   become: yes
   become_method: sudo
 - name: "Wait for 'XRVR is up and DL server process is connected to XRVR'"
