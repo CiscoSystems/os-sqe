@@ -1,0 +1,35 @@
+---
+
+- hosts: localhost
+  gather_facts: False
+  vars_files:
+    - config.yaml
+  vars:
+    work_dir: "{{ workspace }}/{{ inventory_hostname }}}"
+    work_dir_vtc: "{{ work_dir }}/vtc"
+    work_dir_xrnc: "{{ work_dir }}/xrnc"
+    vtc: "{{ vts_hosts[inventory_hostname]['vtc'] }}"
+    xrnc: "{{ vts_hosts[inventory_hostname]['xrnc'] }}"
+    xrvr: "{{ vts_hosts[inventory_hostname]['xrvr'] }}"
+  tasks:
+    - include: tasks/add_vts_hosts.yaml
+
+- hosts: xrvr
+  gather_facts: False
+  connection: local
+  vars_files:
+    - config.yaml
+  tasks:
+    - name: "Push bgp neighbors configuration onto {{ ansible_ssh_host }}"
+      iosxr_template:
+        src: "templates/xrvr/bgp_neighbor.jinja2"
+        host: "{{ ansible_ssh_host }}"
+        username: "{{ ansible_ssh_user }}"
+        password: "{{ ansible_ssh_pass }}"
+
+- hosts: vtc
+  gather_facts: False
+  vars_files:
+    - config.yaml
+  tasks:
+    - include: tasks/vtc_sync_xrvr.yaml

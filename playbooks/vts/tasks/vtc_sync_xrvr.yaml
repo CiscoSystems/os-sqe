@@ -1,0 +1,10 @@
+---
+
+- set_fact: day0_config_path="~/sync_rvr.cfg"
+- template:
+    src: "templates/vtc/sync_rvr.jinja2"
+    dest: "{{ day0_config_path }}"
+- template:
+    src: "templates/vtc/day0_expect.jinja2"
+    dest: "~/day0_expect.expect"
+- command: "/usr/bin/expect ~/day0_expect.expect > /dev/null"
