@@ -10,14 +10,6 @@
     groups: vtc
 
 - add_host:
-    name: "master-vtc"
-    ansible_ssh_host: "{{ vtc['api_ip'] }}"
-    ansible_ssh_user: "{{ user }}"
-    ansible_ssh_pass: "{{ password }}"
-    props: "{{ vtc }}"
-  when: "'master' in vtc and vtc['master']"
-
-- add_host:
     name: "{{ xrnc['hostname']  }}"
     ansible_ssh_host: "{{ xrnc['mgmt_ip'] }}"
     ansible_ssh_user: "cisco"
