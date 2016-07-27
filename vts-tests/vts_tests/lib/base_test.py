@@ -68,8 +68,6 @@ class BaseTest(unittest.TestCase):
         self.networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
 
         self.ports = self.cloud.create_ports(instance_name=prefix, on_nets=self.networks, is_fixed_ip=True)
-        if not hasattr(self.cloud, '_keypair_name'):
-            self.cloud.create_key_pair()
         self.instance, self.instance_status = self.cloud.create_instance(name=prefix,
                                                                          flavor=self.config.flavor,
                                                                          image=self.config.image_name,
@@ -81,6 +79,7 @@ class BaseTest(unittest.TestCase):
         if cfg:
             ports.create_ports(self.vtc_ui, cfg['tor_name'], cfg['tor_port'], cfg['ovs_bridge'])
             return True
+        return False
 
     def delete_access_ports(self):
         cfg = self.config.test_server_cfg
@@ -99,10 +98,10 @@ class BaseTest(unittest.TestCase):
             res = False
         return res
 
-    def ping_ip(self, ip):
+    def ping_ip(self, ip, attempts=24):
         res = False
         sleep_sec = 5
-        for i in range(12):
+        for i in range(attempts):
             res = self.cmd('ping -W 120 -c 5 {ip}'.format(ip=ip))
             if res:
                 break
@@ -110,9 +109,23 @@ class BaseTest(unittest.TestCase):
             time.sleep(5)
         return res
 
-    def ping_ports(self, ports):
+    def ping_ports(self, ports, attempts=12):
         res = []
         for p in ports:
             ip = self.get_port_ip(p)
             res.append(self.ping_ip(ip))
+        return res
+
+    def ping_remote_ports(self, source_ports, dest_ports):
+        res = {}
+        for sp in source_ports:
+            for dp in dest_ports:
+                sip = self.get_port_ip(sp)
+                dip = self.get_port_ip(dp)
+                cmd = "sshpass -p {password} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {user}@{sip} " \
+                      "'ping -W 120 -c 5 {dip}'".format(user=self.config.image_user,
+                                                        password=self.config.image_password,
+                                                        sip=sip, dip=dip)
+                r = self.cmd(cmd)
+                res[(sip, dip)] = r
         return res

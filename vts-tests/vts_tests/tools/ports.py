@@ -114,6 +114,7 @@ def create_ports(vtc_ui_client, device_name, device_port, ovs_bridge):
             subnets = vtc_ui_client.get_overlay_network_subnets(net['id'])
             if len(subnets) == 0:
                 print "\nThere are not subnets. Skipping network {0}".format(net)
+                continue
 
             port_name = 'vlan{0}'.format(vlan_number)
             port_network = netaddr.IPNetwork(subnets[0]['cidr'])

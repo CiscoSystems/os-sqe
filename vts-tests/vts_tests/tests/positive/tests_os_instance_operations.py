@@ -1,14 +1,24 @@
 import time
+import unittest
 
 from vts_tests.lib import base_test
 
 
 class TestOSInstanceOperations(base_test.BaseTest):
 
-    def test_create_network_subnet_port_instance(self):
+    def _create_one_instance(self):
+        time.sleep(10)
         self.create_net_subnet_port_instance()
         self.assertTrue(self.instance_status, 'Instance status is not ACTIVE')
+        if not self.create_access_ports():
+            raise unittest.SkipTest('Could not create port for border leaf')
+        self._assert_ping_instance_ports()
 
+    def _assert_ping_instance_ports(self):
+        self.assertTrue(all(self.ping_ports(self.ports)), 'Could not reach instance. Ping failed')
+
+    def test_create_network_subnet_port_instance(self):
+        self._create_one_instance()
         for network_name, network in self.networks.iteritems():
             self.assertTrue(self.vtc_ui.verify_network(network['network']), 'Network synced')
             self.assertTrue(self.vtc_ui.verify_subnet(network['network']['id'], network['subnet']), 'Subnet synced')
@@ -16,6 +26,7 @@ class TestOSInstanceOperations(base_test.BaseTest):
 
         self.assertTrue(self.vtc_ui.verify_instances(self.ports), 'Instance synced')
 
+        self.delete_access_ports()
         self.cloud.cleanup()
 
         # TODO: Remove sleep
@@ -27,21 +38,29 @@ class TestOSInstanceOperations(base_test.BaseTest):
             self.assertEqual(self.vtc_ui.get_overlay_network(network['network']['id']), None, 'Network has been removed')
 
     def test_instance_soft_reboot(self):
-        self.create_net_subnet_port_instance()
+        self._create_one_instance()
         self.cloud.server_reboot(self.instance['name'], hard=False)
+        self._assert_ping_instance_ports()
 
     def test_instance_hard_reboot(self):
-        self.create_net_subnet_port_instance()
+        self._create_one_instance()
         self.cloud.server_reboot(self.instance['name'], hard=True)
+        self._assert_ping_instance_ports()
 
     def test_instance_rebuild(self):
-        self.create_net_subnet_port_instance()
+        self._create_one_instance()
         self.cloud.server_rebuild(self.instance['name'], image=self.config.image_name)
+        self._assert_ping_instance_ports()
 
     def test_instance_suspend_resume(self):
-        self.create_net_subnet_port_instance()
+        self._create_one_instance()
         self.cloud.server_suspend(self.instance['name'])
         self.cloud.server_resume(self.instance['name'])
+        self._assert_ping_instance_ports()
 
     def tearDown(self):
+        try:
+            self.delete_access_ports()
+        except:
+            pass
         self.cloud.cleanup()

@@ -49,6 +49,14 @@ class Config(object):
         return self.vts_test_config.get('default', 'node_password')
 
     @property
+    def image_user(self):
+        return self.vts_test_config.get('default', 'image_user')
+
+    @property
+    def image_password(self):
+        return self.vts_test_config.get('default', 'image_password')
+
+    @property
     def image_name(self):
         return self.vts_test_config.get('default', 'image_name')
 

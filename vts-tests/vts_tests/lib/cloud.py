@@ -113,10 +113,10 @@ export OS_AUTH_URL={end_point}
         import subprocess
         import sys
 
+        sys.stdout.writelines("Call command: " + cmd)
         venv = '. ' + sys.prefix + '/bin/activate && ' if hasattr(sys, 'real_prefix') else ''
         ans = subprocess.check_output('{venv}{cmd} {creds}'.format(venv=venv, cmd=cmd, creds=self), shell=True)
-
-        sys.stdout.writelines(str(ans))
+        sys.stdout.writelines("Output:" + str(ans))
         if '-f csv' in cmd:
             return self._process_csv_output(ans)
         elif '-f json' in cmd:
@@ -221,9 +221,10 @@ export OS_AUTH_URL={end_point}
 
     @staticmethod
     def get_cidrs4(class_a, how_many):
+        import random
         from netaddr import IPNetwork
 
-        return map(lambda number: IPNetwork('{a}.{b}.{c}.0/24'.format(a=class_a, b=number / 256, c=number % 256)), xrange(1, how_many+1))
+        return map(lambda number: IPNetwork('{a}.{b}.{c}.0/24'.format(a=class_a, b=random.randint(0, 99), c=number)), xrange(1, how_many+1))
 
     def get_net_names(self, common_part_of_name, how_many):
         return map(lambda number: '{sqe_pref}-{name}-net-{number}'.format(sqe_pref=self._unique_pattern_in_name, name=common_part_of_name, number=number), xrange(1, how_many+1))
@@ -261,7 +262,7 @@ export OS_AUTH_URL={end_point}
             self.cmd(self._neutron_bin + ' router-interface-add {router} {subnet}'.format(router=router_name, subnet=subnet_name))
         self.cmd(self._neutron_bin + ' router-gateway-set {router} {net}'.format(router=router_name, net=self._fip_network))
 
-    def create_ports(self, instance_name, on_nets, is_fixed_ip=False, sriov=False):
+    def create_ports(self, instance_name, on_nets, is_fixed_ip=False, sriov=False, ip=None, mac=None):
         import re
 
         ports = []
@@ -269,7 +270,8 @@ export OS_AUTH_URL={end_point}
 
         for net_name, desc in sorted(on_nets.items()):
             if is_fixed_ip:
-                ip, mac = self._calculate_static_ip_and_mac(re.findall(r'[0-9]+(?:\.[0-9]+){3}', desc['subnet']['allocation_pools']))
+                if not ip or not mac:
+                    ip, mac = self._calculate_static_ip_and_mac(re.findall(r'[0-9]+(?:\.[0-9]+){3}', desc['subnet']['allocation_pools']))
                 fixed_ip_addon = '--fixed-ip ip_address={ip} --mac-address {mac}'.format(ip=ip, mac=mac)
             else:
                 fixed_ip_addon = ''
@@ -316,15 +318,16 @@ export OS_AUTH_URL={end_point}
         self._keypair_name = '{sqe_pref}-key1'.format(sqe_pref=self._unique_pattern_in_name)
         self._keypair = self.cmd(self._openstack_bin + ' keypair create {keypair}'.format(keypair=self._keypair_name))
 
-    def create_instance(self, name, flavor, image, on_ports, wait_for_ready=True):
+    def create_instance(self, name, flavor, image, on_ports, compute=None, wait_for_ready=True):
         if image not in self.cmd(self._openstack_bin + ' image list'):
             raise ValueError('Image {0} is not known by cloud'.format(image))
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x['id'], on_ports))
+        zone_part = '--availability-zone nova:' + compute if compute else ''
         instance_name = '{sqe_pref}-{name}'.format(sqe_pref=self._unique_pattern_in_name, name=name)
         instance = self.cmd(self._openstack_bin + ' server create {name} --flavor {flavor} --image "{image}" --security-group default '
-                                                  '--key-name {keypair} {ports_part} -f shell'.format(name=instance_name, flavor=flavor,
+                                                  '{ports_part} {zone_part} -f shell'.format(name=instance_name, flavor=flavor,
                                                                                              image=image, ports_part=ports_part,
-                                                                                             keypair=self._keypair_name))
+                                                                                             zone_part=zone_part))
         instance_status = None
         if wait_for_ready:
             instance_status = self.wait_instances_ready(names=[instance_name])
@@ -365,7 +368,7 @@ export OS_AUTH_URL={end_point}
             if instances_in_error:
                 sys.stdout.writelines(str(our_instances))
                 return False
-            time.sleep(30)
+            time.sleep(5)
         sys.stdout.writelines(str(our_instances))
         return False
 
