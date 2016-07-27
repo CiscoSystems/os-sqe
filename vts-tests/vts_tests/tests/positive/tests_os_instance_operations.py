@@ -19,14 +19,14 @@ class TestOSInstanceOperations(base_test.BaseTest):
 
     def test_create_network_subnet_port_instance(self):
         self._create_one_instance()
+        self.delete_access_ports()
+
         for network_name, network in self.networks.iteritems():
             self.assertTrue(self.vtc_ui.verify_network(network['network']), 'Network synced')
             self.assertTrue(self.vtc_ui.verify_subnet(network['network']['id'], network['subnet']), 'Subnet synced')
             self.assertTrue(self.vtc_ui.verify_ports(network['network']['id'], self.ports), 'Ports synced')
-
         self.assertTrue(self.vtc_ui.verify_instances(self.ports), 'Instance synced')
 
-        self.delete_access_ports()
         self.cloud.cleanup()
 
         # TODO: Remove sleep
