@@ -29,7 +29,7 @@
   uri:
     url: "https://{{ vtc['api_ip'] }}:8443/VTS/"
     validate_certs: no
-    timeout: 180
+    timeout: 300
 - name: "Change VTC UI admin password to {{ vtc_password }}"
   vtcui_password_change:
     vtc_ip: "{{ vtc['api_ip'] }}"
