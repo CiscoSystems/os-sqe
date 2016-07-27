@@ -25,7 +25,7 @@
   tasks:
     - include: tasks/xrvr_day0.yaml
 
-- hosts: master-vtc
+- hosts: vtc
   gather_facts: False
   vars_files:
     - config.yaml
