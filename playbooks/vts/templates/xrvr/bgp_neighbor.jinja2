@@ -3,14 +3,14 @@ router bgp {{ bgp_asn }}
  address-family ipv4 unicast
  address-family l2vpn evpn
   retain route-target all
- exit
+  exit
  {% for host in groups['switches'] %}
  neighbor {{ hostvars[host]['tenant_ip'] }}
   remote-as {{ hostvars[host]['bgp_asn'] }}
   update-source GigabitEthernet0/0/0/0
   address-family l2vpn evpn
    route-reflector-client
+   exit
   exit
- exit
  {% endfor %}
-exit
+ exit

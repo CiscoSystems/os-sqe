@@ -7,16 +7,15 @@ router ospf 100
   interface GigabitEthernet0/0/0/0
   exit
  exit
-exit
 
 interface Loopback0
  ipv4 address {{ props['loopback0_ip'] }} 255.255.255.255
-exit
+ exit
 
 router bgp {{ bgp_asn }}
  bgp router-id {{ props['loopback0_ip'] }}
  address-family ipv4 unicast
  address-family l2vpn evpn
   retain route-target all
+  exit
  exit
-exit
