@@ -22,6 +22,8 @@ class Cloud:
         self._delete_network_cmd = self._openstack_bin + ' network delete '
         self._delete_subnet_cmd = self._neutron_bin + ' subnet-delete '
         self._delete_port_cmd = self._neutron_bin + ' port-delete '
+        self._delete_user_cmd = self._openstack_bin + ' user delete '
+        self._delete_project_cmd = self._openstack_bin + ' project delete '
 
         self._show_server_cmd = self._openstack_bin + ' server show -f shell '
         self._show_subnet_cmd = self._neutron_bin + ' subnet-show -f shell '
@@ -30,9 +32,11 @@ class Cloud:
         self._list_subnet_cmd = self._openstack_bin + ' subnet list -f json'
         self._list_router_cmd = self._openstack_bin + ' router list -f json'
         self._list_port_cmd = self._openstack_bin + ' port list -f json'
-        self._list_server_cmd = self._openstack_bin + ' server list -f json'
+        self._list_server_cmd = self._openstack_bin + ' server list -f json --all'
         self._list_keypair_cmd = self._openstack_bin + ' keypair list -f json'
         self._list_image_cmd = self._openstack_bin + ' image list -f json'
+        self._list_user_cmd = self._openstack_bin + ' user list -f json'
+        self._list_project_cmd = self._openstack_bin + ' project list -f json'
 
         self._fip_network = 'Default Value Set In Cloud.__init__()'
         self._provider_physical_network = 'Default Value Set In Cloud.__init__()'
@@ -378,24 +382,37 @@ export OS_AUTH_URL={end_point}
             self.cmd(self._openstack_bin + ' image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
         return name
 
+    def project_create(self, postfix):
+        return self.cmd(self._openstack_bin + ' project create -f json --enable {0}'.format(self._unique_pattern_in_name + postfix))
+
+    def user_create(self, username, password, project):
+        return self.cmd(self._openstack_bin + ' user create -f json --project {project} '
+                                              '--password {password} --enable {username}'.format(project=project, username=self._unique_pattern_in_name + username, password=password))
+
     def cleanup(self):
         servers = self.cmd(self._list_server_cmd)
         routers = self.cmd(self._list_router_cmd)
         ports = self.cmd(self._list_port_cmd)
         keypairs = self.cmd(self._list_keypair_cmd)
         networks = self.cmd(self._list_network_cmd)
+        users = self.cmd(self._list_user_cmd)
+        projects = self.cmd(self._list_project_cmd)
 
         sqe_servers = filter(lambda x: self._unique_pattern_in_name in x['Name'], servers)
         sqe_ports = filter(lambda x: self._unique_pattern_in_name in x['Name'], ports)
         sqe_networks = filter(lambda x: self._unique_pattern_in_name in x['Name'], networks)
         sqe_routes = filter(lambda x: self._unique_pattern_in_name in x['name'], routers)
         sqe_keypairs = filter(lambda x: self._unique_pattern_in_name in x['Name'], keypairs)
+        sqe_users = filter(lambda x: self._unique_pattern_in_name in x['Name'], users)
+        sqe_projects = filter(lambda x: self._unique_pattern_in_name in x['Name'], projects)
 
         map(lambda server: self.cmd(self._delete_server_cmd + server['ID']), sqe_servers)
         map(lambda router: self._clean_router(router['ID']), sqe_routes)
         map(lambda port: self.cmd(self._delete_port_cmd + port['ID']), sqe_ports)
         map(lambda net: self.cmd(self._delete_network_cmd + net['ID']), sqe_networks)
         map(lambda keypair: self.cmd(self._delete_keypair_cmd + keypair['Name']), sqe_keypairs)
+        map(lambda user: self.cmd(self._delete_user_cmd + user['ID']), sqe_users)
+        map(lambda project: self.cmd(self._delete_project_cmd + project['ID']), sqe_projects)
 
     def _clean_router(self, router_name):
         import re

@@ -4,12 +4,14 @@ import subprocess
 import time
 import unittest
 
-from vts_tests.lib import cloud, vtcui, xrnc_node_connect, shell_connect
+from vts_tests.lib import cloud, vtcui, xrnc_node_connect, xrvr_node_connect, shell_connect
 from vts_tests.lib import mercury_config as config
 from vts_tests.tools import ports
 
 
 class BaseTest(unittest.TestCase):
+
+    XRVR_NO_SUCH_CONFIGURATION = 'No such configuration item(s)'
 
     @classmethod
     def setUpClass(cls):
@@ -56,6 +58,21 @@ class BaseTest(unittest.TestCase):
         if not hasattr(self, '_xrnc2') and self.config.xrnc_node2:
             self._xrnc2 = xrnc_node_connect.XrncNodeConnect(self.config.vtc_node2, self.config.xrnc_node2)
         return getattr(self, '_xrnc2', None)
+
+    @property
+    def xrvr1(self):
+        if not hasattr(self, '_xrvr1'):
+            self._xrvr1 = xrvr_node_connect.XrvrNodeConnect(self.config.vtc_node1, self.config.xrvr_node1)
+        return self._xrvr1
+
+    @property
+    def xrvr2(self):
+        if not hasattr(self, '_xrvr2') and self.config.xrvr_node2:
+            self._xrvr2 = xrnc_node_connect.XrvrNodeConnect(self.config.vtc_node2, self.config.xrvr_node2)
+        return getattr(self, '_xrvr2', None)
+
+    def convert_mac(self, mac_string):
+        return '{0}{1}{2}{3}.{4}{5}{6}{7}.{8}{9}{10}{11}'.format(*mac_string.replace(':', '').lower())
 
     def create_net_subnet_port_instance(self):
         prefix = random.randint(1, 1000)

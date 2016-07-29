@@ -49,7 +49,7 @@ class ShellConnect(object):
 
     def ssh_to(self, server):
         cmd = self._make_ssh_string(user=server['user'], ip=server['ip'])
-        prompt = self._make_prompt_string(server)
+        prompt = self._prompt_string or self._make_prompt_string(server)
         self._shell_channel.send(cmd + '\n')
         buff = ''
         while prompt not in buff:

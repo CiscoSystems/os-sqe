@@ -1,7 +1,7 @@
 import random
 import unittest
 
-from vts_tests.lib import base_test
+from vts_tests.lib import base_test, cloud
 
 
 class TestFunctional(base_test.BaseTest):
@@ -20,9 +20,6 @@ class TestFunctional(base_test.BaseTest):
         else:
             raise unittest.SkipTest('No computes')
 
-        if not hasattr(self.cloud, '_keypair_name'):
-            self.cloud.create_key_pair()
-
     def _skip_if_border_leaf_is_not_configured(self):
         if not self.config.test_server_cfg:
             raise unittest.SkipTest('Border leaf is not configured. '
@@ -38,6 +35,14 @@ class TestFunctional(base_test.BaseTest):
 
         r = self.ping_remote_ports(ports1, ports2)
         self.assertTrue(all(r.values()), 'Could not reach instance1 from instance2. {}'.format(r))
+
+    def assert_evpn_evi_network_controller(self, vni_number, mac_address, configured=True):
+        mac = self.convert_mac(mac_address)
+        xrvr_cfg_text = self.xrvr1.run('show run evpn evi {evi} network-controller host mac {mac}'.format(evi=vni_number, mac=mac))
+        if configured:
+            self.assertNotIn(self.XRVR_NO_SUCH_CONFIGURATION, xrvr_cfg_text, 'XRVR is not configured')
+        else:
+            self.assertIn(self.XRVR_NO_SUCH_CONFIGURATION, xrvr_cfg_text, 'XRVR is configured')
 
     def test_connectivity_same_net_same_compute(self):
         prefix = random.randint(1, 1000)
@@ -124,6 +129,7 @@ class TestFunctional(base_test.BaseTest):
 
     def test_5_networks_one_instance_per_network_same_tenant(self):
         ports = {}
+        vni_numbers = {}
         networks = self.cloud.create_net_subnet(common_part_of_name=random.randint(1, 1000), class_a=10, how_many=5, is_dhcp=False)
         for network_name, network in networks.iteritems():
             prefix = random.randint(1, 1000)
@@ -133,11 +139,39 @@ class TestFunctional(base_test.BaseTest):
                                        image=self.config.image_name,
                                        on_ports=ports[network_name])
 
+            vni_numbers[network_name] = self.vtc_ui.get_overlay_network(network['network']['id'])['vni_number']
+            self.assert_evpn_evi_network_controller(vni_numbers[network_name], ports[network_name][0]['mac_address'])
+
+        self.cloud.cleanup()
         for network_name, network in networks.iteritems():
-            self.assertTrue(self.vtc_ui.verify_network(network['network']), 'Network synced')
-            self.assertTrue(self.vtc_ui.verify_subnet(network['network']['id'], network['subnet']), 'Subnet synced')
-            self.assertTrue(self.vtc_ui.verify_ports(network['network']['id'], ports[network_name]), 'Ports synced')
-            self.assertTrue(self.vtc_ui.verify_instances(ports[network_name]), 'Instance synced')
+            self.assert_evpn_evi_network_controller(vni_numbers[network_name], ports[network_name][0]['mac_address'], configured=False)
+
+    def test_5_networks_one_instance_per_network_different_tenant(self):
+        prefix = random.randint(1, 1000)
+        vni_vs_mac = {}
+        for i in range(5):
+            s = str(prefix) + str(i)
+            project = self.cloud.project_create(s)
+            user = self.cloud.user_create(s, s, project['name'])
+
+            user_cloud = cloud.Cloud(s, user['name'], s, project['name'], end_point=self.cloud.end_point)
+            networks = user_cloud.create_net_subnet(common_part_of_name=random.randint(1, 1000), class_a=10, how_many=1, is_dhcp=False)
+            for network_name, network in networks.iteritems():
+                network_id = network['network']['id']
+                ports = user_cloud.create_ports(instance_name=prefix, on_nets={network_name: network}, is_fixed_ip=True)
+                user_cloud.create_instance(name=prefix,
+                                           flavor=self.config.flavor,
+                                           image=self.config.image_name,
+                                           on_ports=ports)
+                vni_number = self.vtc_ui.get_overlay_network(network_id, project['name'])['vni_number']
+                mac = ports[0]['mac_address']
+                self.assert_evpn_evi_network_controller(vni_number, mac)
+
+                vni_vs_mac[vni_number] = mac
+
+        self.cloud.cleanup()
+        for vni, mac in vni_vs_mac.iteritems():
+            self.assert_evpn_evi_network_controller(vni_number, mac, configured=False)
 
     def tearDown(self):
         try:
