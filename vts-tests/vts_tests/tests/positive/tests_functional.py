@@ -1,7 +1,8 @@
 import random
 import unittest
+import time
 
-from vts_tests.lib import base_test, cloud
+from vts_tests.lib import base_test, mercury_node_connect, cloud
 
 
 class TestFunctional(base_test.BaseTest):
@@ -172,6 +173,49 @@ class TestFunctional(base_test.BaseTest):
         self.cloud.cleanup()
         for vni, mac in vni_vs_mac.iteritems():
             self.assert_evpn_evi_network_controller(vni_number, mac, configured=False)
+
+    def test_instance_reachable_if_stop_vtf_container(self):
+        prefix = random.randint(1, 1000)
+        networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
+        ports1 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
+        instance1, instance_status1 = self.cloud.create_instance(name=prefix,
+                                                                 flavor=self.config.flavor,
+                                                                 image=self.config.image_name,
+                                                                 on_ports=ports1,
+                                                                 compute=self.compute1['hostname'])
+        if not self.create_access_ports():
+            raise unittest.SkipTest('Border leaf is not configured')
+        self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
+
+        compute_conn = mercury_node_connect.MercuryNodeConnect(self.config.build_node, self.compute1)
+        compute_conn.docker_stop(self.config.CONTAINER_VTF_NAME)
+
+        # give it a time to failover
+        time.sleep(60)
+        container_id = compute_conn.get_container_id(self.config.CONTAINER_VTF_NAME)
+        self.assertNotEqual(container_id, '', 'vtf container is not started after stop')
+        self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
+
+    def test_instance_reachable_if_restart_vtf_container(self):
+        prefix = random.randint(1, 1000)
+        networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
+        ports1 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
+        instance1, instance_status1 = self.cloud.create_instance(name=prefix,
+                                                                 flavor=self.config.flavor,
+                                                                 image=self.config.image_name,
+                                                                 on_ports=ports1,
+                                                                 compute=self.compute1['hostname'])
+        if not self.create_access_ports():
+            raise unittest.SkipTest('Border leaf is not configured')
+        self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
+
+        compute_conn = mercury_node_connect.MercuryNodeConnect(self.config.build_node, self.compute1)
+        compute_conn.systemctl_restart_vtf()
+
+        # give it a time to failover
+        time.sleep(60)
+        self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
+
 
     def tearDown(self):
         try:
