@@ -26,6 +26,8 @@ class Config(object):
         self._vtc_ui_node = None
         self._xrnc_node1 = None
         self._xrnc_node2 = None
+        self._xrvr_node1 = None
+        self._xrvr_node2 = None
         self._mercury_servers_info = None
         self._controllers = None
         self._computes = None
@@ -116,6 +118,24 @@ class Config(object):
                                 'password': self.vts_test_config.get('xrnc2', 'password'),
                                 'hostname': self.vts_test_config.get('xrnc2', 'hostname')}
         return self._xrnc_node2
+
+    @property
+    def xrvr_node1(self):
+        if not self._xrvr_node1:
+            self._xrvr_node1 = {'ip': self.vts_test_config.get('xrvr1', 'ip'),
+                                'user': self.vts_test_config.get('xrvr1', 'user'),
+                                'password': self.vts_test_config.get('xrvr1', 'password'),
+                                'hostname': self.vts_test_config.get('xrvr1', 'hostname')}
+        return self._xrvr_node1
+
+    @property
+    def xrvr_node2(self):
+        if not self._xrvr_node2 and self.vts_test_config.has_section('xrvr2'):
+            self._xrvr_node2 = {'ip': self.vts_test_config.get('xrvr2', 'ip'),
+                                'user': self.vts_test_config.get('xrvr2', 'user'),
+                                'password': self.vts_test_config.get('xrvr2', 'password'),
+                                'hostname': self.vts_test_config.get('xrvr2', 'hostname')}
+        return self._xrvr_node2
 
     @property
     def mercury_servers_info(self):

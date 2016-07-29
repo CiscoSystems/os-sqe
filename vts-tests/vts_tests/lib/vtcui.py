@@ -105,11 +105,11 @@ class VtcUI(object):
         items = self.get_network_inventory()
         return [item for item in items if item['isxrvr'] == 'true']
 
-    def get_overlay_networks(self, name='admin'):
-        return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + name)['items']
+    def get_overlay_networks(self, tenant_name='admin'):
+        return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + tenant_name)['items']
 
-    def get_overlay_network(self, network_id):
-        networks = self.get_overlay_networks()
+    def get_overlay_network(self, network_id, tenant_name='admin'):
+        networks = self.get_overlay_networks(tenant_name)
         for network in networks:
             if network_id == network['id']:
                 return network
