@@ -28,3 +28,6 @@ class MercuryNodeConnect(shell_connect.ShellConnect):
         if not container_id:
             raise Exception('Container {0} not found.'.format(container_pattern))
         self.run('docker stop {0}'.format(container_id))
+
+    def systemctl_restart_vtf(self):
+        self.run('systemctl restart docker-neutron_vtf.service')
