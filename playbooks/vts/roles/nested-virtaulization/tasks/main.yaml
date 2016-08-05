@@ -1,0 +1,14 @@
+---
+
+- command: "/usr/bin/cat /sys/module/kvm_intel/parameters/nested"
+  register: nested_virtualization
+- debug: var=nested_virtualization
+- name: "Enable 'options kvm-intel nested=1'"
+  command: "/usr/bin/echo 'options kvm-intel nested=1' > /etc/modprobe.d/kvm-intel.conf"
+  when: nested_virtualization.stdout == "N"
+- name: rmmod
+  command: "/usr/sbin/rmmod kvm_intel"
+  when: nested_virtualization.stdout == "N"
+- name: modprobe
+  command: "/usr/sbin/modprobe kvm_intel"
+  when: nested_virtualization.stdout == "N"

@@ -1,0 +1,15 @@
+DEVICE={{ item.key }}
+TYPE=OVSBridge
+DEVICETYPE="ovs"
+{% if 'netmask' in item.value and item.value['netmask'] %}
+NETMASK={{ item.value['netmask'] }}
+{% endif %}
+{% if 'ipaddr' in item.value and item.value['ipaddr'] %}
+IPADDR={{ item.value['ipaddr'] }}
+{% endif %}
+{% if 'gateway' in item.value and item.value['gateway'] %}
+GATEWAY={{ item.value['gateway'] }}
+{% endif %}
+{% if 'defroute' in item.value and item.value['defroute'] == 'yes' %}
+DEFROUTE={{ item.value['defroute'] }}
+{% endif %}

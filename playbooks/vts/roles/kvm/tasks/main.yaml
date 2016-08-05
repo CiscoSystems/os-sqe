@@ -1,0 +1,24 @@
+---
+
+- command: "which systemctl"
+  register: systemctl_bin
+- name: "Install rpm package"
+  yum:
+    name: "{{ item }}"
+  with_items:
+    - qemu-kvm
+    - qemu-img
+    - virt-manager
+    - libvirt
+    - libvirt-python
+    - libvirt-client
+    - virt-install
+    - virt-viewer
+- name: Enable libvirtd
+  command: "{{ systemctl_bin.stdout }} enable libvirtd"
+- name: Start libvirtd
+  command: "{{ systemctl_bin.stdout }} start libvirtd"
+- command: "which virsh"
+  register: virsh_bin
+- name: Call 'virsh list'
+  command: "{{ virsh_bin.stdout }} list"

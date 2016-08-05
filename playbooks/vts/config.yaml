@@ -75,4 +75,7 @@ vtc_qcow:
 xrnc_qcow: 
 
 # No slash at the end
-workspace: 
+workspace:
+
+redhat_user:
+redhat_password:
