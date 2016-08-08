@@ -14,6 +14,7 @@
     - libvirt-client
     - virt-install
     - virt-viewer
+    - genisoimage
 - name: Enable libvirtd
   command: "{{ systemctl_bin.stdout }} enable libvirtd"
 - name: Start libvirtd
