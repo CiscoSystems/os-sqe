@@ -5,10 +5,15 @@ from lab.vts_classes.vtf import Vtf
 
 
 class Vtc(Server):
+    ROLE = 'vtc'
+
     def __init__(self, node_id, role, lab, hostname):
         super(Server, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
         self._is_api_via_vip = True
+
+    def form_mac(self, net_octet_in_mac):
+        return '00:{lab:02}:A0:F0:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
 
     def __repr__(self):
         ssh_ip, ssh_u, ssh_p = self.get_ssh()
@@ -363,4 +368,7 @@ class Vtc(Server):
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
-    pass
+    ROLE = 'vts-host-n9'
+
+    def form_mac(self, net_octet_in_mac):
+        return '00:{lab:02}:A0:FF:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)

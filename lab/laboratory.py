@@ -3,27 +3,6 @@ class Laboratory(object):
     LAB_MERCURY, LAB_OSPD = SUPPORTED_LAB_TYPES
     SUPPORTED_TOPOLOGIES = ['VLAN', 'VXLAN']
     TOPOLOGY_VLAN, TOPOLOGY_VXLAN = SUPPORTED_TOPOLOGIES
-    ROLES = {'tor': 44,
-             'terminal': 22,
-             'cobbler': 99,
-             'oob': 33,
-             'pxe': 35,
-             'n9': 41,
-             'asr': 51,
-             'fi': 61,
-             'director-fi': 'D1',
-             'director-n9': 'D1',
-             'control-fi': 'CC',
-             'control-n9': 'CC',
-             'compute-fi': 'C1',
-             'compute-n9': 'C1',
-             'ceph-fi': 'CE',
-             'ceph-n9': 'CE',
-             'vtc': 'F1',
-             'xrvr': 'F2',
-             'vtf': 'F3',
-             'vts-host-n9': 'F4',
-             }
 
     def __repr__(self):
         return self._lab_name
@@ -43,7 +22,6 @@ class Laboratory(object):
         self._nodes = list()
         self._director = None
         self._is_sriov = self._cfg.get('use-sr-iov', False)
-        self._role_vs_count = dict()
 
         self._dns, self._ntp = self._cfg['dns'], self._cfg['ntp']
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
@@ -77,12 +55,6 @@ class Laboratory(object):
         for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
             own_node = self.get_node_by_id(peer_link['own-id'])
             self._process_single_wire(own_node=own_node, wire_info=(peer_link['own-port'], {'peer-id': peer_link['peer-id'], 'peer-port': peer_link['peer-port'], 'port-channel': peer_link['port-channel']}))
-
-    def count_node(self, role):
-        role = role.split('-')[0]
-        self._role_vs_count.setdefault(role, 0)
-        self._role_vs_count[role] += 1
-        return self._role_vs_count[role]
 
     def is_sriov(self):
         return self._is_sriov
@@ -198,7 +170,7 @@ class Laboratory(object):
         from lab.fi import FI, FiDirector, FiController, FiCompute, FiCeph
         from lab.n9k import Nexus
         from lab.asr import Asr
-        from lab.tor import Tor, Oob, Pxe
+        from lab.tor import Tor, Oob, Pxe, Terminal
         from lab.cobbler import CobblerServer
         from lab.cimc import CimcDirector, CimcController, CimcCompute, CimcCeph
         from lab.vts_classes.xrvr import Xrvr
@@ -207,46 +179,16 @@ class Laboratory(object):
         from lab.vts_classes.vtc import Vtc
 
         role = role.lower()
-        if role == 'cobbler':
-            return CobblerServer
-        elif role == 'asr':
-            return Asr
-        elif role == 'nexus' or role == 'n9':
-            return Nexus
-        elif role == 'fi' or role == 'ucsm':
-            return FI
-        elif role in ['tor', 'terminal']:
-            return Tor
-        elif role == 'pxe':
-            return Pxe
-        elif role == 'oob':
-            return Oob
-        elif role == 'director-fi':
-            return FiDirector
-        elif role == 'control-fi':
-            return FiController
-        elif role == 'compute-fi':
-            return FiCompute
-        elif role == 'ceph-fi':
-            return FiCeph
-        elif role == 'director-n9':
-            return CimcDirector
-        elif role == 'control-n9':
-            return CimcController
-        elif role == 'compute-n9':
-            return CimcCompute
-        elif role == 'ceph-n9':
-            return CimcCeph
-        elif role in ['vts-host-n9']:
-            return VtsHost
-        elif role in ['vtc']:
-            return Vtc
-        elif role in ['xrvr']:
-            return Xrvr
-        elif role in ['vtf']:
-            return Vtf
-        else:
-            raise ValueError('role "{0}" is not known,  should be one of: {1}'.format(role, Laboratory.ROLES.keys()))
+        roles = {Oob.ROLE: Oob, Pxe.ROLE: Pxe, Tor.ROLE: Tor, Terminal.ROLE: Terminal, CobblerServer.ROLE: CobblerServer,
+                 Asr.ROLE: Asr, Nexus.ROLE: Nexus, FI.ROLE: FI,
+                 FiDirector.ROLE: FiDirector, FiController.ROLE: FiController, FiCompute.ROLE: FiCompute, FiCeph.ROLE: FiCeph,
+                 CimcDirector.ROLE: CimcDirector, CimcController.ROLE: CimcController, CimcCompute.ROLE: CimcCompute, CimcCeph.ROLE: CimcCeph,
+                 VtsHost.ROLE: VtsHost, Vtc.ROLE: Vtc, Xrvr.ROLE: Xrvr, Vtf.ROLE: Vtf}
+
+        try:
+            return roles[role]
+        except KeyError:
+            raise ValueError('role "{0}" is not known,  should be one of: {1}'.format(role, roles.keys()))
 
     def _create_node(self, node_description):
         try:

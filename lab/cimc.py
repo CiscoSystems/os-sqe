@@ -17,9 +17,6 @@ class CimcServer(Server):
 
         lab_logger.info('{0}: CIMC {1}'.format(self, message))
         
-    def form_mac(self, mac_pattern):
-        return '00:{lab:02}:A0:{role_id}:{count:02}:{net}'.format(lab=self._lab.get_id(), role_id=self.lab().ROLES[self.get_role()], count=self._n, net=mac_pattern)
-
     def _login(self):
         import ImcSdk
 
@@ -259,16 +256,28 @@ class CimcServer(Server):
 
 
 class CimcDirector(CimcServer):
-    pass
+    ROLE = 'director-n9'
+
+    def form_mac(self, net_octet_in_mac):
+        return '00:{lab:02}:A0:DD:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
 
 
 class CimcController(CimcServer):
-    pass
+    ROLE = 'control-n9'
+
+    def form_mac(self, net_octet_in_mac):
+        return '00:{lab:02}:A0:CC:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
 
 
 class CimcCompute(CimcServer):
-    pass
+    ROLE = 'compute-n9'
+
+    def form_mac(self, net_octet_in_mac):
+        return '00:{lab:02}:A0:C0:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
 
 
 class CimcCeph(CimcServer):
-    pass
+    ROLE = 'ceph-n9'
+
+    def form_mac(self, net_octet_in_mac):
+        return '00:{lab:02}:A0:CE:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)

@@ -227,3 +227,46 @@ def junit_to_tims(junitxml, outpyats_jobfile):
 
     with with_config.open_artifact(outpyats_jobfile, 'w') as f:
         f.write(template.render(results=test_cases))
+
+
+@task
+def conf():
+    """fab conf\t\t\t\tTries to create lab configuration yaml
+    """
+    from fabric.operations import prompt
+    import validators
+    import six
+    from lab.n9k import Nexus
+    from lab.with_config import open_artifact
+
+    n9k_ip = prompt(text='Enter one of your N9K OOB IP: ')
+    n9k_username = 'admin'
+    n9k_password = 'CTO1234!'
+    if not validators.ipv4(n9k_ip):
+        six.print_('{} is not valid IP, existing'.format(n9k_ip))
+        return
+    n9k_username = prompt(text='Enter username for N9K at {} (default is {}): '.format(n9k_ip, n9k_username)) or n9k_username
+    n9k_password = prompt(text='Enter password for N9K at {} (default is {}): '.format(n9k_ip, n9k_password)) or n9k_password
+
+    n9k = Nexus(node_id=1, role=Nexus.ROLE, lab='fake-lab', hostname='fake-hostname')
+    n9k.set_oob_creds(ip=n9k_ip, username=n9k_username, password=n9k_password)
+    cdp = n9k.n9_show_cdp_neighbor()
+    lldp = n9k.n9_show_lldp_neighbor()
+
+    with open_artifact(name='new_lab.yaml', mode='w') as f:
+        f.write('lab-id: ???? # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n')
+        f.write('lab-name: ???? # any string to be used on logging\n')
+        f.write('lab-type: ???? # supported types: MERCURY, OSPD\n')
+        f.write('description-url: "https://wiki.cisco.com/display/OPENSTACK/SJ19-121-????"\n')
+        f.write('\n')
+        f.write('dns: [171.70.168.183]\n')
+        f.write('ntp: [171.68.38.66]\n')
+        f.write('\n')
+        f.write('nodes: [\n')
+        f.write(']\n\n')
+        f.write('peer-links: [ # Section which describes peer-links in the form {own-id: n92, own-port:  1/46, peer-id: n91, peer-port: 1/46, port-channel: pc100}\n')
+        f.write(']\n')
+
+
+
+
