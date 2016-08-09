@@ -307,6 +307,44 @@ class Vtc(Server):
             self.vtc_patch_call(resource='/api/running/aaa/authentication/users/user', data=json.dumps({'user': user}))
         self.set_oob_creds(ip=self.get_ssh_ip(), username=username, password=password)
 
+    def vtc_change_default_password(self):
+        import json
+        import re
+        import requests
+
+        vtc_ip, username, password = self.get_oob()
+        default_username, default_password = 'admin', 'admin'
+
+        if default_username != username:
+            raise ValueError
+
+        api_security_check = 'https://{}:8443/VTS/j_spring_security_check'.format(vtc_ip)
+        api_java_servlet = 'https://{}:8443/VTS/JavaScriptServlet'.format(vtc_ip)
+        api_update_password = 'https://{}:8443/VTS/rs/ncs/user?updatePassword=true&isEnforcePassword=true'.format(vtc_ip)
+
+        session = requests.Session()
+        auth = session.post(api_security_check, data={'j_username': default_username, 'j_password': default_password, 'Submit': 'Login'}, verify=False)
+        if 'Invalid username or passphrase' in auth.text:
+            raise ValueError(auth.text)
+
+        java_script_servlet = session.get(api_java_servlet, verify=False)
+        owasp_csrftoken = ''.join(re.findall(r'OWASP_CSRFTOKEN", "(.*?)", requestPageTokens', java_script_servlet.text))
+        if not owasp_csrftoken:
+            raise RuntimeError('OWASP_CSRFTOKEN token has not been found in: ' + java_script_servlet.text)
+
+        response = session.put(api_update_password,
+                               data=json.dumps({'resource': {'user': {'user_name': username, 'password': password, 'currentPassword': default_password}}}),
+                               headers={'OWASP_CSRFTOKEN': owasp_csrftoken,
+                                        'X-Requested-With': 'OWASP CSRFGuard Project',
+                                        'Accept': 'application/json, text/plain, */*',
+                                        'Accept-Encoding': 'gzip, deflate, sdch, br',
+                                        'Content-Type': 'application/json;charset=UTF-8'})
+
+        if response.status_code == 200 and 'Error report' not in response.text:
+            return response.text
+        else:
+            raise RuntimeError(response.text)
+
     def vtc_get_os_network(self):
         self.vtc_get_call(resource='/api/running/openstack/network')  # ans.text == '' or ans.txt == '????'
         ans = self.vtc_get_call(resource='/api/running/openstack/subnet')
