@@ -234,9 +234,6 @@ class Server(LabNode):
             self._hostname = self.run('hostname').stdout.strip()
         return self._hostname
 
-    def form_mac(self, mac_pattern):
-        return '00:{lab:02}:00:{role_id}:{count:02}:{net}'.format(lab=self._lab.get_id(), role_id=self.lab().ROLES[self.get_role()], count=self._n, net=mac_pattern)
-
     def list_ip_info(self, connection_attempts=100):
         ans_a = self.run('ip -o a', connection_attempts=connection_attempts, warn_only=True)
         if not ans_a:

@@ -4,16 +4,21 @@ import abc
 class LabNode(object):
     __metaclass__ = abc.ABCMeta
 
+    _ROLE_VS_COUNT = {}
+
     def __repr__(self):
         ssh_ip, ssh_u, ssh_p = self.get_ssh()
         oob_ip, oob_u, oob_p = self.get_oob()
         return u'{l} {n} | sshpass -p {p1} ssh {u1}@{ip1} ipmitool -I lanplus -H {ip2} -U {u2} -P {p2}'.format(l=self.lab(), n=self.get_id(), ip1=ssh_ip, p1=ssh_p, u1=ssh_u, ip2=oob_ip, p2=oob_p, u2=oob_u)
 
     def __init__(self, node_id, role, lab, hostname):
-        self._lab = lab  # link to parent Laboratory object
+        self._lab = lab     # link to parent Laboratory object
         self._id = node_id  # some id which unique in the given role, usually role + some small integer
-        self._role = role  # which role this node play, possible roles are defined in Laboratory
-        self._n = lab.count_node(role)  # number of this node in a list of nodes for this role
+        self._role = role   # which role this node play, possible roles are defined in Laboratory
+        role = role.split('-')[0]  # e.g. control-fi and control-cimc are the same for counting
+        self._ROLE_VS_COUNT.setdefault(role, 0)
+        self._ROLE_VS_COUNT[role] += 1
+        self._n = self._ROLE_VS_COUNT[role]  # number of this node in a list of nodes for this role
         self._hostname = hostname  # usually it's actual hostname as reported by operation system of the node
         self._ssh_ip, self._ssh_username, self._ssh_password = None, 'Default in LabNode.__init__()', 'Default in LabNode.__init__()'
         self._oob_ip, self._oob_username, self._oob_password = 'Default in LabNode.__init__()', 'Default in LabNode.__init__()', 'Default in LabNode.__init__()'
@@ -221,4 +226,3 @@ class LabNode(object):
 
     def _format_single_cmd_output(self, cmd, ans):
         return 80 * 'v' + '\n' + self.__repr__() + '> ' + cmd + '\n' + 80 * '^' + '\n' + ans + '\n' + 80 * '-' + '\n\n'
-

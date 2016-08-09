@@ -2,6 +2,7 @@ from lab.lab_node import LabNode
 
 
 class Nexus(LabNode):
+    ROLE = 'n9'
 
     def __init__(self, node_id, role, lab, hostname):
         super(Nexus, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
@@ -211,6 +212,11 @@ class Nexus(LabNode):
     def n9_show_cdp_neighbor(self):
         cdp_neis = self.cmd(['sh cdp nei det'])
         return cdp_neis['result']['body']['TABLE_cdp_neighbor_detail_info']['ROW_cdp_neighbor_detail_info']
+
+    def n9_show_lldp_neighbor(self):
+        self.cmd(['conf t', 'feature lldp'])
+        lldp_neis = self.cmd(['sh lldp nei det'])
+        return lldp_neis['result']['body']['TABLE_nbor_detail']['ROW_nbor_detail']
 
     def n9_show_users(self):
         res = self.cmd(['show users'])

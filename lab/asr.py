@@ -2,6 +2,8 @@ from lab.lab_node import LabNode
 
 
 class Asr(LabNode):
+    ROLE = 'asr'
+
     def cmd(self, command):
         from fabric.api import settings, run
 

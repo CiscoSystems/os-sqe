@@ -2,6 +2,8 @@ from lab.server import Server
 
 
 class CobblerServer(Server):
+    ROLE = 'cobbler'
+
     def cmd(self, cmd):
         pass
 
