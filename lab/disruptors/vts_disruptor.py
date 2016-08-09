@@ -8,7 +8,7 @@ class VtsDisruptor(Worker):
         from lab.vts_classes.vtc import Vtc
 
         possible_nodes = ['master-vtc', 'slave-vtc', 'active-dl', 'passive-dl']
-        possible_methods = ['isolate-from-mx', 'isolate-from-api', 'vm-shutdown']
+        possible_methods = ['isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop']
         try:
             self._downtime = self._kwargs['downtime']
             self._uptime = self._kwargs['uptime']
