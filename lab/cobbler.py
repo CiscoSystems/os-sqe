@@ -30,7 +30,7 @@ class CobblerServer(Server):
             mac = nic.get_mac()
             name = nic.get_name()
             if nic.is_ssh():
-                gateway = nic.get_net()[1]
+                gateway = nic.get_net().get_gw()
             if nic.is_bond():
                 bond_mode = 'mode=802.3ad lacp_rate=1' if nic.is_ssh() else 'mode=balance-xor'
                 for name_slave, mac_port in nic.get_slave_nics().items():
