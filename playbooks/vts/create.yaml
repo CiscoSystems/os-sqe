@@ -5,7 +5,7 @@
   vars_files:
     - config.yaml
   vars:
-    work_dir: "{{ workspace }}/{{ inventory_hostname }}}"
+    work_dir: "{{ workspace }}/{{ inventory_hostname }}"
     work_dir_vtc: "{{ work_dir }}/vtc"
     work_dir_xrnc: "{{ work_dir }}/xrnc"
     vtc: "{{ vts_hosts[inventory_hostname]['vtc'] }}"
