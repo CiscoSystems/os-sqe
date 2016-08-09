@@ -17,5 +17,5 @@ virtualenv --no-site-packages $venv_dir
 source ${venv_dir}/bin/activate
 pip install -r requirements.txt
 
-ansible-playbook -i inventory init.yaml
+ansible-playbook -i inventory init.yaml "$@"
 deactivate
