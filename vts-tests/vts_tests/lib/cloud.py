@@ -228,7 +228,7 @@ export OS_AUTH_URL={end_point}
         import random
         from netaddr import IPNetwork
 
-        return map(lambda number: IPNetwork('{a}.{b}.{c}.0/24'.format(a=class_a, b=random.randint(0, 99), c=number)), xrange(1, how_many+1))
+        return map(lambda number: IPNetwork('{a}.{b}.{c}.0/24'.format(a=class_a, b=random.randint(10, 99), c=number)), xrange(1, how_many+1))
 
     def get_net_names(self, common_part_of_name, how_many):
         return map(lambda number: '{sqe_pref}-{name}-net-{number}'.format(sqe_pref=self._unique_pattern_in_name, name=common_part_of_name, number=number), xrange(1, how_many+1))
