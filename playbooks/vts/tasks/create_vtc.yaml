@@ -23,17 +23,21 @@
   command: "/usr/bin/virsh create {{ work_dir_vtc }}/vtc.xml"
 - name: "Wait for VTC port 22"
   wait_for: host={{ vtc['api_ip'] }} port=22
+  delegate_to: 127.0.0.1
 - name: "Wait for VTC port 8443"
   wait_for: host={{ vtc['api_ip'] }} port=8443
+  delegate_to: 127.0.0.1
 - pause: seconds=60
 - name: "Open VTC UI first time"
   uri:
     url: "https://{{ vtc['api_ip'] }}:8443/VTS/"
     validate_certs: no
     timeout: 300
+  delegate_to: 127.0.0.1
 - name: "Change VTC UI admin password to {{ vtc_password }}"
   vtcui_password_change:
     vtc_ip: "{{ vtc['api_ip'] }}"
     user: "{{ user }}"
     password: "admin"
     new_password: "{{ vtc_password }}"
+  delegate_to: 127.0.0.1
