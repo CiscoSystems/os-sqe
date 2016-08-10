@@ -22,8 +22,10 @@
 - name: "Create VTC virtual machine"
   command: "/usr/bin/virsh create {{ work_dir_vtc }}/vtc.xml"
 - name: "Wait for VTC port 22"
-  wait_for: host={{ vtc['api_ip'] }} port=22
-  timeout: 600
+  wait_for: 
+    host: "{{ vtc['api_ip'] }}" 
+    port: 22
+    timeout: 600
   delegate_to: 127.0.0.1
 - name: "Wait for VTC port 8443"
   wait_for: host={{ vtc['api_ip'] }} port=8443
