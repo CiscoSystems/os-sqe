@@ -26,9 +26,10 @@
     src: templates/xrnc/xrnc.xml.jinja2
     dest: "{{ work_dir_xrnc }}/xrnc.xml"
 - name: "Download XRNC image {{ xrnc_qcow }}"
-  command: "/usr/bin/curl {{ xrnc_qcow }} -o {{ work_dir_xrnc }}/xrnc.qcow2"
-- file:
+  get_url:
+    url: "{{ xrnc_qcow }}"
     dest: "{{ work_dir_xrnc }}/xrnc.qcow2"
+    force: no
     owner: qemu
     group: qemu
 - name: "Create XRNC virtual machine"

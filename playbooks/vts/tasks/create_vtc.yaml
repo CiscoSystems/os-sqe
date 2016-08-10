@@ -5,9 +5,10 @@
 
 # Create VTC
 - name: "Download VTC image {{ vtc_qcow }}"
-  command: "/usr/bin/curl {{ vtc_qcow }} -o {{ work_dir_vtc }}/vtc.qcow2"
-- file:
+  get_url:
+    url: "{{ vtc_qcow }}"
     dest: "{{ work_dir_vtc }}/vtc.qcow2"
+    force: no
     owner: qemu
     group: qemu
 - template:
