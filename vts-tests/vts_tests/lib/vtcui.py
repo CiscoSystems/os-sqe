@@ -161,8 +161,8 @@ class VtcUI(object):
         resource = 'rs/ncs/vni-pool'
         return self.json_api_get(resource)['items']
 
-    def get_ethernet_mappings(self, device_name):
-        resource = 'rs/ncs/query/ethernet-mappings?deviceNameTOR={0}&limit=2147483647'.format(device_name)
+    def get_host_inventory(self, device_name):
+        resource = 'rs/ncs/query/serverHostInventory?deviceName={0}&limit=2147483647'.format(device_name)
         return self.json_api_get(resource)['items']
 
     def get_tenants(self):

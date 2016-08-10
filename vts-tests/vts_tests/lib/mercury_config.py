@@ -203,5 +203,6 @@ class Config(object):
             self._test_server_cfg = \
                 {'tor_name': self.vts_test_config.get('tests_server', 'tor_name'),
                  'tor_port': self.vts_test_config.get('tests_server', 'tor_port'),
-                 'ovs_bridge': self.vts_test_config.get('tests_server', 'ovs_bridge')}
+                 'ovs_bridge': self.vts_test_config.get('tests_server', 'ovs_bridge'),
+                 'binding_host_id': self.vts_test_config.get('tests_server', 'binding_host_id')}
         return self._test_server_cfg
