@@ -27,13 +27,13 @@ def get_ovs_bridges():
 
 
 def get_vtc_host_connection_id(vtc_ui_client, device_name, device_port):
-    ethernet_mappings = vtc_ui_client.get_ethernet_mappings(device_name)
-    for em in ethernet_mappings:
-        if em['name'] == device_port:
-            return em['connid']
+    host_inventory = vtc_ui_client.get_host_inventory(device_name)
+    for h in host_inventory:
+        if h['port_name'] == device_port:
+            return h['connection_id']
 
 
-def create_ports(vtc_ui_client, device_name, device_port, ovs_bridge):
+def create_ports(vtc_ui_client, device_name, device_port, ovs_bridge, binding_host_id):
     network_inventory = vtc_ui_client.get_network_inventory()
     devices = [ni for ni in network_inventory if ni['device_name'] == device_name]
     if len(devices) == 0:
@@ -41,12 +41,7 @@ def create_ports(vtc_ui_client, device_name, device_port, ovs_bridge):
     else:
         print '\nFound device {0} in VTC'.format(device_name)
 
-    ethernet_mappings = vtc_ui_client.get_ethernet_mappings(device_name)
-    connection_id = None
-    for em in ethernet_mappings:
-        if em['name'] == device_port:
-            connection_id = em['connid']
-            break
+    connection_id = get_vtc_host_connection_id(vtc_ui_client, device_name, device_port)
     if not connection_id:
         raise Exception('Could not fond interface {0} of {1}. Check hosts inventory'.format(device_port, device_name))
 
@@ -86,11 +81,12 @@ def create_ports(vtc_ui_client, device_name, device_port, ovs_bridge):
                 'tenant_name': to_ascci(tenant['name']),
                 'tor_port': [
                     {
-                        'binding_host_id': "vts-host",
+                        'binding_host_id': binding_host_id,
                         'connid': [{'id': to_ascci(connection_id)}],
                         'device_id': device_name,
                         'mac': "",
-                        'type': "virtual-server"
+                        'tagging': 'mandatory',
+                        'type': "baremetal"
                     }
                 ]}
             }
@@ -130,12 +126,7 @@ def create_ports(vtc_ui_client, device_name, device_port, ovs_bridge):
 
 
 def delete_ports(vtc_ui_client, device_name, device_port, ovs_bridge):
-    ethernet_mappings = vtc_ui_client.get_ethernet_mappings(device_name)
     connection_id = get_vtc_host_connection_id(vtc_ui_client, device_name, device_port)
-    for em in ethernet_mappings:
-        if em['name'] == device_port:
-            connection_id = em['connid']
-            break
     if not connection_id:
         raise Exception('Could not fond interface {0} of {1}. Check hosts inventory'.format(device_port, device_name))
 

@@ -94,7 +94,7 @@ class BaseTest(unittest.TestCase):
     def create_access_ports(self):
         cfg = self.config.test_server_cfg
         if cfg:
-            ports.create_ports(self.vtc_ui, cfg['tor_name'], cfg['tor_port'], cfg['ovs_bridge'])
+            ports.create_ports(self.vtc_ui, cfg['tor_name'], cfg['tor_port'], cfg['ovs_bridge'], cfg['binding_host_id'])
             return True
         return False
 
