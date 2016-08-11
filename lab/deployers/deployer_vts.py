@@ -19,7 +19,6 @@ class DeployerVts(Deployer):
         self._vts_images_location = config['images-location']
 
     def deploy_vts(self, list_of_servers):
-        from fabric.api import prompt
         from lab.vts_classes.vtf import Vtf
         from lab.vts_classes.vtc import VtsHost
         from lab.cimc import CimcController
@@ -38,18 +37,11 @@ class DeployerVts(Deployer):
             self._make_openvswitch(vts_host)
 
         vtc_urls = []
-        vtc_password = None
         for vts_host in vts_hosts:
             vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
             vtc_urls.append('https://{}'.format(vtc.get_ssh_ip()))
-            vtc_password = vtc.get_oob()[-1]
 
             self.deploy_single_vtc(vts_host=vts_host, vtc=vtc)
-
-        while True:
-            ans = prompt('Got to WEB GUI {} login as admin/admin and change password to {}, type READY when finished> '.format(' '.join(vtc_urls), vtc_password))
-            if ans == 'READY':
-                break
 
         self.make_cluster(lab=vts_hosts[0].lab())
 
@@ -152,6 +144,8 @@ class DeployerVts(Deployer):
                 vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
 
     def deploy_single_vtc(self, vts_host, vtc):
+        from time import sleep
+
         cfg_body, net_part = vtc.get_config_and_net_part_bodies()
 
         config_iso_path = self._vts_service_dir + '/vtc_config.iso'
@@ -159,6 +153,9 @@ class DeployerVts(Deployer):
         vts_host.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
 
         self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part)
+        while not vtc.ping():
+            sleep(15)
+        vtc.vtc_change_default_password()
 
     def deploy_single_xrnc(self, vts_host, vtc, xrnc):
         cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
@@ -171,7 +168,7 @@ class DeployerVts(Deployer):
         ip, username, password = vtc.get_ssh()
         vts_host.run('sshpass -p {p} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
 
-        self._get_image_and_run_virsh(server=vts_host, role='XRNC', iso_path=iso_path, net_part=net_part)
+        self._get_image_and_run_virsh(server=vts_host, role='xrnc', iso_path=iso_path, net_part=net_part)
 
     def _get_image_and_run_virsh(self, server, role, iso_path, net_part):
         image_url = self._vts_images_location + role + '.qcow2'

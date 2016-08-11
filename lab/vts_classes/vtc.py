@@ -312,7 +312,8 @@ class Vtc(Server):
         import re
         import requests
 
-        vtc_ip, username, password = self.get_oob()
+        vtc_ip, _, _ = self.get_ssh()
+        _, username, password = self.get_oob()
         default_username, default_password = 'admin', 'admin'
 
         if default_username != username:
