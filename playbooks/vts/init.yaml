@@ -14,5 +14,4 @@
     - kvm
     - ovs
     - ovs-bridges
-  environment:
-    https_proxy: "{{ https_proxy }}"
+  environment: "{{ environment }}"
