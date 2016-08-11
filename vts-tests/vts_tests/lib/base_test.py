@@ -145,7 +145,7 @@ class BaseTest(unittest.TestCase):
         return res
 
     def ping_remote_ports(self, source_ports, dest_ports):
-        res = {}
+        result = {}
         for sp in source_ports:
             for dp in dest_ports:
                 sip = self.get_port_ip(sp)
@@ -153,9 +153,9 @@ class BaseTest(unittest.TestCase):
                 cmd = "ping -W 120 -c 5 {ip}".format(user=self.config.image_user,
                                                      password=self.config.image_password,
                                                      ip=dip)
-                res, output = self.instance_cmd(sip, cmd)
-                res[(sip, dip)] = res
-        return res
+                r, output = self.instance_cmd(sip, cmd)
+                result[(sip, dip)] = r
+        return result
 
     def get_instance_ipv6_address(self, instance_ip, interface='eth0'):
         cmd = "/usr/sbin/ip address show {interface} | awk -F '[ /]' '/inet6/{{print \$6}}'".format(interface=interface)
