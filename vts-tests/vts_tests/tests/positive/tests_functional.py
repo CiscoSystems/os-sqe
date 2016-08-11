@@ -10,6 +10,7 @@ class TestFunctional(base_test.BaseTest):
     def setUp(self):
         self._skip_if_border_leaf_is_not_configured()
 
+        time.sleep(10)
         self.compute1 = None
         self.compute2 = None
         if len(self.config.computes) > 1:
