@@ -6,10 +6,8 @@
   pre_tasks:
     - name: "Add vtc_api_vip ip address to a interface to be sure server can go to WWW"
       command: "ip address add {{ vtc_api_vip }}/{{ networks.api.cidr }} dev a"
-    - name: "Delete current default gateway"
-      command: "ip route del default"
-    - name: "Add default gateway via API network"
-      command: "ip route add default via {{ networks.api.gateway }} dev a"
+    - name: "Change default gateway to {{ networks.api.gateway }} dev a"
+      shell: "ip route del default || ip route add default via {{ networks.api.gateway }} dev a"
   roles:
     - { role: redhat-subscription, when: ansible_distribution == "RedHat"}
     - nested-virtaulization
