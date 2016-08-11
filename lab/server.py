@@ -276,7 +276,7 @@ class Server(LabNode):
                 self.log(message='has no master NIC {}'.format(master_nic_name), level='warning')
                 return False
             actual_ip = actual_nics[master_nic_name]['ipv4']
-            if nic.is_pxe() == False and ip != actual_ip:  # this ip might be re-assign to the bridge which has this NIC inside
+            if nic.is_pxe() is False and ip != actual_ip:  # this ip might be re-assign to the bridge which has this NIC inside
                 br_name = 'br-' + master_nic_name
                 if br_name not in actual_nics or ip != actual_nics[br_name]['ipv4']:
                     self.log(message='NIC "{}" has different IP  actual: {}  requested: {}'.format(nic.get_name(), actual_ip, ip), level='warning')
@@ -304,8 +304,8 @@ class Server(LabNode):
         repos_to_enable = ' '.join(['--enable=rhel-7-server-rpms',
                                     '--enable=rhel-7-server-optional-rpms',
                                     '--enable=rhel-7-server-extras-rpms',
-                                    '--enable=rhel-7-server-openstack-7.0-rpms',
-                                    '--enable=rhel-7-server-openstack-7.0-director-rpms'])
+                                    # '--enable=rhel-7-server-openstack-7.0-rpms', '--enable=rhel-7-server-openstack-7.0-director-rpms'
+                                    ])
 
         self.run(command='subscription-manager register --force --username={0} --password={1}'.format(rhel_username, rhel_password))
         self.run(command='subscription-manager attach --pool={}'.format(rhel_pool_id))
