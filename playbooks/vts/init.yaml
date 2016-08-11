@@ -5,7 +5,7 @@
     - config.yaml
   pre_tasks:
     - name: "Add vtc_api_vip ip address to a interface to be sure server can go to WWW"
-      command: "ip address add {{ vtc_api_vip }}/{{ networks.api.cidr }} dev a"
+      shell: "ip address add {{ vtc_api_vip }}/{{ networks.api.cidr }} dev a || true"
     - name: "Change default gateway to {{ networks.api.gateway }} dev a"
       shell: "ip route del default || ip route add default via {{ networks.api.gateway }} dev a"
   roles:
