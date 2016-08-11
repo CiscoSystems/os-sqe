@@ -168,7 +168,7 @@ class DeployerVts(Deployer):
         vtc.run('cp /opt/cisco/package/vts/bin/build_vts_config_iso.sh $HOME')
         vtc.run('./build_vts_config_iso.sh xrnc {}'.format(cfg_name))  # https://cisco.jiveon.com/docs/DOC-1455175 step 8: use sudo /opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc xrnc.cfg
         ip, username, password = vtc.get_ssh()
-        vts_host.run('sshpass -p {p} scp -o StrictHostKeyChecking=no {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
+        vts_host.run('sshpass -p {p} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
 
         self._get_image_and_run_virsh(server=vts_host, role='XRNC', iso_path=iso_path, net_part=net_part)
 

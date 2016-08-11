@@ -14,7 +14,6 @@ class DeployerMercury(Deployer):
         self._type_of_installe = config['type-of-install']
 
     def deploy_cloud(self, list_of_servers):
-        import requests
         from lab.cloud import Cloud
         from lab.cimc import CimcDirector
         from fabric.operations import prompt
@@ -29,7 +28,7 @@ class DeployerMercury(Deployer):
         if self._type_of_installe == 'iso':
             while True:
                 ip, username, password = build_node.get_oob()
-                ans = prompt('Run remote mounted ISO installation on http://{ip} ({u}/{p}) with RemoteShare={url}/ RemoteFile=buildnode.iso, print FINISH when ready'.format(ip=ip, u=username, p=password, url=self._installer_source))
+                ans = prompt('Run remote mounted ISO installation on http://{} ({}/{}) with RemoteShare={} RemoteFile=buildnode.iso, print FINISH when ready'.format(ip, username, password, self._installer_source))
                 if ans == 'FINISH':
                     break
             installer_dir = build_node.run('find . -name installer*')
@@ -37,11 +36,8 @@ class DeployerMercury(Deployer):
             # build_node.register_rhel(self._rhel_creds_source)
             # build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
 
-            tar_url = self._installer_source + '/mercury-installer.tar.gz'
-            checksum_url = tar_url + '-checksum.txt'
-            ans = requests.get(checksum_url)
-            checksum = ans.text.split()[-1].strip()
-            tar_path = build_node.wget_file(url=tar_url, checksum=checksum, method='sha512sum')
+            tar_url = self._installer_source + '/mercury-installer-internal.tar.gz'
+            tar_path = build_node.wget_file(url=tar_url)
             ans = build_node.run('tar xzvf {}'.format(tar_path))
             installer_dir = ans.split('\r\n')[-1].split('/')[1]
 
@@ -73,19 +69,19 @@ class DeployerMercury(Deployer):
         dns_ip = build_node.lab().get_dns()[0]
 
         api_net = lab.get_all_nets()['a']
-        api_cidr, api_vlan, api_gw = api_net.cidr, api_net.get_vlan(), api_net[1]
-        lb_ip_api = api_net[10]
+        api_cidr, api_vlan, api_gw = api_net.cidr(), api_net.get_vlan(), api_net.get_gw()
+        lb_ip_api = api_net.get_ip_for_index(10)
         lab.make_sure_that_object_is_unique(str(lb_ip_api), 'MERCURY')
 
         mx_net = lab.get_all_nets()['mx']
-        mx_cidr, mx_vlan, mx_gw = mx_net.cidr, mx_net.get_vlan(), mx_net[1]
-        lb_ip_mx = mx_net[10]
-        mx_pool = '{} to {}'.format(mx_net[50], mx_net[90])
+        mx_cidr, mx_vlan, mx_gw = mx_net.get_cidr(), mx_net.get_vlan(), mx_net.get_gw()
+        lb_ip_mx = mx_net.get_ip_for_index(10)
+        mx_pool = '{} to {}'.format(mx_net.get_ip_for_index(50), mx_net.get_ip_for_index(90))
         lab.make_sure_that_object_is_unique(str(lb_ip_mx), 'MERCURY')
 
         tenant_net = lab.get_all_nets()['t']
-        tenant_cidr, tenant_vlan, tenant_gw = tenant_net.cidr, tenant_net.get_vlan(), tenant_net[1]
-        tenant_pool = '{} to {}'.format(tenant_net[10], tenant_net[250])
+        tenant_cidr, tenant_vlan, tenant_gw = tenant_net.cidr(), tenant_net.get_vlan(), tenant_net.get_gw()
+        tenant_pool = '{} to {}'.format(tenant_net.get_ip_for_index(10), tenant_net.get_ip_for_index(250))
 
         bld_ip_mx = build_node.get_nic('mx').get_ip_and_mask()[0]
 
@@ -124,35 +120,3 @@ class DeployerMercury(Deployer):
 
     def configure_nat(self):
         pass
-# sudo sysctl -w net.ipv4.ip_forward=1
-#sudo /sbin/ip address add 111.111.111.1/24 dev br_mgmt
-##sudo /sbin/iptables --flush
-##sudo /sbin/iptables --table nat --flush
-#sudo /sbin/iptables --delete-chain
-#sudo /sbin/iptables --table nat --append POSTROUTING --out-interface br_api -j MASQUERADE
-#sudo /sbin/iptables --append FORWARD --in-interface br_mgmt -j ACCEPT
-
-# [root@g7-2-bld ~]# iptables -S
-# -P INPUT ACCEPT
-# -P FORWARD ACCEPT
-# -P OUTPUT ACCEPT
-# -N DOCKER
-# -A FORWARD -o docker0 -j DOCKER
-# -A FORWARD -o docker0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-# -A FORWARD -i docker0 ! -o docker0 -j ACCEPT
-# -A FORWARD -i docker0 -o docker0 -j ACCEPT
-# -A FORWARD -i br_mgmt -j ACCEPT
-# [root@g7-2-bld ~]# iptables -S -t NAT
-# iptables v1.4.21: can't initialize iptables table `NAT': Table does not exist (do you need to insmod?)
-# Perhaps iptables or your kernel needs to be upgraded.
-# [root@g7-2-bld ~]# iptables -S -t nat
-# -P PREROUTING ACCEPT
-# -P INPUT ACCEPT
-# -P OUTPUT ACCEPT
-# -P POSTROUTING ACCEPT
-# -N DOCKER
-# -A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
-# -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
-# -A POSTROUTING -s 169.254.99.0/24 ! -o docker0 -j MASQUERADE
-# -A POSTROUTING -o br_api -j MASQUERADE
-# [root@g7-2-bld ~]#

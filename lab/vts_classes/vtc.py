@@ -261,7 +261,7 @@ class Vtc(Server):
 
         a_nic = self.get_nic('a')  # Vtc sits on out-of-tor network marked is_ssh
         a_ip, a_net_mask = a_nic.get_ip_and_mask()
-        a_gw = a_nic.get_net()[1]
+        a_gw = a_nic.get_net().get_gw()
 
         mx_nic = self.get_nic('mx')  # also sits on mx network
         mx_ip, mx_net_mask = mx_nic.get_ip_and_mask()

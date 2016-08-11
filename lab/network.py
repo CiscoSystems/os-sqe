@@ -47,14 +47,20 @@ class Network(object):
     def is_via_tor(self):
         return self._is_via_tor
 
-    def get_size(self):
-        return self._net.size
-
     def get_ip_for_index(self, index):
         return self._net[index]
 
+    def get_size(self):
+        return self._net.size
+
+    def get_prefix_len(self):
+        return self._net.prefixlen
+
     def get_netmask(self):
         return self._net.netmask
+
+    def get_cidr(self):
+        return self._net.cidr
 
 
 class Nic(object):

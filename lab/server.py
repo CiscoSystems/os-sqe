@@ -269,7 +269,7 @@ class Server(LabNode):
         for nic in self.get_nics().values():
             mac = nic.get_mac()  # be careful : after bonding all interfaces of the bond get mac of the first one
             ip, _ = nic.get_ip_and_mask()
-            prefix_len = nic.get_net().prefixlen
+            prefix_len = nic.get_net().get_prefix_len()
             ip = ip + '/' + str(prefix_len)
             master_nic_name = nic.get_name()
             if master_nic_name not in actual_nics:

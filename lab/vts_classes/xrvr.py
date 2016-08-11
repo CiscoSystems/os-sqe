@@ -125,21 +125,21 @@ expect "CPU0:XRVR"
         mx_nic = self.get_nic('mx')  # XRNC sits on mx and t nets
         te_nic = self.get_nic('t')
 
-        vtc_mx_vip = mx_nic.get_net()[150]
+        vtc_mx_vip = mx_nic.get_net().get_ip_for_index(150)
 
         dl_mx_ip, mx_net_mask = mx_nic.get_ip_and_mask()
-        mx_gw, mx_net_len = mx_nic.get_net()[1], mx_nic.get_net().prefixlen
-        xrvr_mx_ip = mx_nic.get_net()[200 + int(self.get_id()[-1])]
+        mx_gw, mx_net_len = mx_nic.get_net().get_gw(), mx_nic.get_net().get_prefix_len()
+        xrvr_mx_ip = mx_nic.get_net().get_ip_for_index(200 + int(self.get_id()[-1]))
 
         dl_te_ip, te_net_mask = te_nic.get_ip_and_mask()
         te_vlan = te_nic.get_net().get_vlan()
-        te_net_len = te_nic.get_net().prefixlen
-        xrvr_te_ip = te_nic.get_net()[200 + int(self.get_id()[-1])]
+        te_gw, te_net_len = te_nic.get_net().get_gw(), te_nic.get_net().get_prefix_len()
+        xrvr_te_ip = te_nic.get_net().get_ip_for_index(200 + int(self.get_id()[-1]))
 
         # XRVR is a VM sitting in a VM which runs on vts-host. outer VM called DL inner VM called XRVR , so 2 IPs on ssh and vts networks needed
         cfg_body = cfg_tmpl.format(dl_mx_ip=dl_mx_ip, xrvr_mx_ip=xrvr_mx_ip, mx_net_mask=mx_net_mask, mx_net_len=mx_net_len, mx_gw=mx_gw,
-                                   dl_te_ip=dl_te_ip, xrvr_te_ip=xrvr_te_ip, te_net_mask=te_net_mask, te_net_len=te_net_len, dns_ip=dns_ip, ntp_ip=ntp_ip,
-                                   vtc_mx_ip=vtc_mx_vip,
+                                   dl_te_ip=dl_te_ip, xrvr_te_ip=xrvr_te_ip, te_net_mask=te_net_mask, te_net_len=te_net_len, te_gw=te_gw,
+                                   dns_ip=dns_ip, ntp_ip=ntp_ip, vtc_mx_ip=vtc_mx_vip,
                                    xrnc_username=ssh_username, xrvr_username=oob_username, xrvr_password=oob_password, vtc_username=vtc_username, vtc_password=vtc_password,
                                    xrnc_name=xrnc_name, xrvr_name=xrvr_name)
         with with_config.open_artifact(xrnc_name, 'w') as f:

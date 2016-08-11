@@ -89,6 +89,7 @@ TENANT_NETWORK_TYPES: "VLAN"
 TENANT_VLAN_RANGES: 1000:2000
 ENABLE_JUMBO_FRAMES: True
 RESERVED_HOST_MEMORY_PERC: 50
+ENABLE_KERNEL_ISOLCPUS: False
 
 #################################################
 # Keystone
