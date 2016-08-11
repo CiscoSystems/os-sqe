@@ -12,12 +12,15 @@
     - shell : "/usr/sbin/subscription-manager version | grep 'This system is currently not registered'"
       register: redhat_not_subscribed
       when: ansible_distribution == "RedHat"
+      ignore_errors: yes
     - command: "/usr/bin/cat /sys/module/kvm_intel/parameters/nested"
       register: nested_virtualization
     - command: "which virsh"
       register: virsh_location
+      ignore_errors: yes
     - command: "which ovs-vsctl"
       register: ovsvsctl_location
+      ignore_errors: yes
   roles:
     - { role: redhat-subscription, when: ansible_distribution == "RedHat" and redhat_not_subscribed.rc == 0 }
     - { role: nested-virtaulization, when: nested_virtualization.stdout == "N" }
