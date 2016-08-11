@@ -18,10 +18,12 @@ def cmd(config_path):
     l = Laboratory(config_path=config_path)
     nodes = sorted(map(lambda node: node.get_id(), l.get_nodes_by_class()))
     while True:
-        device_name = prompt(text='{lab} has: "cloud" and:\n {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=nodes))
+        device_name = prompt(text='{lab} has: {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=['lab', 'cloud'] + nodes))
         if device_name == 'cloud':
             d = DeployerExisting({'cloud': config_path, 'hardware-lab-config': config_path})
             device = d.wait_for_cloud([])
+        elif device_name == 'lab':
+            device = l
         elif device_name in ['quit', 'q', 'exit']:
             return
         elif device_name not in nodes:

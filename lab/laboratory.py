@@ -275,7 +275,6 @@ class Laboratory(object):
 
     def configure_for_osp7(self, topology=TOPOLOGY_VLAN):
         from lab.fi import FI
-        from lab.n9k import Nexus
         from lab.asr import Asr
         from lab.cobbler import CobblerServer
 
@@ -283,8 +282,7 @@ class Laboratory(object):
             raise ValueError('"{0}" topology is not supported. Correct values: {1}'.format(topology, self.SUPPORTED_TOPOLOGIES))
         self.create_config_file_for_osp7_install(topology)
         self.get_nodes_by_class(CobblerServer)[0].cobbler_deploy()
-        map(lambda x: x.cleanup(), self.get_nodes_by_class(Nexus))
-        map(lambda x: x.n9_configure_for_lab(topology), self.get_nodes_by_class(Nexus))
+        self.n9_configure(is_clean_before=True)
         map(lambda x: x.configure_for_osp7(), self.get_cimc_servers())
         map(lambda x: x.configure_for_osp7(topology), self.get_nodes_by_class(Asr))
         self.get_nodes_by_class(FI)[0].configure_for_osp7()
@@ -440,3 +438,11 @@ class Laboratory(object):
 
     def get_ntp(self):
         return self._ntp
+
+    def n9_configure(self, is_clean_before=False):
+        from lab.n9k import Nexus
+
+        list_of_n9k = self.get_nodes_by_class(Nexus)
+        if is_clean_before:
+            map(lambda x: x.n9_cleanup(), list_of_n9k)
+        map(lambda x: x.n9_configure_for_lab(), list_of_n9k)

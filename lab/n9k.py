@@ -6,18 +6,45 @@ class Nexus(LabNode):
 
     def __init__(self, node_id, role, lab, hostname):
         super(Nexus, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
-        self._actual_vpc = []
-        self._actual_pc = {}
-        self._actual_vlans = {}
-        self._actual_ports = {}
+        self.__actual_vpc = None
+        self.__actual_pc = None
+        self.__actual_vlans = None
+        self.__actual_ports = None
         self._requested_vpc = {}  # might be port channel ot virtual port channel
         self._requested_ports = {}  # single ports
         self._requested_vlans = {}
         self._requested_peer_link = {}
 
+    @property
+    def _actual_vpc(self):
+        if self.__actual_vpc is None:
+            self.n9_get_status()
+        return self.__actual_vpc
+
+    @property
+    def _actual_pc(self):
+        if self.__actual_pc is None:
+            self.n9_get_status()
+        return self.__actual_pc
+
+    @property
+    def _actual_vlans(self):
+        if self.__actual_vlans is None:
+            self.n9_get_status()
+        return self.__actual_vlans
+
+    @property
+    def _actual_ports(self):
+        if self.__actual_ports is None:
+            self.n9_get_status()
+        return self.__actual_ports
+
     def __repr__(self):
         ip, username, password = self.get_oob()
         return u'{l} {id} sshpass -p {p} ssh {u}@{ip} use http://{ip} for NX-API'.format(l=self.lab(), id=self.get_id(), p=password, u=username, ip=ip)
+
+    def form_mac(self, pattern):
+        pass
 
     def get_pcs_to_fi(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""
@@ -107,20 +134,11 @@ class Nexus(LabNode):
         else:
             return {}
 
-    def delete_port_channels(self, skip_list=None):
-        skip_list = skip_list or []
-        for pc_id, port_ids in self.n9_show_port_channels().items():
-            if pc_id in skip_list:
-                continue
-            self.cmd(['conf t', 'no int port-channel {0}'.format(pc_id)], timeout=60)
-            if port_ids:
-                self.cmd(['conf t', 'int ethernet {0}'.format(','.join(port_ids)), 'description --'])
-
     def n9_configure_port(self, pc_id, port_id, vlans_string, desc):
         actual_port_info = self._actual_ports['Ethernet' + port_id]
-        actual_state, actual_desc = actual_port_info['state'], actual_port_info.get('name', '--')  # for port with no description this field either -- or not in dict
+        actual_state, actual_desc = actual_port_info['state_rsn_desc'], actual_port_info.get('name', '--')  # for port with no description this field either -- or not in dict
 
-        if actual_state == 'xcvrAbsent':
+        if actual_state in [u'Link not connected', u'XCVR not inserted']:
             raise RuntimeError('N9K {}: Port {} seems to be not connected. Check your configuration'.format(self, port_id))
 
         actual_port_channel = filter(lambda x: port_id in x[1], self._actual_pc.items())
@@ -132,7 +150,7 @@ class Nexus(LabNode):
                 return
             else:
                 raise RuntimeError('N9K {}: Port {} belongs to different port-channel {}. Check your configuration'.format(self, port_id, actual_pc_id))
-        # at hist point we know that port does not participate in port-channel
+        # at this point we know that port does not participate in port-channel
 
         if actual_state == 'down':
             self.cmd(['conf t', 'int ether ' + port_id, 'no shut'])
@@ -161,87 +179,31 @@ class Nexus(LabNode):
                 raise RuntimeError('{}: port-channel {} has different list of ports ({}) then requested ({})'.format(self, pc_id, actual_port_ids, port_ids))
             self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'switchport trunk allowed vlan {0}'.format(vlans_string)])
         else:  # port channel is not yet created
-            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'descr {0}'.format(desc), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string),
-                      'spanning-tree port type edge trunk'])  # , 'shut', 'no lacp suspend-individual', 'no shut'
+            self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'descr {0}'.format(desc), 'switchport', 'switchport mode trunk', 'switchport trunk allowed vlan {0}'.format(vlans_string)])
+
+            if is_peer_link_pc:
+                self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc peer-link'], timeout=180)
+            else:
+                self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'spanning-tree port type edge trunk', 'shut', 'no lacp suspend-individual', 'no shut'], timeout=180)
+
             for port_id in port_ids:  # add ports to the port-channel
                 self.cmd(['conf t', 'int ethernet ' + port_id, 'channel-group {0} force mode active'.format(pc_id)])
-            if is_peer_link_pc:
-                self.n9_create_vpc_peer_link(pc_id)
 
     def n9_create_vpc(self, pc_id):
-        if not self._actual_vpc:
-            self.n9_get_status()
         if str(pc_id) not in self._actual_vpc:
             self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)], timeout=60)
 
     def n9_get_status(self):
-        self._actual_vpc = self.n9_show_vpc()
-        self._actual_pc = self.n9_show_port_channels()
-        self._actual_vlans = self.n9_show_vlans()
-        self._actual_ports = self.n9_show_ports()
+        self.__actual_vpc = self.n9_show_vpc()
+        self.__actual_pc = self.n9_show_port_channels()
+        self.__actual_vlans = self.n9_show_vlans()
+        self.__actual_ports = self.n9_show_ports()
 
-    def n9_show_ports(self):
-        ans_st = self.cmd(['sh int st'])
-        ans_br = self.cmd(['sh int br'])
-
-        list_of_dicts = ans_br['result']['body'][u'TABLE_interface'][u'ROW_interface']
-        result = {x['interface']: x for x in list_of_dicts}
-        for dic in ans_st['result']['body'][u'TABLE_interface'][u'ROW_interface']:
-            result[dic['interface']]['name'] = dic.get('name', '')
-        return result
-
-    def n9_show_vpc(self):
-        ans = self.cmd(['sh vpc'])
-        if 'result' in ans and 'body' in ans['result'] and 'TABLE_vpc' in ans['result']['body']:
-            vpc = ans['result']['body'][u'TABLE_vpc'][u'ROW_vpc']
-            vpc = [vpc] if isinstance(vpc, dict) else vpc  # if there is only one vpc the API returns dict but not a list. Convert to list
-            return map(lambda x: str(x['vpc-id']), vpc)
-        else:
-            return []
-
-    def n9_show_vlans(self):
-        vlans = self.cmd(['sh vlan'])
-        if vlans['result']:
-            vlans = vlans['result']['body'][u'TABLE_vlanbrief'][u'ROW_vlanbrief']
-            vlans = [vlans] if isinstance(vlans, dict) else vlans
-            result = {x['vlanshowbr-vlanid-utf']: {'name': x['vlanshowbr-vlanname'], 'ports': x.get('vlanshowplist-ifidx')} for x in vlans}
-            return result
-        else:
-            return {}
-
-    def n9_show_cdp_neighbor(self):
-        cdp_neis = self.cmd(['sh cdp nei det'])
-        return cdp_neis['result']['body']['TABLE_cdp_neighbor_detail_info']['ROW_cdp_neighbor_detail_info']
-
-    def n9_show_lldp_neighbor(self):
-        self.cmd(['conf t', 'feature lldp'])
-        lldp_neis = self.cmd(['sh lldp nei det'])
-        return lldp_neis['result']['body']['TABLE_nbor_detail']['ROW_nbor_detail']
-
-    def n9_show_users(self):
-        res = self.cmd(['show users'])
-        if res == 'timeout':
-            return []
-        if res['result']:
-            return res['result']['body']['TABLE_sessions']['ROW_sessions']
-        else:
-            return []  # no current session
-
-    def delete_vlans(self, slice_vlans=64):
-        vlans = [x['vlanshowbr-vlanid-utf'] for x in self.n9_show_vlans() if x['vlanshowbr-vlanid-utf'] != '1']
-        vlan_delete_str = ['conf t'] + ['no vlan ' + ','.join(vlans[i:i+slice_vlans]) for i in range(0, len(vlans), slice_vlans)]
-        self.cmd(vlan_delete_str)
-
-    def clean_interfaces(self):
-        interfaces = set([x.get_own_port(self) for x in self._peer_link_wires + self._downstream_wires])
-        clean_cmd = ['conf t']
-        [clean_cmd.extend(['int e{0}'.format(x), 'no description', 'switchport trunk allowed vlan none', 'exit']) for x in interfaces]
-        self.cmd(clean_cmd, timeout=60)
-
-    def clean_vpc_domain(self):
-        old_vpc_domain = self.cmd(['sh vpc'])['result']['body']['vpc-domain-id']
-        if old_vpc_domain != 'not configured':
-            self.cmd(['conf t', 'no vpc domain {0}'.format(old_vpc_domain)], timeout=60)
+    def n9_delete_all_vlans(self):
+        vlan_ids = [vlan_id for vlan_id in self._actual_vlans.keys() if vlan_id != '1']
+        if vlan_ids:
+            vlan_delete_str = ['conf t'] + ['no vlan ' + ','.join(vlan_ids[i:i+64]) for i in range(0, len(vlan_ids), 64)]  # need to slice since no more then 64 ids allowed per operation
+            self.cmd(vlan_delete_str)
 
     def n9_configure_vxlan(self, asr_port):
         import re
@@ -271,12 +233,6 @@ class Nexus(LabNode):
     def get_peer_link_id(self):
         return self._peer_link_wires[0].get_pc_id()
 
-    def cleanup(self):
-        self.delete_port_channels()
-        self.delete_vlans()
-        self.clean_interfaces()
-        self.clean_vpc_domain()
-
     def n9_add_vlan_range(self, interfaces):
         vlan_range = self.lab().vlan_range().replace(':', '-')
         commands = ['conf t', 'vlan {0}'.format(vlan_range), 'no shut', 'exit', 'int e{0}'.format(',e'.join(interfaces)), 'switchport trunk allowed vlan add {0}'.format(vlan_range), 'end']
@@ -293,13 +249,13 @@ class Nexus(LabNode):
             if str(vlan_id) in self._actual_vlans:
                 actual_vlan_name = self._actual_vlans[str(vlan_id)]['name']
                 if actual_vlan_name.lower() != vlan_name.lower():
-                    raise RuntimeError('{}: vlan id {} already active with name {}. Don know what to do. please decide manually'.format(self, vlan_id, actual_vlan_name))
+                    raise RuntimeError('{}: vlan id {} already active with name "{}" while trying to assign name "{}". Handle it manually!'.format(self, vlan_id, actual_vlan_name, vlan_name))
                 self.log(message='VLAN id={} already active'.format(vlan_id))
             else:
                 self.cmd(['conf t', 'vlan {}'.format(vlan_id), 'name ' + vlan_name, 'no shut'])
         return self._requested_vlans
 
-    def n9_configure_for_lab(self, topology):
+    def n9_configure_for_lab(self):
         from lab.logger import lab_logger
 
         lab_logger.info('Configuring {0}'.format(self))
@@ -312,12 +268,6 @@ class Nexus(LabNode):
         self.n9_configure_peer_link()
         self.n9_configure_ports()
         self.n9_configure_vpc()
-
-        if topology == self.lab().TOPOLOGY_VXLAN:
-            self.n9_configure_asr1k()
-
-    def n9_create_vpc_peer_link(self, pc_id):
-        self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'spanning-tree port type network', 'vpc peer-link'], timeout=180)
 
     def n9_configure_peer_link(self):
         if not self._peer_link_wires:  # this N9K is not in per-link configuration
@@ -388,5 +338,83 @@ class Nexus(LabNode):
         asr = filter(lambda x: x.is_n9_asr(), self._upstream_wires)
         self.n9_configure_vxlan(asr[0].get_own_port(self))
 
-    def form_mac(self, pattern):
-        pass
+    def n9_cleanup(self):
+        self.n9_delete_vlan_interfaces()
+        self.n9_delete_port_channels()
+        self.n9_delete_all_vlans()
+        self.n9_default_interfaces()
+        self.n9_delete_vpc_domain()
+
+    def n9_default_interfaces(self):
+        last_port_id = max(map(lambda name: 0 if 'Ethernet' not in name else int(name.split('/')[-1]), self._actual_ports.keys()))
+        self.cmd(['conf t', 'default int e 1/1-{}'.format(last_port_id)], timeout=60)
+
+    def n9_delete_port_channels(self, skip_list=None):
+        skip_list = skip_list or []
+        for pc_id in self._actual_pc.keys():
+            if pc_id in skip_list:
+                continue
+            self.cmd(['conf t', 'no int port-channel {0}'.format(pc_id)], timeout=60)
+            self.__actual_ports.pop('port-channel{}'.format(pc_id))
+
+    def n9_delete_vpc_domain(self):
+        vpc_domain_id = self._actual_vpc['domain-id']
+        if vpc_domain_id != 'not configured':
+            self.cmd(['conf t', 'no vpc domain {}'.format(vpc_domain_id)], timeout=60)
+
+    def n9_delete_vlan_interfaces(self):
+        vlan_ifs = [if_id for if_id in self._actual_ports.keys() if 'Vlan' in if_id]
+        for vlan_if in vlan_ifs:
+            if_id = int(vlan_if.replace('Vlan', ''))
+            if if_id != 1:
+                self.cmd(['conf t', 'no int vlan {}'.format(if_id)])
+                self.__actual_ports.pop(vlan_if)
+
+    def n9_show_ports(self):
+        ans_st = self.cmd(['sh int st'])
+        ans_br = self.cmd(['sh int br'])
+
+        list_of_dicts = ans_br['result']['body'][u'TABLE_interface'][u'ROW_interface']
+        result = {x['interface']: x for x in list_of_dicts}
+        for dic in ans_st['result']['body'][u'TABLE_interface'][u'ROW_interface']:
+            result[dic['interface']]['name'] = dic.get('name', '')
+        return result
+
+    def n9_show_vpc(self):
+        ans = self.cmd(['sh vpc'])
+        vpc_domain_id = ans['result']['body']['vpc-domain-id']
+        if 'TABLE_vpc' in ans['result']['body']:
+            vpc = ans['result']['body'][u'TABLE_vpc'][u'ROW_vpc']
+            vpc = [vpc] if isinstance(vpc, dict) else vpc  # if there is only one vpc the API returns dict but not a list. Convert to list
+            vpc_ids = map(lambda x: str(x['vpc-id']), vpc)
+        else:
+            vpc_ids = []
+        return {'domain-id': vpc_domain_id, 'vpc-ids': vpc_ids}
+
+    def n9_show_vlans(self):
+        vlans = self.cmd(['sh vlan'])
+        if vlans['result']:
+            vlans = vlans['result']['body'][u'TABLE_vlanbrief'][u'ROW_vlanbrief']
+            vlans = [vlans] if isinstance(vlans, dict) else vlans
+            result = {x['vlanshowbr-vlanid-utf']: {'name': x['vlanshowbr-vlanname'], 'ports': x.get('vlanshowplist-ifidx')} for x in vlans}
+            return result
+        else:
+            return {}
+
+    def n9_show_cdp_neighbor(self):
+        cdp_neis = self.cmd(['sh cdp nei det'])
+        return cdp_neis['result']['body']['TABLE_cdp_neighbor_detail_info']['ROW_cdp_neighbor_detail_info']
+
+    def n9_show_lldp_neighbor(self):
+        self.cmd(['conf t', 'feature lldp'])
+        lldp_neis = self.cmd(['sh lldp nei det'])
+        return lldp_neis['result']['body']['TABLE_nbor_detail']['ROW_nbor_detail']
+
+    def n9_show_users(self):
+        res = self.cmd(['show users'])
+        if res == 'timeout':
+            return []
+        if res['result']:
+            return res['result']['body']['TABLE_sessions']['ROW_sessions']
+        else:
+            return []  # no current session
