@@ -38,4 +38,4 @@
 - name: "Remove all ifcfg-enp* interface config files. Workaround for a bug"
   command: "rm -f /etc/sysconfig/network-scripts/ifcfg-enp*"
 - name: "Restart network-manager"
-  command: "systemctl restart network"
+  shell: "for int in $(ip -o link | grep -o -E ' (p|t|mx|e|a)1' ); do ifdown $int; done; systemctl restart network;"
