@@ -138,7 +138,7 @@ export OS_AUTH_URL={end_point}
     def _process_csv_output(answer):
         output_list = []
         if answer:
-            lines = answer.split('\n')
+            lines = answer.strip().split('\n')
             keys = []
             for i, line in enumerate(lines):
                 line = line.strip('\r')

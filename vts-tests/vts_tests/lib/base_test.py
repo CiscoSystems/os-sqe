@@ -92,11 +92,13 @@ class BaseTest(unittest.TestCase):
         return self.instance, self.instance_status
 
     def create_access_ports(self):
+        networks = self.cloud.list_networks()
+        for network in networks:
+            self.create_access_port(network['id'])
+
+    def create_access_port(self, network_id):
         cfg = self.config.test_server_cfg
-        if cfg:
-            ports.create_ports(self.vtc_ui, cfg['tor_name'], cfg['tor_port'], cfg['ovs_bridge'], cfg['binding_host_id'])
-            return True
-        return False
+        ports.create_access_port(self.vtc_ui, network_id, cfg['tor_name'], cfg['tor_port'], cfg['ovs_bridge'], cfg['binding_host_id'])
 
     def delete_access_ports(self):
         cfg = self.config.test_server_cfg
@@ -109,17 +111,26 @@ class BaseTest(unittest.TestCase):
 
     def cmd(self, cmd):
         res = True
+        output = ''
         try:
-            print subprocess.check_output(cmd, shell=True)
+            output = subprocess.check_output(cmd, shell=True)
+            print output
         except subprocess.CalledProcessError:
             res = False
-        return res
+        return res, output
+
+    def instance_cmd(self, instance_ip, cmd):
+        cmd = "sshpass -p {password} ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+              "{user}@{ip} \"{cmd}\"".format(user=self.config.image_user,
+                                           password=self.config.image_password,
+                                           ip=instance_ip, cmd=cmd)
+        return self.cmd(cmd)
 
     def ping_ip(self, ip, attempts=24):
         res = False
         sleep_sec = 5
         for i in range(attempts):
-            res = self.cmd('ping -W 120 -c 5 {ip}'.format(ip=ip))
+            res, output = self.cmd('ping -W 120 -c 5 {ip}'.format(ip=ip))
             if res:
                 break
             print "Ping failed. Sleep for {0} seconds".format(sleep_sec)
@@ -139,10 +150,14 @@ class BaseTest(unittest.TestCase):
             for dp in dest_ports:
                 sip = self.get_port_ip(sp)
                 dip = self.get_port_ip(dp)
-                cmd = "sshpass -p {password} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {user}@{sip} " \
-                      "'ping -W 120 -c 5 {dip}'".format(user=self.config.image_user,
-                                                        password=self.config.image_password,
-                                                        sip=sip, dip=dip)
-                r = self.cmd(cmd)
-                res[(sip, dip)] = r
+                cmd = "ping -W 120 -c 5 {ip}".format(user=self.config.image_user,
+                                                     password=self.config.image_password,
+                                                     ip=dip)
+                res, output = self.instance_cmd(sip, cmd)
+                res[(sip, dip)] = res
         return res
+
+    def get_instance_ipv6_address(self, instance_ip, interface='eth0'):
+        cmd = "/usr/sbin/ip address show {interface} | awk -F '[ /]' '/inet6/{{print \$6}}'".format(interface=interface)
+        res, output = self.instance_cmd(instance_ip, cmd)
+        return output.strip()
