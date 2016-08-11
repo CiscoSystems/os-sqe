@@ -109,17 +109,26 @@ class BaseTest(unittest.TestCase):
 
     def cmd(self, cmd):
         res = True
+        output = ''
         try:
-            print subprocess.check_output(cmd, shell=True)
+            output = subprocess.check_output(cmd, shell=True)
+            print output
         except subprocess.CalledProcessError:
             res = False
-        return res
+        return res, output
+
+    def instance_cmd(self, instance_ip, cmd):
+        cmd = "sshpass -p {password} ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+              "{user}@{ip} \"{cmd}\"".format(user=self.config.image_user,
+                                           password=self.config.image_password,
+                                           ip=instance_ip, cmd=cmd)
+        return self.cmd(cmd)
 
     def ping_ip(self, ip, attempts=24):
         res = False
         sleep_sec = 5
         for i in range(attempts):
-            res = self.cmd('ping -W 120 -c 5 {ip}'.format(ip=ip))
+            res, output = self.cmd('ping -W 120 -c 5 {ip}'.format(ip=ip))
             if res:
                 break
             print "Ping failed. Sleep for {0} seconds".format(sleep_sec)
@@ -139,10 +148,14 @@ class BaseTest(unittest.TestCase):
             for dp in dest_ports:
                 sip = self.get_port_ip(sp)
                 dip = self.get_port_ip(dp)
-                cmd = "sshpass -p {password} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {user}@{sip} " \
-                      "'ping -W 120 -c 5 {dip}'".format(user=self.config.image_user,
-                                                        password=self.config.image_password,
-                                                        sip=sip, dip=dip)
-                r = self.cmd(cmd)
-                res[(sip, dip)] = r
+                cmd = "ping -W 120 -c 5 {ip}".format(user=self.config.image_user,
+                                                     password=self.config.image_password,
+                                                     ip=dip)
+                res, output = self.instance_cmd(sip, cmd)
+                res[(sip, dip)] = res
         return res
+
+    def get_instance_ipv6_address(self, instance_ip, interface='eth0'):
+        cmd = "/usr/sbin/ip address show {interface} | awk -F '[ /]' '/inet6/{{print \$6}}'".format(interface=interface)
+        res, output = self.instance_cmd(instance_ip, cmd)
+        return output.strip()

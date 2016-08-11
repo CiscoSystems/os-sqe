@@ -216,6 +216,40 @@ class TestFunctional(base_test.BaseTest):
         time.sleep(60)
         self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
 
+    def test_ipv6_ping(self):
+        prefix = random.randint(1, 1000)
+        networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
+        ports1 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
+        instance1, instance_status1 = self.cloud.create_instance(name=prefix,
+                                                                 flavor=self.config.flavor,
+                                                                 image=self.config.image_name,
+                                                                 on_ports=ports1,)
+        self.assertTrue(instance_status1, 'Instance1 status is not ACTIVE')
+
+        ports2 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
+        instance2, instance_status2 = self.cloud.create_instance(name=prefix,
+                                                                 flavor=self.config.flavor,
+                                                                 image=self.config.image_name,
+                                                                 on_ports=ports2)
+        self.assertTrue(instance_status2, 'Instance2 status is not ACTIVE')
+
+        if not self.create_access_ports():
+            raise unittest.SkipTest('Border leaf is not configured')
+
+        self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
+        self.assertTrue(all(self.ping_ports(ports2)), 'Could not reach instance2. Ping failed')
+
+        ip1v4 = self.get_port_ip(ports1[0])
+        ip2v4 = self.get_port_ip(ports2[0])
+
+        ip1v6 = self.get_instance_ipv6_address(ip1v4)
+        ip2v6 = self.get_instance_ipv6_address(ip2v4)
+
+        cmd = '/usr/sbin/ping6 -c 4 {ip}'
+        self.assertTrue(self.instance_cmd(ip1v4, cmd.format(ip=ip2v6))[0],
+                        'Could not reach instance2 from instance1. Ping6 failed')
+        self.assertTrue(self.instance_cmd(ip2v4, cmd.format(ip=ip1v6))[0],
+                        'Could not reach instance1 from instance2. Ping6 failed')
 
     def tearDown(self):
         try:
