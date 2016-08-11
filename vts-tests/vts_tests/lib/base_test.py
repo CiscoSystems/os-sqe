@@ -92,11 +92,13 @@ class BaseTest(unittest.TestCase):
         return self.instance, self.instance_status
 
     def create_access_ports(self):
+        networks = self.cloud.list_networks()
+        for network in networks:
+            self.create_access_port(network['id'])
+
+    def create_access_port(self, network_id):
         cfg = self.config.test_server_cfg
-        if cfg:
-            ports.create_ports(self.vtc_ui, cfg['tor_name'], cfg['tor_port'], cfg['ovs_bridge'], cfg['binding_host_id'])
-            return True
-        return False
+        ports.create_access_port(self.vtc_ui, network_id, cfg['tor_name'], cfg['tor_port'], cfg['ovs_bridge'], cfg['binding_host_id'])
 
     def delete_access_ports(self):
         cfg = self.config.test_server_cfg
