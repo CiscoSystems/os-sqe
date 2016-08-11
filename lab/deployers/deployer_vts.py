@@ -201,4 +201,7 @@ class DeployerVts(Deployer):
         from lab.vts_classes.vtc import Vtc
 
         vtc = vts_hosts[0].lab().get_nodes_by_class(Vtc)[0]
-        return len(vtc.vtc_get_xrvrs()) == 2
+        if vtc.ping():
+            return len(vtc.vtc_get_xrvrs()) == 2
+        else:
+            return False
