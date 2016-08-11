@@ -32,7 +32,7 @@ class Cloud:
         self._list_subnet_cmd = self._openstack_bin + ' subnet list -f json'
         self._list_router_cmd = self._openstack_bin + ' router list -f json'
         self._list_port_cmd = self._openstack_bin + ' port list -f json'
-        self._list_server_cmd = self._openstack_bin + ' server list -f json --all'
+        self._list_server_cmd = self._openstack_bin + ' server list -f json'
         self._list_keypair_cmd = self._openstack_bin + ' keypair list -f json'
         self._list_image_cmd = self._openstack_bin + ' image list -f json'
         self._list_user_cmd = self._openstack_bin + ' user list -f json'
@@ -390,7 +390,7 @@ export OS_AUTH_URL={end_point}
                                               '--password {password} --enable {username}'.format(project=project, username=self._unique_pattern_in_name + username, password=password))
 
     def cleanup(self):
-        servers = self.cmd(self._list_server_cmd)
+        servers = self.cmd(self._list_server_cmd + ' --all')
         routers = self.cmd(self._list_router_cmd)
         ports = self.cmd(self._list_port_cmd)
         keypairs = self.cmd(self._list_keypair_cmd)
