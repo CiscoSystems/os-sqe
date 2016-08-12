@@ -270,5 +270,17 @@ def conf():
         f.write(']\n')
 
 
+@task
+def dima_report(test_regex='Tcbr'):
+    from lab import with_config
 
+    available_tc = with_config.ls_configs(directory='ha')
+    tests = sorted(filter(lambda x: test_regex in x, available_tc))
 
+    with with_config.open_artifact('dimas_report.txt', 'w') as f:
+        for test in tests:
+            with open(with_config.actual_path_to_config(path=test, directory='ha')) as t:
+                body = t.read()
+            f.write(body)
+            f.write(80*'-')
+            f.write('\n')
