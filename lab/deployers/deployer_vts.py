@@ -28,6 +28,7 @@ class DeployerVts(Deployer):
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
         if self.is_valid_installation(vts_hosts):
+            self.log('VTC is already installed')
             return
 
         for vts_host in vts_hosts:
@@ -71,11 +72,11 @@ class DeployerVts(Deployer):
 
     def _delete_previous_libvirt_vms(self, vts_host):
         ans = vts_host.run('virsh list')
-        for role in ['XRNC', 'vtc']:
+        for role in ['xrnc', 'vtc']:
             if role in ans:
                 vts_host.run('virsh destroy {role}'.format(role=role))
         ans = vts_host.run('virsh list --all')
-        for role in ['XRNC', 'vtc']:
+        for role in ['xrnc', 'vtc']:
             if role in ans:
                 vts_host.run('virsh undefine {role}'.format(role=role))
         vts_host.run('rm -rf {}'.format(self._vts_service_dir))
@@ -144,8 +145,6 @@ class DeployerVts(Deployer):
                 vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
 
     def deploy_single_vtc(self, vts_host, vtc):
-        from time import sleep
-
         cfg_body, net_part = vtc.get_config_and_net_part_bodies()
 
         config_iso_path = self._vts_service_dir + '/vtc_config.iso'
