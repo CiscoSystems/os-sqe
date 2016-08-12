@@ -311,6 +311,7 @@ class Vtc(Server):
         import json
         import re
         import requests
+        from time import sleep
 
         vtc_ip, _, _ = self.get_ssh()
         _, username, password = self.get_oob()
@@ -322,6 +323,20 @@ class Vtc(Server):
         api_security_check = 'https://{}:8443/VTS/j_spring_security_check'.format(vtc_ip)
         api_java_servlet = 'https://{}:8443/VTS/JavaScriptServlet'.format(vtc_ip)
         api_update_password = 'https://{}:8443/VTS/rs/ncs/user?updatePassword=true&isEnforcePassword=true'.format(vtc_ip)
+
+        while not self.ping():
+            sleep(15)
+        while not self.ping(8443):
+            sleep(15)
+
+        while True:
+            # noinspection PyBroadException
+            try:
+                self.log(message='Waiting for VTC service up...')
+                requests.get('https://{}:8443/VTS/'.format(vtc_ip), verify=False, timeout=300)  # First try to open to check that Tomcat is indeed started
+                break
+            except:
+                sleep(100)
 
         session = requests.Session()
         auth = session.post(api_security_check, data={'j_username': default_username, 'j_password': default_password, 'Submit': 'Login'}, verify=False)
@@ -342,6 +357,7 @@ class Vtc(Server):
                                         'Content-Type': 'application/json;charset=UTF-8'})
 
         if response.status_code == 200 and 'Error report' not in response.text:
+            self.log(message='password changed')
             return response.text
         else:
             raise RuntimeError(response.text)

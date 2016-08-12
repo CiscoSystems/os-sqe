@@ -153,8 +153,6 @@ class DeployerVts(Deployer):
         vts_host.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
 
         self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part)
-        while not vtc.ping():
-            sleep(15)
         vtc.vtc_change_default_password()
 
     def deploy_single_xrnc(self, vts_host, vtc, xrnc):
@@ -196,10 +194,12 @@ class DeployerVts(Deployer):
 
     @staticmethod
     def is_valid_installation(vts_hosts):
+        import requests
+
         from lab.vts_classes.vtc import Vtc
 
         vtc = vts_hosts[0].lab().get_nodes_by_class(Vtc)[0]
-        if vtc.ping():
+        try:
             return len(vtc.vtc_get_xrvrs()) == 2
-        else:
+        except requests.exceptions.ConnectTimeout:
             return False
