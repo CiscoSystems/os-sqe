@@ -23,6 +23,7 @@
       ignore_errors: yes
   roles:
     - { role: redhat-subscription, when: ansible_distribution == "RedHat" and redhat_not_subscribed.rc == 0 }
+    - { role: redhat-repos, when: ansible_distribution == "RedHat"}
     - { role: nested-virtaulization, when: nested_virtualization.stdout == "N" }
     - { role: kvm, when: virsh_location.rc == 1 }
     - { role: ovs, when: ovsvsctl_location.rc == 1 }
