@@ -35,9 +35,7 @@
     recurse: yes
     state: directory
 - name: "Download openvswitch tarball {{ ovs_version }}"
-  get_url:
-    url: "http://openvswitch.org/releases/openvswitch-{{ ovs_version }}.tar.gz"
-    dest: "{{ ansible_env.HOME }}/rpmbuild/SOURCES/openvswitch-{{ ovs_version }}.tar.gz"
+  command: "curl -o {{ ansible_env.HOME }}/rpmbuild/SOURCES/openvswitch-{{ ovs_version }}.tar.gz http://openvswitch.org/releases/openvswitch-{{ ovs_version }}.tar.gz"
 - name: "Extract openvswitch sources"
   unarchive:
     src: "{{ ansible_env.HOME }}/rpmbuild/SOURCES/openvswitch-{{ ovs_version }}.tar.gz"

@@ -3,9 +3,29 @@
 - hosts: server1
   vars_files:
     - config.yaml
+  pre_tasks:
+    - name: "Add vtc_api_vip ip address to a interface to be sure server can go to WWW"
+      shell: "ip address add {{ vtc_api_vip }}/{{ networks.api.cidr }} dev a || true"
+    - name: "Change default gateway to {{ networks.api.gateway }} dev a"
+      shell: "ip route del default; ip route add default via {{ networks.api.gateway }} dev a"
+
+    - shell : "/usr/sbin/subscription-manager version | grep 'This system is currently not registered'"
+      register: redhat_not_subscribed
+      when: ansible_distribution == "RedHat"
+      ignore_errors: yes
+    - command: "/usr/bin/cat /sys/module/kvm_intel/parameters/nested"
+      register: nested_virtualization
+    - command: "which virsh"
+      register: virsh_location
+      ignore_errors: yes
+    - command: "which ovs-vsctl"
+      register: ovsvsctl_location
+      ignore_errors: yes
   roles:
-    - { role: redhat-subscription, when: ansible_distribution == "RedHat"}
-    - nested-virtaulization
-    - kvm
-    - ovs
+    - { role: redhat-subscription, when: ansible_distribution == "RedHat" and redhat_not_subscribed.rc == 0 }
+    - { role: redhat-repos, when: ansible_distribution == "RedHat"}
+    - { role: nested-virtaulization, when: nested_virtualization.stdout == "N" }
+    - { role: kvm, when: virsh_location.rc == 1 }
+    - { role: ovs, when: ovsvsctl_location.rc == 1 }
     - ovs-bridges
+  environment: "{{ environment }}"

@@ -1,0 +1,12 @@
+---
+
+- name: "Attach pool"
+  command: "subscription-manager attach --auto"
+- name: "Install rpm packages"
+  yum:
+    name: "yum-utils"
+- name: "Enable yum repositories"
+  command: "yum-config-manager --enable {{ item }}"
+  with_items:
+    - rhel-7-server-extras-rpms
+    - rhel-7-server-optional-rpms
