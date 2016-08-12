@@ -2,4 +2,3 @@
 
 - name: "Register redhat"
   command: "subscription-manager register --force --user={{ redhat_user }} --password={{ redhat_password }}"
-- command: "subscription-manager attach --auto"

@@ -1,4 +1,3 @@
 ansible==2.1
 requests
 setuptools>=11.3
-
