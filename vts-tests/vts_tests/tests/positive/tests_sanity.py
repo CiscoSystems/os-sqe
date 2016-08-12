@@ -56,23 +56,3 @@ class TestSanity(base_test.BaseTest):
             self.assertNotEqual(ni['bgp_asn'], '', 'BGP-ASN is not set. {0}'.format(ni))
             self.assertNotEqual(ni['loopback_if_num'], '', 'Loopback interface is not set. {0}'.format(ni))
             self.assertNotEqual(ni['loopback_if_ip'], '', 'IP of loopback interface is not set. {0}'.format(ni))
-
-    def test_xrnc_mtu_1400_on_br_underlay(self):
-        def assert_xrnc_mtu_1400_on_br_underlay(xrnc):
-            br_underlay_info = xrnc.run('ip -o link show br-underlay')
-            self.assertIn('mtu 1400 qdisc', br_underlay_info,
-                          'MTU of br_underlay is not set to 1400. Actual state: [{0}]'.format(br_underlay_info))
-
-        assert_xrnc_mtu_1400_on_br_underlay(self.xrnc1)
-        if self.xrnc2:
-            assert_xrnc_mtu_1400_on_br_underlay(self.xrnc2)
-
-    def test_xrnc_mtu_1400_in_br_underlay_config_file(self):
-        def assert_xrnc_mtu_1400_in_br_underlay_config_file(xrnc, mtu="mtu 1400"):
-            interfaces_config = xrnc.interfaces_config()
-            self.assertIn(mtu, interfaces_config['br-underlay'],
-                          '"{0}" is not specified in br-underlay config file'.format(mtu))
-
-        assert_xrnc_mtu_1400_in_br_underlay_config_file(self.xrnc1)
-        if self.xrnc2:
-            assert_xrnc_mtu_1400_in_br_underlay_config_file(self.xrnc2)
