@@ -1,10 +1,5 @@
 ---
 
-- name: "Install rpm packages"
-  yum:
-    name: "yum-utils"
-- name: "Enable yum repositories"
-  command: "yum-config-manager --enable {{ item }}"
-  with_items:
-    - rhel-7-server-extras-rpms
-    - rhel-7-server-optional-rpms
+- name: "Register redhat"
+  command: "subscription-manager register --force --user={{ redhat_user }} --password={{ redhat_password }}"
+- command: "subscription-manager attach --auto"
