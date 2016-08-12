@@ -1,5 +1,7 @@
 ---
 
+- name: "Attach pool"
+  command: "subscription-manager attach --auto"
 - name: "Install rpm packages"
   yum:
     name: "yum-utils"
