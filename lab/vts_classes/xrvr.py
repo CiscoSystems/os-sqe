@@ -160,7 +160,10 @@ expect "CPU0:XRVR"
         ips = [x.get_nic('t').get_ip_and_mask()[0] for x in self.lab().get_nodes_by_class(Xrvr)]
         opposite_ip = next(iter(set(ips) - {own_ip}))
         self.cmd('sudo ip l s dev br-underlay mtu 1400', is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 step 12 about MTU
-        self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
+        try:
+            self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
+        except:
+            self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh -s {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
 
         return True
 
