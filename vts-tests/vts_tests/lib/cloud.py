@@ -1,3 +1,4 @@
+import random
 import sys
 
 
@@ -322,7 +323,8 @@ export OS_AUTH_URL={end_point}
         self._keypair_name = '{sqe_pref}-key1'.format(sqe_pref=self._unique_pattern_in_name)
         self._keypair = self.cmd(self._openstack_bin + ' keypair create {keypair}'.format(keypair=self._keypair_name))
 
-    def create_instance(self, name, flavor, image, on_ports, compute=None, wait_for_ready=True):
+    def create_instance(self, flavor, image, on_ports, name=None, compute=None, wait_for_ready=True):
+        name = name or random.randint(1, 1000)
         if image not in self.cmd(self._openstack_bin + ' image list'):
             raise ValueError('Image {0} is not known by cloud'.format(image))
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x['id'], on_ports))
