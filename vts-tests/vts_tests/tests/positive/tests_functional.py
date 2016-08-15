@@ -47,18 +47,19 @@ class TestFunctional(base_test.BaseTest):
             self.assertIn(self.XRVR_NO_SUCH_CONFIGURATION, xrvr_cfg_text, 'XRVR is configured')
 
     def test_connectivity_same_net_same_compute(self):
-        prefix = random.randint(1, 1000)
-        networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
-        ports1 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
-        instance1, instance_status1 = self.cloud.create_instance(name=prefix,
+        prefix1 = random.randint(1, 1000)
+        networks = self.cloud.create_net_subnet(common_part_of_name=prefix1, class_a=10, how_many=1, is_dhcp=False)
+        ports1 = self.cloud.create_ports(instance_name=prefix1, on_nets=networks, is_fixed_ip=True)
+        instance1, instance_status1 = self.cloud.create_instance(name=prefix1,
                                                                  flavor=self.config.flavor,
                                                                  image=self.config.image_name,
                                                                  on_ports=ports1,
                                                                  compute=self.compute1['hostname'])
         self.assertTrue(instance_status1, 'Instance1 status is not ACTIVE')
 
-        ports2 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
-        instance2, instance_status2 = self.cloud.create_instance(name=prefix,
+        prefix2 = random.randint(1, 1000)
+        ports2 = self.cloud.create_ports(instance_name=prefix2, on_nets=networks, is_fixed_ip=True)
+        instance2, instance_status2 = self.cloud.create_instance(name=prefix2,
                                                                  flavor=self.config.flavor,
                                                                  image=self.config.image_name,
                                                                  on_ports=ports2,
@@ -73,18 +74,19 @@ class TestFunctional(base_test.BaseTest):
     def test_connectivity_same_net_different_computes(self):
         self._skip_if_one_compute()
 
-        prefix = random.randint(1, 1000)
-        networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
-        ports1 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
-        instance1, instance_status1 = self.cloud.create_instance(name=prefix,
+        prefix1 = random.randint(1, 1000)
+        networks = self.cloud.create_net_subnet(common_part_of_name=prefix1, class_a=10, how_many=1, is_dhcp=False)
+        ports1 = self.cloud.create_ports(instance_name=prefix1, on_nets=networks, is_fixed_ip=True)
+        instance1, instance_status1 = self.cloud.create_instance(name=prefix1,
                                                                  flavor=self.config.flavor,
                                                                  image=self.config.image_name,
                                                                  on_ports=ports1,
                                                                  compute=self.compute1['hostname'])
         self.assertTrue(instance_status1, 'Instance1 status is not ACTIVE')
 
-        ports2 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
-        instance2, instance_status2 = self.cloud.create_instance(name=prefix,
+        prefix2 = random.randint(1, 1000)
+        ports2 = self.cloud.create_ports(instance_name=prefix1, on_nets=networks, is_fixed_ip=True)
+        instance2, instance_status2 = self.cloud.create_instance(name=prefix2,
                                                                  flavor=self.config.flavor,
                                                                  image=self.config.image_name,
                                                                  on_ports=ports2,
@@ -97,10 +99,10 @@ class TestFunctional(base_test.BaseTest):
         self.assert_instances_reach_each_other(ports1, ports2)
 
     def test_connectivity_recreate_port_with_used_mac(self):
-        prefix = random.randint(1, 1000)
-        networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
-        ports1 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
-        instance, instance_status = self.cloud.create_instance(name=prefix,
+        prefix1 = random.randint(1, 1000)
+        networks = self.cloud.create_net_subnet(common_part_of_name=prefix1, class_a=10, how_many=1, is_dhcp=False)
+        ports1 = self.cloud.create_ports(instance_name=prefix1, on_nets=networks, is_fixed_ip=True)
+        instance, instance_status = self.cloud.create_instance(name=prefix1,
                                                                  flavor=self.config.flavor,
                                                                  image=self.config.image_name,
                                                                  on_ports=ports1,
@@ -115,13 +117,14 @@ class TestFunctional(base_test.BaseTest):
 
         self.assertFalse(all(self.ping_ports(ports1, attempts=2)), 'Instance is still reachable. But it should be removed.')
 
-        ports2 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True,
+        prefix2 = random.randint(1, 1000)
+        ports2 = self.cloud.create_ports(instance_name=prefix2, on_nets=networks, is_fixed_ip=True,
                                          ip=self.get_port_ip(ports1[0]), mac=ports1[0]['mac_address'])
-        instance, instance_status = self.cloud.create_instance(name=prefix,
-                                                                 flavor=self.config.flavor,
-                                                                 image=self.config.image_name,
-                                                                 on_ports=ports2,
-                                                                 compute=self.compute1['hostname'])
+        instance, instance_status = self.cloud.create_instance(name=prefix2,
+                                                               flavor=self.config.flavor,
+                                                               image=self.config.image_name,
+                                                               on_ports=ports2,
+                                                               compute=self.compute1['hostname'])
         self.assertTrue(instance_status, 'Instance status is not ACTIVE')
         self.assertTrue(all(self.ping_ports(ports2)), 'Could not reach instance attached to new port with used (early) mac/ip address. Ping failed')
 
@@ -145,9 +148,9 @@ class TestFunctional(base_test.BaseTest):
             self.assert_evpn_evi_network_controller(vni_numbers[network_name], ports[network_name][0]['mac_address'], configured=False)
 
     def test_5_networks_one_instance_per_network_different_tenant(self):
-        prefix = random.randint(1, 1000)
         vni_vs_mac = {}
         for i in range(5):
+            prefix = random.randint(1, 1000)
             s = str(prefix) + str(i)
             project = self.cloud.project_create(s)
             user = self.cloud.user_create(s, s, project['name'])
@@ -212,17 +215,18 @@ class TestFunctional(base_test.BaseTest):
         self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
 
     def test_ipv6_ping(self):
-        prefix = random.randint(1, 1000)
-        networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
-        ports1 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
-        instance1, instance_status1 = self.cloud.create_instance(name=prefix,
+        prefix1 = random.randint(1, 1000)
+        networks = self.cloud.create_net_subnet(common_part_of_name=prefix1, class_a=10, how_many=1, is_dhcp=False)
+        ports1 = self.cloud.create_ports(instance_name=prefix1, on_nets=networks, is_fixed_ip=True)
+        instance1, instance_status1 = self.cloud.create_instance(name=prefix1,
                                                                  flavor=self.config.flavor,
                                                                  image=self.config.image_name,
                                                                  on_ports=ports1,)
         self.assertTrue(instance_status1, 'Instance1 status is not ACTIVE')
 
-        ports2 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
-        instance2, instance_status2 = self.cloud.create_instance(name=prefix,
+        prefix2 = random.randint(1, 1000)
+        ports2 = self.cloud.create_ports(instance_name=prefix2, on_nets=networks, is_fixed_ip=True)
+        instance2, instance_status2 = self.cloud.create_instance(name=prefix2,
                                                                  flavor=self.config.flavor,
                                                                  image=self.config.image_name,
                                                                  on_ports=ports2)
