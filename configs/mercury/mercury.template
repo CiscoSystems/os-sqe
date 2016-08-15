@@ -6,8 +6,8 @@ REGISTRY_PASSWORD: B4c0n
 REGISTRY_EMAIL: "mercury-installer@cisco.com"
 
 CIMC-COMMON:
-  cimc_username: "{cimc_username}"
-  cimc_password: "{cimc_password}"
+  cimc_username: "{common_username_oob}"
+  cimc_password: "{common_password_oob}"
 
 COBBLER:
   host_profile: RHEL7.2-x86_64
@@ -155,3 +155,11 @@ VTS_PARAMETERS:
 #############################################
 NFV_HOSTS: ALL # The VTS option requires NFV_HOSTS: ALL CPU Pinning and Huge Page support will be enabled on the hosts defined below.
 
+# Addition to use automatic bare-metal build node deployment
+TESTBED: g7-2
+MGMT_NODE_CIMC_IP: {bld_ip_oob}
+MGMT_CIMC_USERNAME: {bld_username_oob}
+MGMT_CIMC_PASSWORD: '{bld_password_oob}'
+MGMT_NODE_API_IP: {bld_ip_api}/{api_pref_len}
+MGMT_NODE_API_GW: {api_gw}
+MGMT_NODE_MGMT_IP: {bld_ip_mx}/{mx_pref_len}

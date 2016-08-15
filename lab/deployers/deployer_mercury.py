@@ -36,22 +36,26 @@ class DeployerMercury(Deployer):
             # build_node.register_rhel(self._rhel_creds_source)
             # build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
 
-            tar_url = self._installer_source + '/mercury-installer-internal.tar.gz'
-            tar_path = build_node.wget_file(url=tar_url)
-            ans = build_node.run('tar xzvf {}'.format(tar_path))
-            installer_dir = ans.split('\r\n')[-1].split('/')[1]
+            ans = build_node.run('ls -d installer*')
+            if 'installer-' in ans:
+                installer_dir = ans
+                build_node.run('test -f setup_data.yaml.orig || cp {}/openstack-configs/setup_data.yaml setup_data.yaml.orig'.format(installer_dir))
+            else:
+                tar_url = self._installer_source + '/mercury-installer-internal.tar.gz'
+                tar_path = build_node.wget_file(url=tar_url)
+                ans = build_node.run('tar xzvf {}'.format(tar_path))
+                installer_dir = ans.split('\r\n')[-1].split('/')[1]
 
-            build_node.run(command='rm -rf mercury')  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
-            repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
-            build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
-            build_node.run(command='./bootstrap.sh -T {}'.format(installer_dir[-4:]), in_directory=repo_dir + '/internal')
-            build_node.run(command='./unbootstrap.sh -y', in_directory=repo_dir + '/installer', warn_only=True)
-            kernel_version = build_node.run('uname -r')
-            if kernel_version != '3.10.0-327.18.2.el7.x86_64':
-                build_node.reboot()
+                build_node.run(command='rm -rf mercury')  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
+                repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
+                build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
+                build_node.run(command='./bootstrap.sh -T {}'.format(installer_dir[-4:]), in_directory=repo_dir + '/internal')
+                build_node.run(command='./unbootstrap.sh -y', in_directory=repo_dir + '/installer', warn_only=True)
+                kernel_version = build_node.run('uname -r')
+                if kernel_version != '3.10.0-327.18.2.el7.x86_64':
+                    build_node.reboot()
 
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
-        build_node.run('./unbootstrap.sh -y', in_directory=installer_dir)
         build_node.run('rm -rf /var/log/mercury/*')
 
         build_node.run(command='./runner/runner.py -y', in_directory=installer_dir)
@@ -64,23 +68,23 @@ class DeployerMercury(Deployer):
         installer_config_template = self.read_config_from_file(config_path='mercury.template', directory='mercury', is_as_string=True)
 
         lab = build_node.lab()
-        _, cimc_username, cimc_password = build_node.get_oob()
-        common_ssh_username = build_node.get_ssh()[1]
+        bld_ip_oob, bld_username_oob, bld_password_oob = build_node.get_oob()
+        bld_ip_api, bld_username_api, bld_password_api = build_node.get_ssh()
         dns_ip = build_node.lab().get_dns()[0]
 
         api_net = lab.get_all_nets()['a']
-        api_cidr, api_vlan, api_gw = api_net.cidr(), api_net.get_vlan(), api_net.get_gw()
+        api_cidr, api_pref_len, api_vlan, api_gw = api_net.get_cidr(), api_net.get_prefix_len(), api_net.get_vlan(), api_net.get_gw()
         lb_ip_api = api_net.get_ip_for_index(10)
         lab.make_sure_that_object_is_unique(str(lb_ip_api), 'MERCURY')
 
         mx_net = lab.get_all_nets()['mx']
-        mx_cidr, mx_vlan, mx_gw = mx_net.get_cidr(), mx_net.get_vlan(), mx_net.get_gw()
+        mx_cidr, mx_pref_len, mx_vlan, mx_gw = mx_net.get_cidr(), mx_net.get_prefix_len(), mx_net.get_vlan(), mx_net.get_gw()
         lb_ip_mx = mx_net.get_ip_for_index(10)
         mx_pool = '{} to {}'.format(mx_net.get_ip_for_index(50), mx_net.get_ip_for_index(90))
         lab.make_sure_that_object_is_unique(str(lb_ip_mx), 'MERCURY')
 
         tenant_net = lab.get_all_nets()['t']
-        tenant_cidr, tenant_vlan, tenant_gw = tenant_net.cidr(), tenant_net.get_vlan(), tenant_net.get_gw()
+        tenant_cidr, tenant_vlan, tenant_gw = tenant_net.get_cidr(), tenant_net.get_vlan(), tenant_net.get_gw()
         tenant_pool = '{} to {}'.format(tenant_net.get_ip_for_index(10), tenant_net.get_ip_for_index(250))
 
         bld_ip_mx = build_node.get_nic('mx').get_ip_and_mask()[0]
@@ -94,20 +98,19 @@ class DeployerMercury(Deployer):
 
         servers_part = ''
         for node in lab.get_controllers() + lab.get_computes():
-            ip, cimc_username, cimc_password = node.get_oob()
+            oob_ip, oob_username, oob_password = node.get_oob()
             ru = node.get_hardware_info()[0]
-            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{cimc_ip}", "cimc_password" : "{cimc_password}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n\n'.format(nm=node.hostname(),
-                                                                                                                                                                               cimc_password=cimc_password,
-                                                                                                                                                                               node_id=node.get_id(),
-                                                                                                                                                                               cimc_ip=ip, ru=ru)
+            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n\n'.format(nm=node.hostname(), p=oob_password, ip=oob_ip, ru=ru)
 
-        installer_config_body = installer_config_template.format(cimc_username=cimc_username, cimc_password=cimc_password, dns_ip=dns_ip,
-                                                                 api_cidr=api_cidr, api_vlan=api_vlan, api_gw=api_gw,
-                                                                 mx_cidr=mx_cidr, mx_vlan=mx_vlan, mx_gw=mx_gw, bld_ip_mx=bld_ip_mx, mx_pool=mx_pool,
+        installer_config_body = installer_config_template.format(common_username_oob=bld_username_oob, common_password_oob=bld_password_api, dns_ip=dns_ip,
+                                                                 api_cidr=api_cidr, api_pref_len=api_pref_len, api_vlan=api_vlan, api_gw=api_gw,
+                                                                 mx_cidr=mx_cidr, mx_pref_len=mx_pref_len, mx_vlan=mx_vlan, mx_gw=mx_gw, bld_ip_mx=bld_ip_mx, mx_pool=mx_pool,
                                                                  tenant_cidr=tenant_cidr, tenant_vlan=tenant_vlan, tenant_gw=tenant_gw, tenant_pool=tenant_pool,
                                                                  controllers_part=controllers_part, computes_part=computes_part, servers_part=servers_part,
                                                                  lb_ip_api=lb_ip_api, lb_ip_mx=lb_ip_mx,
-                                                                 vtc_mx_vip=vtc_mx_ip, vtc_username=vtc_username, vtc_password=vtc_password, common_ssh_username=common_ssh_username)
+                                                                 vtc_mx_vip=vtc_mx_ip, vtc_username=vtc_username, vtc_password=vtc_password, common_ssh_username=bld_username_api,
+                                                                 bld_ip_oob=bld_ip_oob, bld_username_oob=bld_username_oob, bld_password_oob=bld_password_oob,
+                                                                 bld_ip_api=bld_ip_api)
 
         with open_artifact('setup_data.yaml', 'w') as f:
             f.write(installer_config_body)
