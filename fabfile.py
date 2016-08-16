@@ -284,3 +284,56 @@ def dima_report(test_regex='Tcbr'):
             f.write(body)
             f.write(80*'-')
             f.write('\n')
+
+
+@task
+@decorators.print_time
+def ansible():
+    from collections import namedtuple
+    from ansible.parsing.dataloader import DataLoader
+    from ansible.vars import VariableManager
+    from ansible.inventory import Inventory
+    from ansible.playbook.play import Play
+    from ansible.executor.task_queue_manager import TaskQueueManager
+    from ansible.plugins.callback import CallbackBase
+    from lab.logger import lab_logger
+
+    class ResultCallback(CallbackBase):
+        def __init__(self):
+            super(ResultCallback, self).__init__()
+
+        def v2_runner_on_ok(self, result, **kwargs):
+            lab_logger.info(result)
+
+    variable_manager = VariableManager()
+    loader = DataLoader()
+    options = namedtuple('Options', ['connection', 'module_path', 'forks', 'become', 'become_method', 'become_user', 'check'])(connection='local',
+                                                                                                                               module_path=None,
+                                                                                                                               forks=100,
+                                                                                                                               become=None,
+                                                                                                                               become_method=None,
+                                                                                                                               become_user=None,
+                                                                                                                               check=False)
+    passwords = dict(vault_pass='secret')
+
+    # create inventory and pass to var manager
+    inventory = Inventory(loader=loader, variable_manager=variable_manager, host_list=['10.23.221.142'])
+    variable_manager.set_inventory(inventory)
+
+    # create play with tasks
+    play_source = dict(name="Ansible Play", hosts='10.23.221.142', gather_facts='no', tasks=[
+                            dict(action=dict(module='shell', args='ls'), register='shell_out'),
+                            dict(action=dict(module='debug', args=dict(msg='{{shell_out.stdout}}')))
+                            ]
+                       )
+
+    play = Play().load(play_source, variable_manager=variable_manager, loader=loader)
+
+    tqm = None
+    try:
+        tqm = TaskQueueManager(inventory=inventory, variable_manager=variable_manager, loader=loader, options=options, passwords=passwords, stdout_callback=ResultCallback())
+        res = tqm.run(play)
+        lab_logger.info('Ansible Result: {}'.format(res))
+    finally:
+        if tqm is not None:
+            tqm.cleanup()
