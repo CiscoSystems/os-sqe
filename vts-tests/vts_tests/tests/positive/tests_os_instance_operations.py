@@ -23,7 +23,7 @@ class TestOSInstanceOperations(base_test.BaseTest):
             # TODO: Replace with warning message
             print "Could not ping instances because  the border leaf is not configured"
 
-    def test_create_network_subnet_port_instance(self):
+    def test_create_network_subnet_port_instance_Tcbr1965c(self):
         self._create_one_instance()
         self.delete_access_ports()
 
@@ -43,22 +43,22 @@ class TestOSInstanceOperations(base_test.BaseTest):
         for network_name, network in self.networks.iteritems():
             self.assertEqual(self.vtc_ui.get_overlay_network(network['network']['id']), None, 'Network has been removed')
 
-    def test_instance_soft_reboot(self):
+    def test_instance_soft_reboot_Tcbr1987c(self):
         self._create_one_instance()
         self.cloud.server_reboot(self.instance['name'], hard=False)
         self._assert_ping_instance_ports()
 
-    def test_instance_hard_reboot(self):
+    def test_instance_hard_reboot_Tcbr1983c(self):
         self._create_one_instance()
         self.cloud.server_reboot(self.instance['name'], hard=True)
         self._assert_ping_instance_ports()
 
-    def test_instance_rebuild(self):
+    def test_instance_rebuild_Tcbr1985c(self):
         self._create_one_instance()
         self.cloud.server_rebuild(self.instance['name'], image=self.config.image_name)
         self._assert_ping_instance_ports()
 
-    def test_instance_suspend_resume(self):
+    def test_instance_suspend_resume_Tcbr1989c(self):
         self._create_one_instance()
         self.cloud.server_suspend(self.instance['name'])
         self.cloud.server_resume(self.instance['name'])

@@ -48,7 +48,7 @@ class TestNegative(base_test.BaseTest):
         self.create_net_subnet_port_instance()
         self.assertTrue(self.instance_status, 'Instance status is not ACTIVE')
 
-    def test_reboot_compute_node(self):
+    def test_reboot_compute_node_Tcbr1991c(self):
         controller = random.choice(self.config.controllers)
         compute = random.choice(self.config.computes)
         compute_conn = mercury_node_connect.MercuryNodeConnect(self.config.build_node, compute)
