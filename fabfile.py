@@ -13,7 +13,6 @@ def cmd(config_path):
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.logger import lab_logger
-    from pprint import pprint
 
     l = Laboratory(config_path=config_path)
     nodes = sorted(map(lambda node: node.get_id(), l.get_nodes_by_class()))
@@ -67,8 +66,7 @@ def cmd(config_path):
             # noinspection PyBroadException
             try:
                 results = method_to_execute(*arguments)
-                lab_logger.info('\n>>{}<< RESULTS of {}():\n\n'.format(device, input_method_name))
-                pprint(results)
+                device.log('RESULTS of {}():\n\n {}'.format(input_method_name, results))
             except Exception as ex:
                 lab_logger.exception('\n Exception: {0}'.format(ex))
 

@@ -58,14 +58,14 @@ class Nexus(LabNode):
             if 'disabled'in run('sh feature | i nxapi', shell=False):
                 run('conf t ; feature nxapi', shell=False)
 
-    def _rest_api(self, commands, timeout=2):
+    def _rest_api(self, commands, timeout=2, method='cli'):
         import requests
         import json
         from lab.logger import lab_logger
         lab_logger.info('{0} commands: {1}'.format(self, ", ".join(commands)))
 
         oob_ip, oob_u, oob_p = self.get_oob()
-        body = [{"jsonrpc": "2.0", "method": "cli", "params": {"cmd": command, "version": 1}, "id": 1} for command in commands]
+        body = [{"jsonrpc": "2.0", "method": method, "params": {"cmd": command, "version": 1}, "id": 1} for command in commands]
         try:
             data = json.dumps(body)
             result = requests.post('http://{0}/ins'.format(oob_ip), auth=(oob_u, oob_p), headers={'content-type': 'application/json-rpc'}, data=data, timeout=timeout)
@@ -78,12 +78,12 @@ class Nexus(LabNode):
         res = self.cmd(['sh switchname'])
         return res['result']['body']['hostname']
 
-    def cmd(self, commands, timeout=15):
+    def cmd(self, commands, timeout=15, method='cli'):
         if type(commands) is not list:  # it might be provided as a string where commands are separated by ','
             commands = commands.strip('[]')
             commands = commands.split(',')
 
-        results = self._rest_api(commands=commands, timeout=int(timeout))
+        results = self._rest_api(commands=commands, timeout=int(timeout), method=method)
         if len(commands) == 1:
             results = [results]
         for i, x in enumerate(results, start=0):
@@ -192,6 +192,13 @@ class Nexus(LabNode):
     def n9_create_vpc(self, pc_id):
         if str(pc_id) not in self._actual_vpc:
             self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)], timeout=60)
+
+    def n9_day0_config(self):
+        self.cmd(['conf t', 'router ngp 23', 'router-id 34.34.34.200', 'address-family ipv4 unicast', 'address-family l2vpn evpn', 'retain route-target all',
+                  'neighbor 34.34.34.111', 'remote-as 23', 'update-source Vlan3111', 'address-family l2vpn evpn', 'send-community both'], timeout=60)
+
+        self.cmd(['conf t', 'router ospf 100', 'router-id 90.90.90.90', 'area 0.0.0.0 default-cost 10'], timeout=60)
+        self.cmd(['conf t', 'interface loopback0', 'ip address 90.90.90.90/32', 'ip address 92.92.92.92/32 secondary', 'ip router ospf 100 area 0.0.0.0'], timeout=60)
 
     def n9_get_status(self):
         self.__actual_vpc = self.n9_show_vpc()
@@ -379,6 +386,11 @@ class Nexus(LabNode):
         for dic in ans_st['result']['body'][u'TABLE_interface'][u'ROW_interface']:
             result[dic['interface']]['name'] = dic.get('name', '')
         return result
+
+    def n9_save_running_config(self):
+        body = self.cmd(commands=['sh run'], method='cli_ascii')['result']['msg']
+        self.log_to_artifact_file(name='{}-running-config.txt'.format(self.get_id()), body=body)
+        return body
 
     def n9_show_vpc(self):
         ans = self.cmd(['sh vpc'])
