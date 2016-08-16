@@ -46,7 +46,7 @@ class TestFunctional(base_test.BaseTest):
         else:
             self.assertIn(self.XRVR_NO_SUCH_CONFIGURATION, xrvr_cfg_text, 'XRVR is configured')
 
-    def test_connectivity_same_net_same_compute(self):
+    def test_connectivity_same_net_same_compute_Tcbr1953c(self):
         prefix1 = random.randint(1, 1000)
         networks = self.cloud.create_net_subnet(common_part_of_name=prefix1, class_a=10, how_many=1, is_dhcp=False)
         ports1 = self.cloud.create_ports(instance_name=prefix1, on_nets=networks, is_fixed_ip=True)
@@ -71,7 +71,7 @@ class TestFunctional(base_test.BaseTest):
         self.assertTrue(all(self.ping_ports(ports2)), 'Could not reach instance2. Ping failed')
         self.assert_instances_reach_each_other(ports1, ports2)
 
-    def test_connectivity_same_net_different_computes(self):
+    def test_connectivity_same_net_different_computes_Tcbr1955c(self):
         self._skip_if_one_compute()
 
         prefix1 = random.randint(1, 1000)
@@ -98,7 +98,7 @@ class TestFunctional(base_test.BaseTest):
         self.assertTrue(all(self.ping_ports(ports2)), 'Could not reach instance2. Ping failed')
         self.assert_instances_reach_each_other(ports1, ports2)
 
-    def test_connectivity_recreate_port_with_used_mac(self):
+    def test_connectivity_recreate_port_with_used_mac_Tcbr1967c(self):
         prefix1 = random.randint(1, 1000)
         networks = self.cloud.create_net_subnet(common_part_of_name=prefix1, class_a=10, how_many=1, is_dhcp=False)
         ports1 = self.cloud.create_ports(instance_name=prefix1, on_nets=networks, is_fixed_ip=True)
@@ -128,7 +128,7 @@ class TestFunctional(base_test.BaseTest):
         self.assertTrue(instance_status, 'Instance status is not ACTIVE')
         self.assertTrue(all(self.ping_ports(ports2)), 'Could not reach instance attached to new port with used (early) mac/ip address. Ping failed')
 
-    def test_5_networks_one_instance_per_network_same_tenant(self):
+    def test_5_networks_one_instance_per_network_same_tenant_Tcbr1973c_Tcbr1975c_Tcbr1963c(self):
         ports = {}
         vni_numbers = {}
         networks = self.cloud.create_net_subnet(common_part_of_name=random.randint(1, 1000), class_a=10, how_many=5, is_dhcp=False)
@@ -147,7 +147,7 @@ class TestFunctional(base_test.BaseTest):
         for network_name, network in networks.iteritems():
             self.assert_evpn_evi_network_controller(vni_numbers[network_name], ports[network_name][0]['mac_address'], configured=False)
 
-    def test_5_networks_one_instance_per_network_different_tenant(self):
+    def test_5_networks_one_instance_per_network_different_tenant_Tcbr1971c_Tcbr1977c(self):
         vni_vs_mac = {}
         for i in range(5):
             prefix = random.randint(1, 1000)
@@ -174,7 +174,7 @@ class TestFunctional(base_test.BaseTest):
         for vni, mac in vni_vs_mac.iteritems():
             self.assert_evpn_evi_network_controller(vni_number, mac, configured=False)
 
-    def test_instance_reachable_if_stop_vtf_container(self):
+    def test_instance_reachable_if_stop_vtf_container_Tcbr2121c(self):
         prefix = random.randint(1, 1000)
         networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
         ports1 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
@@ -195,7 +195,7 @@ class TestFunctional(base_test.BaseTest):
         self.assertNotEqual(container_id, '', 'vtf container is not started after stop')
         self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
 
-    def test_instance_reachable_if_restart_vtf_container(self):
+    def test_instance_reachable_if_restart_vtf_container_Tcbr1969c(self):
         prefix = random.randint(1, 1000)
         networks = self.cloud.create_net_subnet(common_part_of_name=prefix, class_a=10, how_many=1, is_dhcp=False)
         ports1 = self.cloud.create_ports(instance_name=prefix, on_nets=networks, is_fixed_ip=True)
@@ -214,14 +214,15 @@ class TestFunctional(base_test.BaseTest):
         time.sleep(60)
         self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
 
-    def test_ipv6_ping(self):
+    def test_ipv6_ping_same_compute_Tcbr2123c(self):
         prefix1 = random.randint(1, 1000)
         networks = self.cloud.create_net_subnet(common_part_of_name=prefix1, class_a=10, how_many=1, is_dhcp=False)
         ports1 = self.cloud.create_ports(instance_name=prefix1, on_nets=networks, is_fixed_ip=True)
         instance1, instance_status1 = self.cloud.create_instance(name=prefix1,
                                                                  flavor=self.config.flavor,
                                                                  image=self.config.image_name,
-                                                                 on_ports=ports1,)
+                                                                 on_ports=ports1,
+                                                                 compute=self.compute1['hostname'])
         self.assertTrue(instance_status1, 'Instance1 status is not ACTIVE')
 
         prefix2 = random.randint(1, 1000)
@@ -229,7 +230,8 @@ class TestFunctional(base_test.BaseTest):
         instance2, instance_status2 = self.cloud.create_instance(name=prefix2,
                                                                  flavor=self.config.flavor,
                                                                  image=self.config.image_name,
-                                                                 on_ports=ports2)
+                                                                 on_ports=ports2,
+                                                                 compute=self.compute1['hostname'])
         self.assertTrue(instance_status2, 'Instance2 status is not ACTIVE')
 
         self.create_access_ports()
@@ -248,7 +250,43 @@ class TestFunctional(base_test.BaseTest):
         self.assertTrue(self.instance_cmd(ip2v4, cmd.format(ip=ip1v6))[0],
                         'Could not reach instance1 from instance2. Ping6 failed')
 
-    def test_l3_network_separation(self):
+    def test_ipv6_ping_different_compute_Tcbr2122c(self):
+        prefix1 = random.randint(1, 1000)
+        networks = self.cloud.create_net_subnet(common_part_of_name=prefix1, class_a=10, how_many=1, is_dhcp=False)
+        ports1 = self.cloud.create_ports(instance_name=prefix1, on_nets=networks, is_fixed_ip=True)
+        instance1, instance_status1 = self.cloud.create_instance(name=prefix1,
+                                                                 flavor=self.config.flavor,
+                                                                 image=self.config.image_name,
+                                                                 on_ports=ports1,
+                                                                 compute=self.compute1['hostname'])
+        self.assertTrue(instance_status1, 'Instance1 status is not ACTIVE')
+
+        prefix2 = random.randint(1, 1000)
+        ports2 = self.cloud.create_ports(instance_name=prefix2, on_nets=networks, is_fixed_ip=True)
+        instance2, instance_status2 = self.cloud.create_instance(name=prefix2,
+                                                                 flavor=self.config.flavor,
+                                                                 image=self.config.image_name,
+                                                                 on_ports=ports2,
+                                                                 compute=self.compute2['hostname'])
+        self.assertTrue(instance_status2, 'Instance2 status is not ACTIVE')
+
+        self.create_access_ports()
+        self.assertTrue(all(self.ping_ports(ports1)), 'Could not reach instance1. Ping failed')
+        self.assertTrue(all(self.ping_ports(ports2)), 'Could not reach instance2. Ping failed')
+
+        ip1v4 = self.get_port_ip(ports1[0])
+        ip2v4 = self.get_port_ip(ports2[0])
+
+        ip1v6 = self.get_instance_ipv6_address(ip1v4)
+        ip2v6 = self.get_instance_ipv6_address(ip2v4)
+
+        cmd = '/usr/sbin/ping6 -c 4 {ip}'
+        self.assertTrue(self.instance_cmd(ip1v4, cmd.format(ip=ip2v6))[0],
+                        'Could not reach instance2 from instance1. Ping6 failed')
+        self.assertTrue(self.instance_cmd(ip2v4, cmd.format(ip=ip1v6))[0],
+                        'Could not reach instance1 from instance2. Ping6 failed')
+
+    def test_l3_network_separation_Tcbr2124c(self):
         network1_name = '{sqe_pref}-net-1'.format(sqe_pref=self.cloud._unique_pattern_in_name)
         network2_name = '{sqe_pref}-net-2'.format(sqe_pref=self.cloud._unique_pattern_in_name)
         subnet_ip_network = self.cloud.get_cidrs4(class_a='10', how_many=1)[0]
