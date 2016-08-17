@@ -12,7 +12,7 @@ class Nexus(LabNode):
         self.__actual_ports = None
         self._requested_vpc = {}  # might be port channel ot virtual port channel
         self._requested_ports = {}  # single ports
-        self._requested_vlans = {}
+        self.__requested_vlans = None
         self._requested_peer_link = {}
 
     @property
@@ -38,6 +38,12 @@ class Nexus(LabNode):
         if self.__actual_ports is None:
             self.n9_get_status()
         return self.__actual_ports
+
+    @property
+    def _requested_vlans(self):
+        if self.__requested_vlans is None:
+            self.prepare_topology()
+        return self.__requested_vlans
 
     def __repr__(self):
         ip, username, password = self.get_oob()
@@ -193,12 +199,21 @@ class Nexus(LabNode):
         if str(pc_id) not in self._actual_vpc:
             self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)], timeout=60)
 
-    def n9_day0_config(self):
-        self.cmd(['conf t', 'router bgp 23', 'router-id 34.34.34.200', 'address-family ipv4 unicast', 'address-family l2vpn evpn', 'retain route-target all',
-                  'neighbor 34.34.34.111', 'remote-as 23', 'update-source Vlan3111', 'address-family l2vpn evpn', 'send-community both'], timeout=60)
-
-        self.cmd(['conf t', 'router ospf 100', 'router-id 90.90.90.90', 'area 0.0.0.0 default-cost 10'], timeout=60)
-        self.cmd(['conf t', 'interface loopback0', 'ip address 90.90.90.90/32', 'ip address 92.92.92.92/32 secondary', 'ip router ospf 100 area 0.0.0.0'], timeout=60)
+    def n9_day0_config(self, is_configure_peer=True):
+        tenant_vlan_id = [vlan_id for vlan_id, name_and_others in self._requested_vlans.items() if name_and_others['name'] == '{}-t'.format(self.lab())][0]
+        this_switch_bgp_nei_ip = '34.34.34.{}'.format(self._n)
+        loopback_ip = '90.90.90.90'
+        xrvr_bgp_ip = '34.34.34.10'
+        self.cmd(['conf t', 'interface Vlan{}'.format(tenant_vlan_id), 'no shut', 'ip address {}/24'.format(this_switch_bgp_nei_ip), 'no ipv6 redirects', 'ip router ospf 100 area 0.0.0.0',
+                  'hsrp 34 ', 'ip 34.34.34.100'], timeout=60)
+        self.cmd(['conf t', 'interface loopback0', 'ip address {}/32'.format(loopback_ip), 'ip address 92.92.92.92/32 secondary', 'ip router ospf 100 area 0.0.0.0'], timeout=60)
+        self.cmd(['conf t', 'router ospf 100', 'router-id {}'.format(this_switch_bgp_nei_ip), 'area 0.0.0.0 default-cost 10'], timeout=60)
+        self.cmd(['conf t', 'router bgp 23', 'router-id {}'.format(this_switch_bgp_nei_ip), 'address-family ipv4 unicast', 'address-family l2vpn evpn', 'retain route-target all',
+                  'neighbor {}'.format(xrvr_bgp_ip), 'remote-as 23', 'update-source Vlan{}'.format(tenant_vlan_id), 'address-family l2vpn evpn', 'send-community both'], timeout=60)
+        if is_configure_peer:
+            peer = self.get_peer_linked_n9k()
+            if peer:
+                peer.n9_day0_config(is_configure_peer=False)
 
     def n9_get_status(self):
         self.__actual_vpc = self.n9_show_vpc()
@@ -239,6 +254,9 @@ class Nexus(LabNode):
 
     def get_peer_link_id(self):
         return self._peer_link_wires[0].get_pc_id()
+
+    def get_peer_linked_n9k(self):
+        return self._peer_link_wires[0].get_peer_node(self)
 
     def n9_add_vlan_range(self, interfaces):
         vlan_range = self.lab().vlan_range().replace(':', '-')
@@ -298,7 +316,7 @@ class Nexus(LabNode):
             self.n9_configure_port(pc_id=None, port_id=port_id, vlans_string=info['vlans'], desc=info['description'])
 
     def prepare_topology(self):
-        self._requested_vlans = {}
+        self.__requested_vlans = {}
 
         vlan_vs_net = {net.get_vlan(): net for net in self.lab().get_all_nets().values()}
         vlans = []
@@ -306,7 +324,7 @@ class Nexus(LabNode):
         for vlan_id in set(vlans):
             net = vlan_vs_net[vlan_id]
             vlan_name = '{lab_name}-{net_name}{vts}{ssh}'.format(lab_name=self._lab, net_name=net.get_name(), vts='-VTS' if net.is_vts() else '', ssh='-SSH' if net.is_ssh() else '')
-            self._requested_vlans[str(vlan_id)] = {'name': vlan_name, 'ports': '', 'net': net}
+            self.__requested_vlans[str(vlan_id)] = {'name': vlan_name, 'ports': '', 'net': net}
 
         self._requested_ports = {}
         self._requested_vpc = {}
