@@ -194,7 +194,7 @@ class Nexus(LabNode):
             self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)], timeout=60)
 
     def n9_day0_config(self):
-        self.cmd(['conf t', 'router ngp 23', 'router-id 34.34.34.200', 'address-family ipv4 unicast', 'address-family l2vpn evpn', 'retain route-target all',
+        self.cmd(['conf t', 'router bgp 23', 'router-id 34.34.34.200', 'address-family ipv4 unicast', 'address-family l2vpn evpn', 'retain route-target all',
                   'neighbor 34.34.34.111', 'remote-as 23', 'update-source Vlan3111', 'address-family l2vpn evpn', 'send-community both'], timeout=60)
 
         self.cmd(['conf t', 'router ospf 100', 'router-id 90.90.90.90', 'area 0.0.0.0 default-cost 10'], timeout=60)
