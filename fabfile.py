@@ -84,8 +84,7 @@ def ha(lab, test_regex, do_not_clean=False, is_tims=False):
     from lab import with_config
     from lab.logger import lab_logger
 
-    lab_path = with_config.actual_path_to_config(path=lab)
-    lab_name = lab_path.rsplit('/', 1)[-1].replace('.yaml', '')
+    lab_name = lab.rsplit('/', 1)[-1].replace('.yaml', '')
 
     available_tc = with_config.ls_configs(directory='ha')
     tests = sorted(filter(lambda x: test_regex in x, available_tc))
@@ -277,8 +276,7 @@ def dima_report(test_regex='Tcbr'):
 
     with with_config.open_artifact('dimas_report.txt', 'w') as f:
         for test in tests:
-            with open(with_config.actual_path_to_config(path=test, directory='ha')) as t:
-                body = t.read()
+            body = with_config.read_config_from_file(config_path=test, directory='ha', is_as_string=True)
             f.write(body)
             f.write(80*'-')
             f.write('\n')

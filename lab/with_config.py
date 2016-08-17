@@ -58,17 +58,41 @@ class LabConfigError(Exception):
 
 
 def read_config_from_file(config_path, directory='', is_as_string=False):
+    """ Trying to read a configuration file in the following order:
+        1. try to interpret config_path as local file system full path
+        2. try to interpret config_path as short file name with respect to CONFIG_DIR + directory without appending extension .yaml
+        3. the same as in 2 but with appending .yaml to the end of the path
+        4. the same as in 2 and 3 but in a local clone of osqe-configs repo
+        5. if all fail , append .yaml to the end of th path and try to get it from remote osqe-configs
+        :param config_path: path to the config file or just a name of the config file
+        :param directory: sub-directory of CONFIG_DIR
+        :param is_as_string: if True return the body of file as a string , if not interpret the file as yaml and return a dictionary
+    """
     import yaml
     import requests
     import validators
     from lab.logger import lab_logger
+    import os
 
-    actual_path = actual_path_to_config(path=config_path, directory=directory)
+    git_reference = os.getenv('SQE_GIT_REF', 'master').split('/')[-1]
+    gitlab_config_repo = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/{0}/lab_configs/'.format(git_reference)
+
+    if os.path.isfile(config_path):
+        actual_path = config_path  # it's a full path to the local file
+    else:
+        path_with_yaml = config_path if config_path.endswith('.yaml') else config_path + '.yaml'
+        actual_path = None
+        for conf_dir in [CONFIG_DIR, os.path.expanduser('~/osqe-configs/lab_configs')]:
+            try_this_path = os.path.join(conf_dir, directory, path_with_yaml)
+            if os.path.isfile(try_this_path):
+                actual_path = try_this_path
+        actual_path = actual_path or gitlab_config_repo + path_with_yaml
 
     lab_logger.info('Taking config from {0}'.format(actual_path))
     if validators.url(actual_path):
         resp = requests.get(actual_path)
         if resp.status_code != 200:
+            # last resort: try to get config from local clone of this remote repo
             raise ValueError('File is not available at this URL: {0}'.format(actual_path))
         body_or_yaml = yaml.load(resp.text)
     else:
@@ -78,33 +102,6 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
         raise ValueError('{0} is empty!'.format(actual_path))
 
     return body_or_yaml
-
-
-def actual_path_to_config(path, directory=''):
-    """ Trying to construct full path to file in the following order:
-        1. try to interpret path as full path
-        2. try to interpret path as short file name with respect to CONFIG_DIR + directory without appending extension .yaml
-        3. the same as in 2 but with appending .yaml to the end of the path
-        4. if all fail , append .yaml to the end of th path and try to get it from remote GITLAB_REPO
-        :param path: path to the config file or just a name of the config file
-        :param directory: sub-directory of CONFIG_DIR
-    """
-    import os
-
-    git_reference = os.getenv('SQE_GIT_REF', 'master').split('/')[-1]
-    gitlab_config_repo = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/{0}/lab_configs/'.format(git_reference)
-
-    if os.path.isfile(path):
-        return path
-
-    path_with_yaml = path if path.endswith('.yaml') else path + '.yaml'
-
-    for path in [path, path_with_yaml]:
-        actual_path = os.path.join(CONFIG_DIR, directory, path)
-        if os.path.isfile(actual_path):
-            return actual_path
-
-    return gitlab_config_repo + path_with_yaml
 
 
 def ls_configs(directory=''):
