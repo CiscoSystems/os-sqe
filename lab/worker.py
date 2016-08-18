@@ -21,9 +21,9 @@ class Worker(object):
     # noinspection PyAttributeOutsideInit
     def start(self):
         import time
-        from lab.logger import create_logger
+        from lab.logger import Logger
 
-        self._log = create_logger(name=str(self))
+        self._log = Logger(name=str(self))
         delay = self._kwargs.get('delay', 0)
         duration = self._kwargs.get('duration')
         n_repeats = self._kwargs.get('n_repeats')

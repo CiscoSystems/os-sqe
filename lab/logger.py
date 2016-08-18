@@ -1,13 +1,14 @@
 import logging
-import os
-
-REPO_TAG = os.system('git describe --always')
-JENKINS_TAG = os.getenv('BUILD_TAG', 'NA')
-OSP7_INFO = 'NA'
 
 
 class JsonFormatter(logging.Formatter):
     def __init__(self):
+        import os
+
+        self._repo_tag = os.system('git describe --always')
+        self._jenkins_tag = os.getenv('BUILD_TAG', 'no_jenkins')
+        self._deployer_tag = 'not implemented'
+
         super(JsonFormatter, self).__init__()
 
     def format(self, record):
@@ -37,9 +38,9 @@ class JsonFormatter(logging.Formatter):
         if '@timestamp' not in d:
             d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
         d['name'] = record.name
-        d['sqe-repo-tag'] = REPO_TAG
-        d['osp7-info'] = OSP7_INFO
-        d['jenkins'] = JENKINS_TAG
+        d['sqe-repo-tag'] = self._repo_tag
+        d['deployer-info'] = self._deployer_tag
+        d['jenkins'] = self._jenkins_tag
         return json.dumps(d)
 
 
@@ -48,35 +49,58 @@ class JsonFilter(logging.Filter):
         return record.exc_text or '=' in record.message
 
 
-def create_logger(name=None):
-    import inspect
-    from lab.with_config import WithConfig
+class Logger(object):
+    def __init__(self, name=None):
+        import os
 
-    text_log_name, json_log_name = WithConfig.get_log_file_names()
-    formatter = logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s:  %(message)s')
+        self._logger = None
+        ans = os.getenv('DISABLE_SQE_LOG', 'NO-NO')
+        if ans == 'NO-NO':
+            self._create_logger(name)
 
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
-    console_handler.setFormatter(formatter)
+    def _create_logger(self, name):
+        import inspect
+        import os
+        from lab.with_config import WithConfig
 
-    file_handler = logging.FileHandler(text_log_name)
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
+        os.system('rm *.log')
+        text_log_name, json_log_name = WithConfig.get_log_file_names()
+        formatter = logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s:  %(message)s')
 
-    json_handler = logging.FileHandler(json_log_name)
-    json_handler.setLevel(logging.DEBUG)
-    json_handler.setFormatter(JsonFormatter())
-    json_handler.addFilter(JsonFilter())
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
+        console_handler.setFormatter(formatter)
 
-    stack = inspect.stack()
-    logger = logging.getLogger(name or stack[1][3])
-    logger.setLevel(level=logging.DEBUG)
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    logger.addHandler(json_handler)
+        file_handler = logging.FileHandler(text_log_name)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
 
-    logging.captureWarnings(True)
-    return logger
+        json_handler = logging.FileHandler(json_log_name)
+        json_handler.setLevel(logging.DEBUG)
+        json_handler.setFormatter(JsonFormatter())
+        json_handler.addFilter(JsonFilter())
 
-os.system('rm *.log')
-lab_logger = create_logger(name='LAB-MAIN')
+        stack = inspect.stack()
+        logger = logging.getLogger(name or stack[1][3])
+        logger.setLevel(level=logging.DEBUG)
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+        logger.addHandler(json_handler)
+
+        logging.captureWarnings(True)
+        self._logger = logger
+
+    def info(self, *args):
+        if self._logger:
+            self._logger.info(*args)
+
+    def warning(self, *args):
+        if self._logger:
+            self._logger.warning(*args)
+
+    def exception(self, *args):
+        if self._logger:
+            self._logger.exception(*args)
+
+
+lab_logger = Logger('LAB-LOG')
