@@ -66,7 +66,7 @@ def cmd(config_path):
             # noinspection PyBroadException
             try:
                 results = method_to_execute(*arguments)
-                device.log('RESULTS of {}():\n\n {}'.format(input_method_name, results))
+                device.log('RESULTS of {}():\n\n {}\n'.format(input_method_name, results))
             except Exception as ex:
                 lab_logger.exception('\n Exception: {0}'.format(ex))
 
