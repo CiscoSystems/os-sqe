@@ -259,7 +259,7 @@ class Nexus(LabNode):
         return self._peer_link_wires[0].get_peer_node(self)
 
     def n9_add_vlan_range(self, interfaces):
-        vlan_range = self.lab().vlan_range().replace(':', '-')
+        vlan_range = self.lab().get_vlan_range().replace(':', '-')
         commands = ['conf t', 'vlan {0}'.format(vlan_range), 'no shut', 'exit', 'int e{0}'.format(',e'.join(interfaces)), 'switchport trunk allowed vlan add {0}'.format(vlan_range), 'end']
         self.cmd(commands)
 

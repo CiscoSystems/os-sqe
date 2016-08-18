@@ -139,14 +139,14 @@ class Vtc(Server):
             s.close()
         return r
 
-    def restart_dl_server(self):
-        return map(lambda xrvr: xrvr.restart_dl_server(), self.lab().get_nodes_by_class(Xrvr))
+    def xrvr_restart_dl(self):
+        return map(lambda xrvr: xrvr.xrvr_restart_dl(), self.lab().get_nodes_by_class(Xrvr))
 
-    def show_evpn(self):
-        return map(lambda xrvr: xrvr.show_evpn(), self.lab().get_nodes_by_class(Xrvr))
+    def xrvr_show_evpn(self):
+        return map(lambda xrvr: xrvr.xrvr_show_evpn(), self.lab().get_nodes_by_class(Xrvr))
 
     def show_connections_xrvr_vtf(self):
-        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Vtf)) + map(lambda xrvr: xrvr.show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Xrvr))
+        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Vtf)) + map(lambda xrvr: xrvr.xrvr_show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Xrvr))
 
     def show_vxlan_tunnel(self):
         return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_nodes_by_class(Vtf))

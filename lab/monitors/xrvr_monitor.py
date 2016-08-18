@@ -40,7 +40,7 @@ class XrvrMonitor(Worker):
                 mac = port['mac_address']
                 vtf = self._vtc.get_vtf(port['binding:host_id'])
 
-                host = self._xrvr.show_host(vni_number, mac)
+                host = self._xrvr.xrvr_show_host(vni_number, mac)
                 if not host:
                     xrvr_sync = False
                 else:

@@ -56,7 +56,7 @@ class DeployerVts(Deployer):
             self.deploy_single_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
         vtcs[0].get_all_logs('after_all_xrvr_registered')
 
-        dl_server_status = map(lambda dl: dl.dl_start_server(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
+        dl_server_status = map(lambda dl: dl.xrnc_start_dl(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
         if not all(dl_server_status):
             raise RuntimeError('Failed to start DL servers')
         vtcs[0].get_all_logs('after_all_dl_servers_started')

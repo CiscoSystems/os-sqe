@@ -250,6 +250,16 @@ class Laboratory(WithOspd7):
 
         return filter(lambda x: type(x) is VtsHost, self._nodes)
 
+    def get_xrvr(self):
+        from lab.vts_classes.xrvr import Xrvr
+
+        return filter(lambda x: type(x) is Xrvr, self._nodes)
+
+    def get_n9k(self):
+        from lab.n9k import Nexus
+
+        return filter(lambda x: type(x) is Nexus, self._nodes)
+
     def get_controllers(self):
         from lab.cimc import CimcController
         from lab.fi import FiController
@@ -273,7 +283,7 @@ class Laboratory(WithOspd7):
     def ucsm_nets_with_pxe(self):
         return [x for x in self._cfg['nets'].keys() if 'pxe' in x]
 
-    def vlan_range(self):
+    def get_vlan_range(self):
         return self._cfg['vlan_range']
 
     def count_role(self, role_name):
@@ -307,9 +317,21 @@ class Laboratory(WithOspd7):
 
         inventory = {}
 
+        xrvr_username, xrvr_password = None, None
+        xrvr_ips = []
+        for node in self.get_xrvr():
+            ip, xrvr_username, xrvr_password = node.get_xrvr_ip_user_pass()
+            xrvr_ips.append(ip)
+
         for node in self.get_director() + self.get_vts_hosts():
             ip, username, _ = node.get_ssh()
-            inventory[node.get_id()] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': KEY_PRIVATE_PATH}}
+            inventory[node.get_id()] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': KEY_PRIVATE_PATH,
+                                                                'xrvr_ip_mx': xrvr_ips, 'xrvr_username': xrvr_username, 'xrvr_password': xrvr_password}}
+
+        for node in self.get_n9k():
+            ip, username, password = node.get_oob()
+            inventory[node.get_id()] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_pass': password}}
+
 
         return inventory
 

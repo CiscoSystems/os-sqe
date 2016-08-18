@@ -17,10 +17,16 @@ class Xrvr(Server):
         self._proxy_to_run = None
 
     def __repr__(self):
-        _, ssh_u, ssh_p = self.get_ssh()
-        _, oob_u, oob_p = self.get_oob()
-        ip = self.get_nic('mx').get_ip_and_mask()[0]
-        return u'{l} {n} | sshpass -p {p} ssh {u1}/{u2}@{ip} for XRVR/DL'.format(l=self.lab(), n=self.get_id(), ip=ip, p=ssh_p, u1=oob_u, u2=ssh_u)
+        _, xrnc_u, p = self.get_ssh()
+        _, xrvr_u, _ = self.get_oob()
+        ip = self.get_ip_mx()
+        return u'{l} {n} | on mx: sshpass -p {p} ssh {xrvr}/{xrnc}@{ip} for XRVR/XRNC'.format(l=self.lab(), n=self.get_id(), ip=ip, p=p, xrvr=xrvr_u, xrnc=xrnc_u)
+
+    def get_ip_mx(self):
+        return self.get_nic('mx').get_ip_and_mask()[0]
+
+    def get_ip_t(self):
+        return self.get_nic('t').get_ip_and_mask()[0]
 
     # noinspection PyMethodOverriding
     def cmd(self, cmd, is_xrvr):  # XRVR uses redirection: ssh_username goes to DL while oob_username goes to XRVR, ip and password are the same for both
@@ -83,10 +89,10 @@ expect "CPU0:XRVR"
         except AttributeError:
             return None
 
-    def show_running_config(self):
+    def xrvr_show_running_config(self):
         return self.cmd('show running-config', is_xrvr=True)
 
-    def show_host(self, evi, mac):
+    def xrvr_show_host(self, evi, mac):
         # mac should look like 0010.1000.2243
         mac = mac.replace(':', '').lower()
         mac = '.'.join([mac[0:4], mac[4:8], mac[8:16]])
@@ -102,10 +108,10 @@ expect "CPU0:XRVR"
             }
         return None
 
-    def show_evpn(self):
+    def xrvr_show_evpn(self):
         return self.cmd('show running-config evpn', is_xrvr=True)
 
-    def show_connections_xrvr_vtf(self):
+    def xrvr_show_connections_xrvr_vtf(self):
         return self.run('netstat -ant |grep 21345')
 
     def get_config_and_net_part_bodies(self):
@@ -155,11 +161,12 @@ expect "CPU0:XRVR"
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 
-    def dl_start_server(self):
+    def xrnc_start_dl(self):
         own_ip = self.get_nic('t').get_ip_and_mask()[0]
         ips = [x.get_nic('t').get_ip_and_mask()[0] for x in self.lab().get_nodes_by_class(Xrvr)]
         opposite_ip = next(iter(set(ips) - {own_ip}))
         self.cmd('sudo ip l s dev br-underlay mtu 1400', is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 step 12 about MTU
+        # noinspection PyBroadException
         try:
             self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
         except:
@@ -167,7 +174,7 @@ expect "CPU0:XRVR"
 
         return True
 
-    def restart_dl_server(self):
+    def xrnc_restart_dl(self):
         return self.cmd('sudo crm resource restart dl_server', is_xrvr=False)
 
     def xrnc_get_interfaces_config(self):
