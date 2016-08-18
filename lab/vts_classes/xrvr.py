@@ -17,13 +17,20 @@ class Xrvr(Server):
         self._proxy_to_run = None
 
     def __repr__(self):
-        _, xrnc_u, p = self.get_ssh()
-        _, xrvr_u, _ = self.get_oob()
-        ip = self.get_ip_mx()
+        ip, xrvr_u, p = self.get_xrvr_ip_user_pass()
+        _, xrnc_u, _ = self.get_xrvr_ip_user_pass()
         return u'{l} {n} | on mx: sshpass -p {p} ssh {xrvr}/{xrnc}@{ip} for XRVR/XRNC'.format(l=self.lab(), n=self.get_id(), ip=ip, p=p, xrvr=xrvr_u, xrnc=xrnc_u)
 
     def get_ip_mx(self):
         return self.get_nic('mx').get_ip_and_mask()[0]
+
+    def get_xrvr_ip_user_pass(self):
+        _, u, p = self.get_oob()
+        return self.get_nic('mx').get_ip_and_mask()[0], u, p
+
+    def get_xrnc_ip_user_pass(self):
+        _, u, p = self.get_ssh()
+        return self.get_nic('mx').get_ip_and_mask()[0], u, p
 
     def get_ip_t(self):
         return self.get_nic('t').get_ip_and_mask()[0]
