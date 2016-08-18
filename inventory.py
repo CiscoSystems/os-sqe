@@ -24,11 +24,11 @@ def main():
     os.environ['DISABLE_SQE_LOG'] = 'Yes'
     args = parse_args()
     l = Laboratory(config_path='g7-2')
-    inventory = {x.get_id(): {'hosts': [x.get_ssh_ip()]} for x in l.get_nodes_by_class()}
+    inventory = l.get_ansible_inventory()
     if args.list:
         output = json.dumps(inventory)
     elif args.host:
-        output = l.get_nodes_by_class()[args.host]
+        output = inventory[args.host]
     else:
         output = 'Nothing to return'
     print(output)
