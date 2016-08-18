@@ -200,8 +200,6 @@ class Server(LabNode):
         return self.run(command='pwd', in_directory=local_repo_dir)
 
     def create_user(self, new_username):
-        from lab import with_config
-
         tmp_password = 'cisco123'
         if not self.run(command='grep {0} /etc/passwd'.format(new_username), warn_only=True):
             encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(tmp_password))
@@ -209,11 +207,15 @@ class Server(LabNode):
             self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
             self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
         self.set_ssh_creds(username=new_username, password=tmp_password)
+        self.r_deploy_ssh_key()
+        self.set_ssh_creds(username=new_username, password='ssh_key')
+
+    def r_deploy_ssh_key(self):
+        from lab import with_config
         with open(with_config.KEY_PUBLIC_PATH) as f:
             self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
-        self.run(command='sudo chmod 700 .ssh')
-        self.run(command='sudo chmod 600 .ssh/authorized_keys')
-        self.set_ssh_creds(username=new_username, password='ssh_key')
+        self.run(command='chmod 700 .ssh')
+        self.run(command='chmod 600 .ssh/authorized_keys')
 
     def ping(self, port=22):
         import socket
