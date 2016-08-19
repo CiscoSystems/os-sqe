@@ -18,7 +18,7 @@ class Xrvr(Server):
 
     def __repr__(self):
         ip, xrvr_u, p = self.get_xrvr_ip_user_pass()
-        _, xrnc_u, _ = self.get_xrvr_ip_user_pass()
+        _, xrnc_u, _ = self.get_xrnc_ip_user_pass()
         return u'{l} {n} | on mx: sshpass -p {p} ssh {xrvr}/{xrnc}@{ip} for XRVR/XRNC'.format(l=self.lab(), n=self.get_id(), ip=ip, p=p, xrvr=xrvr_u, xrnc=xrnc_u)
 
     def get_ip_mx(self):
@@ -59,7 +59,7 @@ class Xrvr(Server):
         tmpl = '''
 log_user 0
 spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}
-expect "CPU0:XRVR"
+expect "RP/0/0/CPU0:xrvr1-g7-2#"
 send "terminal length 0 ; {cmd}\n"
 log_user 1
 expect "CPU0:XRVR"
@@ -98,6 +98,10 @@ expect "CPU0:XRVR"
 
     def xrvr_show_running_config(self):
         return self.cmd('show running-config', is_xrvr=True)
+
+    def xrvr_day0_config(self):
+        self.cmd('show running-config', is_xrvr=True)
+        pass
 
     def xrvr_show_host(self, evi, mac):
         # mac should look like 0010.1000.2243
