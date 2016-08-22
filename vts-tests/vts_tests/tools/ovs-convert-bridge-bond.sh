@@ -76,3 +76,5 @@ grep -q 'DEVICETYPE=' $ifcfg_bridge_file && sed -i 's/DEVICETYPE=.*$/DEVICETYPE=
 ifdown $bridge_name
 ifdown $bond_name
 systemctl restart network
+
+sysctl -w net.ipv4.ip_forward=1
