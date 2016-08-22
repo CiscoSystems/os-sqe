@@ -25,7 +25,7 @@ class VtsDisruptor(Worker):
         if self._ip:
             self._vtc.set_oob_creds(ip=self._ip, username=self._username, password=self._password)
         if 'vtc' in self._node_to_disrupt:
-            cluster = self._vtc.vtc_get_cluster_info()
+            cluster = self._vtc.r_vtc_show_ha_cluster_members()
             cluster = {x['role']: x['address'] for x in cluster}
             master_slave = self._node_to_disrupt.split('-')[0]
             for vtc in lab.get_nodes_by_class(Vtc):

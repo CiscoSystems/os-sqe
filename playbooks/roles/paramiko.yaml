@@ -1,0 +1,32 @@
+---
+
+- name: "Check pip"
+  command: "which pip"
+  register: pip
+  ignore_errors: yes
+- debug: "Proxy is {{https_proxy.split(':')[0]}}"
+  when: https_proxy != ""
+- name: "Ping proxy"
+  shell: "ping -c 1 -W 5 {{https_proxy.split(':')[0]}} > /dev/null;"
+  register: result
+  until: result.get("rc", 1) == 0
+  retries: 50
+  delay: 5
+  when: https_proxy != ""
+- name: "Get pip"
+  shell: "export https_proxy={{https_proxy}} && curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py"
+  when: pip.get("rc", 1) == 1
+  retries: 5
+  delay: 10
+- name: "Istall pip"
+  shell: "export https_proxy={{https_proxy}} &&  python /tmp/get-pip.py"
+  when: pip.get("rc", 1) == 1
+- name: "Install gcc, openssl-devel"
+  yum:
+    name: "{{ item }}"
+  with_items:
+    - openssl-devel
+    - gcc
+    - python-devel
+- name: "Install paramiko"
+  shell: "export https_proxy={{https_proxy}} && pip install paramiko"

@@ -23,7 +23,7 @@ class Vtc(Server):
     def disable_vip(self):
         self._is_api_via_vip = False
 
-    def _rest_api(self, resource, data=None, params=None, type_of_call='get'):
+    def _rest_api(self, resource, headers, data=None, params=None):
         import requests
         import json
 
@@ -31,18 +31,18 @@ class Vtc(Server):
 
         # urllib3.disable_warnings()  # Suppressing warning due to self-signed certificate
 
-        resource = resource.strip('/')
+        type_of_call, url_path = resource.split()
+        url_path = url_path.strip('/')
         _, username, password = self.get_oob()
         vip = self.get_vtc_vips()[0] if self._is_api_via_vip else self.get_ssh_ip()
-        url = 'https://{ip}:{port}/{resource}'.format(ip=vip, port=8888, resource=resource)
+        url = 'https://{ip}:{port}/{resource}'.format(ip=vip, port=8888, resource=url_path)
         auth = (username, password)
-        headers = {'Accept': 'application/vnd.yang.data+json' if 'cisco' in resource else 'application/vnd.yang.collection+json'}
 
         # noinspection PyBroadException
         try:
-            if type_of_call == 'get':
+            if type_of_call in ['get', 'GET']:
                 ans = requests.get(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
-            elif type_of_call == 'patch':
+            elif type_of_call in ['patch', 'PATCH']:
                 ans = requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
             else:
                 raise ValueError('Unsupported type of call: "{}"'.format(type_of_call))
@@ -52,19 +52,12 @@ class Vtc(Server):
                     d.update(json.loads(ans.text))
                 return d
             else:
-                self.log(message='{}'.format(ans))
-                return ans
+                raise RuntimeError('for {}: {}'.format(resource, ans.text or ans.reason))
         except AttributeError:
             self.log(message='Possible methods get, post, patch', level='exception')
         except requests.ConnectTimeout:
             self.log(message='Url={url} auth={auth}, headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params), level='exception')
             raise
-
-    def vtc_get_call(self, resource, params=None):
-        return self._rest_api(resource=resource, params=params, type_of_call='get')
-
-    def vtc_patch_call(self, resource, data):
-        return self._rest_api(resource=resource, data=data, type_of_call='patch')
 
     def set_vip(self, vip):
         self._vip_a, self._vip_mx = vip, '111.111.111.150'
@@ -73,11 +66,7 @@ class Vtc(Server):
         return self._vip_a, self._vip_mx
 
     def cmd(self, cmd, **kwargs):
-        return self._rest_api(resource=cmd)
-
-    def vtc_get_vni_pool(self):
-        ans = self.vtc_get_call(resource='/api/running/resource-pools/vni-pool/vnipool')
-        return ans
+        return self._rest_api(resource=cmd, headers={})
 
     def get_vtf(self, compute_hostname):
         for vtf in self.lab().get_nodes_by_class(Vtf):
@@ -87,7 +76,7 @@ class Vtc(Server):
 
     def vtc_get_vtfs(self):
         vtf_host_last = self.lab().get_nodes_by_class(VtsHost)[-1]
-        ans = self.vtc_get_call(resource='/api/running/cisco-vts')
+        ans = self._rest_api(resource='GET /api/running/cisco-vts', headers={'Accept': 'application/vnd.yang.collection+json'})
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
         vtf_nodes = self.lab().get_nodes_by_class(Vtf)
         for vtf in vtf_nodes:
@@ -97,12 +86,12 @@ class Vtc(Server):
         return vtf_nodes
 
     def vtc_get_net_inventory(self):
-        ans = self.vtc_get_call(resource='/api/running/cisco-vts/devices')
+        ans = self._rest_api(resource='GET /api/running/cisco-vts/devices', headers={'Accept': 'application/vnd.yang.collection+json'})
         return ans
 
     def vtc_get_xrvrs(self):
         xrvr_nodes = self.lab().get_nodes_by_class(Xrvr)
-        devices = self.vtc_get_call(resource='/api/running/devices/device')
+        devices = self._rest_api(resource='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.data+json'})
         xrvr_ips_from_vtc = [x['address'] for x in devices['collection']['tailf-ncs:device']]
         for xrvr in xrvr_nodes:
             ip = xrvr.get_nic('mx').get_ip_and_mask()[0]
@@ -141,9 +130,6 @@ class Vtc(Server):
 
     def xrvr_restart_dl(self):
         return map(lambda xrvr: xrvr.xrvr_restart_dl(), self.lab().get_nodes_by_class(Xrvr))
-
-    def xrvr_show_evpn(self):
-        return map(lambda xrvr: xrvr.xrvr_show_evpn(), self.lab().get_nodes_by_class(Xrvr))
 
     def show_connections_xrvr_vtf(self):
         return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Vtf)) + map(lambda xrvr: xrvr.xrvr_show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Xrvr))
@@ -293,20 +279,6 @@ class Vtc(Server):
             f.write(cfg_body)
         return cfg_body
 
-    def vtc_change_user(self):
-        import json
-
-        _, username, password = self.get_oob()
-        self.set_oob_creds(ip=self.get_ssh_ip(), username='admin', password='admin')
-        response = self.vtc_get_call(resource='/api/running/aaa/authentication/users/user/{}'.format('admin'))  # openssl passwd -1 -salt xxx Cisco123!
-        if response.ok:
-            d = json.loads(response.text)
-            user = d['tailf-aaa:user']
-            user.pop('operations')
-            user['password'] = password
-            self.vtc_patch_call(resource='/api/running/aaa/authentication/users/user', data=json.dumps({'user': user}))
-        self.set_oob_creds(ip=self.get_ssh_ip(), username=username, password=password)
-
     def vtc_change_default_password(self):
         import json
         import re
@@ -362,37 +334,9 @@ class Vtc(Server):
         else:
             raise RuntimeError(response.text)
 
-    def vtc_get_os_network(self):
-        self.vtc_get_call(resource='/api/running/openstack/network')  # ans.text == '' or ans.txt == '????'
-        ans = self.vtc_get_call(resource='/api/running/openstack/subnet')
-        return ans
-
-    def vtc_get_os_ports(self):
-        return self.vtc_get_call(resource='/api/running/openstack/port')
-
-    def vtc_get_cluster_info(self):
-        d = self.vtc_get_call(resource='/api/operational/ha-cluster/members')  # curl -v -k -X GET -u <vtc-username>:<vtc-password> https://<VTC_IP>:8888/api/operational/ha-cluster/members
-        return d['collection']['tcm:members']
-
-    def vtc_ncs_show_ha_cluster(self):
-        d = self.run('ncs_cli << EOF\nshow ha-cluster\nexit\nEOF')
-        return d
-
-    def vtc_ncs_show_openstack_port(self):
-        d = self.run('ncs_cli << EOF\nshow openstack port\nexit\nEOF')
-        return d
-
-    def vtc_ncs_show_uuid_servers(self):
-        d = self.run('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
-        return d
-
-    def vtc_get_vfg(self):
-        d = self.vtc_get_call(resource='/api/operational/ha-cluster/members')  # curl -v -k -X GET -u <vtc-username>:<vtc-password> https://<VTC_IP>:8888/api/operational/ha-cluster/members
-        return d['collection']['tcm:members']
-
     def check_cluster_is_formed(self):
         nodes = self.lab().get_nodes_by_class(Vtc)
-        reported_ips = [x['address'] for x in self.vtc_get_cluster_info()]
+        reported_ips = [x['address'] for x in self.r_vtc_show_ha_cluster_members()]
         for node in nodes:
             if node.get_ssh_ip() not in reported_ips:
                 return False
@@ -420,6 +364,64 @@ class Vtc(Server):
         from fabric.api import local
 
         local('python -m unittest lab.vts_classes.test_vts.sanity')
+
+    def r_vtc_all(self):
+        for method_name in dir(self):
+            if method_name.startswith('r_vtc') and method_name != 'r_vtc_all':
+                method = getattr(self, method_name)
+                method()
+
+    def r_vtc_show_configuration_xrvr_groups(self, is_via_ncs=False):  #
+        if is_via_ncs:
+            return self.run('ncs_cli << EOF\nshow configuration cisco-vts xrvr-groups xrvr-group\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888//api/running/cisco-vts/xrvr-groups/xrvr-group
+            return self._rest_api('GET /api/running/cisco-vts/xrvr-groups/xrvr-group/', headers={'Accept': 'application/vnd.yang.collection+json'})
+
+    def r_vtc_show_ha_cluster_members(self, is_via_ncs=False):
+        if is_via_ncs:
+            return self.run('ncs_cli << EOF\nshow ha-cluster members\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/operational/ha-cluster/members
+            return self._rest_api(resource='GET /api/operational/ha-cluster/members', headers={'Accept': 'application/vnd.yang.collection+json'})
+
+    def r_vtc_show_openstack_network(self, is_via_ncs=False):
+        if is_via_ncs:
+            return self.run('ncs_cli << EOF\nshow openstack network\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/openstack/network
+            return self._rest_api(resource='GET /api/running/openstack/network', headers={'Accept': 'application/vnd.yang.collection+json'})
+
+    def r_vtc_show_openstack_subnet(self, is_via_ncs=False):
+        if is_via_ncs:
+            return self.run('ncs_cli << EOF\nshow openstack subnet\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/openstack/subnet
+            return self._rest_api(resource='GET /api/running/openstack/subnet', headers={'Accept': 'application/vnd.yang.collection+json'})
+
+    def r_vtc_show_openstack_port(self, is_via_ncs=False):
+        if is_via_ncs:
+            return self.run('ncs_cli << EOF\nshow openstack port\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/openstack/port
+            return self._rest_api(resource='GET /api/running/openstack/port', headers={'Accept': 'application/vnd.yang.collection+json'})
+
+    def r_vtc_show_vni_pool(self, is_via_ncs=False):
+        if is_via_ncs:
+            return self.run('ncs_cli << EOF\nshow vni-allocator pool\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
+            return self._rest_api(resource='GET /api/running/resource-pools/vni-pool', headers={'Accept': 'application/vnd.yang.collection+json'})
+
+    def r_vtc_show_uuid_servers(self, is_via_ncs=False):
+        if is_via_ncs:
+            return self.run('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/cisco-vts/uuid-servers
+            return self._rest_api('GET /api/running/cisco-vts/uuid-servers', headers={'Accept': 'application/vnd.yang.data+json'})
+
+    def r_xrvr_show_evpn(self):
+        return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.lab().get_nodes_by_class(Xrvr))
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer

@@ -119,7 +119,7 @@ expect "CPU0:XRVR"
             }
         return None
 
-    def xrvr_show_evpn(self):
+    def r_xrvr_show_evpn(self):
         return self.cmd('show running-config evpn', is_xrvr=True)
 
     def xrvr_show_connections_xrvr_vtf(self):
@@ -202,3 +202,6 @@ expect "CPU0:XRVR"
             if interface_name:
                 config[interface_name] += line + '\r\n'
         return config
+
+    def r_border_leaf(self):
+        self.cmd(cmd='conf t interface Loopback0')
