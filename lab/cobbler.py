@@ -80,6 +80,7 @@ class CobblerServer(Server):
             node.cimc_power(node.POWER_CYCLE)
 
         for node in nodes_to_check:
+            self.log('Waiting when server is online...')
             when_provided = node.run(command='cat ProvTime')
             if 'ProvTime=' + when_provided != ks_meta:
                 raise RuntimeError('Wrong provisioning attempt- timestamps are not matched')
