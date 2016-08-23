@@ -420,6 +420,16 @@ class Vtc(Server):
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/cisco-vts/uuid-servers
             return self._rest_api('GET /api/running/cisco-vts/uuid-servers', headers={'Accept': 'application/vnd.yang.data+json'})
 
+    def r_vtc_show_devices_device(self, is_via_ncs=False):
+        if is_via_ncs:
+            return self.run('ncs_cli << EOF\nshow devices device\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/devices/device
+            return self._rest_api(resource='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.collection+json'})
+
+    def r_vtc_validate(self):
+        self.r_vtc_show_configuration_xrvr_groups()
+
     def r_xrvr_show_evpn(self):
         return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.lab().get_nodes_by_class(Xrvr))
 
