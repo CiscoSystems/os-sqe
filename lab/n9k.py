@@ -199,22 +199,6 @@ class Nexus(LabNode):
         if str(pc_id) not in self._actual_vpc:
             self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)], timeout=60)
 
-    def n9_day0_config(self, is_configure_peer=True):
-        tenant_vlan_id = [vlan_id for vlan_id, name_and_others in self._requested_vlans.items() if name_and_others['name'] == '{}-t'.format(self.lab())][0]
-        this_switch_bgp_nei_ip = '34.34.34.{}'.format(self._n)
-        loopback_ip = '90.90.90.90'
-        xrvr_bgp_ip = '34.34.34.10'
-        self.cmd(['conf t', 'interface Vlan{}'.format(tenant_vlan_id), 'no shut', 'ip address {}/24'.format(this_switch_bgp_nei_ip), 'no ipv6 redirects', 'ip router ospf 100 area 0.0.0.0',
-                  'hsrp 34 ', 'ip 34.34.34.100'], timeout=60)
-        self.cmd(['conf t', 'interface loopback0', 'ip address {}/32'.format(loopback_ip), 'ip address 92.92.92.92/32 secondary', 'ip router ospf 100 area 0.0.0.0'], timeout=60)
-        self.cmd(['conf t', 'router ospf 100', 'router-id {}'.format(this_switch_bgp_nei_ip), 'area 0.0.0.0 default-cost 10'], timeout=60)
-        self.cmd(['conf t', 'router bgp 23', 'router-id {}'.format(this_switch_bgp_nei_ip), 'address-family ipv4 unicast', 'address-family l2vpn evpn', 'retain route-target all',
-                  'neighbor {}'.format(xrvr_bgp_ip), 'remote-as 23', 'update-source Vlan{}'.format(tenant_vlan_id), 'address-family l2vpn evpn', 'send-community both'], timeout=60)
-        if is_configure_peer:
-            peer = self.get_peer_linked_n9k()
-            if peer:
-                peer.n9_day0_config(is_configure_peer=False)
-
     def n9_get_status(self):
         self.__actual_vpc = self.n9_show_vpc()
         self.__actual_pc = self.n9_show_port_channels()
@@ -448,3 +432,20 @@ class Nexus(LabNode):
             return res['result']['body']['TABLE_sessions']['ROW_sessions']
         else:
             return []  # no current session
+
+    def r_border_leaf(self):
+        tenant_vlan_ids = [vlan_id for vlan_id, name_and_others in self._requested_vlans.items() if name_and_others['name'] == '{}-t'.format(self.lab())]
+        if not tenant_vlan_ids:
+            return  # this switch has no tenant vlan so do not configure border leaf on it
+
+        tenant_vlan_id = tenant_vlan_ids[0]
+        this_switch_bgp_nei_ip = '34.34.34.{}'.format(self._n)
+        loopback_ip = '90.90.90.90'
+        xrvr_bgp_ips = ['34.34.34.101', '34.34.34.102']
+        self.cmd(['conf t', 'interface Vlan{}'.format(tenant_vlan_id), 'no shut', 'ip address {}/24'.format(this_switch_bgp_nei_ip), 'no ipv6 redirects', 'ip router ospf 100 area 0.0.0.0',
+                  'hsrp 34 ', 'ip 34.34.34.100'], timeout=60)
+        self.cmd(['conf t', 'interface loopback0', 'ip address {}/32'.format(loopback_ip), 'ip address 92.92.92.92/32 secondary', 'ip router ospf 100 area 0.0.0.0'], timeout=60)
+        self.cmd(['conf t', 'router ospf 100', 'router-id {}'.format(this_switch_bgp_nei_ip), 'area 0.0.0.0 default-cost 10'], timeout=60)
+        self.cmd(['conf t', 'router bgp 23', 'router-id {}'.format(this_switch_bgp_nei_ip), 'address-family ipv4 unicast', 'address-family l2vpn evpn', 'retain route-target all',
+                  'neighbor {}'.format(xrvr_bgp_ips[0]), 'remote-as 23', 'update-source Vlan{}'.format(tenant_vlan_id), 'address-family l2vpn evpn', 'send-community both',
+                  'neighbor {}'.format(xrvr_bgp_ips[1]), 'remote-as 23', 'update-source Vlan{}'.format(tenant_vlan_id), 'address-family l2vpn evpn', 'send-community both'], timeout=60)

@@ -15,4 +15,4 @@ class VtsMonitor(Worker):
         self._xrvrs = self._vtc.vtc_get_xrvrs()
 
     def loop(self):
-        self._log.info('cluster={}'.format(self._vtc.vtc_get_cluster_info()))
+        self._log.info('cluster={}'.format(self._vtc.r_vtc_show_ha_cluster_members()))

@@ -332,7 +332,6 @@ class Laboratory(WithOspd7):
             ip, username, password = node.get_oob()
             inventory[node.get_id()] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_pass': password}}
 
-
         return inventory
 
     def r_n9_configure(self, is_clean_before=False):
@@ -346,3 +345,7 @@ class Laboratory(WithOspd7):
     def r_deploy_ssh_public(self):
         for node in self.get_director() + self.get_vts_hosts():
             node.r_deploy_ssh_key()
+
+    def r_border_leaf(self):
+        for node in self.get_n9k() + self.get_xrvr():
+            node.r_border_leaf()
