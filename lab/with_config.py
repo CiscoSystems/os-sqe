@@ -60,10 +60,9 @@ class LabConfigError(Exception):
 def read_config_from_file(config_path, directory='', is_as_string=False):
     """ Trying to read a configuration file in the following order:
         1. try to interpret config_path as local file system full path
-        2. try to interpret config_path as short file name with respect to CONFIG_DIR + directory without appending extension .yaml
-        3. the same as in 2 but with appending .yaml to the end of the path
-        4. the same as in 2 and 3 but in a local clone of osqe-configs repo
-        5. if all fail , append .yaml to the end of th path and try to get it from remote osqe-configs
+        2. try to interpret config_path as short file name with respect to CONFIG_DIR + directory
+        2. the same as in 2 but in a local clone of osqe-configs repo
+        5. if all fail, try to get it from remote osqe-configs
         :param config_path: path to the config file or just a name of the config file
         :param directory: sub-directory of CONFIG_DIR
         :param is_as_string: if True return the body of file as a string , if not interpret the file as yaml and return a dictionary
@@ -80,19 +79,17 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
     if os.path.isfile(config_path):
         actual_path = config_path  # it's a full path to the local file
     else:
-        path_with_yaml = config_path if config_path.endswith('.yaml') else config_path + '.yaml'
         actual_path = None
         for conf_dir in [CONFIG_DIR, os.path.expanduser('~/osqe-configs/lab_configs')]:
-            try_this_path = os.path.join(conf_dir, directory, path_with_yaml)
+            try_this_path = os.path.join(conf_dir, directory, config_path)
             if os.path.isfile(try_this_path):
                 actual_path = try_this_path
-        actual_path = actual_path or gitlab_config_repo + path_with_yaml
+        actual_path = actual_path or gitlab_config_repo + config_path
 
     lab_logger.info('Taking config from {0}'.format(actual_path))
     if validators.url(actual_path):
         resp = requests.get(actual_path)
         if resp.status_code != 200:
-            # last resort: try to get config from local clone of this remote repo
             raise ValueError('File is not available at this URL: {0}'.format(actual_path))
         body_or_yaml = yaml.load(resp.text)
     else:

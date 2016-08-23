@@ -91,7 +91,7 @@ class Vtc(Server):
 
     def vtc_get_xrvrs(self):
         xrvr_nodes = self.lab().get_nodes_by_class(Xrvr)
-        devices = self._rest_api(resource='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.data+json'})
+        devices = self._rest_api(resource='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.collection+json'})
         xrvr_ips_from_vtc = [x['address'] for x in devices['collection']['tailf-ncs:device']]
         for xrvr in xrvr_nodes:
             ip = xrvr.get_nic('mx').get_ip_and_mask()[0]
