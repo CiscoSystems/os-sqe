@@ -76,9 +76,8 @@ class CobblerServer(Server):
             nodes_to_check.append(node)
             system_name = self.cobbler_configure_for(node=node)
             node.cimc_configure()
-            if self.lab().get_type() == self.lab().LAB_MERCURY:
-                self.run('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
-                node.cimc_power(node.POWER_CYCLE)
+            self.run('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
+            node.cimc_power(node.POWER_CYCLE)
 
         for node in nodes_to_check:
             when_provided = node.run(command='cat ProvTime')
