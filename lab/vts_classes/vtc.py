@@ -336,7 +336,8 @@ class Vtc(Server):
 
     def check_cluster_is_formed(self):
         nodes = self.lab().get_nodes_by_class(Vtc)
-        reported_ips = [x['address'] for x in self.r_vtc_show_ha_cluster_members()]
+        cluster = self.r_vtc_show_ha_cluster_members()
+        reported_ips = [x['address'] for x in cluster['collection']['tcm:members']]
         for node in nodes:
             if node.get_ssh_ip() not in reported_ips:
                 return False
