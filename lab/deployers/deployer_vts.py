@@ -27,20 +27,14 @@ class DeployerVts(Deployer):
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
-        if self.is_valid_installation(vts_hosts):
-            self.log('VTC is already installed')
-            return
-
         for vts_host in vts_hosts:
             self._install_needed_rpms(vts_host)
             self._make_netsted_libvirt(vts_host=vts_host)
-            self._delete_previous_libvirt_vms(vts_host=vts_host)
             self._make_openvswitch(vts_host)
+            self._delete_previous_libvirt_vms(vts_host=vts_host)
 
-        vtc_urls = []
         for vts_host in vts_hosts:
             vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
-            vtc_urls.append('https://{}'.format(vtc.get_ssh_ip()))
 
             self.deploy_single_vtc(vts_host=vts_host, vtc=vtc)
 
@@ -81,13 +75,16 @@ class DeployerVts(Deployer):
                 vts_host.run('virsh undefine {role}'.format(role=role))
         vts_host.run('rm -rf {}'.format(self._vts_service_dir))
 
-    @staticmethod
-    def make_cluster(lab):
+    def make_cluster(self, lab):
         from time import sleep
         from lab.vts_classes.vtc import Vtc
 
-        cisco_bin_dir = '/opt/cisco/package/vtc/bin/'
         vtc_list = lab.get_nodes_by_class(Vtc)
+        if vtc_list[0].check_cluster_is_formed():
+            self.log('Cluster is already formed')
+            return
+
+        cisco_bin_dir = '/opt/cisco/package/vtc/bin/'
         for vtc in vtc_list:
             cfg_body = vtc.get_cluster_conf_body()  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 1
             vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory=cisco_bin_dir)
@@ -105,12 +102,11 @@ class DeployerVts(Deployer):
 
     def _install_needed_rpms(self, vts_host):
         if self._vts_images_location not in vts_host.run(command='cat VTS-VERSION', warn_only=True):
+            self.log('Installing  needed RPMS...')
             vts_host.register_rhel(self._rhel_creds_source)
             vts_host.run(command='sudo yum update -y')
             vts_host.run('yum groupinstall "Virtualization Platform" -y')
             vts_host.run('yum install genisoimage qemu-kvm expect -y')
-            # vts_host.run('subscription-manager unregister')
-            # vts_host.run('subscription-manager clean')
             for rpm in ['sshpass-1.05-1.el7.rf.x86_64.rpm', 'openvswitch-2.5.0-1.el7.centos.x86_64.rpm']:
                 vts_host.run('wget http://172.29.173.233/redhat/{}'.format(rpm))
                 vts_host.run(command='rpm -ivh {}'.format(rpm), warn_only=True)
@@ -119,6 +115,9 @@ class DeployerVts(Deployer):
             vts_host.run('systemctl start libvirtd')
             vts_host.run('systemctl start openvswitch')
             vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
+            self.log('RPMS are installed')
+        else:
+            self.log('All needed RPMS are already installed in the previous run')
 
     @staticmethod
     def _make_netsted_libvirt(vts_host):
@@ -129,8 +128,7 @@ class DeployerVts(Deployer):
             if vts_host.run('cat /sys/module/kvm_intel/parameters/nested') != 'Y':
                 raise RuntimeError('Failed to set libvirt to nested mode')
 
-    @staticmethod
-    def _make_openvswitch(vts_host):
+    def _make_openvswitch(self, vts_host):
         for nic_name in ['a', 'mx', 't']:
             nic = vts_host.get_nic(nic_name)
             if 'br-{}'.format(nic.get_name()) not in vts_host.run('ovs-vsctl show'):
@@ -143,16 +141,22 @@ class DeployerVts(Deployer):
                 vts_host.run('ovs-vsctl add-port br-{} vlan{}'.format(nic.get_name(), nic.get_vlan()))
                 vts_host.run('ovs-vsctl set interface vlan{} type=internal'.format(nic.get_vlan()))
                 vts_host.run('ip l s dev vlan{} up'.format(nic.get_vlan()))
+            else:
+                self.log('Bridge br-{} is already created in the previous run'.format(nic_name))
 
     def deploy_single_vtc(self, vts_host, vtc):
-        cfg_body, net_part = vtc.get_config_and_net_part_bodies()
+        if not vtc.ping():
 
-        config_iso_path = self._vts_service_dir + '/vtc_config.iso'
-        config_txt_path = vts_host.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='config.txt', in_directory=self._vts_service_dir)
-        vts_host.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
+            cfg_body, net_part = vtc.get_config_and_net_part_bodies()
 
-        self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part)
-        vtc.vtc_change_default_password()
+            config_iso_path = self._vts_service_dir + '/vtc_config.iso'
+            config_txt_path = vts_host.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='config.txt', in_directory=self._vts_service_dir)
+            vts_host.run('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
+
+            self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part)
+            vtc.vtc_change_default_password()
+        else:
+            self.log('Vtc {} is already deployed in the previous run.'.format(vtc))
 
     def deploy_single_xrnc(self, vts_host, vtc, xrnc):
         cfg_body, net_part = xrnc.get_config_and_net_part_bodies()

@@ -48,7 +48,7 @@ class TestVtsSanity(unittest.TestCase):
         self.assertNotEqual(len(vni_pools), 0, 'VNI Pool is not specified in VTC')
 
     def test_xrvr_bgp_params(self):
-        net_inventory = self._vtc.vtc_get_net_inventory()
+        net_inventory = self._vtc.r_vtc_show_devices_device()
         self.assertNotEqual(len(net_inventory), 0, 'Network inventory is empty')
 
         device_xrvr_exists = False
