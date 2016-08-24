@@ -330,9 +330,22 @@ class Vtc(Server):
         else:
             raise RuntimeError(response.text)
 
-    def check_cluster_is_formed(self):
+    def check_cluster_is_formed(self, n_retries=1):
+        import requests.exceptions
+
         nodes = self.lab().get_nodes_by_class(Vtc)
-        cluster = self.r_vtc_show_ha_cluster_members()
+        cluster = None
+        while True:
+            try:
+                cluster = self.r_vtc_show_ha_cluster_members()
+                break
+            except requests.exceptions.ConnectTimeout:
+                n_retries -= 1
+                if n_retries == 0:
+                    return False
+                else:
+                    continue
+
         reported_ips = [x['address'] for x in cluster['collection']['tcm:members']]
         for node in nodes:
             if node.get_ssh_ip() not in reported_ips:

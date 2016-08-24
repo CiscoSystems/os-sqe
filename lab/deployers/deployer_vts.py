@@ -31,7 +31,6 @@ class DeployerVts(Deployer):
             self._install_needed_rpms(vts_host)
             self._make_netsted_libvirt(vts_host=vts_host)
             self._make_openvswitch(vts_host)
-            self._delete_previous_libvirt_vms(vts_host=vts_host)
 
         for vts_host in vts_hosts:
             vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
@@ -76,7 +75,6 @@ class DeployerVts(Deployer):
         vts_host.run('rm -rf {}'.format(self._vts_service_dir))
 
     def make_cluster(self, lab):
-        from time import sleep
         from lab.vts_classes.vtc import Vtc
 
         vtc_list = lab.get_nodes_by_class(Vtc)
@@ -94,11 +92,10 @@ class DeployerVts(Deployer):
 
         vtc_list[0].run(command='sudo ./master_node_install.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 4
 
-        for i in range(100):
-            if vtc_list[0].check_cluster_is_formed():
-                return  # cluster is successfully formed
-            sleep(10)
-        raise RuntimeError('Failed to form VTC cluster after 100 attempts')
+        if vtc_list[0].check_cluster_is_formed(n_retries=100):
+            return  # cluster is successfully formed
+        else:
+            raise RuntimeError('Failed to form VTC cluster after 100 attempts')
 
     def _install_needed_rpms(self, vts_host):
         if self._vts_images_location not in vts_host.run(command='cat VTS-VERSION', warn_only=True):
@@ -146,7 +143,7 @@ class DeployerVts(Deployer):
 
     def deploy_single_vtc(self, vts_host, vtc):
         if not vtc.ping():
-
+            self._delete_previous_libvirt_vms(vts_host=vts_host)
             cfg_body, net_part = vtc.get_config_and_net_part_bodies()
 
             config_iso_path = self._vts_service_dir + '/vtc_config.iso'
@@ -159,17 +156,21 @@ class DeployerVts(Deployer):
             self.log('Vtc {} is already deployed in the previous run.'.format(vtc))
 
     def deploy_single_xrnc(self, vts_host, vtc, xrnc):
-        cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
-        iso_path = self._vts_service_dir + '/xrnc_cfg.iso'
+        if not xrnc.ping():
 
-        cfg_name = 'xrnc.cfg'
-        vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name=cfg_name)
-        vtc.run('cp /opt/cisco/package/vts/bin/build_vts_config_iso.sh $HOME')
-        vtc.run('./build_vts_config_iso.sh xrnc {}'.format(cfg_name))  # https://cisco.jiveon.com/docs/DOC-1455175 step 8: use sudo /opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc xrnc.cfg
-        ip, username, password = vtc.get_ssh()
-        vts_host.run('sshpass -p {p} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
+            cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
+            iso_path = self._vts_service_dir + '/xrnc_cfg.iso'
 
-        self._get_image_and_run_virsh(server=vts_host, role='xrnc', iso_path=iso_path, net_part=net_part)
+            cfg_name = 'xrnc.cfg'
+            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name=cfg_name)
+            vtc.run('cp /opt/cisco/package/vts/bin/build_vts_config_iso.sh $HOME')
+            vtc.run('./build_vts_config_iso.sh xrnc {}'.format(cfg_name))  # https://cisco.jiveon.com/docs/DOC-1455175 step 8: use sudo /opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc xrnc.cfg
+            ip, username, password = vtc.get_ssh()
+            vts_host.run('sshpass -p {p} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
+
+            self._get_image_and_run_virsh(server=vts_host, role='xrnc', iso_path=iso_path, net_part=net_part)
+        else:
+            self.log('XRNC {} is already deployed in the previous run')
 
     def _get_image_and_run_virsh(self, server, role, iso_path, net_part):
         image_url = self._vts_images_location + role + '.qcow2'

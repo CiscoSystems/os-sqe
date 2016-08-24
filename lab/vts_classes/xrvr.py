@@ -203,5 +203,10 @@ expect "CPU0:XRVR"
                 config[interface_name] += line + '\r\n'
         return config
 
+    def r_edit_etc_hosts(self):
+        if self.get_id() not in self.run('cat /etc/hosts'):
+            mx_ip = self.get_nic('mx').get_ip()
+            self.run('echo {}\t{}\n >> /etc/hosts'.format(self.get_id(), mx_ip))
+
     def r_border_leaf(self):
         self.cmd(cmd='conf t interface Loopback0')
