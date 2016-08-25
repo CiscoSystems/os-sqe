@@ -387,6 +387,16 @@ class Vtc(Server):
                 method = getattr(self, method_name)
                 method()
 
+    def r_vtc_crm_status(self):
+        return self.run('sudo crm status')
+
+    def r_vtc_show_devices_device(self, is_via_ncs=False):
+        if is_via_ncs:
+            return self.run('ncs_cli << EOF\nshow devices device\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/devices/device
+            return self._rest_api(resource='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.collection+json'})
+
     def r_vtc_show_configuration_xrvr_groups(self, is_via_ncs=False):  #
         if is_via_ncs:
             return self.run('ncs_cli << EOF\nshow configuration cisco-vts xrvr-groups xrvr-group\nexit\nEOF')
