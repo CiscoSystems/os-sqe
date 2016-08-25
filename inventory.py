@@ -23,7 +23,7 @@ def main():
 
     os.environ['DISABLE_SQE_LOG'] = 'Yes'
     args = parse_args()
-    l = Laboratory(config_path='g7-2')
+    l = Laboratory(config_path='g7-2.yaml')
     inventory = l.get_ansible_inventory()
     if args.list:
         output = json.dumps(inventory)

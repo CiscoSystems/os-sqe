@@ -204,9 +204,7 @@ expect "CPU0:XRVR"
         return config
 
     def r_edit_etc_hosts(self):
-        if self.get_id() not in self.run('cat /etc/hosts'):
-            mx_ip = self.get_nic('mx').get_ip()
-            self.run('echo {}\t{}\n >> /etc/hosts'.format(self.get_id(), mx_ip))
+        self.run('grep {n} /etc/hosts || echo {n}\t{ip}\n >> /etc/hosts'.format(n=self.get_id(), ip=self.get_ip_mx()))
 
     def r_border_leaf(self):
         self.cmd(cmd='conf t interface Loopback0')

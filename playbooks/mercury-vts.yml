@@ -1,0 +1,22 @@
+- hosts: vts-host1, vts-host2
+  gather_facts: False
+  roles:
+    - vts-host
+- hosts: vts-host2
+  vars:
+    props: {'loopback0_ip': '90.90.90.90'}
+    bgp_asn: 23
+  tasks:
+    - name: Xrvr {{ xrvr_ip_mx[0] }} day0 configuration
+      iosxr_template:
+        src: vts/templates/xrvr/day0.jinja2
+        host: "{{ xrvr_ip_mx[0] }}"
+        username: "{{ xrvr_username }}"
+        password: "{{ xrvr_password }}"
+
+    - name: Xrvr {{ xrvr_ip_mx[1] }} day0 configuration
+      iosxr_template:
+        src: vts/templates/xrvr/day0.jinja2
+        host: "{{ xrvr_ip_mx[1] }}"
+        username: "{{ xrvr_username }}"
+        password: "{{ xrvr_password }}"

@@ -1,0 +1,9 @@
+- name: check whether pip installed
+  shell: which pip
+  ignore_errors: yes
+  register: is_pip_installed
+  changed_when: false
+  always_run: yes
+
+- include: pip-force-install.yml
+  when: is_pip_installed | failed

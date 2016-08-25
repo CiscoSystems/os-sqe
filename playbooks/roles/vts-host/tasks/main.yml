@@ -1,0 +1,21 @@
+---
+
+- include: ../../pip/tasks/main.yml
+- name: "Install gcc, openssl-devel"
+  yum:
+    name: "{{ item }}"
+  with_items:
+    - openssl-devel
+    - gcc
+    - python-devel
+
+- name: check whether paramiko installed
+  shell: which pip
+  ignore_errors: yes
+  register: is_paramiko_installed
+  changed_when: false
+  always_run: yes
+
+- name: "Install paramiko"
+  shell: "pip install paramiko"
+  when: is_paramiko_installed | failed

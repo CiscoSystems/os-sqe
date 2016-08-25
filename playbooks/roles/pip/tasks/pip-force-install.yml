@@ -1,0 +1,19 @@
+---
+- name: set pip install script path
+  set_fact:
+    pip_install_script_path: '/tmp/get-pip.py'
+
+- name: download get-pip.py
+  get_url:
+    dest: '{{ pip_install_script_path }}'
+    force: yes
+    url: https://bootstrap.pypa.io/get-pip.py
+    validate_certs: yes
+
+- name: run python get-pip.py
+  command: 'python {{ pip_install_script_path }}'
+
+- name: delete get-pip.py
+  file:
+    path: '{{ {{ pip_install_script_path }} }}'
+    state: absent
