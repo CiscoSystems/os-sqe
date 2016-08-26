@@ -250,6 +250,11 @@ class Laboratory(WithOspd7):
 
         return filter(lambda x: type(x) is VtsHost, self._nodes)
 
+    def get_vtc(self):
+        from lab.vts_classes.vtc import Vtc
+
+        return filter(lambda x: type(x) is Vtc, self._nodes)
+
     def get_xrvr(self):
         from lab.vts_classes.xrvr import Xrvr
 

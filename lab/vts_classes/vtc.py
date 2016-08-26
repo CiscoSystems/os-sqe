@@ -358,7 +358,7 @@ class Vtc(Server):
                 return False
         return True
 
-    def get_logs(self):
+    def r_get_logs(self):
         body = ''
         for cmd in ['grep -i error /var/log/ncs/*', ' cat /var/log/ncs/localhost\:8888.access']:
             ans = self.run(cmd)
@@ -368,12 +368,18 @@ class Vtc(Server):
     def get_all_logs(self, name):
         body = ''
         for node in self.lab().get_nodes_by_class([Vtc, Xrvr]):
-            body += node.get_logs()
+            body += node.r_get_logs()
 
         self.log_to_artifact_file(name='{}-vts-logs.txt'.format(name), body=body)
 
     def vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
         pass
+
+    def r_is_xrvr_registered(self):
+        body = self.r_get_logs()
+        xrvrs = self.r_vtc_show_configuration_xrvr_groups()['collection']['cisco-vts:xrvr-group'][0]['xrvr-devices']['xrvr-device']
+        names_in_body = map(lambda x: 'POST /api/running/devices/device/{}/vts-sync-xrvr/_operations/sync HTTP'.format(x['name']) in body, xrvrs)
+        return all(names_in_body)
 
     @staticmethod
     def test_vts_sanity():
@@ -389,13 +395,6 @@ class Vtc(Server):
 
     def r_vtc_crm_status(self):
         return self.run('sudo crm status')
-
-    def r_vtc_show_devices_device(self, is_via_ncs=False):
-        if is_via_ncs:
-            return self.run('ncs_cli << EOF\nshow devices device\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/devices/device
-            return self._rest_api(resource='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.collection+json'})
 
     def r_vtc_show_configuration_xrvr_groups(self, is_via_ncs=False):  #
         if is_via_ncs:

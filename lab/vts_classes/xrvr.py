@@ -165,7 +165,7 @@ expect "CPU0:XRVR"
 
         return cfg_body, net_part
 
-    def get_logs(self):
+    def r_get_logs(self):
         body = ''
         for cmd in ['grep -i error /var/log/sr/*']:
             ans = self.cmd(cmd=cmd, is_xrvr=False)
