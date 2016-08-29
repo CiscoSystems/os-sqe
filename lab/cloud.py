@@ -115,15 +115,18 @@ export OS_AUTH_URL={end_point}
 """
         return open_rc.format(user=self.user, tenant=self.tenant, password=self.password, end_point=self.get_end_point())
 
-    def log(self):
+    def log(self, message, level='info'):
         from lab.logger import lab_logger
 
-        lab_logger.info('\n\n Report on lab: ')
-        for hostname in sorted(self.hostname_2_ip.keys()):
-            lab_logger.info(hostname + ': ' + self.hostname_2_ip[hostname])
-        lab_logger.info('\n')
-        for role in sorted(self.info.keys()):
-            lab_logger.info(role + ' ip: ' + ' '.join(self.get(role=role, parameter='ip')))
+        message = '{}: {}'.format(self, message)
+        if level == 'info':
+            lab_logger.info(message)
+        elif level == 'warning':
+            lab_logger.warning(message)
+        elif level == 'exception':
+            lab_logger.exception(message)
+        else:
+            raise RuntimeError('Specified "{}" logger level is not known'.format(level))
 
     def cmd(self, cmd, server=None, is_warn_only=False):
         import json

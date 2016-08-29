@@ -27,27 +27,29 @@ class DeployerVts(Deployer):
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
+        vtcs = []
+        xrncs = []
+
         for vts_host in vts_hosts:
+            vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
+            xrnc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_xrvr()][0]
+            vtcs.append(vtc)
+            xrncs.append(xrnc)
             self._install_needed_rpms(vts_host)
             self._make_netsted_libvirt(vts_host=vts_host)
             self._make_openvswitch(vts_host)
 
-        for vts_host in vts_hosts:
-            vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
-
-            self.deploy_single_vtc(vts_host=vts_host, vtc=vtc)
+        for i in range(len(vtcs)):
+            self.deploy_single_vtc(vts_host=vts_hosts[i], vtc=vtcs[i])
 
         self.make_cluster(lab=vts_hosts[0].lab())
 
-        vtcs = []
-        xrncs = []
-        for vts_host in vts_hosts:
-            vtc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_vtc()][0]
-            vtcs.append(vtc)
-            xrnc = [x.get_peer_node(vts_host) for x in vts_host.get_all_wires() if x.get_peer_node(vts_host).is_xrvr()][0]
-            xrncs.append(xrnc)
-            self.deploy_single_xrnc(vts_host=vts_host, vtc=vtc, xrnc=xrnc)
-        vtcs[0].get_all_logs('after_all_xrvr_registered')
+        if not vtcs[0].r_is_xrvr_registered():
+            for i in range(len(xrncs)):
+                self.deploy_single_xrnc(vts_host=vts_hosts[i], vtc=vtcs[i], xrnc=xrncs[i])
+            vtcs[0].get_all_logs('after_all_xrvr_registered')
+        else:
+            self.log('all XRNC are already deployed in the previous run')
 
         dl_server_status = map(lambda dl: dl.xrnc_start_dl(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
         if not all(dl_server_status):
@@ -156,21 +158,17 @@ class DeployerVts(Deployer):
             self.log('Vtc {} is already deployed in the previous run.'.format(vtc))
 
     def deploy_single_xrnc(self, vts_host, vtc, xrnc):
-        if not xrnc.ping():
+        cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
+        iso_path = self._vts_service_dir + '/xrnc_cfg.iso'
 
-            cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
-            iso_path = self._vts_service_dir + '/xrnc_cfg.iso'
+        cfg_name = 'xrnc.cfg'
+        vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name=cfg_name)
+        vtc.run('cp /opt/cisco/package/vts/bin/build_vts_config_iso.sh $HOME')
+        vtc.run('./build_vts_config_iso.sh xrnc {}'.format(cfg_name))  # https://cisco.jiveon.com/docs/DOC-1455175 step 8: use sudo /opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc xrnc.cfg
+        ip, username, password = vtc.get_ssh()
+        vts_host.run('sshpass -p {p} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
 
-            cfg_name = 'xrnc.cfg'
-            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name=cfg_name)
-            vtc.run('cp /opt/cisco/package/vts/bin/build_vts_config_iso.sh $HOME')
-            vtc.run('./build_vts_config_iso.sh xrnc {}'.format(cfg_name))  # https://cisco.jiveon.com/docs/DOC-1455175 step 8: use sudo /opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc xrnc.cfg
-            ip, username, password = vtc.get_ssh()
-            vts_host.run('sshpass -p {p} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
-
-            self._get_image_and_run_virsh(server=vts_host, role='xrnc', iso_path=iso_path, net_part=net_part)
-        else:
-            self.log('XRNC {} is already deployed in the previous run')
+        self._get_image_and_run_virsh(server=vts_host, role='xrnc', iso_path=iso_path, net_part=net_part)
 
     def _get_image_and_run_virsh(self, server, role, iso_path, net_part):
         image_url = self._vts_images_location + role + '.qcow2'
