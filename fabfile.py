@@ -72,11 +72,12 @@ def cmd(config_path):
 
 
 @task
-def ha(lab, test_regex, do_not_clean=False, is_tims=False):
+def ha(lab, test_regex, is_debug=False, is_run_cleanup=False, is_tims=False):
     """fab ha:g10,tc-vts,no_clean\t\tRun all VTS tests on lab g10
         :param lab: which lab to use
         :param test_regex: regex to match some tc in $REPO/configs/ha
-        :param do_not_clean: if True then the lab will not be cleaned before running test
+        :param is_debug: is True, switch off parallel execution and run in sequence
+        :param is_run_cleanup: if True, run cleanup before anything else
         :param is_tims: if True then publish results to TIMS
     """
     import os
@@ -96,9 +97,9 @@ def ha(lab, test_regex, do_not_clean=False, is_tims=False):
     with with_config.open_artifact(run_config_yaml, 'w') as f:
         f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab))
         for i, test in enumerate(tests, start=1):
-            if not do_not_clean:
+            if is_run_cleanup:
                 f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab_name, lab_name))
-            f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: "%s"}}\n' % (10*i + 1,  lab_name, lab_name, test))
+            f.write('runner{}:  {{lab.runners.runner_ha.RunnerHA: {{cloud: {}, hardware-lab-config: {}, task-yaml: "{}", is-debug: {}}}}}\n'.format(10*i + 1,  lab_name, lab_name, test, is_debug))
 
     run_results = run(config_path='artifacts/' + run_config_yaml)
 

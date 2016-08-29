@@ -8,13 +8,14 @@ def starter(worker):
 
 class RunnerHA(Runner):
     def sample_config(self):
-        return {'cloud': 'cloud name', 'task-yaml': 'task-ha.yaml'}
+        return {'cloud': 'cloud name', 'task-yaml': 'task-ha.yaml', 'is-debug': False}
 
     def __init__(self, config):
         super(RunnerHA, self).__init__(config=config)
         self._cloud_name = config['cloud']
         self._task_yaml_path = config['task-yaml']
         self._task_body = self.read_config_from_file(config_path=self._task_yaml_path, directory='ha')
+        self._is_debug = config['is-debug']
         if not self._task_body:
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
 
@@ -48,9 +49,12 @@ class RunnerHA(Runner):
 
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
 
-        pool = multiprocessing.Pool(len(workers_to_run))
+        if self._is_debug:
+            results = map(starter, workers_to_run)
+        else:
+            pool = multiprocessing.Pool(len(workers_to_run))
 
-        results = pool.map(starter, workers_to_run)  # a list of {'name': 'monitor m scenario or disruptor name', 'success': True or False, 'n_exceptions': 10}
+            results = pool.map(starter, workers_to_run)  # a list of {'name': 'monitor m scenario or disruptor name', 'success': True or False, 'n_exceptions': 10}
 
         combined_results = {'is_success': True, 'n_exceptions': 0}
         for result in results:
