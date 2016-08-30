@@ -115,7 +115,7 @@ class Wire(object):
 
     def is_n9_cobbler(self):
         from lab.n9k import Nexus
-        from lab.cobbler import CobblerServer
+        from lab.nodes.cobbler import CobblerServer
 
         return isinstance(self._node_N, Nexus) and isinstance(self._node_S, CobblerServer)
 

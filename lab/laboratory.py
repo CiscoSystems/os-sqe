@@ -173,7 +173,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
         from lab.n9k import Nexus
         from lab.asr import Asr
         from lab.tor import Tor, Oob, Pxe, Terminal
-        from lab.cobbler import CobblerServer
+        from lab.nodes.cobbler import CobblerServer
         from lab.cimc import CimcDirector, CimcController, CimcCompute, CimcCeph
         from lab.vts_classes.xrvr import Xrvr
         from lab.vts_classes.vtf import Vtf

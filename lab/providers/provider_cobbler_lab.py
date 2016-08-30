@@ -14,7 +14,7 @@ class ProviderCobblerLab(Provider):
         self._lab = Laboratory(config_path=config['hardware-lab-config'])
 
     def wait_for_servers(self):
-        from lab.cobbler import CobblerServer
+        from lab.nodes.cobbler import CobblerServer
 
         cobbler = self._lab.get_nodes_by_class(CobblerServer)[0]
 

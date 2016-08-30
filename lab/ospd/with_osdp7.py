@@ -5,7 +5,7 @@ class WithOspd7(object):
     def configure_for_osp7(self, topology=TOPOLOGY_VLAN):
         from lab.fi import FI
         from lab.asr import Asr
-        from lab.cobbler import CobblerServer
+        from lab.nodes.cobbler import CobblerServer
 
         if topology not in self.SUPPORTED_TOPOLOGIES:
             raise ValueError('"{0}" topology is not supported. Correct values: {1}'.format(topology, self.SUPPORTED_TOPOLOGIES))
