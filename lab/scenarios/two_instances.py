@@ -17,7 +17,7 @@ def start(lab, log, args):
 
     def run_cmd(cmd):
         with shell_env(OS_AUTH_URL=lab.cloud.end_point, OS_USERNAME=lab.cloud.user, OS_PASSWORD=lab.cloud.password, OS_TENANT_NAME=lab.cloud.tenant):
-            return server.run(cmd).stdout
+            return server.exe(cmd).stdout
 
     def inst_run_cmd(ip, cmd, user=image_user, password=image_password):
         client = paramiko.client.SSHClient()

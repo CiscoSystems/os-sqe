@@ -8,16 +8,16 @@ def start(lab, log, args):
 
     start_time = time.time()
     for ob_type in ['port', 'net']:
-        res = server.run(command='neutron {o}-list {l} | grep {u} | awk \'{{print $2}}\''.format(o=ob_type, l=lab.cloud, u=unique_pattern_in_name)).split('\n')
+        res = server.exe(command='neutron {o}-list {l} | grep {u} | awk \'{{print $2}}\''.format(o=ob_type, l=lab.cloud, u=unique_pattern_in_name)).split('\n')
         i = len(res)
         for oid in res:
             if oid:
-                res = server.run(command='neutron {ob}-delete {id} {lab_creds}'.format(ob=ob_type, id=oid.strip(),
+                res = server.exe(command='neutron {ob}-delete {id} {lab_creds}'.format(ob=ob_type, id=oid.strip(),
                                                                                        lab_creds=lab.cloud), warn_only=True)
                 # Sometimes neutron timeouts, rerun the command if so
                 if not res:
                     time.sleep(60)
-                    server.run(command='neutron {ob}-delete {id} {lab_creds}'.format(ob=ob_type, id=oid.strip(), lab_creds=lab.cloud), warn_only=True)
+                    server.exe(command='neutron {ob}-delete {id} {lab_creds}'.format(ob=ob_type, id=oid.strip(), lab_creds=lab.cloud), warn_only=True)
                 log.info("n_{0}s={1} status=deleted".format(ob_type, i))
                 i -= 1
     ucsm_ip, ucsm_username, ucsm_password = lab.ucsm_creds()

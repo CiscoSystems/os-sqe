@@ -24,12 +24,12 @@ class DeployerExisting(Deployer):
         net = lab.get_ssh_net()
         ssh_ip_pattern = '({0}.*)/{1}'.format(str(net).rsplit('.', 1)[0], net.prefixlen)
         re_ip = re.compile(ssh_ip_pattern)
-        lines = director.run('source stackrc && nova list').split('\n')
+        lines = director.exe('source stackrc && nova list').split('\n')
         for line in lines:
             if '=' in line:
                 local_ip = line.split('=')[-1].split()[0]
                 #  name = line.split('|')[2]
-                ip_a_ans = director.run('ssh -o StrictHostKeyChecking=no {local_ip} ip -o a'.format(local_ip=local_ip))
+                ip_a_ans = director.exe('ssh -o StrictHostKeyChecking=no {local_ip} ip -o a'.format(local_ip=local_ip))
                 ip = re_ip.findall(ip_a_ans)
                 filter(lambda srv: srv.ip() == ip, list_of_servers)
 
@@ -47,7 +47,7 @@ class DeployerExisting(Deployer):
 
         openrc_body = None
         for openrc_path in ['/home/stack/overcloudrc', 'keystonerc_admin', 'openstack-configs/openrc']:
-            ans = director.run(command='cat {0}'.format(openrc_path), warn_only=True)
+            ans = director.exe(command='cat {0}'.format(openrc_path), is_warn_only=True)
             if 'No such file or directory' not in ans:
                 openrc_body = ans
                 break

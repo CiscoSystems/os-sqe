@@ -28,11 +28,11 @@ class RunnerCloud9(Runner):
     #         self.director.run('{s}{ip} \'echo "{public}" >> .ssh/authorized_keys\''.format(s=ssh, ip=server.ip, public=self.lab.public_key))
 
     def __copy_stack_files(self, user):
-        self.director.run(command='sudo cp /home/stack/overcloudrc .')
-        self.director.run(command='sudo cp /home/stack/stackrc .')
-        self.director.run(command='sudo cp /home/stack/.ssh/id_rsa* .', in_directory='.ssh')
-        self.director.run(command='sudo chown {0}.{0} overcloudrc stackrc .ssh/*'.format(user))
-        self.director.run(command='cat id_rsa.pub >> authorized_keys', in_directory='.ssh')
+        self.director.exe(command='sudo cp /home/stack/overcloudrc .')
+        self.director.exe(command='sudo cp /home/stack/stackrc .')
+        self.director.exe(command='sudo cp /home/stack/.ssh/id_rsa* .', in_directory='.ssh')
+        self.director.exe(command='sudo chown {0}.{0} overcloudrc stackrc .ssh/*'.format(user))
+        self.director.exe(command='cat id_rsa.pub >> authorized_keys', in_directory='.ssh')
         return '~/overcloudrc', '~/stackrc'
 
     def __prepare_sqe_repo(self):
@@ -42,13 +42,13 @@ class RunnerCloud9(Runner):
 
         sqe_repo = self.director.clone_repo(repo_url='https://github.com/cisco-openstack/openstack-sqe.git')
         sqe_venv = os.path.join('~/VE', os.path.basename(sqe_repo))
-        self.director.run(command='virtualenv {0}'.format(sqe_venv))
-        self.director.run(command='{0}/bin/pip install -r requirements.txt'.format(sqe_venv), in_directory=sqe_repo)
+        self.director.exe(command='virtualenv {0}'.format(sqe_venv))
+        self.director.exe(command='{0}/bin/pip install -r requirements.txt'.format(sqe_venv), in_directory=sqe_repo)
         return sqe_repo
 
     def __create_bashrc(self, sqe_repo):
-        self.director.run(command='rm -f ~/.bashrc')
-        self.director.run(command='ln -s {0}/configs/bashrc ~/.bashrc'.format(sqe_repo))
+        self.director.exe(command='rm -f ~/.bashrc')
+        self.director.exe(command='ln -s {0}/configs/bashrc ~/.bashrc'.format(sqe_repo))
 
     def __install_filebeat(self):
         for server in self.lab.controllers():
@@ -66,31 +66,31 @@ output:
 '''.format(logstash=self.lab.logstash_creds(), document_type=server.actuate_hostname())
 
             filebeat = 'filebeat-1.0.0-x86_64.rpm'
-            server.run(command='curl -L -O http://172.29.173.233/{0}'.format(filebeat))
-            server.run(command='sudo rpm --force -vi {0}'.format(filebeat))
+            server.exe(command='curl -L -O http://172.29.173.233/{0}'.format(filebeat))
+            server.exe(command='sudo rpm --force -vi {0}'.format(filebeat))
             server.put_string_as_file_in_dir(string_to_put=filebeat_config_body, file_name='filebeat.yml', in_directory='/etc/filebeat')
-            server.run(command='sudo /etc/init.d/filebeat restart')
-            server.run(command='sudo /etc/init.d/filebeat status')
+            server.exe(command='sudo /etc/init.d/filebeat restart')
+            server.exe(command='sudo /etc/init.d/filebeat status')
 
     def enable_neutron_debug_verbose(self):
         for server in self.lab.controllers():
-            server.run("sed -i 's/^verbose = False/verbose = True/g' /etc/neutron/neutron.conf")
-            server.run("sed -i 's/^debug = False/debug = True/g' /etc/neutron/neutron.conf")
-            server.run("systemctl restart neutron-server")
+            server.exe("sed -i 's/^verbose = False/verbose = True/g' /etc/neutron/neutron.conf")
+            server.exe("sed -i 's/^debug = False/debug = True/g' /etc/neutron/neutron.conf")
+            server.exe("systemctl restart neutron-server")
 
     def run_on_director(self):
         user = 'sqe'
-        self.director.run(command='sudo rm -f /home/{0}/.bashrc'.format(user), warn_only=True)
+        self.director.exe(command='sudo rm -f /home/{0}/.bashrc'.format(user), warn_only=True)
         self.director.create_user(new_username=user)
 
         overcloud, undercloud = self.__copy_stack_files(user=user)
 
-        self.director.run(command='ssh -o StrictHostKeyChecking=no localhost hostname')
+        self.director.exe(command='ssh -o StrictHostKeyChecking=no localhost hostname')
 
         # self.__assign_ip_to_user_nic(undercloud=undercloud)
         self.__install_filebeat()
         self.enable_neutron_debug_verbose()
-        undercloud_nodes = self.director.run(command='source {0} && nova list'.format(undercloud))
+        undercloud_nodes = self.director.exe(command='source {0} && nova list'.format(undercloud))
 
         role_ip = []
         counts = {'controller': 0, 'compute': 0}

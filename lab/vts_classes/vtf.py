@@ -29,7 +29,7 @@ class Vtf(LabServer):
 
         if cmd not in self._expect_commands:
             self.create_expect_command_file(cmd=cmd)
-        ans = self._proxy_to_run.run(command='expect {0}'.format(self._expect_commands[cmd]))
+        ans = self._proxy_to_run.exe(command='expect {0}'.format(self._expect_commands[cmd]))
         return ans
 
     def create_expect_command_file(self, cmd):
@@ -60,10 +60,10 @@ expect eof
         return self.cmd('show l2fib verbose')
 
     def vtf_show_connections_xrvr_vtf(self):
-        return self.run('netstat -ant |grep 21345')
+        return self.exe('netstat -ant |grep 21345')
 
     def vtf_trace(self):
-        return self.run('trace add dpdk-input 100')
+        return self.exe('trace add dpdk-input 100')
 
     def get_compute_node(self):
         for w in self.get_all_wires():

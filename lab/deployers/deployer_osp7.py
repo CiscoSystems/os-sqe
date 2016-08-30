@@ -72,16 +72,16 @@ class DeployerOSP7(Deployer):
                            '--enable=rhel-7-server-openstack-7.0-rpms',
                            '--enable=rhel-7-server-openstack-7.0-director-rpms']
 
-        if 'Subscribed' not in self.director_server.run(command='subscription-manager list'):
-            self.director_server.run(command='sudo subscription-manager register --username={0} --password={1}'.format(self.rh_account, self.rh_password))
-            self.director_server.run(command='sudo subscription-manager attach --pool={0}'.format(self.rh_pool_id))
-            self.director_server.run(command='sudo subscription-manager repos --disable=*')
-            self.director_server.run(command='sudo subscription-manager repos ' + ' '.join(repos_to_enable))
-            self.director_server.run(command='sudo yum update -y')
-            self.director_server.run(command='sudo yum install -y python-rdomanager-oscplugin')
+        if 'Subscribed' not in self.director_server.exe(command='subscription-manager list'):
+            self.director_server.exe(command='sudo subscription-manager register --username={0} --password={1}'.format(self.rh_account, self.rh_password))
+            self.director_server.exe(command='sudo subscription-manager attach --pool={0}'.format(self.rh_pool_id))
+            self.director_server.exe(command='sudo subscription-manager repos --disable=*')
+            self.director_server.exe(command='sudo subscription-manager repos ' + ' '.join(repos_to_enable))
+            self.director_server.exe(command='sudo yum update -y')
+            self.director_server.exe(command='sudo yum install -y python-rdomanager-oscplugin')
 
     def __undercloud_config(self):
-        iface = self.director_server.run(command="ip -o link | awk '/ee:/ {print $2}'").split('\n')[0]
+        iface = self.director_server.exe(command="ip -o link | awk '/ee:/ {print $2}'").split('\n')[0]
         undercloud_config = self.undercloud_config_template.format(pxe_iface=iface.strip(':\r'),
                                                                    cidr=str(self.undercloud_network),
                                                                    gw=str(self.undercloud_network[1]),  # gw == local_ip! possible bug or feature?
@@ -100,30 +100,30 @@ class DeployerOSP7(Deployer):
 
     def __deploy_undercloud(self):
         self.__undercloud_config()
-        self.director_server.run(command='openstack undercloud install')
+        self.director_server.exe(command='openstack undercloud install')
         self.__wget_images()
-        subnet_id = self.director_server.run(command='source stackrc && neutron subnet-list -c id -f csv').split()[-1].strip('"')
-        dns_ip = self.director_server.run(command='grep nameserver /etc/resolv.conf').split()[-1]
-        self.director_server.run('source stackrc && neutron subnet-update {id} --dns-nameserver {ip}'.format(id=subnet_id, ip=dns_ip))
-        self.director_server.run(command='source stackrc && openstack baremetal import --json ~/overcloud.json')
-        self.director_server.run(command='source stackrc && openstack baremetal configure boot')
-        self.director_server.run('date')
-        self.director_server.run(command='source stackrc && openstack baremetal introspection bulk start')
-        self.director_server.run(command='source stackrc && openstack baremetal list')
+        subnet_id = self.director_server.exe(command='source stackrc && neutron subnet-list -c id -f csv').split()[-1].strip('"')
+        dns_ip = self.director_server.exe(command='grep nameserver /etc/resolv.conf').split()[-1]
+        self.director_server.exe('source stackrc && neutron subnet-update {id} --dns-nameserver {ip}'.format(id=subnet_id, ip=dns_ip))
+        self.director_server.exe(command='source stackrc && openstack baremetal import --json ~/overcloud.json')
+        self.director_server.exe(command='source stackrc && openstack baremetal configure boot')
+        self.director_server.exe('date')
+        self.director_server.exe(command='source stackrc && openstack baremetal introspection bulk start')
+        self.director_server.exe(command='source stackrc && openstack baremetal list')
 
     def __deploy_overcloud(self):
-        if not self.director_server.run(command='source stackrc &&  openstack flavor list | grep baremetal', warn_only=True):
-            self.director_server.run(command='source stackrc && openstack flavor create --id auto --ram 4096 --disk 40 --vcpus 1 baremetal')
-            self.director_server.run(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" baremetal')
+        if not self.director_server.exe(command='source stackrc &&  openstack flavor list | grep baremetal', warn_only=True):
+            self.director_server.exe(command='source stackrc && openstack flavor create --id auto --ram 4096 --disk 40 --vcpus 1 baremetal')
+            self.director_server.exe(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" baremetal')
         for x in ['control', 'compute']:
-            if not self.director_server.run(command='source stackrc &&  openstack flavor list | grep {0}'.format(x), warn_only=True):
-                self.director_server.run(command='source stackrc && openstack flavor create --id auto --ram 128 --disk 500 --vcpus 2 {0}'.format(x))
-                self.director_server.run(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" '
+            if not self.director_server.exe(command='source stackrc &&  openstack flavor list | grep {0}'.format(x), warn_only=True):
+                self.director_server.exe(command='source stackrc && openstack flavor create --id auto --ram 128 --disk 500 --vcpus 2 {0}'.format(x))
+                self.director_server.exe(command='source stackrc && openstack flavor set --property "cpu_arch"="x86_64" --property "capabilities:boot_option"="local" '
                                                  '--property "capabilities:profile"="{0}" {0}'.format(x))
 
         n_controls = 3
 
-        results = self.director_server.run(command='source stackrc && ironic node-list').split('\n')
+        results = self.director_server.exe(command='source stackrc && ironic node-list').split('\n')
         uuids = [line.split()[1] for line in results if line.startswith('+') or line.startswith('| UUID')]
         if len(uuids) < n_controls:
             raise ErrorDeployerOSP7('not enough bare-metal nodes to deploy {0} controllers'.format(n_controls))
@@ -131,8 +131,8 @@ class DeployerOSP7(Deployer):
         n_computes = len(uuids) - n_controls
 
         cmd = 'source stackrc && ironic node-update {0} replace properties/capabilities=profile:{1},boot_option:local'
-        map(lambda uuid: self.director_server.run(command=cmd.format(uuid, 'control')), uuids[:n_controls])
-        map(lambda uuid: self.director_server.run(command=cmd.format(uuid, 'compute')), uuids[n_controls:])
+        map(lambda uuid: self.director_server.exe(command=cmd.format(uuid, 'control')), uuids[:n_controls])
+        map(lambda uuid: self.director_server.exe(command=cmd.format(uuid, 'compute')), uuids[n_controls:])
 
         command = 'source stackrc && openstack overcloud deploy --templates ' \
                   '-e /usr/share/openstack-tripleo-heat-templates/overcloud-resource-registry-puppet.yaml ' \
@@ -146,14 +146,14 @@ class DeployerOSP7(Deployer):
                   '--ntp-server 1.ntp.esl.cisco.com'.format(n_controls=n_controls, n_computes=n_computes)
 
         self.director_server.put_string_as_file_in_dir(string_to_put=command, file_name='RE-DEPLOY')
-        self.director_server.run(command=command)
+        self.director_server.exe(command=command)
 
     def __assign_ips_to_user(self):
-        for line in self.director_server.run(command='source stackrc && nova list').split('\n'):
+        for line in self.director_server.exe(command='source stackrc && nova list').split('\n'):
             ip_on_pxe_int = line
-            iface_on_user = self.director_server.run("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {print $2}'".format(ip_on_pxe_int=ip_on_pxe_int))
+            iface_on_user = self.director_server.exe("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {print $2}'".format(ip_on_pxe_int=ip_on_pxe_int))
             iface_on_user.strip(':')
-            self.director_server.run("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {iface_on_user}".format(ip_on_pxe_int=ip_on_pxe_int))
+            self.director_server.exe("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {iface_on_user}".format(ip_on_pxe_int=ip_on_pxe_int))
 
     def __create_overcloud_config_and_template(self, servers):
         import json

@@ -40,19 +40,19 @@ class CobblerServer(LabServer):
             else:
                 network_commands.append('--interface={} --mac={} {}'.format(name, mac, ip_mask_part))
 
-        systems = self.run('cobbler system list')
+        systems = self.exe('cobbler system list')
         if system_name in systems:
-            self.run('cobbler system remove --name={}'.format(system_name))
+            self.exe('cobbler system remove --name={}'.format(system_name))
 
-        self.run('cobbler system add --name={} --profile=RHEL7.2-x86_64 --kickstart=/var/lib/cobbler/kickstarts/sqe --comment="{}"'.format(system_name, comment))
+        self.exe('cobbler system add --name={} --profile=RHEL7.2-x86_64 --kickstart=/var/lib/cobbler/kickstarts/sqe --comment="{}"'.format(system_name, comment))
 
-        self.run('cobbler system edit --name={} --hostname={} --gateway={}'.format(system_name, node.hostname(), gateway))
+        self.exe('cobbler system edit --name={} --hostname={} --gateway={}'.format(system_name, node.hostname(), gateway))
 
         for cmd in network_commands:
-            self.run('cobbler system edit --name={} {}'.format(system_name, cmd))
+            self.exe('cobbler system edit --name={} {}'.format(system_name, cmd))
 
         ipmi_ip, ipmi_username, ipmi_password = node.get_oob()
-        self.run('cobbler system edit --name={} --power-type=ipmilan --power-address={} --power-user={} --power-pass={}'.format(system_name, ipmi_ip, ipmi_username, ipmi_password))
+        self.exe('cobbler system edit --name={} --power-type=ipmilan --power-address={} --power-user={} --power-pass={}'.format(system_name, ipmi_ip, ipmi_username, ipmi_password))
 
         return system_name
 
@@ -76,7 +76,7 @@ class CobblerServer(LabServer):
             nodes_to_check.append(node)
             system_name = self.cobbler_configure_for(node=node)
             node.cimc_configure()
-            self.run('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
+            self.exe('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
             node.cimc_power(node.POWER_CYCLE)
 
         for node in nodes_to_check:

@@ -27,7 +27,7 @@ def start(lab, log, args):
         elif 'port-create' in cmd:
             name_part = '--name ' + name_part + '-port'
 
-        res = server.run(command='{cmd} {name_part} {lab_creds}'.format(cmd=cmd, name_part=name_part, lab_creds=lab.cloud))
+        res = server.exe(command='{cmd} {name_part} {lab_creds}'.format(cmd=cmd, name_part=name_part, lab_creds=lab.cloud))
         if res:
             return re.search('id\s+\|\s+([-\w]+)', ''.join(res.stdout)).group(1)
 
@@ -35,7 +35,7 @@ def start(lab, log, args):
 
     quota = 20 + how_many
     port_quota = 1000 + how_many
-    server.run(command='neutron quota-update --network {n} --subnet {n} --port {port_n} {lab_creds}'.format(n=quota, port_n=port_quota, lab_creds=lab.cloud))
+    server.exe(command='neutron quota-update --network {n} --subnet {n} --port {port_n} {lab_creds}'.format(n=quota, port_n=port_quota, lab_creds=lab.cloud))
     for i in xrange(0, how_many):
         once(command=command, number=i)
         log.info('n_ports={0} status=created'.format(i+1))

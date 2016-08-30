@@ -21,10 +21,10 @@ class RunnerKloudBuster(Runner):
         server.create_user(new_username='kloudbuster')
         server.put_string_as_file_in_dir(string_to_put=open_rc_body, file_name=open_rc_path)
         repo_dir = server.clone_repo(repo_url='https://github.com/openstack/kloudbuster.git')
-        server.run(command='virtualenv {0}'.format(venv_path))
-        server.run(command='{0}/bin/pip install -r requirements.txt'.format(venv_path), in_directory=repo_dir)
-        server.run(command='{0}/bin/python setup.py install'.format(venv_path), in_directory=repo_dir)
-        status = server.run(command='{0}/bin/kloudbuster --tested-rc {1} --tested-passwd {2} --json {3}'.format(venv_path, open_rc_path, cloud.password, results_path))
+        server.exe(command='virtualenv {0}'.format(venv_path))
+        server.exe(command='{0}/bin/pip install -r requirements.txt'.format(venv_path), in_directory=repo_dir)
+        server.exe(command='{0}/bin/python setup.py install'.format(venv_path), in_directory=repo_dir)
+        status = server.exe(command='{0}/bin/kloudbuster --tested-rc {1} --tested-passwd {2} --json {3}'.format(venv_path, open_rc_path, cloud.password, results_path))
 
         results = server.get(remote_path=results_path)
 

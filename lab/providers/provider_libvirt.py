@@ -47,10 +47,10 @@ class ProviderLibvirt(Provider):
                 except libvirt.libvirtError:
                     pass
                 obj.undefine()
-        for bridge in self.local.run(command='brctl show | grep 8000 | grep {0} | cut -f1'.format(self.lab_id)).split('\n'):
+        for bridge in self.local.exe(command='brctl show | grep 8000 | grep {0} | cut -f1'.format(self.lab_id)).split('\n'):
             if bridge:
-                self.local.run('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
-        self.local.run('rm -f {0}/*{1}*'.format(self.dir_for_main_disks, self.lab_id))
+                self.local.exe('sudo ip l s {0} down && sudo brctl delbr {0}'.format(bridge))
+        self.local.exe('rm -f {0}/*{1}*'.format(self.dir_for_main_disks, self.lab_id))
 
     def create_networks(self):
         tmpl = '''
@@ -78,7 +78,7 @@ class ProviderLibvirt(Provider):
 
     @decorators.repeat_until_not_false(n_repetitions=50, time_between_repetitions=5)
     def ip_for_mac_by_looking_at_libvirt_leases(self, net, mac):
-        ans = self.local.run(command='sudo grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), warn_only=True)
+        ans = self.local.exe(command='sudo grep "{mac}" /var/lib/libvirt/dnsmasq/{net}.leases'.format(mac=mac, net=net), warn_only=True)
         if ans:
             return ans.split(' ')[2]
         else:
@@ -110,13 +110,13 @@ class ProviderLibvirt(Provider):
             f.write(meta_data)
 
         cloud_init_disk_path = self.make_local_file_name(where=self.dir_for_main_disks, name=hostname, extension='cloud_init.qcow2')
-        self.local.run('cloud-localds -d qcow2 {ci_d} {u_d} {m_d}'.format(ci_d=cloud_init_disk_path, u_d=user_data_path, m_d=meta_data_path))
+        self.local.exe('cloud-localds -d qcow2 {ci_d} {u_d} {m_d}'.format(ci_d=cloud_init_disk_path, u_d=user_data_path, m_d=meta_data_path))
         return cloud_init_disk_path
 
     def create_main_disk(self, hostname, image_url, image_checksum):
         back_disk = self.local.wget_file(url=image_url, checksum=image_checksum, to_directory=self.dir_for_backing_disks)
         main_disk = self.make_local_file_name(where=self.dir_for_main_disks, name=hostname, extension='qcow2')
-        self.local.run(command='qemu-img create -f qcow2 -b {0} {1} 15G'.format(back_disk, main_disk), in_directory=self.dir_for_main_disks)
+        self.local.exe(command='qemu-img create -f qcow2 -b {0} {1} 15G'.format(back_disk, main_disk), in_directory=self.dir_for_main_disks)
 
         return main_disk
 

@@ -36,7 +36,7 @@ class Xrvr(LabServer):
         return self.get_nic('t').get_ip_and_mask()[0]
 
     # noinspection PyMethodOverriding
-    def cmd(self, cmd, is_xrvr):  # XRVR uses redirection: ssh_username goes to DL while oob_username goes to XRVR, ip and password are the same for both
+    def cmd(self, cmd, is_xrvr, is_warn_only=False):  # XRVR uses redirection: ssh_username goes to DL while oob_username goes to XRVR, ip and password are the same for both
         from lab.vts_classes.vtc import VtsHost
 
         if not self._proxy_to_run:
@@ -45,11 +45,11 @@ class Xrvr(LabServer):
         if is_xrvr:
             if cmd not in self._expect_commands:
                 self.create_expect_command_file(cmd=cmd)
-            ans = self._proxy_to_run.run(command='expect {0}'.format(self._expect_commands[cmd]))
+            ans = self._proxy_to_run.exe(command='expect {0}'.format(self._expect_commands[cmd]))
         else:
             _, username, password = self.get_ssh()
             ip = self.get_nic('mx').get_ip_and_mask()[0]
-            ans = self._proxy_to_run.run(command='sshpass -p {p} ssh -o StrictHostKeyChecking=no -t {u}@{ip} {cmd}'.format(p=password, u=username, ip=ip, cmd=cmd))
+            ans = self._proxy_to_run.exe(command='sshpass -p {p} ssh -o StrictHostKeyChecking=no -t {u}@{ip} {cmd}'.format(p=password, u=username, ip=ip, cmd=cmd), warn_only=is_warn_only)
         return ans
 
     def create_expect_command_file(self, cmd):
@@ -123,7 +123,7 @@ expect "CPU0:XRVR"
         return self.cmd('show running-config evpn', is_xrvr=True)
 
     def xrvr_show_connections_xrvr_vtf(self):
-        return self.run('netstat -ant |grep 21345')
+        return self.exe('netstat -ant |grep 21345')
 
     def get_config_and_net_part_bodies(self):
         from lab import with_config
@@ -167,8 +167,8 @@ expect "CPU0:XRVR"
 
     def r_collect_information(self):
         body = ''
-        for cmd in ['grep -i error /var/log/sr/*']:
-            ans = self.cmd(cmd=cmd, is_xrvr=False)
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/sr/*', regex='ERROR')]:
+            ans = self.cmd(cmd=cmd, is_xrvr=False, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 
@@ -204,7 +204,7 @@ expect "CPU0:XRVR"
         return config
 
     def r_edit_etc_hosts(self):
-        self.run('grep {n} /etc/hosts || echo {n}\t{ip}\n >> /etc/hosts'.format(n=self.get_id(), ip=self.get_ip_mx()))
+        self.exe('grep {n} /etc/hosts || echo {n}\t{ip}\n >> /etc/hosts'.format(n=self.get_id(), ip=self.get_ip_mx()))
 
     def r_border_leaf(self):
         self.cmd(cmd='conf t interface Loopback0')

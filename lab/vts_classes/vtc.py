@@ -135,17 +135,17 @@ class Vtc(LabServer):
     def disrupt(self, start_or_stop, method_to_disrupt):
         vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
         if method_to_disrupt == 'vm-shutdown':
-            vts_host.run(command='virsh {} vtc'.format('suspend' if start_or_stop == 'start' else 'resume'))
+            vts_host.exe(command='virsh {} vtc'.format('suspend' if start_or_stop == 'start' else 'resume'))
         elif method_to_disrupt == 'isolate-from-mx':
-            vts_host.run('ip l s dev vtc-mx-port {}'.format('down' if start_or_stop == 'start' else 'up'))
+            vts_host.exe('ip l s dev vtc-mx-port {}'.format('down' if start_or_stop == 'start' else 'up'))
         elif method_to_disrupt == 'isolate-from-api':
-            vts_host.run('ip l s dev vtc-a-port {}'.format('down' if start_or_stop == 'start' else 'up'))
+            vts_host.exe('ip l s dev vtc-a-port {}'.format('down' if start_or_stop == 'start' else 'up'))
         elif method_to_disrupt == 'corosync-stop':
-            vts_host.run('sudo service corosync {}'.format('stop' if start_or_stop == 'start' else 'start'))
+            vts_host.exe('sudo service corosync {}'.format('stop' if start_or_stop == 'start' else 'start'))
         elif method_to_disrupt == 'ncs-stop':
-            self.run('sudo service ncs {}'.format('stop' if start_or_stop == 'start' else 'start'))
+            self.exe('sudo service ncs {}'.format('stop' if start_or_stop == 'start' else 'start'))
         elif method_to_disrupt == 'vm-reboot' and start_or_stop == 'start':
-            self.run('sudo shutdown -r now')
+            self.exe('sudo shutdown -r now')
 
     def get_overlay_networks(self, name='admin'):
         return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + name)
@@ -360,7 +360,7 @@ class Vtc(LabServer):
     def r_collect_information(self):
         body = ''
         for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex='ERROR'), self._form_log_grep_cmd(log_files='/var/log/ncs/localhost\:8888.access')]:
-            ans = self.run(cmd)
+            ans = self.exe(cmd)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 
@@ -386,60 +386,60 @@ class Vtc(LabServer):
                 method()
 
     def r_vtc_crm_status(self):
-        return self.run('sudo crm status')
+        return self.exe('sudo crm status')
 
     def r_vtc_show_configuration_xrvr_groups(self, is_via_ncs=False):  #
         if is_via_ncs:
-            return self.run('ncs_cli << EOF\nshow configuration cisco-vts xrvr-groups xrvr-group\nexit\nEOF')
+            return self.exe('ncs_cli << EOF\nshow configuration cisco-vts xrvr-groups xrvr-group\nexit\nEOF')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888//api/running/cisco-vts/xrvr-groups/xrvr-group
             return self._rest_api('GET /api/running/cisco-vts/xrvr-groups/xrvr-group/', headers={'Accept': 'application/vnd.yang.collection+json'})
 
     def r_vtc_show_ha_cluster_members(self, is_via_ncs=False):
         if is_via_ncs:
-            return self.run('ncs_cli << EOF\nshow ha-cluster members\nexit\nEOF')
+            return self.exe('ncs_cli << EOF\nshow ha-cluster members\nexit\nEOF')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/operational/ha-cluster/members
             return self._rest_api(resource='GET /api/operational/ha-cluster/members', headers={'Accept': 'application/vnd.yang.collection+json'})
 
     def r_vtc_show_openstack_network(self, is_via_ncs=False):
         if is_via_ncs:
-            return self.run('ncs_cli << EOF\nshow openstack network\nexit\nEOF')
+            return self.exe('ncs_cli << EOF\nshow openstack network\nexit\nEOF')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/openstack/network
             return self._rest_api(resource='GET /api/running/openstack/network', headers={'Accept': 'application/vnd.yang.collection+json'})
 
     def r_vtc_show_openstack_subnet(self, is_via_ncs=False):
         if is_via_ncs:
-            return self.run('ncs_cli << EOF\nshow openstack subnet\nexit\nEOF')
+            return self.exe('ncs_cli << EOF\nshow openstack subnet\nexit\nEOF')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/openstack/subnet
             return self._rest_api(resource='GET /api/running/openstack/subnet', headers={'Accept': 'application/vnd.yang.collection+json'})
 
     def r_vtc_show_openstack_port(self, is_via_ncs=False):
         if is_via_ncs:
-            return self.run('ncs_cli << EOF\nshow openstack port\nexit\nEOF')
+            return self.exe('ncs_cli << EOF\nshow openstack port\nexit\nEOF')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/openstack/port
             return self._rest_api(resource='GET /api/running/openstack/port', headers={'Accept': 'application/vnd.yang.collection+json'})
 
     def r_vtc_show_vni_pool(self, is_via_ncs=False):
         if is_via_ncs:
-            return self.run('ncs_cli << EOF\nshow vni-allocator pool\nexit\nEOF')
+            return self.exe('ncs_cli << EOF\nshow vni-allocator pool\nexit\nEOF')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
             return self._rest_api(resource='GET /api/running/resource-pools/vni-pool', headers={'Accept': 'application/vnd.yang.collection+json'})
 
     def r_vtc_show_uuid_servers(self, is_via_ncs=False):
         if is_via_ncs:
-            return self.run('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
+            return self.exe('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/cisco-vts/uuid-servers
             return self._rest_api('GET /api/running/cisco-vts/uuid-servers', headers={'Accept': 'application/vnd.yang.data+json'})
 
     def r_vtc_show_devices_device(self, is_via_ncs=False):
         if is_via_ncs:
-            return self.run('ncs_cli << EOF\nshow devices device\nexit\nEOF')
+            return self.exe('ncs_cli << EOF\nshow devices device\nexit\nEOF')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/devices/device
             return self._rest_api(resource='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.collection+json'})

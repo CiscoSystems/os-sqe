@@ -101,8 +101,8 @@ class ProviderCobbler(Provider):
         servers = self.create_servers()
         for server in servers:
             if self._force_pxe_boot:
-                when_provided = server.run(command='cat ProvTime')
+                when_provided = server.exe(command='cat ProvTime')
                 if when_provided != self._prov_time:
                     raise CobblerError('Wrong provisioning attempt- timestamps are not matched')
-            server.hostname = server.run(command='hostname')
+            server.hostname = server.exe(command='hostname')
         return servers

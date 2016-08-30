@@ -10,11 +10,11 @@ class RunnerCloud99(Runner):
         pass
 
     def __assign_ip_to_user_nic(self):
-        for line in self.director_server.run(command='source stackrc && nova list').split('\n'):
+        for line in self.director_server.exe(command='source stackrc && nova list').split('\n'):
             ip_on_pxe_int = line
-            iface_on_user = self.director_server.run("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {print $2}'".format(ip_on_pxe_int=ip_on_pxe_int))
+            iface_on_user = self.director_server.exe("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {print $2}'".format(ip_on_pxe_int=ip_on_pxe_int))
             iface_on_user.strip(':')
-            self.director_server.run("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {iface_on_user}".format(ip_on_pxe_int=ip_on_pxe_int))
+            self.director_server.exe("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {iface_on_user}".format(ip_on_pxe_int=ip_on_pxe_int))
 
 
     def run_on_director(self, director_ip):
@@ -28,33 +28,33 @@ class RunnerCloud99(Runner):
         rally_venv = '~/VE/rally'
         cloud99_venv = '~/VE/cloud99'
 
-        node_list = director.run(command='source stackrc && nova list')
+        node_list = director.exe(command='source stackrc && nova list')
 
-        director.run(command='sudo rm -f /home/{0}/.bashrc'.format(user), warn_only=True)
+        director.exe(command='sudo rm -f /home/{0}/.bashrc'.format(user), warn_only=True)
 
         director.create_user(new_username=user)
 
-        director.run(command='sudo cp /home/stack/overcloudrc .')
-        director.run(command='sudo cp /home/stack/stackrc .')
-        director.run(command='sudo cp /home/stack/.ssh/id_rsa* .', in_directory='.ssh')
-        director.run(command='sudo chown {0} *'.format(user))
-        director.run(command='sudo chown {0} *'.format(user), in_directory='.ssh')
+        director.exe(command='sudo cp /home/stack/overcloudrc .')
+        director.exe(command='sudo cp /home/stack/stackrc .')
+        director.exe(command='sudo cp /home/stack/.ssh/id_rsa* .', in_directory='.ssh')
+        director.exe(command='sudo chown {0} *'.format(user))
+        director.exe(command='sudo chown {0} *'.format(user), in_directory='.ssh')
 
-        os_password = director.run(command='grep PASSWORD {0}'.format(cloud_rc_name)).split('=')[-1]
+        os_password = director.exe(command='grep PASSWORD {0}'.format(cloud_rc_name)).split('=')[-1]
 
         rally_repo = director.clone_repo(repo_url='https://git.openstack.org/openstack/rally.git')
         director.check_or_install_packages(package_names='libffi-devel gmp-devel postgresql-devel wget python-virtualenv xterm xauth')
-        director.run(command='./install_rally.sh -y -d {0}'.format(rally_venv), in_directory=rally_repo)
-        director.run(command='source {0} && {1}/bin/rally deployment create --fromenv --name cloud'.format(cloud_rc_name, rally_venv))
+        director.exe(command='./install_rally.sh -y -d {0}'.format(rally_venv), in_directory=rally_repo)
+        director.exe(command='source {0} && {1}/bin/rally deployment create --fromenv --name cloud'.format(cloud_rc_name, rally_venv))
 
         cloud99_repo = director.clone_repo(repo_url='https://github.com/cisco-oss-eng/Cloud99.git')
-        director.run(command='virtualenv {0}'.format(cloud99_venv))
-        director.run(command='{0}/bin/pip install -r requirements.txt'.format(cloud99_venv), in_directory=cloud99_repo)
-        if not director.run(command='git remote -v | grep gitlab', in_directory=cloud99_repo, warn_only=True):
-            director.run(command='git remote add gitlab http://gitlab.cisco.com/kshileev/cloud99.git', in_directory=cloud99_repo)
+        director.exe(command='virtualenv {0}'.format(cloud99_venv))
+        director.exe(command='{0}/bin/pip install -r requirements.txt'.format(cloud99_venv), in_directory=cloud99_repo)
+        if not director.exe(command='git remote -v | grep gitlab', in_directory=cloud99_repo, warn_only=True):
+            director.exe(command='git remote add gitlab http://gitlab.cisco.com/kshileev/cloud99.git', in_directory=cloud99_repo)
 
-        director.run(command='git fetch -p gitlab', in_directory=cloud99_repo)
-        director.run(command='git checkout -b nxos-ucsm gitlab/nxos-ucsm', in_directory=cloud99_repo)
+        director.exe(command='git fetch -p gitlab', in_directory=cloud99_repo)
+        director.exe(command='git checkout -b nxos-ucsm gitlab/nxos-ucsm', in_directory=cloud99_repo)
 
 
         executor_yaml = '''

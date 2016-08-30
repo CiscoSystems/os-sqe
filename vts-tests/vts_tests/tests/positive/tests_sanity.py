@@ -32,7 +32,7 @@ class TestSanity(base_test.BaseTest):
 
     def test_xrnc_dl_vts_reg_process_is_running(self):
         def assert_xrnc_dl_vts_reg_process_is_running(xrnc):
-            proc_id = xrnc.run('pgrep -f dl_vts_reg.py')
+            proc_id = xrnc.exe('pgrep -f dl_vts_reg.py')
             self.assertNotEqual(proc_id, '', 'dl_vts_reg.py is not running')
 
         assert_xrnc_dl_vts_reg_process_is_running(self.xrnc1)
@@ -40,7 +40,7 @@ class TestSanity(base_test.BaseTest):
             assert_xrnc_dl_vts_reg_process_is_running(self.xrnc2)
 
     def test_dl_server_process_is_running(self):
-        proc_id = self.xrnc1.run('pgrep -fdl_server.py')
+        proc_id = self.xrnc1.exe('pgrep -fdl_server.py')
         self.assertNotEqual(proc_id, '', 'dl_server.py is not running')
 
     def vni_pool_exists_in_vtc(self):

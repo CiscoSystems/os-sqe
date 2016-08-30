@@ -714,12 +714,12 @@ def main():
     result = testtools.StreamResultRouter(result)
     result.add_rule(accumulator, 'test_id', test_id=None)
     result.startTestRun()
-    suite.run(result)
+    suite.exe(result)
     # Now reprocess any found stdout content as V1 subunit
     for bytes_io in accumulator.route_codes.values():
         bytes_io.seek(0)
         suite = subunit.ProtocolTestCase(bytes_io)
-        suite.run(html_result)
+        suite.exe(html_result)
     result.stopTestRun()
 
 

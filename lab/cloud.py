@@ -377,11 +377,11 @@ export OS_AUTH_URL={end_point}
             time.sleep(30)
 
     def analyse_instance_problems(self, instance):
-        from lab.nodes.lab_server import LabServer
+        from lab.server import Server
 
         instance_details = self.cmd(self._show_server_cmd + instance['Name'])
-        compute_node = LabServer(name='tmp_compute', role='compute', ip=instance_details['os-ext-srv-attr:host'], lab=None, username='root', password='cisco123')
-        logs = compute_node.run(command='grep {instance_id} | grep -i error'.format(instance_id=instance_details['id']))
+        compute_node = Server(ip=instance_details['os-ext-srv-attr:host'], username='root', password='cisco123')
+        logs = compute_node.exe(command='grep {instance_id} | grep -i error'.format(instance_id=instance_details['id']))
 
     def create_image(self, name, url):
         if not filter(lambda image: image['Name'] == name, self.cmd(self._list_image_cmd)):

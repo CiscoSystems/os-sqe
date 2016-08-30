@@ -141,7 +141,7 @@ class Config(object):
     def mercury_servers_info(self):
         if not self._mercury_servers_info:
             b = shell_connect.ShellConnect(self.build_node)
-            self._mercury_servers_info = b.run('cat ~/openstack-configs/mercury_servers_info')
+            self._mercury_servers_info = b.exe('cat ~/openstack-configs/mercury_servers_info')
         return self._mercury_servers_info
 
     def parse_nodes_info(self, msi_string):
@@ -180,7 +180,7 @@ class Config(object):
     def secrets(self):
         if not self._secrets:
             b = shell_connect.ShellConnect(self.build_node)
-            secrets_info = b.run('cat ~/openstack-configs/secrets.yaml')
+            secrets_info = b.exe('cat ~/openstack-configs/secrets.yaml')
             self._secrets = ConfigParser.RawConfigParser(allow_no_value=True)
             self._secrets.readfp(io.BytesIO('[DEFAULT]\r\n' + secrets_info))
             self._secrets.get = functools.partial(self._secrets.get, 'DEFAULT')
@@ -191,7 +191,7 @@ class Config(object):
         if not self._openrc:
             self._openrc = {}
             b = shell_connect.ShellConnect(self.build_node)
-            openrc_info = b.run('cat ~/openstack-configs/openrc && echo')
+            openrc_info = b.exe('cat ~/openstack-configs/openrc && echo')
             for s in openrc_info.split('\r\n'):
                 g = re.search(r'export (?P<name>\w+)=(?P<value>.*)', s)
                 self._openrc[g.group('name')] = g.group('value')

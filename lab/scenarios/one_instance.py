@@ -15,7 +15,7 @@ def start(lab, log, args):
 
     def run_cmd(cmd, warn_only=False):
         with shell_env(OS_AUTH_URL=lab.cloud.end_point, OS_USERNAME=lab.cloud.user, OS_PASSWORD=lab.cloud.password, OS_TENANT_NAME=lab.cloud.tenant):
-            return server.run(cmd, warn_only=warn_only).stdout
+            return server.exe(cmd, warn_only=warn_only).stdout
 
     cmd = 'ping -c {time} -w {time} {ip} | while read pong; do echo "$(date +"%s"): $pong"; done > log.txt &'
 

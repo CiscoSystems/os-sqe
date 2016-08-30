@@ -29,19 +29,19 @@ class Server(object):
         if not self._package_manager:
             possible_packages = ['apt-get', 'dnf', 'yum']
             for x in possible_packages:
-                if self.run(command='whereis {0}'.format(x)) != x + ':':
+                if self.exe(command='whereis {0}'.format(x)) != x + ':':
                     self._package_manager = x
                     break
             if not self._package_manager:
                 raise RuntimeError('do not know which package manager to use: neither of {0} found'.format(possible_packages))
         return self._package_manager
 
-    def construct_settings(self, warn_only, connection_attempts):
+    def construct_settings(self, is_warn_only, connection_attempts):
         from lab import with_config
 
         kwargs = {'host_string': '{user}@{ip}'.format(user=self._username, ip=self._ip),
                   'connection_attempts': connection_attempts,
-                  'warn_only': warn_only}
+                  'warn_only': is_warn_only}
         if self._password == 'ssh_key':
             kwargs['key_filename'] = with_config.KEY_PRIVATE_PATH
         else:
@@ -58,24 +58,24 @@ class Server(object):
             with lcd(in_directory):
                 return local(command=command, capture=True)
 
-    def run(self, command, in_directory='.', warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
+    def exe(self, command, in_directory='.', is_warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
         from fabric.api import run, sudo, settings, cd
         from fabric.exceptions import NetworkError
 
         if str(self._ip) in ['localhost', '127.0.0.1']:
-            return self.exe_local(command, in_directory=in_directory, warn_only=warn_only)
+            return self.exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
 
         run_or_sudo = run
         if command.startswith('sudo '):
             command = command.replace('sudo ', '')
             run_or_sudo = sudo
 
-        with settings(**self.construct_settings(warn_only=warn_only, connection_attempts=connection_attempts)):
+        with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
             with cd(in_directory):
                 try:
                     return run_or_sudo(command)
                 except NetworkError:
-                    if warn_only:
+                    if is_warn_only:
                         return ''
                     else:
                         raise
@@ -85,7 +85,7 @@ class Server(object):
         :param wait: wait for the server to come up
         """
         from fabric.api import reboot, settings
-        with settings(**self.construct_settings(warn_only=True, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
+        with settings(**self.construct_settings(is_warn_only=True, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
             reboot(wait=wait)
 
     def put(self, local_path, remote_path, is_sudo):
@@ -97,7 +97,7 @@ class Server(object):
         """
         from fabric.api import put, settings
 
-        with settings(**self.construct_settings(warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
+        with settings(**self.construct_settings(is_warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
             return put(local_path=local_path, remote_path=remote_path, use_sudo=is_sudo)
 
     def put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
@@ -117,14 +117,14 @@ class Server(object):
         use_sudo = True if in_directory.startswith('/') else False
 
         if in_directory != '.':
-            self.run(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
+            self.exe(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
 
         if str(self._ip) in ['localhost', '127.0.0.1']:
             with lcd(in_directory):
                 local('echo "{0}" > {1}'.format(string_to_put, file_name))
                 return os.path.abspath(os.path.join(in_directory, file_name))
         else:
-            with settings(**self.construct_settings(warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
+            with settings(**self.construct_settings(is_warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
                 with cd(in_directory):
                     return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)[0]
 
@@ -140,7 +140,7 @@ class Server(object):
         if '/' in file_name:
             raise SyntaxError('file_name can not contain /, use in_directory instead')
 
-        with settings(**self.construct_settings(warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
+        with settings(**self.construct_settings(is_warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
             with cd(in_directory):
                 body = sudo('cat {0}'.format(file_name))
 
@@ -154,44 +154,42 @@ class Server(object):
     def wget_file(self, url, to_directory='.', checksum=None, method='sha512sum'):
         loc = url.split('/')[-1]
         if to_directory != '.':
-            self.run('mkdir -p {0}'.format(to_directory))
-        self.run(command='test -e  {loc} || curl {url} -o {loc}'.format(loc=loc, url=url), in_directory=to_directory)
+            self.exe('mkdir -p {0}'.format(to_directory))
+        self.exe(command='test -e  {loc} || curl {url} -o {loc}'.format(loc=loc, url=url), in_directory=to_directory)
 
-        calc_checksum = self.run(command='{meth} {loc}'.format(meth=method, loc=loc), in_directory=to_directory)
+        calc_checksum = self.exe(command='{meth} {loc}'.format(meth=method, loc=loc), in_directory=to_directory)
         if checksum:
             if calc_checksum.split()[0] != checksum:
-                self.run(command='rm -f {0}'.format(loc), in_directory=to_directory)
+                self.exe(command='rm -f {0}'.format(loc), in_directory=to_directory)
                 raise RuntimeError('I deleted image {} taken from {} since it is broken (checksum is not matched). Re-run the script'.format(loc, url))
-        return self.run(command='readlink -f {0}'.format(loc), in_directory=to_directory)
+        return self.exe(command='readlink -f {0}'.format(loc), in_directory=to_directory)
 
     def check_or_install_packages(self, package_names):
         pm = self.get_package_manager()
 
         for package_name in package_names.split():
-            if self.run(command='whereis {0}'.format(package_name)) == package_name + ':':
-                self.run(command='sudo {0} install -y {1}'.format(pm, package_names))
+            if self.exe(command='whereis {0}'.format(package_name)) == package_name + ':':
+                self.exe(command='sudo {0} install -y {1}'.format(pm, package_names))
 
     def clone_repo(self, repo_url, local_repo_dir=None, tags=None, patch=None):
-        import urlparse
-
-        local_repo_dir = local_repo_dir or urlparse.urlparse(repo_url).path.split('/')[-1].strip('.git')
+        local_repo_dir = local_repo_dir or repo_url.split('/')[-1].strip('.git')
 
         self.check_or_install_packages(package_names='git')
-        self.run(command='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url))
-        self.run(command='git pull -q', in_directory=local_repo_dir)
+        self.exe(command='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url))
+        self.exe(command='git pull -q', in_directory=local_repo_dir)
         if patch:
-            self.run(command='git fetch {0} && git checkout FETCH_HEAD'.format(patch))
+            self.exe(command='git fetch {0} && git checkout FETCH_HEAD'.format(patch))
         elif tags:
-            self.run(command='git checkout tags/{0}'.format(tags), in_directory=local_repo_dir)
-        return self.run(command='pwd', in_directory=local_repo_dir)
+            self.exe(command='git checkout tags/{0}'.format(tags), in_directory=local_repo_dir)
+        return self.exe(command='pwd', in_directory=local_repo_dir)
 
     def create_user(self, new_username):
         tmp_password = 'cisco123'
-        if not self.run(command='grep {0} /etc/passwd'.format(new_username), warn_only=True):
-            encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(tmp_password))
-            self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
-            self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
-            self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
+        if not self.exe(command='grep {0} /etc/passwd'.format(new_username), is_warn_only=True):
+            encrypted_password = self.exe(command='openssl passwd -crypt {0}'.format(tmp_password))
+            self.exe(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
+            self.exe(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
+            self.exe(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
         self.set_ssh_creds(username=new_username, password=tmp_password)
         self.r_deploy_ssh_key()
         self.set_ssh_creds(username=new_username, password='ssh_key')
@@ -200,8 +198,8 @@ class Server(object):
         from lab import with_config
         with open(with_config.KEY_PUBLIC_PATH) as f:
             self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
-        self.run(command='chmod 700 .ssh')
-        self.run(command='chmod 600 .ssh/authorized_keys')
+        self.exe(command='chmod 700 .ssh')
+        self.exe(command='chmod 600 .ssh/authorized_keys')
 
     def ping(self, port=22):
         import socket
@@ -219,14 +217,14 @@ class Server(object):
 
     def actuate_hostname(self, refresh=True):
         if not hasattr(self, '_hostname') or refresh:
-            self._hostname = self.run('hostname').stdout.strip()
+            self._hostname = self.exe('hostname').stdout.strip()
         return self._hostname
 
     def list_ip_info(self, connection_attempts=100):
-        ans_a = self.run('ip -o a', connection_attempts=connection_attempts, warn_only=True)
+        ans_a = self.exe('ip -o a', connection_attempts=connection_attempts, is_warn_only=True)
         if not ans_a:
             return {}
-        ans_l = self.run('ip -o l', connection_attempts=connection_attempts, warn_only=True)
+        ans_l = self.exe('ip -o l', connection_attempts=connection_attempts, is_warn_only=True)
         name_ipv4_ipv6 = {}
         for line in ans_a.split('\n'):
             _, nic_name, other = line.split(' ', 2)
@@ -265,10 +263,10 @@ class Server(object):
                                     # '--enable=rhel-7-server-openstack-7.0-rpms', '--enable=rhel-7-server-openstack-7.0-director-rpms'
                                     ])
 
-        self.run(command='subscription-manager register --force --username={0} --password={1}'.format(rhel_username, rhel_password))
-        self.run(command='subscription-manager attach --pool={}'.format(rhel_pool_id))
-        self.run(command='subscription-manager repos --disable=*')
-        self.run(command='subscription-manager repos {}'.format(repos_to_enable))
+        self.exe(command='subscription-manager register --force --username={0} --password={1}'.format(rhel_username, rhel_password))
+        self.exe(command='subscription-manager attach --pool={}'.format(rhel_pool_id))
+        self.exe(command='subscription-manager repos --disable=*')
+        self.exe(command='subscription-manager repos {}'.format(repos_to_enable))
 
     @property
     def temp_dir(self):
@@ -278,5 +276,5 @@ class Server(object):
 
             chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
             self._temp_dir = os.path.join('/tmp', 'server-tmp-' + ''.join(random.sample(chars, 10)))
-            self.run('mkdir -p {0}'.format(self._temp_dir))
+            self.exe('mkdir -p {0}'.format(self._temp_dir))
         return self._temp_dir
