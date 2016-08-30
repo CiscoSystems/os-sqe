@@ -358,7 +358,7 @@ class Vtc(Server):
                 return False
         return True
 
-    def r_get_logs(self):
+    def r_collect_information(self):
         body = ''
         for cmd in ['grep -i error /var/log/ncs/*', ' cat /var/log/ncs/localhost\:8888.access']:
             ans = self.run(cmd)
@@ -370,13 +370,11 @@ class Vtc(Server):
         for node in self.lab().get_nodes_by_class([Vtc, Xrvr]):
             body += node.r_get_logs()
 
-        self.log_to_artifact_file(name='{}-vts-logs.txt'.format(name), body=body)
-
     def vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
         pass
 
     def r_is_xrvr_registered(self):
-        body = self.r_get_logs()
+        body = self.r_collect_information()
         xrvrs = self.r_vtc_show_configuration_xrvr_groups()['collection']['cisco-vts:xrvr-group'][0]['xrvr-devices']['xrvr-device']
         names_in_body = map(lambda x: 'POST /api/running/devices/device/{}/vts-sync-xrvr/_operations/sync HTTP'.format(x['name']) in body, xrvrs)
         return all(names_in_body)

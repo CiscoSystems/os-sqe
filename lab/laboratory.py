@@ -1,7 +1,8 @@
 from lab.ospd.with_osdp7 import WithOspd7
+from lab.with_log import WithLogMixIn
 
 
-class Laboratory(WithOspd7):
+class Laboratory(WithOspd7, WithLogMixIn):
     def __repr__(self):
         return self._lab_name
 
@@ -354,3 +355,10 @@ class Laboratory(WithOspd7):
     def r_border_leaf(self):
         for node in self.get_n9k() + self.get_xrvr():
             node.r_border_leaf()
+
+    def r_collect_information(self, name):
+        for node in self.get_nodes_by_class():
+            if 'r_collect_information' in dir(node):
+                body = node.r_collect_information()
+                self.log_to_artifact(name='{}-{}.txt'.format(name, node.get_id()), body=body)
+

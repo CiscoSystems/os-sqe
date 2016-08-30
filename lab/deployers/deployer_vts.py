@@ -27,6 +27,7 @@ class DeployerVts(Deployer):
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
+        lab = vts_hosts[0].get_lab()
         vtcs = []
         xrncs = []
 
@@ -47,17 +48,17 @@ class DeployerVts(Deployer):
         if not vtcs[0].r_is_xrvr_registered():
             for i in range(len(xrncs)):
                 self.deploy_single_xrnc(vts_host=vts_hosts[i], vtc=vtcs[i], xrnc=xrncs[i])
-            vtcs[0].get_all_logs('after_all_xrvr_registered')
+            lab.r_collect_information('after_all_xrvr_registered')
         else:
             self.log('all XRNC are already deployed in the previous run')
 
         dl_server_status = map(lambda dl: dl.xrnc_start_dl(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
         if not all(dl_server_status):
             raise RuntimeError('Failed to start DL servers')
-        vtcs[0].get_all_logs('after_all_dl_servers_started')
+        lab.r_collect_information('after_all_dl_servers_started')
 
         vtcs[0].vtc_day0_config()
-        vtcs[0].get_all_logs('after_day0_config')
+        lab.r_collect_information('after_day0_config')
 
         for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
             self.deploy_single_vtf(vtf)
