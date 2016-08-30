@@ -1,5 +1,5 @@
 from lab.nodes import LabNode
-from lab.nodes.server import LabServer
+from lab.nodes.lab_server import LabServer
 
 
 class FiServer(LabServer):
