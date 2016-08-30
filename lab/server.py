@@ -1,4 +1,4 @@
-from lab.lab_node import LabNode
+from lab.nodes.lab_node import LabNode
 
 
 class Server(LabNode):
