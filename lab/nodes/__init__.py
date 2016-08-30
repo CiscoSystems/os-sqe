@@ -152,19 +152,6 @@ class LabNode(WithLogMixIn):
     def get_hardware_info(self):
         return self._ru, self._model
 
-    def log(self, message, level='info'):
-        from lab.logger import lab_logger
-
-        message = '{}: {}'.format(self, message)
-        if level == 'info':
-            lab_logger.info(message)
-        elif level == 'warning':
-            lab_logger.warning(message)
-        elif level == 'exception':
-            lab_logger.exception(message)
-        else:
-            raise RuntimeError('Specified "{}" logger level is not known'.format(level))
-
     def is_cimc_server(self):
         from lab.cimc import CimcServer
 
