@@ -1,4 +1,4 @@
-from lab.server import Server
+from lab.nodes.server import Server
 
 # use telnet 0 5087 from xrnc to see the bootstrap process just after spinning up XRNC VM
 # configuration is kept in sudo cat /etc/vpe/vsocsr/dl_server.ini on cisco@xrnc

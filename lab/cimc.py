@@ -1,4 +1,4 @@
-from lab.server import Server
+from lab.nodes.server import Server
 
 
 class CimcServer(Server):

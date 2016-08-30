@@ -1,7 +1,7 @@
 from lab.cimc import CimcServer
-from lab.server import Server
-from lab.vts_classes.xrvr import Xrvr
+from lab.nodes.server import Server
 from lab.vts_classes.vtf import Vtf
+from lab.vts_classes.xrvr import Xrvr
 
 
 class Vtc(Server):

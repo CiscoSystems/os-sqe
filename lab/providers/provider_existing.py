@@ -9,7 +9,7 @@ class ProviderExisting(Provider):
         return [{'host': 'srv1.domain.name', 'username': 'username1', 'password': 'password1'}, {'host': '2.2.2.2', 'username': 'user2', 'password': 'password2'}]
 
     def __init__(self, config):
-        from lab.server import Server
+        from lab.nodes.server import Server
 
         super(ProviderExisting, self).__init__(config=config)
         self.servers = [Server(name='director', lab=None, ip=server['host'], username=server['username'], password=server['password']) for server in config]

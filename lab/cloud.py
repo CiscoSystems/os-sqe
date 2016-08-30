@@ -377,7 +377,7 @@ export OS_AUTH_URL={end_point}
             time.sleep(30)
 
     def analyse_instance_problems(self, instance):
-        from lab.server import Server
+        from lab.nodes.server import Server
 
         instance_details = self.cmd(self._show_server_cmd + instance['Name'])
         compute_node = Server(name='tmp_compute', role='compute', ip=instance_details['os-ext-srv-attr:host'], lab=None, username='root', password='cisco123')
