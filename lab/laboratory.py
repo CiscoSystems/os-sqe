@@ -172,7 +172,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
         from lab.nodes.fi import FI, FiDirector, FiController, FiCompute, FiCeph
         from lab.n9k import Nexus
         from lab.nodes.asr import Asr
-        from lab.tor import Tor, Oob, Pxe, Terminal
+        from lab.nodes.tor import Tor, Oob, Pxe, Terminal
         from lab.nodes.cobbler import CobblerServer
         from lab.cimc import CimcDirector, CimcController, CimcCompute, CimcCeph
         from lab.vts_classes.xrvr import Xrvr

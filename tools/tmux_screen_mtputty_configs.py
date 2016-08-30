@@ -77,7 +77,7 @@ def mobaxterm(lab):
     import os
     from lab.n9k import Nexus
     from lab.nodes.fi import FI
-    from lab.tor import Tor
+    from lab.nodes.tor import Tor
 
     file_path = os.path.expanduser('~/mobaXterm-{lab}.mxtsessions'.format(lab=lab))
     with open(file_path, 'w') as f:
