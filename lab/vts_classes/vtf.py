@@ -25,7 +25,7 @@ class Vtf(Server):
         from lab.vts_classes.vtc import Vtc
 
         if not self._proxy_to_run:
-            self.lab().get_nodes_by_class(Vtc)[-1].vtc_get_vtfs()
+            self.lab().get_nodes_by_class(Vtc)[-1].r_vtc_get_vtfs()
 
         if cmd not in self._expect_commands:
             self.create_expect_command_file(cmd=cmd)

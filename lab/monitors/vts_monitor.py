@@ -11,7 +11,7 @@ class VtsMonitor(Worker):
         self._vtc = Vtc(node_id='Vtc{}'.format(self._ip), role='vtc', lab=None, hostname='NoDefined') if self._ip else lab.get_nodes_by_class(Vtc)[0]
         if self._ip:
             self._vtc.set_oob_creds(ip=self._ip, username=self._username, password=self._password)
-        self._vtfs = self._vtc.vtc_get_vtfs()
+        self._vtfs = self._vtc.r_vtc_get_vtfs()
         self._xrvrs = self._vtc.vtc_get_xrvrs()
 
     def loop(self):

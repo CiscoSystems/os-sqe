@@ -10,7 +10,7 @@ class TestVtsSanity(unittest.TestCase):
         l = Laboratory('g7-2')
         cls._vtc = l.get_node_by_id('vtc1')
         cls._xrvrs = cls._vtc.vtc_get_xrvrs()
-        cls._vtfs = cls._vtc.vtc_get_vtfs()
+        cls._vtfs = cls._vtc.r_vtc_get_vtfs()
 
     def test_BondEthernet0_up(self):
         for vtf in self._vtfs:

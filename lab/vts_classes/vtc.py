@@ -74,9 +74,9 @@ class Vtc(Server):
             if n.actuate_hostname(refresh=False) == compute_hostname:
                 return vtf
 
-    def vtc_get_vtfs(self):
+    def r_vtc_get_vtfs(self):
         vtf_host_last = self.lab().get_nodes_by_class(VtsHost)[-1]
-        ans = self._rest_api(resource='GET /api/running/cisco-vts', headers={'Accept': 'application/vnd.yang.collection+json'})
+        ans = self._rest_api(resource='GET /api/running/cisco-vts', headers={'Accept': 'application/vnd.yang.data+json'})
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
         vtf_nodes = self.lab().get_nodes_by_class(Vtf)
         for vtf in vtf_nodes:
