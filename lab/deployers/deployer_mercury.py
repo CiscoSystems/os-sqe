@@ -11,7 +11,7 @@ class DeployerMercury(Deployer):
 
         self._installer_source = config['installer-source']
         self._lab_path = config['hardware-lab-config']
-        self._type_of_installe = config['type-of-install']
+        self._type_of_install = config['type-of-install']
 
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
@@ -25,7 +25,7 @@ class DeployerMercury(Deployer):
             l = Laboratory(config_path=self._lab_path)
             build_node = l.get_node_by_id('bld')
 
-        if self._type_of_installe == 'iso':
+        if self._type_of_install == 'iso':
             while True:
                 ip, username, password = build_node.get_oob()
                 ans = prompt('Run remote mounted ISO installation on http://{} ({}/{}) with RemoteShare={} RemoteFile=buildnode.iso, print FINISH when ready'.format(ip, username, password, self._installer_source))
@@ -33,32 +33,31 @@ class DeployerMercury(Deployer):
                     break
             installer_dir = build_node.run('find . -name installer*')
         else:
-            # build_node.register_rhel(self._rhel_creds_source)
-            # build_node.run('yum install -y $(cat {}/redhat_packages.txt)'.format(installer_dir))
-
-            ans = build_node.run('ls -d installer*')
-            if 'installer-' in ans:
+            mercury_tag = self._installer_source.split('/')[-1]
+            ans = build_node.exe('ls -d installer*')
+            if 'installer-' + mercury_tag in ans:
                 installer_dir = ans
                 build_node.run('test -f setup_data.yaml.orig || cp {}/openstack-configs/setup_data.yaml setup_data.yaml.orig'.format(installer_dir))
             else:
                 tar_url = self._installer_source + '/mercury-installer-internal.tar.gz'
                 tar_path = build_node.wget_file(url=tar_url)
-                ans = build_node.run('tar xzvf {}'.format(tar_path))
+                ans = build_node.exe('tar xzvf {}'.format(tar_path))
                 installer_dir = ans.split('\r\n')[-1].split('/')[1]
 
-                build_node.run(command='rm -rf mercury')  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
-                repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
-                build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
-                build_node.run(command='./bootstrap.sh -T {}'.format(installer_dir[-4:]), in_directory=repo_dir + '/internal')
-                build_node.run(command='./unbootstrap.sh -y', in_directory=repo_dir + '/installer', warn_only=True)
+                # build_node.run(command='rm -rf mercury')  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
+                # repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
+                # build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
+                # build_node.run(command='./bootstrap.sh -T {}'.format(mercury_tag), in_directory=repo_dir + '/internal')
+                build_node.exe(command='rm -f openstack-configs')
+                build_node.exe(command='./unbootstrap.sh -y', in_directory=installer_dir, is_warn_only=True)
                 kernel_version = build_node.run('uname -r')
                 if kernel_version != '3.10.0-327.18.2.el7.x86_64':
                     build_node.reboot()
 
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
-        build_node.run('rm -rf /var/log/mercury/*')
+        build_node.exe('rm -rf /var/log/mercury/*')
 
-        build_node.run(command='./runner/runner.py -y', in_directory=installer_dir)
+        build_node.exe(command='./runner/runner.py -y', in_directory=installer_dir)
 
         return Cloud(cloud='mercury', user='demo', admin='admin', tenant='demo', password='????')
 
