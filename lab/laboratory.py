@@ -171,7 +171,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
     def _get_role_class(role):
         from lab.nodes.fi import FI, FiDirector, FiController, FiCompute, FiCeph
         from lab.n9k import Nexus
-        from lab.asr import Asr
+        from lab.nodes.asr import Asr
         from lab.tor import Tor, Oob, Pxe, Terminal
         from lab.nodes.cobbler import CobblerServer
         from lab.cimc import CimcDirector, CimcController, CimcCompute, CimcCeph

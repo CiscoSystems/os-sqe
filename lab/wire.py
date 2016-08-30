@@ -92,7 +92,7 @@ class Wire(object):
 
     def is_n9_asr(self):
         from lab.n9k import Nexus
-        from lab.asr import Asr
+        from lab.nodes.asr import Asr
 
         return isinstance(self._node_S, Nexus) and isinstance(self._node_N, Asr)
 

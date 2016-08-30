@@ -4,7 +4,7 @@ class WithOspd7(object):
 
     def configure_for_osp7(self, topology=TOPOLOGY_VLAN):
         from lab.nodes.fi import FI
-        from lab.asr import Asr
+        from lab.nodes.asr import Asr
         from lab.nodes.cobbler import CobblerServer
 
         if topology not in self.SUPPORTED_TOPOLOGIES:
