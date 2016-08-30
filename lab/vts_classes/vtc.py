@@ -360,15 +360,10 @@ class Vtc(Server):
 
     def r_collect_information(self):
         body = ''
-        for cmd in ['grep -i error /var/log/ncs/*', ' cat /var/log/ncs/localhost\:8888.access']:
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex='ERROR'), self._form_log_grep_cmd(log_files='/var/log/ncs/localhost\:8888.access')]:
             ans = self.run(cmd)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
-
-    def get_all_logs(self, name):
-        body = ''
-        for node in self.lab().get_nodes_by_class([Vtc, Xrvr]):
-            body += node.r_get_logs()
 
     def vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
         pass

@@ -1,2 +1,0 @@
-deployer1: {lab.deployers.deployer_existing_osp7.DeployerExistingOSP7: {cloud: g10, hardware-lab-config: g10.yaml }}
-runner1: {lab.runners.runner_get_logs.RunnerGetLogs: {cloud: g10, minutes: 10,  regex: ERROR}}

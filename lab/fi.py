@@ -244,7 +244,7 @@ exit
         self.create_user(username=neutron_username, password=self._password)  # special user to be used by neutron services
         self.create_uplink(wires=self._upstream_wires)
         self.create_uuid_pool(pool_name=uuid_pool_name, n_uuids=n_servers)
-        self.create_boot_policies(vnics=self._lab.ucsm_nets_with_pxe())
+        self.create_boot_policies(vnics=self._lab.get_ucsm_nets_with_pxe())
         self.create_dynamic_vnic_connection_policy(policy_name=dynamic_vnic_policy_name)
         self.create_vlans(vlans=self.lab().get_all_vlans())
         self.create_server_pool(name=server_pool_name)

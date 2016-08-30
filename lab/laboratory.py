@@ -286,7 +286,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
     def get_neutron_creds(self):
         return self._neutron_username, self._neutron_password
 
-    def ucsm_nets_with_pxe(self):
+    def get_ucsm_nets_with_pxe(self):
         return [x for x in self._cfg['nets'].keys() if 'pxe' in x]
 
     def get_vlan_range(self):
@@ -361,4 +361,3 @@ class Laboratory(WithOspd7, WithLogMixIn):
             if 'r_collect_information' in dir(node):
                 body = node.r_collect_information()
                 self.log_to_artifact(name='{}-{}.txt'.format(name, node.get_id()), body=body)
-
