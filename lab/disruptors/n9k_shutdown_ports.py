@@ -1,5 +1,5 @@
 def start(lab, log, args):
-    from lab.n9k import Nexus
+    from lab.nodes.n9k import Nexus
     import fabric.network
     import time
     timeout = args.get("timeout", 100)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from fabric.api import task
+
 from lab import decorators
 
 
@@ -236,7 +237,7 @@ def conf():
     from fabric.operations import prompt
     import validators
     import six
-    from lab.n9k import Nexus
+    from lab.nodes.n9k import Nexus
     from lab.with_config import open_artifact
 
     n9k_ip = prompt(text='Enter one of your N9K OOB IP: ')

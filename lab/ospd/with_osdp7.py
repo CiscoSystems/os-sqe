@@ -22,7 +22,7 @@ class WithOspd7(object):
         from lab.with_config import read_config_from_file
         from lab.cimc import CimcServer
         from lab.nodes.fi import FI
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
 
         lab_logger.info('Creating config for osp7_bootstrap')
         osp7_install_template = read_config_from_file(config_path='./configs/osp7/osp7-install.yaml', is_as_string=True)

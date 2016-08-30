@@ -102,7 +102,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
     @staticmethod
     def _check_port_id_correctness(klass, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25
         from lab.cimc import CimcServer
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
         from lab.nodes.fi import FI, FiServer
 
         possible_mlom = ['MLOM-0/0', 'MLOM-0/1']
@@ -170,7 +170,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
     @staticmethod
     def _get_role_class(role):
         from lab.nodes.fi import FI, FiDirector, FiController, FiCompute, FiCeph
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
         from lab.nodes.asr import Asr
         from lab.nodes.tor import Tor, Oob, Pxe, Terminal
         from lab.nodes.cobbler import CobblerServer
@@ -262,7 +262,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
         return filter(lambda x: type(x) is Xrvr, self._nodes)
 
     def get_n9k(self):
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
 
         return filter(lambda x: type(x) is Nexus, self._nodes)
 
@@ -341,7 +341,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
         return inventory
 
     def r_n9_configure(self, is_clean_before=False):
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
 
         list_of_n9k = self.get_nodes_by_class(Nexus)
         if is_clean_before:

@@ -74,36 +74,36 @@ class Wire(object):
         return self._pc_id
 
     def is_n9_n9(self):
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
 
         return type(self._node_N) is Nexus and type(self._node_S) is Nexus
 
     def is_n9_tor(self):
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
         from lab.nodes.tor import Tor
 
         return type(self._node_N) is Tor and type(self._node_S) is Nexus
 
     def is_n9_pxe(self):
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
         from lab.nodes.tor import Pxe
 
         return type(self._node_N) is Pxe and type(self._node_S) is Nexus
 
     def is_n9_asr(self):
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
         from lab.nodes.asr import Asr
 
         return isinstance(self._node_S, Nexus) and isinstance(self._node_N, Asr)
 
     def is_n9_fi(self):
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
         from lab.nodes.fi import FI
 
         return isinstance(self._node_N, Nexus) and isinstance(self._node_S, FI)
 
     def is_n9_ucs(self):
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
         from lab.cimc import CimcServer
 
         return type(self._node_N) is Nexus and isinstance(self._node_S, CimcServer)
@@ -114,7 +114,7 @@ class Wire(object):
         return isinstance(self._node_N, FI) and isinstance(self._node_S, FiServer)
 
     def is_n9_cobbler(self):
-        from lab.n9k import Nexus
+        from lab.nodes.n9k import Nexus
         from lab.nodes.cobbler import CobblerServer
 
         return isinstance(self._node_N, Nexus) and isinstance(self._node_S, CobblerServer)

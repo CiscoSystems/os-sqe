@@ -75,7 +75,7 @@ def mtputty(lab):
 
 def mobaxterm(lab):
     import os
-    from lab.n9k import Nexus
+    from lab.nodes.n9k import Nexus
     from lab.nodes.fi import FI
     from lab.nodes.tor import Tor
 

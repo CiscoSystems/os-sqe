@@ -1,6 +1,6 @@
 def start(lab, log, args):
     import time
-    from lab import n9k
+    from lab.nodes import n9k
     from lab.nodes import fi
 
     unique_pattern_in_name = args.get('unique_pattern_in_name', 'sqe-test')
