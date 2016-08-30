@@ -14,7 +14,7 @@ class WithLogMixIn(object):
     def upload_artifacts_to_our_server():
         """Store $REPO/*.log and $REPO/artifacts/* on file storage server"""
         from lab import logger
-        from lab.nodes.server import LabServer
+        from lab.nodes.lab_server import LabServer
 
         destination_dir = '{0}-{1}'.format(logger.JENKINS_TAG, logger.REPO_TAG)
         server = LabServer(node_id='our_storage', ip='172.29.173.233', username='localadmin', password='ubuntu', lab=None, name='FileStorage')

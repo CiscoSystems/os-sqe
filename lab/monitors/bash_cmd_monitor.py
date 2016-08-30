@@ -6,7 +6,7 @@ class BashCmdMonitor(Worker):
     # noinspection PyAttributeOutsideInit
     def setup(self):
         import validators
-        from lab.nodes.server import LabServer
+        from lab.nodes.lab_server import LabServer
 
         self._cmd = self._kwargs['cmd']
 

@@ -1,7 +1,7 @@
 def start(lab, log, args):
     """ This scenario is a pythonized version of bash script by Vel Kumar used to create the baseline topo for SRIOV bandwidth measurement
     """
-    from lab.nodes.server import LabServer
+    from lab.nodes.lab_server import LabServer
 
     cloud = lab.cloud
 

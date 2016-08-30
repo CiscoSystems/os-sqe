@@ -18,7 +18,7 @@ class RunnerCloud99(Runner):
 
 
     def run_on_director(self, director_ip):
-        from lab.nodes.server import LabServer
+        from lab.nodes.lab_server import LabServer
 
         director = LabServer(ip=director_ip, username='root', password='cisco123')
 

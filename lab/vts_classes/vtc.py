@@ -1,5 +1,5 @@
 from lab.cimc import CimcServer
-from lab.nodes.server import LabServer
+from lab.nodes.lab_server import LabServer
 from lab.vts_classes.vtf import Vtf
 from lab.vts_classes.xrvr import Xrvr
 

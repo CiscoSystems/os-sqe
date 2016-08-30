@@ -17,7 +17,7 @@ class ProviderLibvirt(Provider):
     def __init__(self, config):
         import libvirt
         import os
-        from lab.nodes.server import LabServer
+        from lab.nodes.lab_server import LabServer
 
         super(ProviderLibvirt, self).__init__(config=config)
         self.lab_id = config['lab_id']
@@ -121,7 +121,7 @@ class ProviderLibvirt(Provider):
         return main_disk
 
     def create_server(self, dev_num, hostname, on_nets, image_url, image_checksum):
-        from lab.nodes.server import LabServer
+        from lab.nodes.lab_server import LabServer
 
         net_tmpl = '''
 <interface type='network'>
