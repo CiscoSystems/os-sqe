@@ -68,7 +68,7 @@ class ProviderCobbler(Provider):
         return rendered_system['mgmt_parameters']['username']
 
     def reboot_system(self, system_name):
-        from lab.nodes.server import Server
+        from lab.nodes.server import LabServer
         from lab.logger import lab_logger
 
         token = self.__cobbler.login(self._user, self._password)
@@ -79,7 +79,7 @@ class ProviderCobbler(Provider):
             self.__cobbler.modify_system(handle, 'ks_meta', 'ProvTime={0}'.format(self._prov_time), token)
 
         rendered = self.__cobbler.get_system_as_rendered(system_name)
-        server = Server(name=system_name, lab=None, ip=self.ip_for_system(rendered), username='root', password=self._system_password, hostname=rendered['hostname'])
+        server = LabServer(name=system_name, lab=None, ip=self.ip_for_system(rendered), username='root', password=self._system_password, hostname=rendered['hostname'])
         server.set_ipmi(ip=rendered['power_address'], username=rendered['power_user'], password=rendered['power_pass'])
         lab_logger.info('server {0} is being provisioned by PXE re-booting... (might take several minutes- please wait)'.format(server))
 

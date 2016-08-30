@@ -1,7 +1,7 @@
-from lab.nodes.server import Server
+from lab.nodes.server import LabServer
 
 
-class Vtf(Server):
+class Vtf(LabServer):
     ROLE = 'vtf'
 
     def form_mac(self, net_octet_in_mac):

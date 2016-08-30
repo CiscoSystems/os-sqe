@@ -1,8 +1,8 @@
 from lab.nodes import LabNode
-from lab.nodes.server import Server
+from lab.nodes.server import LabServer
 
 
-class FiServer(Server):
+class FiServer(LabServer):
     _server_id = None
     _service_profile_name = None
 

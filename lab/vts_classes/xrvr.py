@@ -1,11 +1,11 @@
-from lab.nodes.server import Server
+from lab.nodes.server import LabServer
 
 # use telnet 0 5087 from xrnc to see the bootstrap process just after spinning up XRNC VM
 # configuration is kept in sudo cat /etc/vpe/vsocsr/dl_server.ini on cisco@xrnc
 # error loging in /var/log/sr/dl_registration_errors.log
 
 
-class Xrvr(Server):
+class Xrvr(LabServer):
     ROLE = 'xrvr'
 
     def form_mac(self, net_octet_in_mac):

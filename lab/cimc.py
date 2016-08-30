@@ -1,7 +1,7 @@
-from lab.nodes.server import Server
+from lab.nodes.server import LabServer
 
 
-class CimcServer(Server):
+class CimcServer(LabServer):
     LOM_ENABLED, LOM_DISABLED = 'Enabled', 'Disabled'
     POWER_UP, POWER_DOWN, POWER_CYCLE = 'up', 'down', 'cycle-immediate'
     RAID_0, RAID_1, RAID_10 = '0', '1', '10'

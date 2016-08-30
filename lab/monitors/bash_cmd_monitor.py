@@ -6,12 +6,12 @@ class BashCmdMonitor(Worker):
     # noinspection PyAttributeOutsideInit
     def setup(self):
         import validators
-        from lab.nodes.server import Server
+        from lab.nodes.server import LabServer
 
         self._cmd = self._kwargs['cmd']
 
         if validators.ipv4(self._ip):
-            self._node = Server(node_id='Server{}'.format(self._ip), role='vtc', lab=None, hostname='NoDefined')
+            self._node = LabServer(node_id='Server{}'.format(self._ip), role='vtc', lab=None, hostname='NoDefined')
             self._node.set_ssh_creds(ip=self._ip, username=self._username, password=self._password)
         else:
             lab = self._cloud.mediator.lab()

@@ -1,7 +1,7 @@
 def start(lab, log, args):
     """ This scenario is a pythonized version of bash script by Vel Kumar used to create the baseline topo for SRIOV bandwidth measurement
     """
-    from lab.nodes.server import Server
+    from lab.nodes.server import LabServer
 
     cloud = lab.cloud
 
@@ -35,7 +35,7 @@ def start(lab, log, args):
         cloud.cmd('nova floating-ip-associate {instance_name} {fip}'.format(instance_name=instance_name, fip=fips[i]))
 
         cloud.cmd('ping -c5 {fip}'.format(fip=fips[i]))
-        instances[i] = Server(ip=fips[i], username='root', lab=None, name='a')
+        instances[i] = LabServer(ip=fips[i], username='root', lab=None, name='a')
 
     # export http_proxy=http://proxy-wsa.esl.cisco.com:80/ && export https_proxy=http://proxy-wsa.esl.cisco.com:80/ && yum -y install epel-release && yum -y  update && yum -y install iperf
     # service iptables stop && chkconfig iptables off

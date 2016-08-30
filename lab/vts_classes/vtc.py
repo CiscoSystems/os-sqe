@@ -1,14 +1,14 @@
 from lab.cimc import CimcServer
-from lab.nodes.server import Server
+from lab.nodes.server import LabServer
 from lab.vts_classes.vtf import Vtf
 from lab.vts_classes.xrvr import Xrvr
 
 
-class Vtc(Server):
+class Vtc(LabServer):
     ROLE = 'vtc'
 
     def __init__(self, node_id, role, lab, hostname):
-        super(Server, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
+        super(LabServer, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
         self._is_api_via_vip = True
 

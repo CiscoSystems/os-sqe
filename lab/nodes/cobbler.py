@@ -1,7 +1,7 @@
-from lab.nodes.server import Server
+from lab.nodes.server import LabServer
 
 
-class CobblerServer(Server):
+class CobblerServer(LabServer):
     ROLE = 'cobbler'
 
     def cmd(self, cmd):

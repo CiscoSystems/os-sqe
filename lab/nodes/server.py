@@ -1,7 +1,7 @@
 from lab.nodes import LabNode
 
 
-class Server(LabNode):
+class LabServer(LabNode):
 
     N_CONNECTION_ATTEMPTS = 200
     _temp_dir = None
@@ -27,7 +27,7 @@ class Server(LabNode):
         self._package_manager = None
         self._mac_server_part = None
 
-        super(Server, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
+        super(LabServer, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
 
     def get_package_manager(self):
         if not self._package_manager:
