@@ -1,6 +1,6 @@
 def start(lab, log, args):
     import validators
-    from lab import fi
+    from lab.nodes import fi
 
     is_show_details = args.get('is-show-details', False)
     name_or_ip = args.get('name_or_ip', 'from_lab')

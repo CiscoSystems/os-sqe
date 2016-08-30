@@ -59,7 +59,7 @@ class CobblerServer(Server):
     def cobbler_deploy(self):
         import getpass
         from lab.time_func import time_as_string
-        from lab.fi import FiServer
+        from lab.nodes.fi import FiServer
         from lab.cimc import CimcServer
 
         ks_meta = 'ProvTime={}-by-{}'.format(time_as_string(), getpass.getuser())

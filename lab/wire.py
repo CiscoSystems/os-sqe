@@ -98,7 +98,7 @@ class Wire(object):
 
     def is_n9_fi(self):
         from lab.n9k import Nexus
-        from lab.fi import FI
+        from lab.nodes.fi import FI
 
         return isinstance(self._node_N, Nexus) and isinstance(self._node_S, FI)
 
@@ -109,7 +109,7 @@ class Wire(object):
         return type(self._node_N) is Nexus and isinstance(self._node_S, CimcServer)
 
     def is_fi_ucs(self):
-        from lab.fi import FI, FiServer
+        from lab.nodes.fi import FI, FiServer
 
         return isinstance(self._node_N, FI) and isinstance(self._node_S, FiServer)
 

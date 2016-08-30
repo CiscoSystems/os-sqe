@@ -103,7 +103,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
     def _check_port_id_correctness(klass, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25
         from lab.cimc import CimcServer
         from lab.n9k import Nexus
-        from lab.fi import FI, FiServer
+        from lab.nodes.fi import FI, FiServer
 
         possible_mlom = ['MLOM-0/0', 'MLOM-0/1']
         possible_lom = ['LOM-1', 'LOM-2']
@@ -169,7 +169,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
 
     @staticmethod
     def _get_role_class(role):
-        from lab.fi import FI, FiDirector, FiController, FiCompute, FiCeph
+        from lab.nodes.fi import FI, FiDirector, FiController, FiCompute, FiCeph
         from lab.n9k import Nexus
         from lab.asr import Asr
         from lab.tor import Tor, Oob, Pxe, Terminal
@@ -242,7 +242,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
 
     def get_director(self):
         from lab.cimc import CimcDirector
-        from lab.fi import FiDirector
+        from lab.nodes.fi import FiDirector
 
         return filter(lambda x: type(x) in [CimcDirector, FiDirector], self._nodes) or self.get_controllers()[0]
 
@@ -268,13 +268,13 @@ class Laboratory(WithOspd7, WithLogMixIn):
 
     def get_controllers(self):
         from lab.cimc import CimcController
-        from lab.fi import FiController
+        from lab.nodes.fi import FiController
 
         return filter(lambda x: type(x) in [CimcController, FiController], self._nodes)
 
     def get_computes(self):
         from lab.cimc import CimcCompute
-        from lab.fi import FiCompute
+        from lab.nodes.fi import FiCompute
 
         return filter(lambda x: type(x) in [CimcCompute, FiCompute], self._nodes)
 

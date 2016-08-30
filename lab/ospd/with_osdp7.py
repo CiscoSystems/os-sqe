@@ -3,7 +3,7 @@ class WithOspd7(object):
     TOPOLOGY_VLAN, TOPOLOGY_VXLAN = SUPPORTED_TOPOLOGIES
 
     def configure_for_osp7(self, topology=TOPOLOGY_VLAN):
-        from lab.fi import FI
+        from lab.nodes.fi import FI
         from lab.asr import Asr
         from lab.nodes.cobbler import CobblerServer
 
@@ -21,7 +21,7 @@ class WithOspd7(object):
         from lab.logger import lab_logger
         from lab.with_config import read_config_from_file
         from lab.cimc import CimcServer
-        from lab.fi import FI
+        from lab.nodes.fi import FI
         from lab.n9k import Nexus
 
         lab_logger.info('Creating config for osp7_bootstrap')

@@ -170,30 +170,30 @@ class LabNode(WithLogMixIn):
         return isinstance(self, CimcServer)
 
     def is_fi_server(self):
-        from lab.fi import FiServer
+        from lab.nodes.fi import FiServer
 
         return isinstance(self, FiServer)
 
     def is_director(self):
-        from lab.fi import FiDirector
+        from lab.nodes.fi import FiDirector
         from lab.cimc import CimcDirector
 
         return type(self) in [FiDirector, CimcDirector]
     
     def is_controller(self):
-        from lab.fi import FiController
+        from lab.nodes.fi import FiController
         from lab.cimc import CimcController
 
         return type(self) in [FiController, CimcController]
 
     def is_compute(self):
-        from lab.fi import FiCompute
+        from lab.nodes.fi import FiCompute
         from lab.cimc import CimcCompute
     
         return type(self) in [FiCompute, CimcCompute]
 
     def is_ceph(self):
-        from lab.fi import FiCeph
+        from lab.nodes.fi import FiCeph
         from lab.cimc import CimcCeph
 
         return type(self) in [FiCeph, CimcCeph]
