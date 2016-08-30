@@ -26,7 +26,6 @@ class Vtc(LabServer):
     def _rest_api(self, resource, headers, data=None, params=None):
         import requests
         import json
-
         # from requests.packages import urllib3
 
         # urllib3.disable_warnings()  # Suppressing warning due to self-signed certificate

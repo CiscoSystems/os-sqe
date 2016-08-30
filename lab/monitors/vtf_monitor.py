@@ -10,8 +10,11 @@ class VtfMonitor(Worker):
     def setup(self):
         from lab.vts_classes.vtc import Vtc
 
-        self._lab = self._cloud.mediator.lab()
-        self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes_by_class(Vtc)[0]
+        if self._ip:
+            self._vtc = Vtc(node_id='vtc-x', role='vtc', lab=self._lab, hostname='NoDefined')
+            self._vtc.set_ssh_creds(username=self._username, password=self._password)
+        else:
+            self._vtc = self._lab.get_nodes_by_class(Vtc)[0]
 
     def loop(self):
         # List of networks defined in OpenStack
@@ -40,8 +43,7 @@ class VtfMonitor(Worker):
                 for vtf_ip in vtf_ips:
                     if vtf_ip == vtf._ip:
                         continue
-                    tunnel_str = '{src} (src) {dst} (dst) vni {vni} ' \
-                                 'encap_fib_index 0 decap_next l2'.format(src=vtf._ip, dst=vtf_ip, vni=vni_number)
+                    tunnel_str = '{src} (src) {dst} (dst) vni {vni} encap_fib_index 0 decap_next l2'.format(src=vtf._ip, dst=vtf_ip, vni=vni_number)
                     vtf_sync[str(vtf._ip)] &= any([tunnel_str in tunnel_raw for tunnel_raw in tunnels_raw])
 
         for vtf_ip, sync in vtf_sync.items():

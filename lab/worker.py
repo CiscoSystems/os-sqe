@@ -2,11 +2,12 @@ import abc
 
 
 class Worker(object):
-    def __init__(self,  cloud, **kwargs):
+    def __init__(self,  cloud, lab, **kwargs):
         import validators
 
         self._kwargs = kwargs
         self._cloud = cloud
+        self._lab = lab
         self._ip = kwargs.get('ip')
         if self._ip:
             if validators.ipv4(self._ip):

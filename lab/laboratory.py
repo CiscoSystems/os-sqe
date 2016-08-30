@@ -202,21 +202,19 @@ class Laboratory(WithOspd7, WithLogMixIn):
 
             try:
                 node.set_oob_creds(ip=node_description['oob-ip'], username=node_description['oob-username'], password=node_description['oob-password'])
-                node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'])
+                node.set_hardware_info(ru=node_description.get('ru', 'Default in Laboratory._create_node()'), model=node_description.get('model', 'Default in Laboratory._create_node()'))
+                if 'set_ssh_creds' in dir(node):
+                    node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'])
+                if 'set_ucsm_id' in dir(node):
+                    node.set_ucsm_id(node_description['ucsm-id'])
+                if 'set_vip' in dir(node):
+                    node.set_vip(node_description['vip'])
+                if 'set_sriov' in dir(node):
+                    node.set_sriov(self._is_sriov)
+                self._nodes.append(node)
+                return node
             except KeyError as ex:
                 raise ValueError('Node "{}": has no "{}"'.format(node_id, ex.message))
-
-            if 'set_ucsm_id' in dir(node):
-                node.set_ucsm_id(node_description['ucsm-id'])
-            if 'set_vip' in dir(node):
-                node.set_vip(node_description['vip'])
-            if 'set_sriov' in dir(node):
-                node.set_sriov(self._is_sriov)
-            if 'director' in node.get_role():
-                self._director = node
-            node.set_hardware_info(ru=node_description.get('ru', 'Default in Laboratory._create_node()'), model=node_description.get('model', 'Default in Laboratory._create_node()'))
-            self._nodes.append(node)
-            return node
         except KeyError as ex:
             ValueError('"{}" for node "{}" is not provided'.format(ex.message, node_description))
 

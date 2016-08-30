@@ -17,7 +17,7 @@ class ProviderLibvirt(Provider):
     def __init__(self, config):
         import libvirt
         import os
-        from lab.nodes.lab_server import LabServer
+        from lab.server import Server
 
         super(ProviderLibvirt, self).__init__(config=config)
         self.lab_id = config['lab_id']
@@ -33,7 +33,7 @@ class ProviderLibvirt(Provider):
         self.domain_tmpl = self.read_config_from_file(config_path='domain_template.txt', directory='libvirt', is_as_string=True)
         self.connection = libvirt.open()
         self.servers = []
-        self.local = LabServer(ip='localhost')
+        self.local = Server(ip='localhost', username='root', password=Server.USE_SSH_KEY)
 
     def delete_lab(self):
         import libvirt
@@ -121,7 +121,7 @@ class ProviderLibvirt(Provider):
         return main_disk
 
     def create_server(self, dev_num, hostname, on_nets, image_url, image_checksum):
-        from lab.nodes.lab_server import LabServer
+        from lab.server import Server
 
         net_tmpl = '''
 <interface type='network'>
@@ -159,7 +159,7 @@ class ProviderLibvirt(Provider):
         ip = self.ip_for_mac_by_looking_at_libvirt_leases(net=net_names[0], mac=macs[0])
 
         lab_logger.info(msg='Domain {0} created'.format(hostname))
-        return LabServer(ip=ip, username=self.username)
+        return Server(ip=ip, username=self.username, password=Server.USE_SSH_KEY)
 
     def create_servers(self):
         for server_num, server in enumerate(self.instances, start=1):

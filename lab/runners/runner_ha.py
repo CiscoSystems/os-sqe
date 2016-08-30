@@ -31,6 +31,7 @@ class RunnerHA(Runner):
 
         try:
             cloud = filter(lambda x: x.name == self._cloud_name, clouds)[0]
+            lab = servers[0].lab()
         except IndexError:
             raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self._cloud_name))
 
@@ -41,7 +42,7 @@ class RunnerHA(Runner):
                 path_to_module, class_name = arguments['class'].rsplit('.', 1)
                 module = importlib.import_module(path_to_module)
                 klass = getattr(module, class_name)
-                workers_to_run.append(klass(cloud=cloud, **arguments))
+                workers_to_run.append(klass(cloud=cloud, lab=lab, **arguments))
             except KeyError:
                 raise ValueError('There is no "class" specifying the worker class path in {0}'.format(self._task_yaml_path))
             except ImportError:
