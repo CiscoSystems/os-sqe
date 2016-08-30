@@ -216,7 +216,7 @@ export OS_AUTH_URL={end_point}
                 d2[row[0]] = row[1]
             else:
                 headers = headers or line_to_row(output_lines[1])
-                output_list.append({headers[i]: row[i] for i in xrange(len(columns))})
+                output_list.append({headers[i]: row[i] for i in range(len(columns))})
 
         return output_list if output_list else [d2]
 
@@ -239,17 +239,17 @@ export OS_AUTH_URL={end_point}
     def get_cidrs4(class_a, how_many):
         from netaddr import IPNetwork
 
-        return map(lambda number: IPNetwork('{a}.{b}.{c}.0/24'.format(a=class_a, b=number / 256, c=number % 256)), xrange(1, how_many+1))
+        return map(lambda number: IPNetwork('{a}.{b}.{c}.0/24'.format(a=class_a, b=number / 256, c=number % 256)), range(1, how_many+1))
 
     def get_net_names(self, common_part_of_name, how_many):
-        return map(lambda number: '{sqe_pref}-{name}-net-{number}'.format(sqe_pref=self._unique_pattern_in_name, name=common_part_of_name, number=number), xrange(1, how_many+1))
+        return map(lambda number: '{sqe_pref}-{name}-net-{number}'.format(sqe_pref=self._unique_pattern_in_name, name=common_part_of_name, number=number), range(1, how_many+1))
 
     def get_net_subnet_lines(self, common_part_of_name, class_a, how_many, vlan=None, is_dhcp=True):
         net_names = self.get_net_names(common_part_of_name=common_part_of_name, how_many=how_many)
         subnet_names = map(lambda x: x.replace('-net-', '-subnet-'), net_names)
         cidrs = self.get_cidrs4(class_a=class_a, how_many=how_many)
         net_vs_subnet = {}
-        for i in xrange(len(net_names)):
+        for i in range(len(net_names)):
             phys_net_addon = '--provider:physical_network={phys_net} --provider:network_type=vlan --provider:segmentation_id={vlan}'.format(phys_net=self._provider_physical_network, vlan=vlan+i) if vlan else ''
 
             net_line = 'openstack network create {name} {addon} -f shell'.format(name=net_names[i], addon=phys_net_addon)
@@ -264,7 +264,7 @@ export OS_AUTH_URL={end_point}
 
     def create_net_subnet(self, common_part_of_name, class_a, how_many, vlan=None, is_dhcp=True):
         net_vs_subnet_names = {}
-        for net_line, subnet_line in sorted(self.get_net_subnet_lines(common_part_of_name=common_part_of_name, class_a=class_a, how_many=how_many, vlan=vlan, is_dhcp=is_dhcp).iteritems()):
+        for net_line, subnet_line in sorted(self.get_net_subnet_lines(common_part_of_name=common_part_of_name, class_a=class_a, how_many=how_many, vlan=vlan, is_dhcp=is_dhcp).items()):
             network = self.cmd(net_line)
             subnet = self.cmd(subnet_line)
             net_vs_subnet_names[network['name']] = {'network': network, 'subnet': subnet}
@@ -322,7 +322,7 @@ export OS_AUTH_URL={end_point}
         return ip, mac
 
     def create_fips(self, how_many):
-        fips = map(lambda _: self.cmd('neutron floatingip-create {0}'.format(self._fip_network)), xrange(how_many))
+        fips = map(lambda _: self.cmd('neutron floatingip-create {0}'.format(self._fip_network)), range(how_many))
         return fips
 
     def create_key_pair(self):
