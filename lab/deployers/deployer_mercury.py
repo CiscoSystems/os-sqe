@@ -19,11 +19,12 @@ class DeployerMercury(Deployer):
         from fabric.operations import prompt
         from lab.laboratory import Laboratory
 
+        lab = Laboratory(config_path=self._lab_path)
+
         try:
             build_node = filter(lambda x: type(x) is CimcDirector, list_of_servers)[0]
         except IndexError:
-            l = Laboratory(config_path=self._lab_path)
-            build_node = l.get_node_by_id('bld')
+            build_node = lab.get_node_by_id('bld')
 
         if self._type_of_install == 'iso':
             while True:
@@ -58,8 +59,9 @@ class DeployerMercury(Deployer):
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
         build_node.exe('rm -rf /var/log/mercury/*')
 
-        build_node.exe(command='./runner/runner.py', in_directory=installer_dir)
+        build_node.exe(command='./runner/runner.py', in_directory=installer_dir, is_warn_only=True)
 
+        lab.r_collect_information()
         return Cloud(cloud='mercury', user='demo', admin='admin', tenant='demo', password='????')
 
     def create_setup_yaml(self, build_node, installer_dir):
