@@ -21,7 +21,7 @@ class VtsDisruptor(Worker):
         except KeyError:
             raise ValueError('This monitor requires downtime and node-to-disrupt')
         lab = self._cloud.mediator.lab()
-        self._vtc = Vtc(node_id='VtcSpecial', role='vtc', lab=None, hostname='NoDefined') if self._ip else lab.get_nodes_by_class(Vtc)[0]
+        self._vtc = Vtc(node_id='VtcSpecial', role='vtc', lab=None) if self._ip else lab.get_nodes_by_class(Vtc)[0]
         if self._ip:
             self._vtc.set_oob_creds(ip=self._ip, username=self._username, password=self._password)
         if 'vtc' in self._node_to_disrupt:

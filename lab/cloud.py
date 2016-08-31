@@ -132,7 +132,7 @@ export OS_AUTH_URL={end_point}
         import json
 
         server = server or self.mediator
-        ans = server.run(command='{cmd} {creds}'.format(cmd=cmd, creds=self), warn_only=is_warn_only)
+        ans = server.exe(command='{cmd} {creds}'.format(cmd=cmd, creds=self), is_warn_only=is_warn_only)
         if '-f csv' in cmd:
             return self._process_csv_output(ans)
         elif '-f json' in cmd:
