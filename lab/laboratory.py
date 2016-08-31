@@ -6,11 +6,6 @@ class Laboratory(WithOspd7, WithLogMixIn):
     def __repr__(self):
         return self._lab_name
 
-    def log(self, message):
-        from lab.logger import lab_logger
-
-        lab_logger.info('{}: {}'.format(self, message))
-
     def __init__(self, config_path):
         from lab import with_config
         from lab.network import Network
@@ -198,7 +193,6 @@ class Laboratory(WithOspd7, WithLogMixIn):
             role = node_description['role']
 
             klass = self._get_role_class(role)
-            print klass
             node = klass(lab=self, node_id=node_id, role=role)
 
             try:

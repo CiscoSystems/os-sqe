@@ -100,7 +100,7 @@ class DeployerMercury(Deployer):
         for node in lab.get_controllers() + lab.get_computes():
             oob_ip, oob_username, oob_password = node.get_oob()
             ru = node.get_hardware_info()[0]
-            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n\n'.format(nm=node.hostname(), p=oob_password, ip=oob_ip, ru=ru)
+            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n\n'.format(nm=node.get_hostname(), p=oob_password, ip=oob_ip, ru=ru)
 
         installer_config_body = installer_config_template.format(common_username_oob=bld_username_oob, common_password_oob=bld_password_api, dns_ip=dns_ip,
                                                                  api_cidr=api_cidr, api_pref_len=api_pref_len, api_vlan=api_vlan, api_gw=api_gw,
