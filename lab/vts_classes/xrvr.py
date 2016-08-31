@@ -49,7 +49,7 @@ class Xrvr(LabServer):
         else:
             _, username, password = self.get_ssh()
             ip = self.get_nic('mx').get_ip_and_mask()[0]
-            ans = self._proxy_to_run.exe(command='sshpass -p {p} ssh -o StrictHostKeyChecking=no -t {u}@{ip} {cmd}'.format(p=password, u=username, ip=ip, cmd=cmd), warn_only=is_warn_only)
+            ans = self._proxy_to_run.exe(command="sshpass -p {p} ssh -o StrictHostKeyChecking=no -t {u}@{ip} '{cmd}'".format(p=password, u=username, ip=ip, cmd=cmd), is_warn_only=is_warn_only)
         return ans
 
     def create_expect_command_file(self, cmd):
@@ -172,7 +172,7 @@ expect "CPU0:XRVR"
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 
-    def xrnc_start_dl(self):
+    def r_xrnc_start_dl(self):
         own_ip = self.get_nic('t').get_ip_and_mask()[0]
         ips = [x.get_nic('t').get_ip_and_mask()[0] for x in self.lab().get_nodes_by_class(Xrvr)]
         opposite_ip = next(iter(set(ips) - {own_ip}))
