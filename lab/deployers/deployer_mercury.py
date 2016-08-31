@@ -61,7 +61,7 @@ class DeployerMercury(Deployer):
 
         build_node.exe(command='./runner/runner.py', in_directory=installer_dir, is_warn_only=True)
 
-        lab.r_collect_information()
+        lab.r_collect_information(name='after_mercury_runner')
         return Cloud(cloud='mercury', user='demo', admin='admin', tenant='demo', password='????')
 
     def create_setup_yaml(self, build_node, installer_dir):
