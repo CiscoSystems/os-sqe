@@ -8,7 +8,7 @@ class LabNode(WithLogMixIn):
 
     _ROLE_VS_COUNT = {}
 
-    def __init__(self, node_id, role, lab, hostname):
+    def __init__(self, node_id, role, lab):
         self._lab = lab     # link to parent Laboratory object
         self._id = node_id  # some id which unique in the given role, usually role + some small integer
         self._role = role   # which role this node play, possible roles are defined in Laboratory
@@ -16,7 +16,6 @@ class LabNode(WithLogMixIn):
         self._ROLE_VS_COUNT.setdefault(role, 0)
         self._ROLE_VS_COUNT[role] += 1
         self._n = self._ROLE_VS_COUNT[role]  # number of this node in a list of nodes for this role
-        self._hostname = hostname  # usually it's actual hostname as reported by operation system of the node
         self._oob_ip, self._oob_username, self._oob_password = 'Default in LabNode.__init__()', 'Default in LabNode.__init__()', 'Default in LabNode.__init__()'
         self._nics = dict()  # list of NICs
         self._ru, self._model = 'Default in LabNod.__init()', 'Default in LabNod.__init()'
@@ -48,9 +47,6 @@ class LabNode(WithLogMixIn):
 
     def set_oob_creds(self, ip, username, password):
         self._oob_ip, self._oob_username, self._oob_password = ip, username, password
-
-    def hostname(self):
-        return self._hostname
 
     def get_all_wires(self):
         """Returns all ires"""

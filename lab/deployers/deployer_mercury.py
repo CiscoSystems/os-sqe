@@ -37,17 +37,18 @@ class DeployerMercury(Deployer):
             ans = build_node.exe('ls -d installer*')
             if 'installer-' + mercury_tag in ans:
                 installer_dir = ans
-                build_node.run('test -f setup_data.yaml.orig || cp {}/openstack-configs/setup_data.yaml setup_data.yaml.orig'.format(installer_dir))
+                build_node.exe('test -f setup_data.yaml.orig || cp {}/openstack-configs/setup_data.yaml setup_data.yaml.orig'.format(installer_dir))
             else:
+                build_node.exe('rm -rf {}'.format(ans))
                 tar_url = self._installer_source + '/mercury-installer-internal.tar.gz'
                 tar_path = build_node.wget_file(url=tar_url)
                 ans = build_node.exe('tar xzvf {}'.format(tar_path))
                 installer_dir = ans.split('\r\n')[-1].split('/')[1]
 
-                # build_node.run(command='rm -rf mercury')  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
-                # repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
+                build_node.run(command='rm -rf mercury')  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
+                repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
                 # build_node.run(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
-                # build_node.run(command='./bootstrap.sh -T {}'.format(mercury_tag), in_directory=repo_dir + '/internal')
+                build_node.run(command='./bootstrap.sh -T {}'.format(mercury_tag), in_directory=repo_dir + '/internal')
                 build_node.exe(command='rm -f openstack-configs')
                 build_node.exe(command='./unbootstrap.sh -y', in_directory=installer_dir, is_warn_only=True)
                 kernel_version = build_node.run('uname -r')
@@ -57,7 +58,7 @@ class DeployerMercury(Deployer):
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
         build_node.exe('rm -rf /var/log/mercury/*')
 
-        build_node.exe(command='./runner/runner.py -y', in_directory=installer_dir)
+        build_node.exe(command='./runner/runner.py', in_directory=installer_dir)
 
         return Cloud(cloud='mercury', user='demo', admin='admin', tenant='demo', password='????')
 
@@ -92,8 +93,8 @@ class DeployerMercury(Deployer):
         vtc_mx_ip = vtc.get_vtc_vips()[1]
         _, vtc_username, vtc_password = vtc.get_oob()
 
-        controllers_part = '\n     - '.join(map(lambda x: x.hostname(), lab.get_controllers()))
-        computes_part = '\n     - '.join(map(lambda x: x.hostname(), lab.get_computes()))
+        controllers_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_controllers()))
+        computes_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_computes()))
 
         servers_part = ''
         for node in lab.get_controllers() + lab.get_computes():

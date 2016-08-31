@@ -27,7 +27,7 @@ class DeployerVts(Deployer):
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided
             raise RuntimeError('Neither specival VTS hosts no controllers was provided')
 
-        lab = vts_hosts[0].get_lab()
+        lab = vts_hosts[0].lab()
         vtcs = []
         xrncs = []
 
@@ -48,13 +48,13 @@ class DeployerVts(Deployer):
         if not vtcs[0].r_is_xrvr_registered():
             for i in range(len(xrncs)):
                 self.deploy_single_xrnc(vts_host=vts_hosts[i], vtc=vtcs[i], xrnc=xrncs[i])
+            dl_server_status = map(lambda dl: dl.r_xrnc_start_dl(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
+            if not all(dl_server_status):
+                raise RuntimeError('Failed to start DL servers')
             lab.r_collect_information('after_all_xrvr_registered')
         else:
             self.log('all XRNC are already deployed in the previous run')
 
-        dl_server_status = map(lambda dl: dl.xrnc_start_dl(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
-        if not all(dl_server_status):
-            raise RuntimeError('Failed to start DL servers')
         lab.r_collect_information('after_all_dl_servers_started')
 
         vtcs[0].vtc_day0_config()
@@ -101,7 +101,7 @@ class DeployerVts(Deployer):
             raise RuntimeError('Failed to form VTC cluster after 100 attempts')
 
     def _install_needed_rpms(self, vts_host):
-        if self._vts_images_location not in vts_host.exe(command='cat VTS-VERSION', warn_only=True):
+        if self._vts_images_location not in vts_host.exe(command='cat VTS-VERSION', is_warn_only=True):
             self.log('Installing  needed RPMS...')
             vts_host.register_rhel(self._rhel_creds_source)
             vts_host.exe(command='sudo yum update -y')

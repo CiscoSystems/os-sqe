@@ -6,8 +6,8 @@ class CimcServer(LabServer):
     POWER_UP, POWER_DOWN, POWER_CYCLE = 'up', 'down', 'cycle-immediate'
     RAID_0, RAID_1, RAID_10 = '0', '1', '10'
 
-    def __init__(self, node_id, lab, role, hostname):
-        super(CimcServer, self).__init__(node_id=node_id, lab=lab, role=role, hostname=hostname)
+    def __init__(self, node_id, lab, role):
+        super(CimcServer, self).__init__(node_id=node_id, lab=lab, role=role)
         self._handle = None
         self._dump_xml = False
         self._logout_on_each_command = False
@@ -264,7 +264,7 @@ class CimcDirector(CimcServer):
     def r_collect_information(self):
         body = ''
         for cmd in [self._form_log_grep_cmd(log_files='/var/log/mercury/installer/*', regex='ERROR')]:
-            ans = self.exe(cmd)
+            ans = self.exe(command=cmd, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 

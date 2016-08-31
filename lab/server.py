@@ -10,11 +10,10 @@ class Server(object):
         self._package_manager = None
         self._mac_server_part = None
         self._temp_dir = None
-        self._hostname = None
-        self._ip, self._username, self._password = ip, username, password
+        self._ip, self._username, self._password, self._hostname = ip, username, password, None
 
-    def set_ssh_creds(self, username, password):
-        self._username, self._password = username, password
+    def set_ssh_creds(self, username, password, hostname=None):
+        self._username, self._password, self._hostname = username, password, hostname
 
     def set_ssh_ip(self, ip):
         self._ip = ip
@@ -24,6 +23,9 @@ class Server(object):
 
     def get_ssh(self):
         return self._ip, self._username, self._password
+
+    def get_hostname(self):
+        return self._hostname
 
     def get_package_manager(self):
         if not self._package_manager:

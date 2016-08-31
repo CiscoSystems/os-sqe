@@ -4,8 +4,8 @@ from lab.nodes import LabNode
 class Nexus(LabNode):
     ROLE = 'n9'
 
-    def __init__(self, node_id, role, lab, hostname):
-        super(Nexus, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
+    def __init__(self, node_id, role, lab):
+        super(Nexus, self).__init__(node_id=node_id, role=role, lab=lab)
         self.__actual_vpc = None
         self.__actual_pc = None
         self.__actual_vlans = None

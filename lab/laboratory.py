@@ -198,13 +198,14 @@ class Laboratory(WithOspd7, WithLogMixIn):
             role = node_description['role']
 
             klass = self._get_role_class(role)
-            node = klass(lab=self, node_id=node_id, role=role, hostname=node_description.get('hostname', '{}-{}.ctocllab.cisco.com'.format(self, node_id)))
+            print klass
+            node = klass(lab=self, node_id=node_id, role=role)
 
             try:
                 node.set_oob_creds(ip=node_description['oob-ip'], username=node_description['oob-username'], password=node_description['oob-password'])
                 node.set_hardware_info(ru=node_description.get('ru', 'Default in Laboratory._create_node()'), model=node_description.get('model', 'Default in Laboratory._create_node()'))
                 if 'set_ssh_creds' in dir(node):
-                    node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'])
+                    node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'], hostname=node_description.get('hostname', '{}-{}.ctocllab.cisco.com'.format(self, node_id)))
                 if 'set_ucsm_id' in dir(node):
                     node.set_ucsm_id(node_description['ucsm-id'])
                 if 'set_vip' in dir(node):

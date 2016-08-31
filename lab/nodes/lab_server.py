@@ -7,12 +7,12 @@ class LabServer(LabNode, Server):
     def form_mac(self, pattern):
         pass
 
-    def __init__(self, node_id, role, lab, hostname):
+    def __init__(self, node_id, role, lab):
         self._tmp_dir_exists = False
         self._package_manager = None
         self._mac_server_part = None
 
-        LabNode.__init__(self, node_id=node_id, role=role, lab=lab, hostname=hostname)
+        LabNode.__init__(self, node_id=node_id, role=role, lab=lab)
         Server.__init__(self, ip='Not defined in lab_server.py', username='Not defined in lab_server.py', password='Not defined in lab_server.py')
 
     def __repr__(self):

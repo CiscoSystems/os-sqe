@@ -11,8 +11,8 @@ class Xrvr(LabServer):
     def form_mac(self, net_octet_in_mac):
         return '00:{lab:02}:A0:F1:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
 
-    def __init__(self, node_id, role, lab, hostname):
-        super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab, hostname=hostname)
+    def __init__(self, node_id, role, lab):
+        super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab)
         self._expect_commands = {}
         self._proxy_to_run = None
 
