@@ -1,8 +1,6 @@
 ---
-# Project: Tcbr2p
-# ID: Tcbr554c
-# Title: Isolate the active VTC VM from the management network
-# Description: In this test case active VTC VM will be isolated from the management network, but NOT from API network
+- Folder: HIGH AVAILABILITY
+- Description: first create OS VM then start disruptor
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2
@@ -14,9 +12,11 @@
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
-  node-to-disrupt: master-vtc
+  node-to-disrupt: active-vtc
   method-to-disrupt: isolate-from-mx
   how-many-times: 2
   downtime: 100
   uptime: 20
 
+# Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'
+# Possible methods:  'isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop'

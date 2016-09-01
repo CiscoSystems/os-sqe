@@ -270,21 +270,6 @@ def conf():
 
 
 @task
-def dima_report(test_regex='Tcbr'):
-    from lab import with_config
-
-    available_tc = with_config.ls_configs(directory='ha')
-    tests = sorted(filter(lambda x: test_regex in x, available_tc))
-
-    with with_config.open_artifact('dimas_report.txt', 'w') as f:
-        for test in tests:
-            body = with_config.read_config_from_file(config_path=test, directory='ha', is_as_string=True)
-            f.write(body)
-            f.write(80*'-')
-            f.write('\n')
-
-
-@task
 @decorators.print_time
 def ansible():
     from collections import namedtuple
@@ -335,3 +320,12 @@ def ansible():
     finally:
         if tqm is not None:
             tqm.cleanup()
+
+
+@task
+@decorators.print_time
+def tims():
+    from lab.tims import Tims
+
+    t = Tims()
+    t.publish_tests_to_tims()
