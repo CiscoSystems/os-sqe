@@ -8,7 +8,8 @@ class WithLogMixIn(object):
             f.write(body)
 
     def _format_single_cmd_output(self, cmd, ans):
-        return 80 * 'v' + '\n' + self.__repr__() + '> ' + cmd + '\n' + 80 * '^' + '\n' + ans + '\n' + 80 * '-' + '\n\n'
+        n = 160
+        return n * 'v' + '\n' + self.__repr__() + '> ' + cmd + '\n' + n * '^' + '\n' + ans + '\n' + n * '-' + '\n\n'
 
     @staticmethod
     def upload_artifacts_to_our_server():
