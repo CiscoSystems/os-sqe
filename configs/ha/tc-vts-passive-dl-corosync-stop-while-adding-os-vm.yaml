@@ -10,13 +10,13 @@
 - class: lab.scenarios.vts_scenario.VtsScenario
   how-many-networks: 1
   how-many-servers: 1
-  how-many-times: 40
+  n_repeats: 40
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
   node-to-disrupt: passive-dl
   method-to-disrupt: corosync-stop
-  how-many-times: 10
+  n_repeats: 10
   downtime: 100
   uptime: 20
 

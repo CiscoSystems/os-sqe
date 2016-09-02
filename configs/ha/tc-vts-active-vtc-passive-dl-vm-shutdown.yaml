@@ -13,7 +13,7 @@
   delay: 20
   node-to-disrupt: active-vtc
   method-to-disrupt: vm-shutdown
-  how-many-times: 2
+  n_repeats: 2
   downtime: 100
   uptime: 20
 
@@ -21,7 +21,7 @@
   delay: 30
   node-to-disrupt: passive-dl
   method-to-disrupt: vm-shutdown
-  how-many-times: 2
+  n_repeats: 2
   downtime: 100
   uptime: 20
 

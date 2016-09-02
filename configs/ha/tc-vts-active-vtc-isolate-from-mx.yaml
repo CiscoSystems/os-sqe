@@ -14,7 +14,7 @@
   delay: 20
   node-to-disrupt: active-vtc
   method-to-disrupt: isolate-from-mx
-  how-many-times: 2
+  n_repeats: 2
   downtime: 100
   uptime: 20
 
