@@ -74,8 +74,8 @@ def cmd(config_path):
 
 @task
 def ha(lab, test_regex, is_debug=False, is_run_cleanup=False, is_tims=False):
-    """fab ha:g10,tc-vts,no_clean\t\tRun all VTS tests on lab g10
-        :param lab: which lab to use
+    """fab ha:g10,tc-vts\t\tRun all VTS tests on lab 'g10'
+        :param lab: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
         :param is_debug: is True, switch off parallel execution and run in sequence
         :param is_run_cleanup: if True, run cleanup before anything else
@@ -249,7 +249,7 @@ def conf():
     n9k_username = prompt(text='Enter username for N9K at {} (default is {}): '.format(n9k_ip, n9k_username)) or n9k_username
     n9k_password = prompt(text='Enter password for N9K at {} (default is {}): '.format(n9k_ip, n9k_password)) or n9k_password
 
-    n9k = Nexus(node_id=1, role=Nexus.ROLE, lab='fake-lab', hostname='fake-hostname')
+    n9k = Nexus(node_id=1, role=Nexus.ROLE, lab='fake-lab')
     n9k.set_oob_creds(ip=n9k_ip, username=n9k_username, password=n9k_password)
     cdp = n9k.n9_show_cdp_neighbor()
     lldp = n9k.n9_show_lldp_neighbor()

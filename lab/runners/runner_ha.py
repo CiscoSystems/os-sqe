@@ -37,12 +37,14 @@ class RunnerHA(Runner):
 
         workers_to_run = []
         path_to_module = 'Before reading task body'
-        for arguments in self._task_body:
+        for block in self._task_body:
             try:
-                path_to_module, class_name = arguments['class'].rsplit('.', 1)
+                if 'class' not in block:
+                    continue
+                path_to_module, class_name = block['class'].rsplit('.', 1)
                 module = importlib.import_module(path_to_module)
                 klass = getattr(module, class_name)
-                workers_to_run.append(klass(cloud=cloud, lab=lab, **arguments))
+                workers_to_run.append(klass(cloud=cloud, lab=lab, **block))
             except KeyError:
                 raise ValueError('There is no "class" specifying the worker class path in {0}'.format(self._task_yaml_path))
             except ImportError:
