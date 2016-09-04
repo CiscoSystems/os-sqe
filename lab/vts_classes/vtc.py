@@ -140,10 +140,6 @@ class Vtc(LabServer):
             vts_host.exe('ip l s dev vtc-mx-port {}'.format('down' if start_or_stop == 'start' else 'up'))
         elif method_to_disrupt == 'isolate-from-api':
             vts_host.exe('ip l s dev vtc-a-port {}'.format('down' if start_or_stop == 'start' else 'up'))
-        elif method_to_disrupt == 'corosync-stop':
-            vts_host.exe('sudo service corosync {}'.format('stop' if start_or_stop == 'start' else 'start'))
-        elif method_to_disrupt == 'ncs-stop':
-            self.exe('sudo service ncs {}'.format('stop' if start_or_stop == 'start' else 'start'))
         elif method_to_disrupt == 'vm-reboot' and start_or_stop == 'start':
             self.exe('sudo shutdown -r now')
 

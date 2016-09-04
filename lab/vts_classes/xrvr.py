@@ -21,6 +21,17 @@ class Xrvr(LabServer):
         _, xrnc_u, _ = self.get_xrnc_ip_user_pass()
         return u'{l} {n} | on mx: sshpass -p {p} ssh {xrvr}/{xrnc}@{ip} for XRVR/XRNC'.format(l=self.lab(), n=self.get_id(), ip=ip, p=p, xrvr=xrvr_u, xrnc=xrnc_u)
 
+    def disrupt(self, start_or_stop, method_to_disrupt):
+        vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
+        if method_to_disrupt == 'vm-shutdown':
+            vts_host.exe(command='virsh {} vtc'.format('suspend' if start_or_stop == 'start' else 'resume'))
+        elif method_to_disrupt == 'corosync-stop':
+            self.cmd('sudo service corosync {}'.format('stop' if start_or_stop == 'start' else 'start'), is_xrvr=False)
+        elif method_to_disrupt == 'ncs-stop':
+            self.cmd('sudo service ncs {}'.format('stop' if start_or_stop == 'start' else 'start'), is_xrvr=False)
+        elif method_to_disrupt == 'vm-reboot' and start_or_stop == 'start':
+            self.cmd('sudo shutdown -r now', is_xrvr=False)
+
     def get_ip_mx(self):
         return self.get_nic('mx').get_ip_and_mask()[0]
 
@@ -207,4 +218,4 @@ expect "CPU0:XRVR"
         self.exe('grep {n} /etc/hosts || echo {n}\t{ip}\n >> /etc/hosts'.format(n=self.get_id(), ip=self.get_ip_mx()))
 
     def r_border_leaf(self):
-        self.cmd(cmd='conf t interface Loopback0')
+        self.cmd(cmd='conf t interface Loopback0', is_xrvr=True)
