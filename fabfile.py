@@ -73,10 +73,11 @@ def cmd(config_path):
 
 
 @task
-def ha(lab, test_regex, is_debug=False, is_run_cleanup=False, is_tims=False):
+def ha(lab, test_regex, is_exact_match=False, is_debug=False, is_run_cleanup=False, is_tims=False):
     """fab ha:g10,tc-vts\t\tRun all VTS tests on lab 'g10'
         :param lab: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
+        :param is_exact_match: if true, interpret test_regex as exact match to choose single test
         :param is_debug: is True, switch off parallel execution and run in sequence
         :param is_run_cleanup: if True, run cleanup before anything else
         :param is_tims: if True then publish results to TIMS
@@ -89,7 +90,7 @@ def ha(lab, test_regex, is_debug=False, is_run_cleanup=False, is_tims=False):
     lab_name = lab.rsplit('/', 1)[-1].replace('.yaml', '')
 
     available_tc = with_config.ls_configs(directory='ha')
-    tests = sorted(filter(lambda x: test_regex in x, available_tc))
+    tests = sorted(filter(lambda x: test_regex == x if is_exact_match else test_regex in x, available_tc))
 
     if not tests:
         raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
