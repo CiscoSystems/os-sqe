@@ -46,7 +46,7 @@ class DeployerExisting(Deployer):
         director = list_of_servers[0]
 
         openrc_body = None
-        for openrc_path in ['/home/stack/overcloudrc', 'keystonerc_admin', 'openstack-configs/openrc']:
+        for openrc_path in ['openstack-configs/openrc', '/home/stack/overcloudrc', 'keystonerc_admin']:
             ans = director.exe(command='cat {0}'.format(openrc_path), is_warn_only=True)
             if 'No such file or directory' not in ans:
                 openrc_body = ans
@@ -59,4 +59,4 @@ class DeployerExisting(Deployer):
 
     def wait_for_cloud(self, list_of_servers):
         cloud = self.deploy_cloud(list_of_servers)
-        return cloud.verify_cloud()
+        return cloud
