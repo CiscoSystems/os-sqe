@@ -176,9 +176,9 @@ expect "CPU0:XRVR"
 
         return cfg_body, net_part
 
-    def r_collect_information(self):
+    def r_collect_information(self, regex):
         body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/sr/*', regex='ERROR')]:
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/sr/*', regex=regex)]:
             ans = self.cmd(cmd=cmd, is_xrvr=False, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body

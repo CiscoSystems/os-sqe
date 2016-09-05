@@ -353,9 +353,9 @@ class Vtc(LabServer):
                 return False
         return True
 
-    def r_collect_information(self):
+    def r_collect_information(self, regex):
         body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex='ERROR'), 'cat /var/log/ncs/localhost\:8888.access']:
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex=regex), 'cat /var/log/ncs/localhost\:8888.access']:
             ans = self.exe(cmd, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
@@ -364,7 +364,7 @@ class Vtc(LabServer):
         pass
 
     def r_is_xrvr_registered(self):
-        body = self.r_collect_information()
+        body = self.r_collect_information(regex='ERROR')
         xrvrs = self.r_vtc_show_configuration_xrvr_groups()['collection']['cisco-vts:xrvr-group'][0]['xrvr-devices']['xrvr-device']
         names_in_body = map(lambda x: 'POST /api/running/devices/device/{}/vts-sync-xrvr/_operations/sync HTTP'.format(x['name']) in body, xrvrs)
         return all(names_in_body)

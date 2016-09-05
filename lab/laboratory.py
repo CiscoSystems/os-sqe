@@ -349,11 +349,11 @@ class Laboratory(WithOspd7, WithLogMixIn):
         for node in self.get_n9k() + self.get_xrvr():
             node.r_border_leaf()
 
-    def r_collect_information(self, comment):
+    def r_collect_information(self, regex, comment):
         body = ''
 
         for node in self.get_nodes_by_class():
             if 'r_collect_information' in dir(node):
-                body += node.r_collect_information()
+                body += node.r_collect_information(regex=regex)
         addon = '_' + '_'.join(comment.split()) if comment else ''
         self.log_to_artifact(name='lab_{}{}.txt'.format(self, addon), body=body)

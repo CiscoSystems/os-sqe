@@ -51,14 +51,14 @@ class DeployerVts(Deployer):
             dl_server_status = map(lambda dl: dl.r_xrnc_start_dl(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
             if not all(dl_server_status):
                 raise RuntimeError('Failed to start DL servers')
-            lab.r_collect_information('after_all_xrvr_registered')
+            lab.r_collect_information(regex='ERROR', comment='after_all_xrvr_registered')
         else:
             self.log('all XRNC are already deployed in the previous run')
 
-        lab.r_collect_information('after_all_dl_servers_started')
+        lab.r_collect_information(regex='ERROR', comment='after_all_dl_servers_started')
 
         vtcs[0].vtc_day0_config()
-        lab.r_collect_information('after_day0_config')
+        lab.r_collect_information(regex='ERROR', comment='after_day0_config')
 
         for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
             self.deploy_single_vtf(vtf)

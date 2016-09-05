@@ -386,11 +386,11 @@ export OS_AUTH_URL={end_point}
         compute_node = Server(ip=instance_details['os-ext-srv-attr:host'], username='root', password='cisco123')
         logs = compute_node.exe(command='grep {instance_id} | grep -i error'.format(instance_id=instance_details['id']))
 
-    def r_collect_information(self, comment):
+    def r_collect_information(self, regex, comment):
         hosts = self.os_host_list()
         body = ''
         for host in sorted(hosts):
-            for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex='ERROR')]:
+            for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex=regex)]:
                 ans = self.mediator.as_proxy(host=host, command=cmd, is_warn_only=True)
                 body += self._format_single_cmd_output(cmd=cmd, ans=ans, node=host)
 

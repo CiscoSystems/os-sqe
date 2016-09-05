@@ -334,12 +334,12 @@ def tims():
 
 @task
 @decorators.print_time
-def collect_info(lab_config_path):
+def collect_info(lab_config_path, regex):
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
 
     l = Laboratory(lab_config_path)
     d = DeployerExisting({'cloud': lab_config_path.strip('.yaml'), 'hardware-lab-config': lab_config_path})
     c = d.wait_for_cloud([])
-    c.r_collect_information('')
-    l.r_collect_information('')
+    c.r_collect_information(regex='ERROR', comment='')
+    l.r_collect_information(regex='ERROR', comment='')
