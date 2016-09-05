@@ -82,6 +82,9 @@ class Server(object):
                     else:
                         raise
 
+    def as_proxy(self, host, command, is_warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
+        return self.exe("ssh -o StrictHostKeyChecking=no {} '{}'".format(host, command), is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+
     def reboot(self, wait=300):
         """Reboot this server
         :param wait: wait for the server to come up
