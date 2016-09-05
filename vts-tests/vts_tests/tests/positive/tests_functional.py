@@ -40,7 +40,7 @@ class TestFunctional(base_test.BaseTest):
 
     def assert_evpn_evi_network_controller(self, vni_number, mac_address, configured=True):
         mac = self.convert_mac(mac_address)
-        xrvr_cfg_text = self.xrvr1.exe('show run evpn evi {evi} network-controller host mac {mac}'.format(evi=vni_number, mac=mac))
+        xrvr_cfg_text = self.xrvr1.run('show run evpn evi {evi} network-controller host mac {mac}'.format(evi=vni_number, mac=mac))
         if configured:
             self.assertNotIn(self.XRVR_NO_SUCH_CONFIGURATION, xrvr_cfg_text, 'XRVR is not configured')
         else:
