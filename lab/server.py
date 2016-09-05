@@ -51,7 +51,7 @@ class Server(object):
         return kwargs
 
     @staticmethod
-    def exe_local(command, in_directory='.', warn_only=False):
+    def _exe_local(command, in_directory='.', warn_only=False):
         from fabric.api import local, settings, lcd
 
         if in_directory != '.':
@@ -65,7 +65,7 @@ class Server(object):
         from fabric.exceptions import NetworkError
 
         if str(self._ip) in ['localhost', '127.0.0.1']:
-            return self.exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
+            return self._exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
 
         run_or_sudo = run
         if command.startswith('sudo '):
