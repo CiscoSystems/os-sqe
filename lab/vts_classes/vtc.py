@@ -355,8 +355,8 @@ class Vtc(LabServer):
 
     def r_collect_information(self):
         body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex='ERROR'), self._form_log_grep_cmd(log_files='/var/log/ncs/localhost\:8888.access')]:
-            ans = self.exe(cmd)
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex='ERROR'), 'cat /var/log/ncs/localhost\:8888.access']:
+            ans = self.exe(cmd, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 
