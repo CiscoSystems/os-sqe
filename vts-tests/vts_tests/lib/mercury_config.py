@@ -172,7 +172,8 @@ class Config(object):
     def computes(self):
         if not self._computes:
             start_pos = self.mercury_servers_info.index('Compute nodes:')
-            s = self.mercury_servers_info[start_pos:]
+            end_pos = self.mercury_servers_info.index('VTS nodes:')
+            s = self.mercury_servers_info[start_pos:end_pos]
             self._computes = self.parse_nodes_info(s)
         return self._computes
 
