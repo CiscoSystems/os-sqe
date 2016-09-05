@@ -20,7 +20,7 @@ def cmd(config_path):
     while True:
         device_name = prompt(text='{lab} has: {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=['lab', 'cloud'] + nodes))
         if device_name == 'cloud':
-            d = DeployerExisting({'cloud': config_path, 'hardware-lab-config': config_path})
+            d = DeployerExisting({'cloud': config_path.strip('.yaml'), 'hardware-lab-config': config_path})
             device = d.wait_for_cloud([])
         elif device_name == 'lab':
             device = l
@@ -330,3 +330,16 @@ def tims():
 
     t = Tims()
     t.publish_tests_to_tims()
+
+
+@task
+@decorators.print_time
+def collect_info(lab_config_path):
+    from lab.laboratory import Laboratory
+    from lab.deployers.deployer_existing import DeployerExisting
+
+    l = Laboratory(lab_config_path)
+    d = DeployerExisting({'cloud': lab_config_path.strip('.yaml'), 'hardware-lab-config': lab_config_path})
+    c = d.wait_for_cloud([])
+    c.r_collect_information('')
+    l.r_collect_information('')

@@ -32,9 +32,9 @@ def start(lab, log, args):
 
         instance_name = cloud.create_instance(name=instance, flavor='m1.medium', image='sriov', on_ports=ports)
 
-        cloud.cmd('nova floating-ip-associate {instance_name} {fip}'.format(instance_name=instance_name, fip=fips[i]))
+        cloud.os_cmd('nova floating-ip-associate {instance_name} {fip}'.format(instance_name=instance_name, fip=fips[i]))
 
-        cloud.cmd('ping -c5 {fip}'.format(fip=fips[i]))
+        cloud.os_cmd('ping -c5 {fip}'.format(fip=fips[i]))
         instances[i] = LabServer(ip=fips[i], username='root', lab=None, name='a')
 
     # export http_proxy=http://proxy-wsa.esl.cisco.com:80/ && export https_proxy=http://proxy-wsa.esl.cisco.com:80/ && yum -y install epel-release && yum -y  update && yum -y install iperf

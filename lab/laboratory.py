@@ -349,8 +349,11 @@ class Laboratory(WithOspd7, WithLogMixIn):
         for node in self.get_n9k() + self.get_xrvr():
             node.r_border_leaf()
 
-    def r_collect_information(self, name):
+    def r_collect_information(self, comment):
+        body = ''
+
         for node in self.get_nodes_by_class():
             if 'r_collect_information' in dir(node):
-                body = node.r_collect_information()
-                self.log_to_artifact(name='{}-{}.txt'.format(name, node.get_id()), body=body)
+                body += node.r_collect_information()
+        addon = '_' + '_'.join(comment.split()) if comment else ''
+        self.log_to_artifact(name='lab_{}{}.txt'.format(self, addon), body=body)

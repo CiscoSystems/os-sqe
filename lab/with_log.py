@@ -7,9 +7,9 @@ class WithLogMixIn(object):
         with open_artifact(name, 'w') as f:
             f.write(body)
 
-    def _format_single_cmd_output(self, cmd, ans):
-        n = 160
-        return n * 'v' + '\n' + self.__repr__() + '> ' + cmd + '\n' + n * '^' + '\n' + ans + '\n' + n * '-' + '\n\n'
+    def _format_single_cmd_output(self, cmd, ans, node=None):
+        n = 200
+        return '\n' + n * 'v' + '\n' + (node or str(self)) + '> ' + cmd + '\n' + n * '^' + '\n' + ans + '\n' + n * '-' + '\n\n'
 
     @staticmethod
     def upload_artifacts_to_our_server():
@@ -23,15 +23,13 @@ class WithLogMixIn(object):
         server.put(local_path='artifacts/*', remote_path=destination_dir, is_sudo=False)
 
     @staticmethod
-    def _form_log_grep_cmd(log_files, regex=None, minutes=0):
+    def _form_log_grep_cmd(log_files, regex, minutes=0):
         """regex: 'string: some regexp to be used in grep, empty means all',
         'minutes': 'int: 10 -> filter out all messages older then 10 minutes ago, 0 means no filter'}
         """
 
-        cmd = '[[ -n "$(ls {})" ]] && '.format(log_files)
-        cmd += 'sed -n "/^$(date +%Y-%m-%d\ %H:%M --date="{min} min ago")/, /^$(date +%Y-%m-%d\ %H:%M)/p" '.format(min=minutes) if minutes else 'cat '
-        cmd += log_files
-        cmd += ' | grep ' + regex if regex else ''
+        cmd = 'grep -r {} {} '.format(regex, log_files)
+        cmd += 'sed -n "/^$(date +%Y-%m-%d\ %H:%M --date="{min} min ago")/, /^$(date +%Y-%m-%d\ %H:%M)/p" '.format(min=minutes) if minutes else ''
         return cmd
 
     def log(self, message, level='info'):
