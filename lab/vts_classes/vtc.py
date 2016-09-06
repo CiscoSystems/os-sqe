@@ -367,8 +367,16 @@ class Vtc(LabServer):
         return body
 
     def r_vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
-        self.r_vtc_set_admin_domain(is_via_ncs=True)
+        self.r_vtc_delete_openstack_objects(is_via_ncs=True)
         self.r_vtc_set_vni_pool(is_via_ncs=True)
+        self.r_vtc_set_admin_domain(is_via_ncs=True)
+
+    def r_vtc_delete_openstack_objects(self, is_via_ncs=True):
+        if is_via_ncs:
+            self.exe('ncs_cli << EOF\nconfigure\ndelete openstack port\ndelete openstack subnet\ndelete openstack network\ncommit\nexit\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
+            return NotImplemented
 
     def r_vtc_set_admin_domain(self, is_via_ncs=True):
         if is_via_ncs:
