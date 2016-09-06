@@ -71,13 +71,21 @@ class Tims(object):
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
 
-    def publish_result_to_tims(self, name, mercury_version, vts_version, lab, n_exceptions):
+        for test_cfg_path in test_cfg_pathes:
+            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version='1.0.9', vts_version='LATEST', n_exceptions=-10, lab='g7-2')
+
+    def publish_result_to_tims(self, test_cfg_path, mercury_version, vts_version, lab, n_exceptions):
         description = 'VTS version: {} Mercury version: {} number of exceptions {}'.format(vts_version, mercury_version, n_exceptions)
-        status = 'failed' if n_exceptions > 0 else 'passed'
+        if n_exceptions > 0:
+            status = 'failed'
+        elif n_exceptions == 0:
+            status = 'passed'
+        else:
+            status = 'pending'
 
         result_template = '''
         <Result>
-                <Title><![CDATA[Result for {test_name}]]></Title>
+                <Title><![CDATA[Result for {test_cfg_path}]]></Title>
                 <Description><![CDATA[{description}]]></Description>
                 <Owner>
                         <UserID>{username}</UserID>
@@ -91,7 +99,7 @@ class Tims(object):
                 <CaseLookup>
                         <TextFieldValue searchoperator="is">
                                 <FieldName>Logical ID</FieldName>
-                                <Value>{test_name}</Value>
+                                <Value>{test_cfg_path}</Value>
                         </TextFieldValue>
                 </CaseLookup>
                 <ConfigLookup>
@@ -103,5 +111,5 @@ class Tims(object):
         </Result>
         '''
 
-        body = result_template.format(username=self._username, test_name=name, description=description, mercury_version=mercury_version, status=status, lab=lab)
+        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab=lab)
         self._api_post(operation=self._OPERATION_ENTITY, body=body)
