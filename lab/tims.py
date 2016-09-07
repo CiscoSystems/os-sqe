@@ -113,3 +113,14 @@ class Tims(object):
 
         body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab=lab)
         self._api_post(operation=self._OPERATION_ENTITY, body=body)
+
+    def simulate(self):
+        from lab import with_config
+
+        available_tc = with_config.ls_configs(directory='ha')
+        test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
+        for test_cfg_path in test_cfg_pathes:
+            n_exceptions = 2 if 'corosync' in test_cfg_path else 0
+            n_exceptions = 2 if 'ncs-stop-while-adding-os-vm' in test_cfg_path else n_exceptions
+            n_exceptions = 2 if 'control-reboot' in test_cfg_path else n_exceptions
+            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version='1.0.8', vts_version='LATEST', n_exceptions=n_exceptions, lab='g7-2')
