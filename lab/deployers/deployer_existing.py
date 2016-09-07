@@ -18,7 +18,7 @@ class DeployerExisting(Deployer):
         from lab import logger
 
         director = lab.get_director()
-        body = director.get_file_from_dir('osp_install_run.json', '/etc')
+        body = director.r_get_file_from_dir(file_name='osp_install_run.json', in_directory='/etc')
         logger.OSP7_INFO = json.loads(body)
 
         net = lab.get_ssh_net()

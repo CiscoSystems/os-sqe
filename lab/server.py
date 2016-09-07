@@ -133,28 +133,26 @@ class Server(object):
                 with cd(in_directory):
                     return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)[0]
 
-    def get_file_from_dir(self, file_name, in_directory='.', local_path=None):
+    def r_get_file_from_dir(self, file_name, in_directory='.', local_path=None):
         """Get remote file as string or local file if local_path is specified
         :param file_name:
         :param in_directory:
         :param local_path:
         :return:
         """
-        from fabric.api import sudo, settings, cd
+        from fabric.api import sudo, settings, cd, get
 
         if '/' in file_name:
             raise SyntaxError('file_name can not contain /, use in_directory instead')
 
         with settings(**self.construct_settings(is_warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
             with cd(in_directory):
-                body = sudo('cat {0}'.format(file_name))
-
-        if local_path:
-            with open(local_path, 'w') as f:
-                f.write(body)
-            return local_path
-        else:
-            return body
+                if local_path:
+                    local_path = get(remote_path=file_name, local_path=local_path)
+                    return local_path
+                else:
+                    body = sudo('cat {0}'.format(file_name))
+                    return body
 
     def wget_file(self, url, to_directory='.', checksum=None, method='sha512sum'):
         loc = url.split('/')[-1]

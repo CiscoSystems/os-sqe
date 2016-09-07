@@ -408,9 +408,11 @@ set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gate
         return self.exe('version_info')
 
     def r_vtc_show_tech_support(self):
+        wild_card = 'VTS*tar.bz2'
         self.exe('show_tech_support')
-        ans = self.exe('ls VTS*tar.bz2')
-        self.get_file_from_dir(file_name=ans, local_path='artifacts')
+        ans = self.exe('ls ' + wild_card)
+        self.r_get_file_from_dir(file_name=ans, local_path='artifacts')
+        self.exe('rm -r ' + wild_card)
 
     def r_is_xrvr_registered(self):
         xrvrs = self.r_vtc_get_xrvrs()
