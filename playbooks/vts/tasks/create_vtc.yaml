@@ -25,17 +25,44 @@
   wait_for: 
     host: "{{ vtc['api_ip'] }}" 
     port: 22
-    timeout: 600
+    timeout: 720
   delegate_to: 127.0.0.1
 - name: "Wait for VTC port 8443"
   wait_for: host={{ vtc['api_ip'] }} port=8443
   delegate_to: 127.0.0.1
+- pause: seconds=120
+
+- name: "Fix VTC UI: stop apache tomcat"
+  shell: "service tomcat stop"
+  become: yes
+  delegate_to: "{{item}}"
+  with_items: "{{groups['vtc']}}"
+- name: "Fix VTC UI: remove old VTS folder"
+  shell: "rm -rf /opt/cisco/apache/apache-tomcat-7.0.68/webapps/VTS"
+  become: yes
+  become_method: sudo
+  delegate_to: "{{item}}"
+  with_items: "{{groups['vtc']}}"
+- name: "Fix VTC UI: start apache tomcat"
+  shell: "sudo service tomcat start"
+  become: yes
+  become_method: sudo
+  delegate_to: "{{item}}"
+  with_items: "{{groups['vtc']}}"
 - pause: seconds=60
+- name: "Fix VTC UI: chown VTS dir"
+  shell: "chown -R tomcat:tomcat /opt/cisco/apache/apache-tomcat-7.0.68/webapps/VTS"
+  become: yes
+  become_method: sudo
+  delegate_to: "{{item}}"
+  with_items: "{{groups['vtc']}}"
+
+- pause: seconds=120
 - name: "Open VTC UI first time"
   uri:
     url: "https://{{ vtc['api_ip'] }}:8443/VTS/"
     validate_certs: no
-    timeout: 300
+    timeout: 600
   delegate_to: 127.0.0.1
 - name: "Change VTC UI admin password to {{ vtc_password }}"
   vtcui_password_change:

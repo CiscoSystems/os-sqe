@@ -1,7 +1,5 @@
 ---
 
-- command: "which systemctl"
-  register: systemctl_bin
 - name: "Install rpm package"
   yum:
     name: "{{ item }}"
@@ -15,11 +13,12 @@
     - virt-install
     - virt-viewer
     - genisoimage
+    - libffi-devel
 - name: Enable libvirtd
-  command: "{{ systemctl_bin.stdout }} enable libvirtd"
+  shell: "systemctl enable libvirtd"
 - name: Start libvirtd
-  command: "{{ systemctl_bin.stdout }} start libvirtd"
+  shell: "systemctl start libvirtd"
 - command: "which virsh"
   register: virsh_bin
 - name: Call 'virsh list'
-  command: "{{ virsh_bin.stdout }} list"
+  shell: "virsh list"

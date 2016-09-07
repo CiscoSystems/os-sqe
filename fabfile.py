@@ -117,7 +117,6 @@ def ha(lab, test_regex, is_exact_match=False, is_debug=False, is_run_cleanup=Fal
         except:
             pass
 
-
 @task
 @decorators.print_time
 def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openstack.org/openstack/rally.git', rally_patch=''):

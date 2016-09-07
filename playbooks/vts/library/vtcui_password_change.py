@@ -25,6 +25,7 @@ def main():
     if 'Invalid username or passphrase' in auth.text:
         result['changed'] = False
         result['stderr'] = auth.text
+        module.exit_json(**result)
 
     java_script_servlet = session.get(api_url('JavaScriptServlet'), verify=False)
     owasp_csrftoken = ''.join(re.findall('OWASP_CSRFTOKEN", "(.*?)", requestPageTokens', java_script_servlet.text))
@@ -32,6 +33,7 @@ def main():
         result['changed'] = False
         result['stdout'] = java_script_servlet.text
         result['stderr'] = 'OWASP_CSRFTOKEN token has not been found'
+        module.exit_json(**result)
 
     response = session.put(api_url('rs/ncs/user?updatePassword=true&isEnforcePassword=true'),
                            data=json.dumps({'resource': {'user': {'user_name': user, 'password': new_password, 'currentPassword': password}}}),

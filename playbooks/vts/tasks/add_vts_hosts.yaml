@@ -9,15 +9,15 @@
     ansible_become_pass: "{{ password }}"
     groups: vtc
 
-- add_host:
-    name: "{{ xrnc['hostname']  }}"
-    ansible_ssh_host: "{{ xrnc['mgmt_ip'] }}"
-    ansible_ssh_user: "cisco"
-    ansible_ssh_pass: "{{ password }}"
-    ansible_become_pass: "{{ password }}"
-    props: "{{ xrnc }}"
-    peer_xrnc_ip: "0.0.0.0"
-    groups: xrnc
+#- add_host:
+#    name: "{{ xrnc['hostname']  }}"
+#    ansible_ssh_host: "{{ xrnc['mgmt_ip'] }}"
+#    ansible_ssh_user: "cisco"
+#    ansible_ssh_pass: "{{ password }}"
+#    ansible_become_pass: "{{ password }}"
+#    props: "{{ xrnc }}"
+#    peer_xrnc_ip: "0.0.0.0"
+#    groups: xrnc
 
 - add_host:
     name: "{{ xrvr['hostname']  }}"

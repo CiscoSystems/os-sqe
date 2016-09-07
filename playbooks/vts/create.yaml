@@ -13,17 +13,19 @@
     xrvr: "{{ vts_hosts[inventory_hostname]['xrvr'] }}"
   tasks:
     - include: tasks/add_vts_hosts.yaml
-    - include: tasks/destroy.yaml
     - include: tasks/create_vtc.yaml
     - include: tasks/create_xrnc.yaml
 
+
 - hosts: xrvr
   gather_facts: False
-  connection: local
   vars_files:
     - config.yaml
   tasks:
     - include: tasks/xrvr_day0.yaml
+      retries: 50
+      delay: 5
+      delegate_to: server1
 
 - hosts: vtc
   gather_facts: False
@@ -34,5 +36,10 @@
 
 - hosts: xrnc
   gather_facts: False
+  vars_files:
+    - config.yaml
   tasks:
+    - set_fact:
+        props: "{{ vts_hosts['server1']['xrnc'] }}"
+        peer_xrnc_ip: "0.0.0.0"
     - include: tasks/setupXRNC_HA.yaml

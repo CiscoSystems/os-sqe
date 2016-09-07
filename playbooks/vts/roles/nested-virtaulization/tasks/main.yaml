@@ -2,9 +2,9 @@
 
 - name: "Kill qemu-kvm"
   shell: "pkill qemu-kvm || true"
-- name: rmmod
-  command: "/usr/sbin/rmmod kvm_intel"
+- name: "rmmod kvm_intel"
+  shell: "/usr/sbin/rmmod kvm_intel"
 - name: "Enable 'options kvm-intel nested=1'"
-  command: "/usr/bin/echo 'options kvm-intel nested=1' > /etc/modprobe.d/kvm-intel.conf"
-- name: modprobe
-  command: "/usr/sbin/modprobe kvm_intel"
+  shell: "/usr/bin/echo 'options kvm-intel nested=1' > /etc/modprobe.d/kvm-intel.conf"
+- name: "modprobe kvm_intel"
+  shell: "/usr/sbin/modprobe kvm_intel"
