@@ -160,7 +160,7 @@ class Server(object):
         loc = url.split('/')[-1]
         if to_directory != '.':
             self.exe('mkdir -p {0}'.format(to_directory))
-        self.exe(command='test -e  {loc} || curl {url} -o {loc}'.format(loc=loc, url=url), in_directory=to_directory)
+        self.exe(command='test -e  {loc} || curl -R {url} -o {loc}'.format(loc=loc, url=url), in_directory=to_directory)
 
         calc_checksum = self.exe(command='{meth} {loc}'.format(meth=method, loc=loc), in_directory=to_directory)
         if checksum:

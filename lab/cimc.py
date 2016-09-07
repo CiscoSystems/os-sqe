@@ -3,7 +3,6 @@ from lab.nodes.lab_server import LabServer
 
 class CimcServer(LabServer):
     LOM_ENABLED, LOM_DISABLED = 'Enabled', 'Disabled'
-    POWER_UP, POWER_DOWN, POWER_CYCLE = 'up', 'down', 'cycle-immediate'
     RAID_0, RAID_1, RAID_10 = '0', '1', '10'
 
     def __init__(self, node_id, lab, role):
@@ -13,9 +12,7 @@ class CimcServer(LabServer):
         self._logout_on_each_command = False
 
     def logger(self, message):
-        from lab.logger import lab_logger
-
-        lab_logger.info('{0}: CIMC {1}'.format(self, message))
+        self.log('CIMC ' + message)
         
     def _login(self):
         import ImcSdk
@@ -171,24 +168,37 @@ class CimcServer(LabServer):
     def cimc_get_power_status(self):
         return self.cimc_get_mo_by_class_id('computeRackUnit')[0].get_attr('OperPower')
 
-    def cimc_power(self, state=POWER_UP):
+    def _cimc_power(self, requested_state):
         import time
 
+        self.logger('power {0}'.format(requested_state))
+        self.cmd('set_imc_managedobject', in_mo=None, class_id='computeRackUnit', params={'dn': "sys/rack-unit-1", 'adminPower': requested_state})
+        time.sleep(120)  # wait for the server to come up
+
+    def cimc_power_down(self):
         current_power_state = self.cimc_get_power_status()
-        if current_power_state == 'off' and state == self.POWER_CYCLE:
-            state = self.POWER_UP
-        if (current_power_state == 'off' and state == self.POWER_UP) or (current_power_state == 'on' and state == self.POWER_DOWN) or state == self.POWER_CYCLE:
-            self.logger('changing power state on server to {0}'.format(state))
-            params = {'dn': "sys/rack-unit-1", 'adminPower': state}
-            self.cmd('set_imc_managedobject', in_mo=None, class_id='computeRackUnit', params=params)
-            time.sleep(120)  # wait for the server to come up
+        if current_power_state == 'on':
+            self._cimc_power('down')
+        else:
+            self.log(' is already OFF')
+
+    def cimc_power_up(self):
+        current_power_state = self.cimc_get_power_status()
+        if current_power_state == 'off':
+            self._cimc_power('up')
+        else:
+            self.log(' is already ON')
+
+    def cimc_power_cycle(self):
+        current_power_state = self.cimc_get_power_status()
+        self._cimc_power('up' if current_power_state == 'off' else 'cycle-immediate')
 
     def cleanup(self):
         self.logger('Cleaning CIMC {0}'.format(self))
         self._login()
         self.cimc_switch_lom_ports(self.LOM_ENABLED)
         self.cimc_delete_all_vnics()
-        self.cimc_power(self.POWER_DOWN)
+        self.cimc_power_down()
         self._logout()
 
     def cimc_recreate_vnics(self):
@@ -222,7 +232,7 @@ class CimcServer(LabServer):
         lab_type = self.lab().get_type()
         self.logger('configuring for {}'.format(lab_type))
         self._login()
-        self.cimc_power(self.POWER_UP)
+        self.cimc_power_up()
         # self.cimc_set_mlom_adaptor(pci_slot=0, n_vnics=10)
         self.cimc_recreate_vnics()
         self.cimc_set_hostname()

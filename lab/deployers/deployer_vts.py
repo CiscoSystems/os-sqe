@@ -4,19 +4,19 @@ from lab.deployers import Deployer
 class DeployerVts(Deployer):
 
     def sample_config(self):
-        return {'images-location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel-subsription-creds': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json'}
+        return {'vts_images_location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', 'is_force_redeploy': True}
 
     def __init__(self, config):
         super(DeployerVts, self).__init__(config=config)
 
-        self._rhel_creds_source = config['rhel-subsription-creds']
-
+        self._rhel_creds_location = config['rhel_creds_location']
+        self._is_force_redeploy = config['is_force_redeploy']
         self._vts_service_dir = '/tmp/vts_preparation'
 
         self._libvirt_domain_tmpl = self.read_config_from_file(config_path='domain_template.txt', directory='libvirt', is_as_string=True)
         self._disk_part_tmpl = self.read_config_from_file(config_path='disk-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
-        self._vts_images_location = config['images-location']
+        self._vts_images_location = config['vts_images_location']
 
     def deploy_vts(self, list_of_servers):
         from lab.vts_classes.vtf import Vtf
@@ -57,7 +57,7 @@ class DeployerVts(Deployer):
 
         lab.r_collect_information(regex='ERROR', comment='after_all_dl_servers_started')
 
-        vtcs[0].vtc_day0_config()
+        vtcs[0].r_vtc_day0_config()
         lab.r_collect_information(regex='ERROR', comment='after_day0_config')
 
         for vtf in filter(lambda y: type(y) is Vtf, list_of_servers):  # mercury-VTS this list is empty
@@ -103,7 +103,7 @@ class DeployerVts(Deployer):
     def _install_needed_rpms(self, vts_host):
         if self._vts_images_location not in vts_host.exe(command='cat VTS-VERSION', is_warn_only=True):
             self.log('Installing  needed RPMS...')
-            vts_host.register_rhel(self._rhel_creds_source)
+            vts_host.register_rhel(self._rhel_creds_location)
             vts_host.exe(command='sudo yum update -y')
             vts_host.exe('yum groupinstall "Virtualization Platform" -y')
             vts_host.exe('yum install genisoimage qemu-kvm expect -y')
@@ -145,7 +145,7 @@ class DeployerVts(Deployer):
                 self.log('Bridge br-{} is already created in the previous run'.format(nic_name))
 
     def deploy_single_vtc(self, vts_host, vtc):
-        if not vtc.ping():
+        if self._is_force_redeploy or not vtc.ping():
             self._delete_previous_libvirt_vms(vts_host=vts_host)
             cfg_body, net_part = vtc.get_config_and_net_part_bodies()
 
@@ -203,6 +203,6 @@ class DeployerVts(Deployer):
 
         vtc = vts_hosts[0].lab().get_nodes_by_class(Vtc)[0]
         try:
-            return len(vtc.vtc_get_xrvrs()) == 2
+            return len(vtc.r_vtc_get_xrvrs()) == 2
         except requests.exceptions.ConnectTimeout:
             return False

@@ -60,7 +60,10 @@ class CobblerServer(LabServer):
         import getpass
         from lab.time_func import time_as_string
         from lab.nodes.fi import FiServer
-        from lab.cimc import CimcServer
+        from lab.cimc import CimcServer, CimcCompute
+
+        computes = self.lab().get_nodes_by_class(CimcCompute)
+        map(lambda x: x.cimc_power_down(), computes)  # switch off all computes
 
         ks_meta = 'ProvTime={}-by-{}'.format(time_as_string(), getpass.getuser())
 
@@ -77,7 +80,7 @@ class CobblerServer(LabServer):
             system_name = self.cobbler_configure_for(node=node)
             node.cimc_configure()
             self.exe('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
-            node.cimc_power(node.POWER_CYCLE)
+            node.cimc_power_cycle()
 
         for node in nodes_to_check:
             self.log('Waiting when server is online...')

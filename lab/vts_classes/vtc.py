@@ -88,7 +88,7 @@ class Vtc(LabServer):
             vtf.set_proxy(proxy=vtf_host_last)
         return vtf_nodes
 
-    def vtc_get_xrvrs(self):
+    def r_vtc_get_xrvrs(self):
         xrvr_nodes = self.lab().get_nodes_by_class(Xrvr)
         devices = self.r_vtc_show_devices_device()
         if 'collection' not in devices:
@@ -396,9 +396,11 @@ class Vtc(LabServer):
             return NotImplemented
 
     def r_is_xrvr_registered(self):
+        xrvrs = self.r_vtc_get_xrvrs()
+        if not xrvrs:
+            return False
         body = self.r_collect_information(regex='ERROR')
-        xrvrs = self.r_vtc_show_configuration_xrvr_groups()['collection']['cisco-vts:xrvr-group'][0]['xrvr-devices']['xrvr-device']
-        names_in_body = map(lambda x: 'POST /api/running/devices/device/{}/vts-sync-xrvr/_operations/sync HTTP'.format(x['name']) in body, xrvrs)
+        names_in_body = map(lambda x: 'POST /api/running/devices/device/{}/vts-sync-xrvr/_operations/sync HTTP'.format(x.get_id()) in body, xrvrs)
         return all(names_in_body)
 
     @staticmethod

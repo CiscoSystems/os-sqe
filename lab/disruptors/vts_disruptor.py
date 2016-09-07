@@ -34,7 +34,7 @@ class VtsDisruptor(Worker):
                     break
         elif 'dl' in self._node_to_disrupt:
             active_passive = self._node_to_disrupt.split('-')[0]
-            self._node_to_disrupt = self._vtc.vtc_get_xrvrs()[0 if active_passive == 'active' else -1]
+            self._node_to_disrupt = self._vtc.r_vtc_get_xrvrs()[0 if active_passive == 'active' else -1]
 
     def loop(self):
         import time
