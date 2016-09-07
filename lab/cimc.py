@@ -271,6 +271,9 @@ class CimcDirector(CimcServer):
     def form_mac(self, net_octet_in_mac):
         return '00:{lab:02}:A0:DD:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
 
+    def r_get_version(self):
+        return self.exe('cat /etc/cisco-mercury-release')
+
     def r_collect_information(self, regex):
         body = ''
         for cmd in [self._form_log_grep_cmd(log_files='/var/log/mercury/installer/*', regex=regex)]:

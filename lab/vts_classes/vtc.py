@@ -74,8 +74,10 @@ class Vtc(LabServer):
                 return vtf
 
     def get_xrvr_names(self):
-        xrvr_nodes = self.lab().get_nodes_by_class(Xrvr)
-        return map(lambda x: x.get_id(), xrvr_nodes)
+        return map(lambda x: x.get_id(), self.get_xrvrs())
+
+    def get_xrvrs(self):
+        return self.lab().get_nodes_by_class(Xrvr)
 
     def r_vtc_get_vtfs(self):
         vtf_host_last = self.lab().get_nodes_by_class(VtsHost)[-1]
@@ -367,9 +369,30 @@ class Vtc(LabServer):
         return body
 
     def r_vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
-        self.r_vtc_delete_openstack_objects(is_via_ncs=True)
-        self.r_vtc_set_vni_pool(is_via_ncs=True)
-        self.r_vtc_set_admin_domain(is_via_ncs=True)
+        import jinja2
+
+        map(lambda x: x.r_xrvr_day0_config(), self.get_xrvrs())
+        template = jinja2.Template('''
+set resource-pools vni-pool vnipool range 4096 65535
+{% for xrvr_name in xrvr_names %}
+request devices device {{ xrvr_name }} sync-from
+set devices device {{ xrvr_name }} asr9k-extension:device-info device-use leaf
+set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
+set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info loopback-if-num 0
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ xrvr_name }}
+{% endfor %}
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters distribution-mode decentralized-l2
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters control-plane-protocol bgp-evpn
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters arp-suppression
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters packet-replication ingress-replication
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters distribution-mode decentralized-l3
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters control-plane-protocol bgp-evpn
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters arp-suppression
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters packet-replication ingress-replication
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 ad-l3-gw-parent L3GW-0
+''')
+        command = template.render(xrvr_names=self.get_xrvr_names(), domain_group='D1', bgp_asn=23)
+        self.r_vtc_ncs_cli(command=command)
 
     def r_vtc_delete_openstack_objects(self, is_via_ncs=True):
         if is_via_ncs:
@@ -378,22 +401,16 @@ class Vtc(LabServer):
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
             return NotImplemented
 
-    def r_vtc_set_admin_domain(self, is_via_ncs=True):
-        if is_via_ncs:
-            for name in self.get_xrvr_names():
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l2-gateway-groups l2-gateway-group L2GW-0 devices device {}\ncommit\nexit\nexit\nEOF'.format(name))
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters distribution-mode decentralized-l2\ncommit\nexit\nexit\nEOF')
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters control-plane-protocol bgp-evpn\ncommit\nexit\nexit\nEOF')
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters arp-suppression\ncommit\nexit\nexit\nEOF')
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters packet-replication ingress-replication\ncommit\nexit\nexit\nEOF')
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters distribution-mode decentralized-l3\ncommit\nexit\nexit\nEOF')
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters control-plane-protocol bgp-evpn\ncommit\nexit\nexit\nEOF')
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters arp-suppression\ncommit\nexit\nexit\nEOF')
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters packet-replication ingress-replication\ncommit\nexit\nexit\nEOF')
-                self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts infra-policy admin-domains admin-domain D1 l2-gateway-groups l2-gateway-group L2GW-0 ad-l3-gw-parent L3GW-0\ncommit\nexit\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
-            return NotImplemented
+    def r_vtc_ncs_cli(self, command):
+        self.exe('ncs_cli << EOF\nconfigure\n{}\ncommit\nexit\nexit\nEOF'.format(command))
+
+    def r_vtc_get_version(self):
+        return self.exe('version_info')
+
+    def r_vtc_show_tech_support(self):
+        self.exe('show_tech_support')
+        ans = self.exe('ls VTS*tar.bz2')
+        self.get_file_from_dir(file_name=ans, local_path='artifacts')
 
     def r_is_xrvr_registered(self):
         xrvrs = self.r_vtc_get_xrvrs()
@@ -459,13 +476,6 @@ class Vtc(LabServer):
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
             return self._rest_api(resource='GET /api/running/resource-pools/vni-pool', headers={'Accept': 'application/vnd.yang.collection+json'})
-
-    def r_vtc_set_vni_pool(self, is_via_ncs=True):
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nconfigure\nset resource-pools vni-pool vnipool range 4096 65535\ncommit\nexit\nexit\nEOF')
-        else:
-            #
-            raise NotImplemented
 
     def r_vtc_show_uuid_servers(self, is_via_ncs=False):
         if is_via_ncs:

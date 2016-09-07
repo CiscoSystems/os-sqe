@@ -67,14 +67,10 @@ class Xrvr(LabServer):
         _, username, password = self.get_oob()
         ip = self.get_nic('mx').get_ip_and_mask()[0]
         file_name = 'expect-{}-{}'.format(self.get_id(), cmd.replace(' ', '-'))
-        tmpl = '''
-log_user 0
-spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}
-expect "RP/0/0/CPU0:xrvr1-g7-2#"
-send "terminal length 0 ; {cmd}\n"
-log_user 1
-expect "CPU0:XRVR"
-'''.format(p=password, u=username, ip=ip, cmd=cmd)
+        tmpl = '''spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}
+expect "RP/0/0/CPU0*"
+send "terminal length 0 ; {cmd}\\r"
+'''.format(p=password, n=self.get_id(), u=username, ip=ip, cmd=cmd)
         self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
         self._expect_commands[cmd] = file_name
 
@@ -110,7 +106,7 @@ expect "CPU0:XRVR"
     def xrvr_show_running_config(self):
         return self.cmd('show running-config', is_xrvr=True)
 
-    def xrvr_day0_config(self):
+    def r_xrvr_day0_config(self):
         self.cmd('show running-config', is_xrvr=True)
         pass
 
