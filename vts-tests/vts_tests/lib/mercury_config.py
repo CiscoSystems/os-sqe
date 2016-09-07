@@ -2,6 +2,7 @@ import functools
 import io
 import os
 import re
+import yaml
 import ConfigParser
 
 from vts_tests.lib import shell_connect
@@ -28,7 +29,7 @@ class Config(object):
         self._xrnc_node2 = None
         self._xrvr_node1 = None
         self._xrvr_node2 = None
-        self._mercury_servers_info = None
+        self._setup_data = None
         self._controllers = None
         self._computes = None
         self._secrets = None
@@ -138,44 +139,20 @@ class Config(object):
         return self._xrvr_node2
 
     @property
-    def mercury_servers_info(self):
-        if not self._mercury_servers_info:
+    def setup_data(self):
+        if not self._setup_data:
             b = shell_connect.ShellConnect(self.build_node)
-            self._mercury_servers_info = b.run('cat ~/openstack-configs/mercury_servers_info')
-        return self._mercury_servers_info
-
-    def parse_nodes_info(self, msi_string):
-        nodes = []
-        for s in msi_string.split('\r\n')[4:]:
-            items = s.split()
-            if len(items) == 13:
-                nodes.append({'hostname': items[1],
-                              'cimc': items[3],
-                              'management': items[5],
-                              'ip': items[5],
-                              'provision': items[7],
-                              'tenant': items[9],
-                              'user': self.default_node_user,
-                              'password': self.default_node_password})
-        return nodes
+            s = b.run('cat ~/openstack-configs/setup_data.yaml')
+            self._setup_data = yaml.load(s)
+        return self._setup_data
 
     @property
     def controllers(self):
-        if not self._controllers:
-            start_pos = self.mercury_servers_info.index('Controller nodes:')
-            end_pos = self.mercury_servers_info.index('Compute nodes:')
-            s = self.mercury_servers_info[start_pos:end_pos]
-            self._controllers = self.parse_nodes_info(s)
-        return self._controllers
+        return self.setup_data['ROLES']['control']
 
     @property
     def computes(self):
-        if not self._computes:
-            start_pos = self.mercury_servers_info.index('Compute nodes:')
-            end_pos = self.mercury_servers_info.index('VTS nodes:')
-            s = self.mercury_servers_info[start_pos:end_pos]
-            self._computes = self.parse_nodes_info(s)
-        return self._computes
+        return self.setup_data['ROLES']['compute']
 
     @property
     def secrets(self):
