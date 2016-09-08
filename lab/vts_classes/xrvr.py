@@ -53,25 +53,57 @@ class Xrvr(LabServer):
         if not self._proxy_to_run:
             self._proxy_to_run = self.lab().get_nodes_by_class(VtsHost)[-1]
 
+        ip = self.get_nic('mx').get_ip_and_mask()[0]
+
         if is_xrvr:
+            _, username, password = self.get_oob()
             if cmd not in self._expect_commands:
-                self.create_expect_command_file(cmd=cmd)
+                self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=True)
             ans = self._proxy_to_run.exe(command='expect {0}'.format(self._expect_commands[cmd]))
         else:
             _, username, password = self.get_ssh()
-            ip = self.get_nic('mx').get_ip_and_mask()[0]
-            ans = self._proxy_to_run.exe(command="sshpass -p {p} ssh -o StrictHostKeyChecking=no -t {u}@{ip} '{cmd}'".format(p=password, u=username, ip=ip, cmd=cmd), is_warn_only=is_warn_only)
+            if 'sudo' in cmd:
+                if cmd not in self._expect_commands:
+                    self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=False)
+                ans = self._proxy_to_run.exe(command='expect {0}'.format(self._expect_commands[cmd]))
+            else:
+                ans = self._proxy_to_run.exe(command="sshpass -p {p} ssh -o StrictHostKeyChecking=no -t {u}@{ip} '{cmd}'".format(p=password, u=username, ip=ip, cmd=cmd), is_warn_only=is_warn_only)
         return ans
 
-    def create_expect_command_file(self, cmd):
-        _, username, password = self.get_oob()
-        ip = self.get_nic('mx').get_ip_and_mask()[0]
-        file_name = 'expect-{}-{}'.format(self.get_id(), cmd.replace(' ', '-'))
-        tmpl = '''spawn sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}
-expect "RP/0/0/CPU0*"
-send "terminal length 0 ; {cmd}\\r"
-'''.format(p=password, n=self.get_id(), u=username, ip=ip, cmd=cmd)
-        self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
+    def create_expect_command_file(self, cmd, ip, username, password, is_xrvr):
+        file_name = 'expect-{}-{}'.format(self.get_id(), '-'.join(cmd.split(' ')[:5]))
+
+        sudo_tmpl = '''spawn sshpass -p {p} ssh -o StrictHostKeyChecking=no {u}@{ip}
+set timeout 20
+expect {{
+    "$ "
+}}
+send "{cmd}\\r"
+expect {{
+    ": "
+}}
+send "{p}\\r"
+sleep 1
+expect {{
+    "$ " exit
+}}
+'''
+
+        xrvr_tmpl = '''spawn sshpass -p {p} ssh -o StrictHostKeyChecking=no {u}@{ip}
+set timeout 20
+expect {{
+    "#"
+}}
+send "terminal length 0\\r"
+send "{cmd}\\r"
+sleep 1
+expect {{
+    "#" exit
+}}
+'''
+        tmpl = xrvr_tmpl if is_xrvr else sudo_tmpl
+        str = tmpl.format(p=password, u=username, ip=ip, cmd=cmd)
+        self._proxy_to_run.put_string_as_file_in_dir(string_to_put=str, file_name=file_name)
         self._expect_commands[cmd] = file_name
 
     @staticmethod
@@ -179,11 +211,13 @@ send "terminal length 0 ; {cmd}\\r"
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 
+    def r_xrnc_set_mtu(self):
+        self.cmd('sudo ip l s dev br-underlay mtu 1400', is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 step 12 about MTU
+
     def r_xrnc_start_dl(self):
         own_ip = self.get_nic('t').get_ip_and_mask()[0]
         ips = [x.get_nic('t').get_ip_and_mask()[0] for x in self.lab().get_nodes_by_class(Xrvr)]
         opposite_ip = next(iter(set(ips) - {own_ip}))
-        self.cmd('sudo ip l s dev br-underlay mtu 1400', is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 step 12 about MTU
         # noinspection PyBroadException
         try:
             self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11

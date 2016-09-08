@@ -48,6 +48,7 @@ class DeployerVts(Deployer):
         if not vtcs[0].r_is_xrvr_registered():
             for i in range(len(xrncs)):
                 self.deploy_single_xrnc(vts_host=vts_hosts[i], vtc=vtcs[i], xrnc=xrncs[i])
+            map(lambda dl: dl.r_xrnc_set_mtu(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 12 about MTU
             dl_server_status = map(lambda dl: dl.r_xrnc_start_dl(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
             if not all(dl_server_status):
                 raise RuntimeError('Failed to start DL servers')
