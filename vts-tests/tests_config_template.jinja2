@@ -1,0 +1,72 @@
+[default]
+# Credentials for all Mercury Servers
+node_user = root
+node_password = cisco123
+
+# Name of an image uploaded to glance
+image_name = {{ image_on_openstack }}
+
+# Credentials for an OpenStack instance
+image_user = admin
+image_password = cisco123
+
+# Flavor name
+flavor = m1.medium
+
+[tests_server]
+# Let say tests are running on server X. Below information about this server
+# Name of a switch to which the server is connected to
+tor_name={{ switch_id }}
+
+# The server is connected to this switch port
+tor_port={{bld_port}}
+
+# The server has bridge usually called "br_mgmt". Tests will create access port inside this bridge.
+# This port is needed to connect to openstack instances via their tenant ips
+ovs_bridge=br_mgmt
+
+# The server ID on the "VTC -> Inventory -> Host inventory" page
+binding_host_id={{ bld_id }}
+
+[build_node]
+# Information about Mercury build node
+ip = {{bld_ip_api}}
+hostname = {{ bld_hostname}}
+
+[vtc]
+# API IP of the VTC
+ui_ip = {{vtc_vip}}
+
+# VTC UI credentials. Use it to log into VTC Web UI
+ui_user = {{vtc_username}}
+ui_password = {{vtc_password}}
+
+{% for x in vtcs %}
+[vtc{{ x['number']}}]
+# API IP of the VTC virtual machines
+ip = {{ x['ip_api'] }}
+# Credentials of VTC virtual machines. Use it to SSH to the VM
+user = {{ x['username'] }}
+password = {{ x['password'] }}
+hostname = {{ x['hostname'] }}
+{% endfor %}
+
+{% for x in xrncs %}
+[xrnc{{ x['number']}}]
+# MGMT IP of the XRNC virtual machines
+ip = {{ x['ip_mx'] }}
+# Credentials of XRNC virtual machines. Use it to SSH to the VM
+user = {{ x['username'] }}
+password = {{ x['password'] }}
+hostname = {{ x['hostname'] }}
+{% endfor %}
+
+{% for x in xrvrs %}
+[xrvr{{ x['number']}}]
+# MGMT IP of the XRVR virtual machines
+ip = {{ x['ip_mx'] }}
+# Credentials of XRVR virtual machines. Use it to SSH to the VM
+user = {{ x['username'] }}
+password = {{ x['password'] }}
+hostname = {{ x['hostname'] }}
+{% endfor %}

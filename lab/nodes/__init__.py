@@ -39,6 +39,9 @@ class LabNode(WithLogMixIn):
     def get_role(self):
         return self._role
 
+    def get_n_in_role(self):
+        return self._n
+
     def lab(self):
         return self._lab
 
@@ -49,8 +52,12 @@ class LabNode(WithLogMixIn):
         self._oob_ip, self._oob_username, self._oob_password = ip, username, password
 
     def get_all_wires(self):
-        """Returns all ires"""
+        """Returns all wires"""
         return self._downstream_wires + self._upstream_wires + self._peer_link_wires
+
+    def get_wires_to(self, node):
+        """Returns wires to given node"""
+        return filter(lambda x: x.get_peer_node(self) == node, self.get_all_wires())
 
     def _assign_default_ip_index(self, net):
         chunk_size = (net.get_size() - 5) / 6  # bld/director, controls, computes, vts_hosts, vtc, xrvr, vtf
