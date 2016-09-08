@@ -147,7 +147,7 @@ VTS_PARAMETERS:
 
     VTS_USERNAME: {vtc_username}                  # Required parameter when VTS enabled At the current time one username and password is used for all vts components
     VTS_PASSWORD: {vtc_password}
-    VTS_VNI_RANGE:  1002:1004                     # Required parameter when VTS is enabled The range of VNI values the operator wants to use for the VXLAN encapsulated packets
+    VTS_VNI_RANGE:  4096:65535                    # Required parameter when VTS is enabled The range of VNI values the operator wants to use for the VXLAN encapsulated packets
     VTS_NCS_IP: {vtc_mx_vip}                      # Optional required only for EFT The IP address the VTF's will use to register.  This is only required for EFT
 
 #############################################
