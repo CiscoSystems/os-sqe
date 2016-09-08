@@ -19,6 +19,7 @@ COBBLER:
     control: control-flexflash-c220m4.ks
     compute: compute-flexflash-c220m4.ks
     block_storage: storage-flexflash-c240m4.ks
+    vts: control-sda-c220m4.ks
 
 NETWORKING:
   domain_name: ctocllab.cisco.com
@@ -67,9 +68,8 @@ ROLES:
      - {controllers_part}
   compute:
      - {computes_part}
-  block_storage:
-  object_storage:
-  networker:
+  vts:
+     - {vts_hosts_part}
 
 SERVER_COMMON:
   server_username: {common_ssh_username}

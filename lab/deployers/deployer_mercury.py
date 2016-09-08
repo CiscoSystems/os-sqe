@@ -4,14 +4,18 @@ from lab.deployers import Deployer
 class DeployerMercury(Deployer):
 
     def sample_config(self):
-        return {'installer-source': 'http://path-to-mercury-release-server-folder', 'type-of-install': 'iso or tarball', 'hardware-lab-config': 'valid lab configuration'}
+        return {'mercury_installer_location': 'http://path-to-mercury-release-server-folder', 'type_of_install': 'iso or tarball', 'hardware_lab_config': 'valid lab configuration',
+                'vts_images_location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', 'is_force_redeploy': True}
 
     def __init__(self, config):
+        from lab.deployers.deployer_vts import DeployerVts
+
         super(DeployerMercury, self).__init__(config=config)
 
-        self._installer_source = config['installer-source']
-        self._lab_path = config['hardware-lab-config']
-        self._type_of_install = config['type-of-install']
+        self._mercury_installer_location = config['mercury_installer_location']
+        self._lab_path = config['hardware_lab_config']
+        self._type_of_install = config['type_of_install']
+        self._vts_deployer = DeployerVts(config={'vts_images_location': config['vts_images_location'], 'rhel_creds_location': config['rhel_creds_location'], 'is_force_redeploy': config['is_force_redeploy']})
 
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
@@ -29,39 +33,40 @@ class DeployerMercury(Deployer):
         if self._type_of_install == 'iso':
             while True:
                 ip, username, password = build_node.get_oob()
-                ans = prompt('Run remote mounted ISO installation on http://{} ({}/{}) with RemoteShare={} RemoteFile=buildnode.iso, print FINISH when ready'.format(ip, username, password, self._installer_source))
+                ans = prompt('Run remote mounted ISO installation on http://{} ({}/{}) with RemoteShare={} RemoteFile=buildnode.iso, print FINISH when ready'.format(ip, username, password, self._mercury_installer_location))
                 if ans == 'FINISH':
                     break
-            installer_dir = build_node.run('find . -name installer*')
-        else:
-            mercury_tag = self._installer_source.split('/')[-1]
-            ans = build_node.exe('ls -d installer*', is_warn_only=True)
-            if 'No such file or directory' in ans:
-                repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
-                # build_node.exe(command='git checkout 0e865f68e0687f116c9045313c7f6ba9fabb5fd2', in_directory=repo_dir)  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
-                build_node.exe(command='./bootstrap.sh -T {}'.format(mercury_tag), in_directory=repo_dir + '/internal')
-                build_node.exe(command='rm -rf mercury')  # https://cisco.jiveon.com/docs/DOC-1503678, https://cisco.jiveon.com/docs/DOC-1502320
-                kernel_version = build_node.run('uname -r')
-                if kernel_version != '3.10.0-327.18.2.el7.x86_64':
-                    build_node.reboot()
-            if 'installer-' + mercury_tag in ans:
-                installer_dir = ans
-            else:
-                old_installer_dir = ans
-                build_node.exe(command='./unbootstrap.sh -y', in_directory=old_installer_dir, is_warn_only=True)
-                build_node.exe('rm -f openstack-configs')
-                build_node.exe('rm -rf {}'.format(old_installer_dir))
-                tar_url = self._installer_source + '/mercury-installer-internal.tar.gz'
-                tar_path = build_node.wget_file(url=tar_url)
-                ans = build_node.exe('tar xzvf {}'.format(tar_path))
-                installer_dir = ans.split('\r\n')[-1].split('/')[1]
 
+        mercury_tag = self._mercury_installer_location.split('/')[-1]
+        repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
+        ans = build_node.exe('ls -d installer*', is_warn_only=True)
+        if 'installer-' + mercury_tag in ans:
+            installer_dir = ans
+        else:
+            old_installer_dir = ans
+            build_node.exe(command='./unbootstrap.sh -y', in_directory=old_installer_dir, is_warn_only=True)
+            build_node.exe('rm -f openstack-configs')
+            build_node.exe('rm -rf {}'.format(old_installer_dir))
+            tar_url = self._mercury_installer_location + '/mercury-installer-internal.tar.gz'
+            tar_path = build_node.wget_file(url=tar_url)
+            ans = build_node.exe('tar xzvf {}'.format(tar_path))
+            installer_dir = ans.split('\r\n')[-1].split('/')[1]
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
+
+        special_files = ['/baremetal/baremetal_install.py', '/baremetal/cimcutils.py', 	'/openstack/config_manager.py', '/openstack/hw_validations.py', '/openstack/schema_validation.py', '/openstack/validations.py',
+                         '/system_configs/roles_profiles/roles.yaml', '/utils/common.py', '/utils/config_parser.py', '/bootstrap/build_orchestration.py']
+
+        for name in special_files:
+            build_node.exe('/usr/bin/cp {repo_dir}/installer{name} {installer_dir}{name}'.format(repo_dir=repo_dir, installer_dir=installer_dir, name=name))
+
+        build_node.exe("find {} -name '*.pyc' -delete".format(installer_dir))
         build_node.exe('rm -rf /var/log/mercury/*')
 
-        map(lambda x: x.cimc_power_up(), lab.get_controllers() + lab.get_computes())  # switch on all controllers and computes
+        build_node.exe(command='./runner/runner.py -y -s 7,8', in_directory=installer_dir)  # run steps 1-6 during which we get all control and computes nodes re-loaded
 
-        build_node.exe(command='./runner/runner.py', in_directory=installer_dir, is_warn_only=True)
+        self._vts_deployer.wait_for_cloud(list_of_servers=lab.get_vts_hosts())
+
+        build_node.exe(command='./runner/runner.py -y -p 7,8', in_directory=installer_dir)  # run steps 7-8
 
         lab.r_collect_information(regex='ERROR', comment='after mercury runner')
 
@@ -101,9 +106,10 @@ class DeployerMercury(Deployer):
 
         controllers_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_controllers()))
         computes_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_computes()))
+        vts_hosts_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_vts_hosts()))
 
         servers_part = ''
-        for node in lab.get_controllers() + lab.get_computes():
+        for node in lab.get_controllers() + lab.get_computes() + lab.get_vts_hosts():
             oob_ip, oob_username, oob_password = node.get_oob()
             ru = node.get_hardware_info()[0]
             servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n\n'.format(nm=node.get_hostname(), p=oob_password, ip=oob_ip, ru=ru)
@@ -112,7 +118,7 @@ class DeployerMercury(Deployer):
                                                                  api_cidr=api_cidr, api_pref_len=api_pref_len, api_vlan=api_vlan, api_gw=api_gw,
                                                                  mx_cidr=mx_cidr, mx_pref_len=mx_pref_len, mx_vlan=mx_vlan, mx_gw=mx_gw, bld_ip_mx=bld_ip_mx, mx_pool=mx_pool,
                                                                  tenant_cidr=tenant_cidr, tenant_vlan=tenant_vlan, tenant_gw=tenant_gw, tenant_pool=tenant_pool,
-                                                                 controllers_part=controllers_part, computes_part=computes_part, servers_part=servers_part,
+                                                                 controllers_part=controllers_part, computes_part=computes_part, vts_hosts_part=vts_hosts_part, servers_part=servers_part,
                                                                  lb_ip_api=lb_ip_api, lb_ip_mx=lb_ip_mx,
                                                                  vtc_mx_vip=vtc_mx_ip, vtc_username=vtc_username, vtc_password=vtc_password, common_ssh_username=bld_username_api,
                                                                  bld_ip_oob=bld_ip_oob, bld_username_oob=bld_username_oob, bld_password_oob=bld_password_oob,
