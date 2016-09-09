@@ -42,7 +42,6 @@ class DeployerMercury(Deployer):
         ans = build_node.exe('ls -d installer*', is_warn_only=True)
         if 'installer-' + mercury_tag in ans:
             installer_dir = ans
-            build_node.exe(command=' ./unbootstrap.sh -y', in_directory=installer_dir)
         else:
             old_installer_dir = ans
             build_node.exe(command='./unbootstrap.sh -y', in_directory=old_installer_dir, is_warn_only=True)
@@ -54,11 +53,11 @@ class DeployerMercury(Deployer):
             installer_dir = ans.split('\r\n')[-1].split('/')[0]
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
 
-        # special_files = ['/baremetal/baremetal_install.py', '/baremetal/cimcutils.py', 	'/openstack/config_manager.py', '/openstack/hw_validations.py', '/openstack/schema_validation.py', '/openstack/validations.py',
-        #                  '/system_configs/roles_profiles/roles.yaml', '/utils/common.py', '/utils/config_parser.py']
+        special_files = ['/baremetal/baremetal_install.py', '/baremetal/cimcutils.py', 	'/openstack/config_manager.py', '/openstack/hw_validations.py', '/openstack/schema_validation.py', '/openstack/validations.py',
+                         '/system_configs/roles_profiles/roles.yaml', '/utils/common.py', '/utils/config_parser.py']
 
-        # for name in special_files:
-        #     build_node.exe('/usr/bin/cp {repo_dir}/installer{name} {installer_dir}{name}'.format(repo_dir=repo_dir, installer_dir=installer_dir, name=name))
+        for name in special_files:
+            build_node.exe('/usr/bin/cp {repo_dir}/installer{name} {installer_dir}{name}'.format(repo_dir=repo_dir, installer_dir=installer_dir, name=name))
 
         build_node.exe("find {} -name '*.pyc' -delete".format(installer_dir))
         build_node.exe('rm -rf /var/log/mercury/*')
