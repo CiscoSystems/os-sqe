@@ -42,6 +42,7 @@ class DeployerMercury(Deployer):
         ans = build_node.exe('ls -d installer*', is_warn_only=True)
         if 'installer-' + mercury_tag in ans:
             installer_dir = ans
+            build_node.exe(command=' ./unbootstrap.sh -y', in_directory=installer_dir)
         else:
             old_installer_dir = ans
             build_node.exe(command='./unbootstrap.sh -y', in_directory=old_installer_dir, is_warn_only=True)
