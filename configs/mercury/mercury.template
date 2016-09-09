@@ -89,18 +89,13 @@ TENANT_NETWORK_TYPES: "VLAN"
 TENANT_VLAN_RANGES: 1000:2000
 ENABLE_JUMBO_FRAMES: True
 RESERVED_HOST_MEMORY_PERC: 50
-ENABLE_KERNEL_ISOLCPUS: False
+# ENABLE_KERNEL_ISOLCPUS: False
 
 #################################################
 # Keystone
 #################################################
 ADMIN_USER: admin
 ADMIN_TENANT_NAME: admin
-
-# Keystone Verbosity options:
-VERBOSE_LOGGING: True
-DEBUG_LOGGING: True
-USE_STDERR: false
 
 ###############################################
 # HA Proxy
@@ -110,8 +105,6 @@ external_lb_vip_address: {lb_ip_api}  # external_lb_vip_address has to be part o
 VIRTUAL_ROUTER_ID: 3
 
 internal_lb_vip_address: {lb_ip_mx}
-#MGMT_VIP_INTERFACE: mp_b
-MGMT_VIRTUAL_ROUTER_ID: 103
 
 #################################################
 # CEPH
