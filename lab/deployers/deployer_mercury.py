@@ -51,7 +51,7 @@ class DeployerMercury(Deployer):
             tar_url = self._mercury_installer_location + '/mercury-installer-internal.tar.gz'
             tar_path = build_node.wget_file(url=tar_url)
             ans = build_node.exe('tar xzvf {}'.format(tar_path))
-            installer_dir = ans.split('\r\n')[-1].split('/')[1]
+            installer_dir = ans.split('\r\n')[-1].split('/')[0]
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
 
         # special_files = ['/baremetal/baremetal_install.py', '/baremetal/cimcutils.py', 	'/openstack/config_manager.py', '/openstack/hw_validations.py', '/openstack/schema_validation.py', '/openstack/validations.py',
