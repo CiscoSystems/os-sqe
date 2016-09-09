@@ -156,10 +156,10 @@ VTS_PARAMETERS:
 NFV_HOSTS: ALL # The VTS option requires NFV_HOSTS: ALL CPU Pinning and Huge Page support will be enabled on the hosts defined below.
 
 # Addition to use automatic bare-metal build node deployment
-TESTBED: g7-2
-MGMT_NODE_CIMC_IP: {bld_ip_oob}
-MGMT_CIMC_USERNAME: {bld_username_oob}
-MGMT_CIMC_PASSWORD: '{bld_password_oob}'
-MGMT_NODE_API_IP: {bld_ip_api}/{api_pref_len}
-MGMT_NODE_API_GW: {api_gw}
-MGMT_NODE_MGMT_IP: {bld_ip_mx}/{mx_pref_len}
+# TESTBED: g7-2
+# MGMT_NODE_CIMC_IP: {bld_ip_oob}
+# MGMT_CIMC_USERNAME: {bld_username_oob}
+# MGMT_CIMC_PASSWORD: '{bld_password_oob}'
+# MGMT_NODE_API_IP: {bld_ip_api}/{api_pref_len}
+# MGMT_NODE_API_GW: {api_gw}
+# MGMT_NODE_MGMT_IP: {bld_ip_mx}/{mx_pref_len}
