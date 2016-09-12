@@ -237,7 +237,12 @@ class Laboratory(WithOspd7, WithLogMixIn):
         from lab.cimc import CimcDirector
         from lab.nodes.fi import FiDirector
 
-        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self._nodes) or self.get_controllers()[0]
+        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self._nodes)[0] or self.get_controllers()[0]
+
+    def get_cobbler(self):
+        from lab.nodes.cobbler import CobblerServer
+
+        return filter(lambda x: type(x) in [CobblerServer], self._nodes)[0]
 
     def get_vts_hosts(self):
         from lab.vts_classes.vtc import VtsHost

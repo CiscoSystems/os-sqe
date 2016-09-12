@@ -5,7 +5,7 @@ class DeployerMercury(Deployer):
 
     def sample_config(self):
         return {'mercury_installer_location': 'http://path-to-mercury-release-server-folder', 'type_of_install': 'iso or tarball', 'hardware_lab_config': 'valid lab configuration',
-                'vts_images_location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', 'is_force_redeploy': True}
+                'vts_images_location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', 'is_force_redeploy': True, 'is_add_vts_role': False}
 
     def __init__(self, config, version):
         from lab.deployers.deployer_vts import DeployerVts
@@ -16,6 +16,7 @@ class DeployerMercury(Deployer):
         self._lab_path = config['hardware_lab_config']
         self._type_of_install = config['type_of_install']
         self._vts_deployer = DeployerVts(config={'vts_images_location': config['vts_images_location'], 'rhel_creds_location': config['rhel_creds_location'], 'is_force_redeploy': config['is_force_redeploy']})
+        self._is_add_vts_role = config['is_add_vts_role']
 
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
@@ -28,7 +29,7 @@ class DeployerMercury(Deployer):
         try:
             build_node = filter(lambda x: type(x) is CimcDirector, list_of_servers)[0]
         except IndexError:
-            build_node = lab.get_node_by_id('bld')
+            build_node = lab.get_director()
 
         if self._type_of_install == 'iso':
             while True:
@@ -51,13 +52,16 @@ class DeployerMercury(Deployer):
             ans = build_node.exe('tar xzvf {}'.format(tar_path))
             installer_dir = ans.split('\r\n')[-1].split('/')[0]
 
-        self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
+        self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir, is_add_vts_role=False)
 
         build_node.exe("find {} -name '*.pyc' -delete".format(installer_dir))
         build_node.exe('rm -rf /var/log/mercury/*')
 
         build_node.exe(command='./runner/runner.py -y -s 7,8', in_directory=installer_dir)  # run steps 1-6 during which we get all control and computes nodes re-loaded
 
+        if not self._is_add_vts_role:
+            cobbler = lab.get_cobbler()
+            cobbler.cobbler_deploy()
         self._vts_deployer.wait_for_cloud(list_of_servers=lab.get_vts_hosts())
 
         build_node.exe(command='./runner/runner.py -y -p 7,8', in_directory=installer_dir)  # run steps 7-8
@@ -67,7 +71,7 @@ class DeployerMercury(Deployer):
         openrc_body = build_node.exe(command='cat openstack-configs/openrc')
         return Cloud.from_openrc(name=self._lab_path.strip('.yaml'), mediator=build_node, openrc_as_string=openrc_body)
 
-    def create_setup_yaml(self, build_node, installer_dir):
+    def create_setup_yaml(self, build_node, installer_dir, is_add_vts_role):
         from lab.with_config import open_artifact
 
         installer_config_template = self.read_config_from_file(config_path='mercury.template', directory='mercury', is_as_string=True)
@@ -102,19 +106,27 @@ class DeployerMercury(Deployer):
         computes_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_computes()))
         vts_hosts_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_vts_hosts()))
 
+        roles_part = '   control:\n     - {}\n   compute:\n     - {}\n'.format(controllers_part, computes_part)
+        if is_add_vts_role:
+            roles_part += '   vts:\n     - {}\n'.format(vts_hosts_part)
+
         servers_part = ''
-        for node in lab.get_controllers() + lab.get_computes() + lab.get_vts_hosts():
+        nodes = lab.get_controllers() + lab.get_computes()
+        if is_add_vts_role:
+            nodes += lab.get_vts_hosts()
+
+        for node in nodes:
             oob_ip, oob_username, oob_password = node.get_oob()
             ip_mx = node.get_ip_mx()
             ru = node.get_hardware_info()[0]
-            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n       management_ip: {ip_mx} \n\n'.format(nm=node.get_hostname(),p=oob_password, ip=oob_ip, ru=ru,
+            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n       management_ip: {ip_mx} \n\n'.format(nm=node.get_hostname(), p=oob_password, ip=oob_ip, ru=ru,
                                                                                                                                                                                               ip_mx=ip_mx)
 
         installer_config_body = installer_config_template.format(common_username_oob=bld_username_oob, common_password_oob=bld_password_api, dns_ip=dns_ip,
                                                                  api_cidr=api_cidr, api_pref_len=api_pref_len, api_vlan=api_vlan, api_gw=api_gw,
                                                                  mx_cidr=mx_cidr, mx_pref_len=mx_pref_len, mx_vlan=mx_vlan, mx_gw=mx_gw, bld_ip_mx=bld_ip_mx, mx_pool=mx_pool,
                                                                  tenant_cidr=tenant_cidr, tenant_vlan=tenant_vlan, tenant_gw=tenant_gw, tenant_pool=t_pool,
-                                                                 controllers_part=controllers_part, computes_part=computes_part, vts_hosts_part=vts_hosts_part, servers_part=servers_part,
+                                                                 roles_part=roles_part, servers_part=servers_part,
                                                                  lb_ip_api=lb_ip_api, lb_ip_mx=lb_ip_mx,
                                                                  vtc_mx_vip=vtc_mx_ip, vtc_username=vtc_username, vtc_password=vtc_password, common_ssh_username=bld_username_api,
                                                                  bld_ip_oob=bld_ip_oob, bld_username_oob=bld_username_oob, bld_password_oob=bld_password_oob,

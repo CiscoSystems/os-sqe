@@ -64,12 +64,7 @@ NETWORKING:
        - provider
 
 ROLES:
-  control:
-     - {controllers_part}
-  compute:
-     - {computes_part}
-  vts:
-     - {vts_hosts_part}
+{roles_part}
 
 SERVER_COMMON:
   server_username: {common_ssh_username}
