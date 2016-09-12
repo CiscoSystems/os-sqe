@@ -31,6 +31,9 @@ class DeployerMercury(Deployer):
         except IndexError:
             build_node = lab.get_director()
 
+        mercury_tag = self._mercury_installer_location.split('/')[-1]
+        self.log(message='Deploying {} on {}'.format(mercury_tag, build_node))
+
         if self._type_of_install == 'iso':
             while True:
                 ip, username, password = build_node.get_oob()
@@ -38,19 +41,24 @@ class DeployerMercury(Deployer):
                 if ans == 'FINISH':
                     break
 
-        mercury_tag = self._mercury_installer_location.split('/')[-1]
         ans = build_node.exe('ls -d installer*', is_warn_only=True)
         if 'installer-' + mercury_tag in ans:
             installer_dir = ans
+            is_get_tarball = False
+        elif 'No such file or directory' in ans:
+            is_get_tarball = True
         else:
             old_installer_dir = ans
             build_node.exe(command='./unbootstrap.sh -y', in_directory=old_installer_dir, is_warn_only=True)
-            build_node.exe('rm -f openstack-configs')
+            build_node.exe('rm -f openstack-configs', is_warn_only=True)
             build_node.exe('rm -rf {}'.format(old_installer_dir))
+
+        if is_get_tarball:
             tar_url = self._mercury_installer_location + '/mercury-installer-internal.tar.gz'
             tar_path = build_node.wget_file(url=tar_url)
             ans = build_node.exe('tar xzvf {}'.format(tar_path))
             installer_dir = ans.split('\r\n')[-1].split('/')[0]
+            build_node.exe('rm -f {}'.format(tar_path))
 
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir, is_add_vts_role=False)
 
