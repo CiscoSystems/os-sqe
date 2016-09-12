@@ -85,12 +85,12 @@ class DeployerMercury(Deployer):
         mx_net = lab.get_all_nets()['mx']
         mx_cidr, mx_pref_len, mx_vlan, mx_gw = mx_net.get_cidr(), mx_net.get_prefix_len(), mx_net.get_vlan(), mx_net.get_gw()
         lb_ip_mx = mx_net.get_ip_for_index(252)
-        mx_pool = '{} to {}'.format(mx_net.get_ip_for_index(5), mx_net.get_ip_for_index(250))
+        mx_pool = '{} to {}'.format(mx_net.get_ip_for_index(5), mx_net.get_ip_for_index(100))
         lab.make_sure_that_object_is_unique(str(lb_ip_mx), 'MERCURY')
 
         tenant_net = lab.get_all_nets()['t']
         tenant_cidr, tenant_vlan, tenant_gw = tenant_net.get_cidr(), tenant_net.get_vlan(), tenant_net.get_gw()
-        tenant_pool = '{} to {}'.format(tenant_net.get_ip_for_index(5), tenant_net.get_ip_for_index(250))
+        tenant_pool = '{} to {}'.format(tenant_net.get_ip_for_index(5), tenant_net.get_ip_for_index(100))
 
         bld_ip_mx = build_node.get_nic('mx').get_ip_and_mask()[0]
 
