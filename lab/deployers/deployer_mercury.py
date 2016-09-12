@@ -84,13 +84,13 @@ class DeployerMercury(Deployer):
 
         mx_net = lab.get_all_nets()['mx']
         mx_cidr, mx_pref_len, mx_vlan, mx_gw = mx_net.get_cidr(), mx_net.get_prefix_len(), mx_net.get_vlan(), mx_net.get_gw()
-        lb_ip_mx = mx_net.get_ip_for_index(252)
-        mx_pool = '{} to {}'.format(mx_net.get_ip_for_index(5), mx_net.get_ip_for_index(100))
+        lb_ip_mx = mx_net.get_ip_for_index(10)
+        mx_pool = '{} to {}'.format(mx_net.get_ip_for_index(151), mx_net.get_ip_for_index(192))
         lab.make_sure_that_object_is_unique(str(lb_ip_mx), 'MERCURY')
 
         tenant_net = lab.get_all_nets()['t']
         tenant_cidr, tenant_vlan, tenant_gw = tenant_net.get_cidr(), tenant_net.get_vlan(), tenant_net.get_gw()
-        tenant_pool = '{} to {}'.format(tenant_net.get_ip_for_index(5), tenant_net.get_ip_for_index(100))
+        t_pool = '{} to {}'.format(tenant_net.get_ip_for_index(151), tenant_net.get_ip_for_index(192))
 
         bld_ip_mx = build_node.get_nic('mx').get_ip_and_mask()[0]
 
@@ -113,7 +113,7 @@ class DeployerMercury(Deployer):
         installer_config_body = installer_config_template.format(common_username_oob=bld_username_oob, common_password_oob=bld_password_api, dns_ip=dns_ip,
                                                                  api_cidr=api_cidr, api_pref_len=api_pref_len, api_vlan=api_vlan, api_gw=api_gw,
                                                                  mx_cidr=mx_cidr, mx_pref_len=mx_pref_len, mx_vlan=mx_vlan, mx_gw=mx_gw, bld_ip_mx=bld_ip_mx, mx_pool=mx_pool,
-                                                                 tenant_cidr=tenant_cidr, tenant_vlan=tenant_vlan, tenant_gw=tenant_gw, tenant_pool=tenant_pool,
+                                                                 tenant_cidr=tenant_cidr, tenant_vlan=tenant_vlan, tenant_gw=tenant_gw, tenant_pool=t_pool,
                                                                  controllers_part=controllers_part, computes_part=computes_part, vts_hosts_part=vts_hosts_part, servers_part=servers_part,
                                                                  lb_ip_api=lb_ip_api, lb_ip_mx=lb_ip_mx,
                                                                  vtc_mx_vip=vtc_mx_ip, vtc_username=vtc_username, vtc_password=vtc_password, common_ssh_username=bld_username_api,
