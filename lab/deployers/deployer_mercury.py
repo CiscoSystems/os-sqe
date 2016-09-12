@@ -130,7 +130,7 @@ class DeployerMercury(Deployer):
             servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n       management_ip: {ip_mx} \n\n'.format(nm=node.get_hostname(), p=oob_password, ip=oob_ip, ru=ru,
                                                                                                                                                                                               ip_mx=ip_mx)
 
-        installer_config_body = installer_config_template.format(common_username_oob=bld_username_oob, common_password_oob=bld_password_api, dns_ip=dns_ip,
+        installer_config_body = installer_config_template.format(common_username_oob=bld_username_oob, common_password_oob=bld_password_api, dns_ip=dns_ip, vts_kickstart=' vts: control-sda-c220m4.ks' if self._is_add_vts_role else '',
                                                                  api_cidr=api_cidr, api_pref_len=api_pref_len, api_vlan=api_vlan, api_gw=api_gw,
                                                                  mx_cidr=mx_cidr, mx_pref_len=mx_pref_len, mx_vlan=mx_vlan, mx_gw=mx_gw, bld_ip_mx=bld_ip_mx, mx_pool=mx_pool,
                                                                  tenant_cidr=tenant_cidr, tenant_vlan=tenant_vlan, tenant_gw=tenant_gw, tenant_pool=t_pool,
