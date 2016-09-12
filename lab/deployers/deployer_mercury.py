@@ -7,12 +7,12 @@ class DeployerMercury(Deployer):
         return {'mercury_installer_location': 'http://path-to-mercury-release-server-folder', 'type_of_install': 'iso or tarball', 'hardware_lab_config': 'valid lab configuration',
                 'vts_images_location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', 'is_force_redeploy': True}
 
-    def __init__(self, config):
+    def __init__(self, config, version):
         from lab.deployers.deployer_vts import DeployerVts
 
         super(DeployerMercury, self).__init__(config=config)
 
-        self._mercury_installer_location = config['mercury_installer_location']
+        self._mercury_installer_location = config['mercury_installer_location'].format(version=version)
         self._lab_path = config['hardware_lab_config']
         self._type_of_install = config['type_of_install']
         self._vts_deployer = DeployerVts(config={'vts_images_location': config['vts_images_location'], 'rhel_creds_location': config['rhel_creds_location'], 'is_force_redeploy': config['is_force_redeploy']})

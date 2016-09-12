@@ -1,3 +1,3 @@
 deployer1: {lab.deployers.deployer_mercury.DeployerMercury: {
-    mercury_installer_location: 'http://cloud-releases.cisco.com/mercury-releases/mercury-rhel7-osp8/development/5425', type_of_install: tar, hardware_lab_config: g7-2.yaml,
+    mercury_installer_location: 'http://cloud-releases.cisco.com/mercury-releases/mercury-rhel7-osp8/development/{version}', type_of_install: tar, hardware_lab_config: g7-2.yaml,
     vts_images_location: 'http://wwwin-nfv-orch.cisco.com/mercury/VTC-latest/', rhel_creds_location: 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', is_force_redeploy: True}}

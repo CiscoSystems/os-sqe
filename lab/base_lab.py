@@ -4,7 +4,7 @@ from lab.with_status import WithStatusMixIn
 class BaseLab(WithStatusMixIn):
     sample_config = 'Try to provide at least section {provider: {ProviderClassName: {}}'
 
-    def __init__(self, yaml_name):
+    def __init__(self, yaml_name, version):
         import importlib
         import os
         from lab.with_config import read_config_from_file
@@ -30,7 +30,7 @@ class BaseLab(WithStatusMixIn):
                 raise ValueError('yaml {y} section {l}: Module "{mp}" is not defined! Use one of:\n {c}'.format(y=yaml_name, l=section_name, mp=module_path, c=classes))
             except AttributeError:
                 raise ValueError('in yaml {y}: class {k} is not in {p}'.format(y=yaml_name, k=class_name, p=module_path))
-            class_instance = klass(class_config)
+            class_instance = klass(config=class_config, version=version)
             if type(class_instance).__name__.startswith('Provider'):
                 self.providers.append(class_instance)
             elif type(class_instance).__name__.startswith('Deployer'):
