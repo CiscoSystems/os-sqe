@@ -32,16 +32,13 @@ class Xrvr(LabServer):
         elif method_to_disrupt == 'vm-reboot' and start_or_stop == 'start':
             self.cmd('sudo shutdown -r now', is_xrvr=False)
 
-    def get_ip_mx(self):
-        return self.get_nic('mx').get_ip_and_mask()[0]
-
     def get_xrvr_ip_user_pass(self):
         _, u, p = self.get_oob()
-        return self.get_nic('mx').get_ip_and_mask()[0], u, p
+        return self.get_ip_mx(), u, p
 
     def get_xrnc_ip_user_pass(self):
         _, u, p = self.get_ssh()
-        return self.get_nic('mx').get_ip_and_mask()[0], u, p
+        return self.get_ip_mx(), u, p
 
     def get_ip_t(self):
         return self.get_nic('t').get_ip_and_mask()[0]

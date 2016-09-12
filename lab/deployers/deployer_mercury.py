@@ -38,7 +38,6 @@ class DeployerMercury(Deployer):
                     break
 
         mercury_tag = self._mercury_installer_location.split('/')[-1]
-        repo_dir = build_node.clone_repo('https://cloud-review.cisco.com/mercury/mercury.git')
         ans = build_node.exe('ls -d installer*', is_warn_only=True)
         if 'installer-' + mercury_tag in ans:
             installer_dir = ans
@@ -51,13 +50,8 @@ class DeployerMercury(Deployer):
             tar_path = build_node.wget_file(url=tar_url)
             ans = build_node.exe('tar xzvf {}'.format(tar_path))
             installer_dir = ans.split('\r\n')[-1].split('/')[0]
+
         self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir)
-
-        special_files = ['/baremetal/baremetal_install.py', '/baremetal/cimcutils.py', 	'/openstack/config_manager.py', '/openstack/hw_validations.py', '/openstack/schema_validation.py', '/openstack/validations.py',
-                         '/system_configs/roles_profiles/roles.yaml', '/utils/common.py', '/utils/config_parser.py']
-
-        for name in special_files:
-            build_node.exe('/usr/bin/cp {repo_dir}/installer{name} {installer_dir}{name}'.format(repo_dir=repo_dir, installer_dir=installer_dir, name=name))
 
         build_node.exe("find {} -name '*.pyc' -delete".format(installer_dir))
         build_node.exe('rm -rf /var/log/mercury/*')
@@ -91,12 +85,12 @@ class DeployerMercury(Deployer):
         mx_net = lab.get_all_nets()['mx']
         mx_cidr, mx_pref_len, mx_vlan, mx_gw = mx_net.get_cidr(), mx_net.get_prefix_len(), mx_net.get_vlan(), mx_net.get_gw()
         lb_ip_mx = mx_net.get_ip_for_index(10)
-        mx_pool = '{} to {}'.format(mx_net.get_ip_for_index(50), mx_net.get_ip_for_index(90))
+        mx_pool = '{} to {}'.format(mx_net.get_ip_for_index(5), mx_net.get_ip_for_index(250))
         lab.make_sure_that_object_is_unique(str(lb_ip_mx), 'MERCURY')
 
         tenant_net = lab.get_all_nets()['t']
         tenant_cidr, tenant_vlan, tenant_gw = tenant_net.get_cidr(), tenant_net.get_vlan(), tenant_net.get_gw()
-        tenant_pool = '{} to {}'.format(tenant_net.get_ip_for_index(10), tenant_net.get_ip_for_index(250))
+        tenant_pool = '{} to {}'.format(tenant_net.get_ip_for_index(5), tenant_net.get_ip_for_index(250))
 
         bld_ip_mx = build_node.get_nic('mx').get_ip_and_mask()[0]
 
@@ -111,8 +105,10 @@ class DeployerMercury(Deployer):
         servers_part = ''
         for node in lab.get_controllers() + lab.get_computes() + lab.get_vts_hosts():
             oob_ip, oob_username, oob_password = node.get_oob()
+            ip_mx = node.get_ip_mx()
             ru = node.get_hardware_info()[0]
-            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n\n'.format(nm=node.get_hostname(), p=oob_password, ip=oob_ip, ru=ru)
+            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n       management_ip: {ip_mx} \n\n'.format(nm=node.get_hostname(),p=oob_password, ip=oob_ip, ru=ru,
+                                                                                                                                                                                              ip_mx=ip_mx)
 
         installer_config_body = installer_config_template.format(common_username_oob=bld_username_oob, common_password_oob=bld_password_api, dns_ip=dns_ip,
                                                                  api_cidr=api_cidr, api_pref_len=api_pref_len, api_vlan=api_vlan, api_gw=api_gw,
