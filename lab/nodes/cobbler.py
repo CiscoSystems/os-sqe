@@ -6,7 +6,7 @@ class CobblerServer(LabServer):
 
     def cmd(self, cmd):
         self.set_ssh_ip(ip=self.get_oob()[0])
-        return self.exe(command=cmd)
+        return self.exe(command=cmd, is_warn_only=True)
 
     def __repr__(self):
         _, ssh_u, ssh_p = self.get_ssh()
@@ -41,8 +41,8 @@ class CobblerServer(LabServer):
             else:
                 network_commands.append('--interface={} --mac={} {}'.format(name, mac, ip_mask_part))
 
-        systems = self.cmd('cobbler system list')
-        if system_name in systems:
+        ans = self.cmd('cobbler system list | grep {}'.format(system_name))
+        if system_name in ans:
             self.cmd('cobbler system remove --name={}'.format(system_name))
 
         self.cmd('cobbler system add --name={} --profile=RHEL7.2-x86_64 --kickstart=/var/lib/cobbler/kickstarts/sqe --comment="{}"'.format(system_name, comment))
@@ -50,7 +50,7 @@ class CobblerServer(LabServer):
         self.cmd('cobbler system edit --name={} --hostname={} --gateway={}'.format(system_name, node.get_hostname(), gateway))
 
         for cmd in network_commands:
-            self.exe('cobbler system edit --name={} {}'.format(system_name, cmd))
+            self.cmd('cobbler system edit --name={} {}'.format(system_name, cmd))
 
         ipmi_ip, ipmi_username, ipmi_password = node.get_oob()
         self.cmd('cobbler system edit --name={} --power-type=ipmilan --power-address={} --power-user={} --power-pass={}'.format(system_name, ipmi_ip, ipmi_username, ipmi_password))
@@ -84,7 +84,7 @@ class CobblerServer(LabServer):
 
         for node in nodes_to_check:
             self.log('Waiting when server is online...')
-            when_provided = node.run(command='cat ProvTime')
+            when_provided = node.exe(command='cat ProvTime')
             if 'ProvTime=' + when_provided != ks_meta:
                 raise RuntimeError('Wrong provisioning attempt- timestamps are not matched')
             node.actuate_hostname()
