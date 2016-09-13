@@ -47,7 +47,7 @@ class CobblerServer(LabServer):
 
         self.cmd('cobbler system add --name={} --profile=RHEL7.2-x86_64 --kickstart=/var/lib/cobbler/kickstarts/sqe --comment="{}"'.format(system_name, comment))
 
-        self.cmd('cobbler system edit --name={} --hostname={} --gateway={}'.format(system_name, node.hostname(), gateway))
+        self.cmd('cobbler system edit --name={} --hostname={} --gateway={}'.format(system_name, node.get_hostname(), gateway))
 
         for cmd in network_commands:
             self.exe('cobbler system edit --name={} {}'.format(system_name, cmd))
