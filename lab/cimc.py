@@ -2,7 +2,6 @@ from lab.nodes.lab_server import LabServer
 
 
 class CimcServer(LabServer):
-    LOM_ENABLED, LOM_DISABLED = 'Enabled', 'Disabled'
     RAID_0, RAID_1, RAID_10 = '0', '1', '10'
 
     def __init__(self, node_id, lab, role):
@@ -17,7 +16,8 @@ class CimcServer(LabServer):
     def _login(self):
         import ImcSdk
 
-        self.logger('logging in')
+        if self._dump_xml:
+            self.logger('logging in')
         self._handle = ImcSdk.ImcHandle()
         oob_ip, oob_username, oob_password = self.get_oob()
         if not all([oob_ip, oob_username, oob_password]):
@@ -25,7 +25,8 @@ class CimcServer(LabServer):
         self._handle.login(name=oob_ip, username=oob_username, password=self._oob_password, dump_xml=self._dump_xml)
 
     def _logout(self):
-        self.logger('logging out')
+        if self._dump_xml:
+            self.logger('logging out')
         self._handle.logout()
         self._handle = None
 
@@ -51,16 +52,35 @@ class CimcServer(LabServer):
                 if self._logout_on_each_command:
                     self._logout()
 
-    def cimc_switch_lom_ports(self, status):
-        self.logger('Set all LOM ports to the status: {0}'.format(status))
+    def _cimc_lom(self, status):
+        self.logger('{} all LOM'.format(status))
         params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status, 'vpLOMPort0State': status, 'vpLOMPort1State': status}
         self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
+
+    def cimc_enable_lom(self):
+        from time import sleep
+
+        loms = self.cimc_list_lom_ports()
+        if not loms:
+            self._cimc_lom(status='Enabled')
+            self.cimc_power_cycle()
+            while True:
+                loms = self.cimc_list_lom_ports()
+                if loms:
+                    self.logger('LOMs are enabled')
+                    return
+                sleep(20)
+        else:
+            self.log('LOMs are already enabled')
+
+    def cimc_disable_lom(self):
+        self._cimc_lom(status='Disabled')
 
     def cimc_list_lom_ports(self):
         r = self.cimc_get_mo_by_class_id('networkAdapterEthIf')
         return {'LOM-' + x.Id: {'mac': x.Mac, 'dn': x.Dn} for x in r}
 
-    def cimc_list_mlom_ports(self):
+    def cimc_list_vnics(self):
         ans1 = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
         ans2 = self.cimc_get_mo_by_class_id('adaptorEthGenProfile')
         vnics = {x.Name: {'mac': x.Mac, 'uplink': x.UplinkPort, 'pci-slot': x.UsnicCount, 'dn': x.Dn, 'mtu': x.Mtu, 'name': x.Name, 'pxe-boot': x.PxeBoot} for x in ans1}
@@ -69,13 +89,6 @@ class CimcServer(LabServer):
             vlans = vlans_dict[vnic['dn']]
             vnic.update(vlans)
         return vnics
-
-    def disable_pxe_all_intf(self, status):
-        adapters = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
-        for adapter in adapters:
-            self.cimc_switch_lom_ports(status)
-            params = {'dn': adapter.Dn, 'PxeBoot': 'disabled', 'mac': adapter.Mac, 'Name': adapter.Name}
-            self.cimc_set_mo_by_class_id(class_id='adaptorHostEthIf', params=params)
 
     def cimc_get_mo_by_class_id(self, class_id):
         return self.cmd('get_imc_managedobject', in_mo=None, class_id=class_id)
@@ -123,15 +136,16 @@ class CimcServer(LabServer):
         self.cimc_set_mo_by_class_id(class_id="storageVirtualDriveCreatorUsingUnusedPhysicalDrive", params=params)
 
     def cimc_delete_all_vnics(self):
-        self.logger('cleaning up all vNICs')
-        adapters = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
-        for adapter in adapters:
-            self.cimc_delete_vnic(dn=adapter.Dn)
+        self.logger('deleting all vNICs')
+        vnic_names = self.cimc_list_vnics().keys()
+        for vnic_name in vnic_names:
+            self.cimc_delete_vnic(vnic_name=vnic_name)
 
-    def cimc_delete_vnic(self, dn):
-        if 'eth0' in dn or 'eth1' in dn:  # no way to delete eth0 or eth1, so reset them to default
-            self.logger(message='Resetting vNIC ' + dn)
-            params = {'UplinkPort': dn[-1], 'mac': 'AUTO', 'mtu': 1500, 'dn': dn}
+    def cimc_delete_vnic(self, vnic_name):
+        dn = 'sys/rack-unit-1/adaptor-MLOM/host-eth-{}'.format(vnic_name)
+        if 'eth0' in vnic_name or 'eth1' in vnic_name:  # no way to delete eth0 or eth1, so reset them to default
+            self.logger(message='Resetting vNIC ' + vnic_name)
+            params = {'UplinkPort': vnic_name[-1], 'mac': 'AUTO', 'mtu': 1500, 'dn': dn}
             self.cimc_set_mo_by_class_id(class_id='adaptorHostEthIf', params=params)
             general_params = {'Dn': dn + '/general', 'Vlan': 'NONE', 'Order': 'ANY'}
             self.cimc_set_mo_by_class_id(class_id='AdaptorEthGenProfile', params=general_params)
@@ -196,13 +210,13 @@ class CimcServer(LabServer):
     def cleanup(self):
         self.logger('Cleaning CIMC {0}'.format(self))
         self._login()
-        self.cimc_switch_lom_ports(self.LOM_ENABLED)
+        self.cimc_enable_lom()
         self.cimc_delete_all_vnics()
         self.cimc_power_down()
         self._logout()
 
     def cimc_recreate_vnics(self):
-        actual_mloms = self.cimc_list_mlom_ports()
+        actual_vnics = self.cimc_list_vnics()
         actual_loms = self.cimc_list_lom_ports()
 
         for nic_order, nic in enumerate(self.get_nics().values()):  # NIC order starts from 0
@@ -214,26 +228,33 @@ class CimcServer(LabServer):
                         raise ValueError('Node "{}": "{}" has "{}" while specified "{}". Edit lab config!'.format(self.get_id(), slave_port, actual_mac, slave_mac))
                 else:
                     if 'eth' not in self.get_nics() and nic.is_ssh():  # if no NIC called eth and it's nic on ssh network, use default eth0, eth1
-                        if slave_name in actual_mloms:
-                            self.cimc_delete_vnic(dn=actual_mloms[slave_name]['dn'])
+                        if slave_name in actual_vnics:
+                            self.cimc_delete_vnic(vnic_name=slave_name)
                         slave_name = 'eth' + slave_name[-1]
-                    if slave_name in actual_mloms:
-                        if slave_mac == actual_mloms[slave_name]['mac'] and str(nic.get_vlan()) == str(actual_mloms[slave_name]['vlan']):  # this nic is already in CIMC
+                    if slave_name in actual_vnics:
+                        if slave_mac == actual_vnics[slave_name]['mac'] and str(nic.get_vlan()) == str(actual_vnics[slave_name]['vlan']):  # this nic is already in CIMC
                             self.logger(message='vNIC {} is already configured'.format(slave_name))
+                            if slave_name in actual_vnics:
+                                actual_vnics.pop(slave_name)
                             continue
                         else:
-                            self.logger('deleting {} since mac is not correct'.format(actual_mloms[slave_name]))
-                            self.cimc_delete_vnic(dn=actual_mloms[slave_name]['dn'])
+                            self.logger('deleting {} since mac or vlan is not correct: {}'.format(slave_name, actual_vnics[slave_name]))
+                            self.cimc_delete_vnic(vnic_name=slave_name)
                     pci_slot_id, uplink_port = slave_port.split('/')
                     self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order='ANY', name=slave_name, mac=slave_mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe())
+                    if slave_name in actual_vnics:
+                        actual_vnics.pop(slave_name)
+        for vnic_name in actual_vnics.keys():  # delete all actual which are not requested
+            self.cimc_delete_vnic(vnic_name)
 
     def cimc_configure(self, is_debug=False):
         self._dump_xml = is_debug
         lab_type = self.lab().get_type()
         self.logger('configuring for {}'.format(lab_type))
-        self._login()
         self.cimc_power_up()
-        # self.cimc_set_mlom_adaptor(pci_slot=0, n_vnics=10)
+        is_any_nic_on_lom = any(map(lambda x: x.is_on_lom(), self.get_nics().values()))
+        if is_any_nic_on_lom:
+            self.cimc_enable_lom()
         self.cimc_recreate_vnics()
         self.cimc_set_hostname()
         self.cimc_change_boot_order(pxe_order=1, hdd_order=2)

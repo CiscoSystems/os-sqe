@@ -75,6 +75,7 @@ class Nic(object):
         self._slave_nics = {}
         for wire in self._on_wires:
             own_port_id = wire.get_own_port(node)
+            self._is_on_lom = own_port_id in ['LOM-1', 'LOM-2']
             uplink = own_port_id.split('/')[-1]
             try:
                 self._slave_nics[name + uplink] = {'mac': self._mac.replace('00:', '{:02}:'.format(int(uplink) * 10)), 'port': own_port_id}
@@ -83,6 +84,9 @@ class Nic(object):
 
     def is_pxe(self):
         return self._net.is_pxe()
+
+    def is_on_lom(self):
+        return self._is_on_lom
 
     def is_vts(self):
         return self._net.is_vts()
