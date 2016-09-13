@@ -110,7 +110,7 @@ class DeployerVts(Deployer):
             vts_host.exe('yum install genisoimage qemu-kvm expect -y')
             for rpm in ['sshpass-1.05-1.el7.rf.x86_64.rpm', 'openvswitch-2.5.0-1.el7.centos.x86_64.rpm']:
                 vts_host.exe('wget http://172.29.173.233/redhat/{}'.format(rpm))
-                vts_host.exe(command='rpm -ivh {}'.format(rpm), warn_only=True)
+                vts_host.exe(command='rpm -ivh {}'.format(rpm), is_warn_only=True)
                 vts_host.exe(command='rm -f {}'.format(rpm))
 
             vts_host.exe('systemctl start libvirtd')
