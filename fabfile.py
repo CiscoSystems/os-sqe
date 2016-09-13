@@ -73,9 +73,9 @@ def cmd(config_path):
 
 
 @task
-def ha(lab, test_regex, is_exact_match=False, is_debug=False, is_run_cleanup=False, is_tims=False):
+def ha(lab_cfg_path, test_regex, is_exact_match=False, is_debug=False, is_run_cleanup=False, is_tims=False):
     """fab ha:g10,tc-vts\t\tRun all VTS tests on lab 'g10'
-        :param lab: which lab
+        :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
         :param is_exact_match: if true, interpret test_regex as exact match to choose single test
         :param is_debug: is True, switch off parallel execution and run in sequence
@@ -86,8 +86,9 @@ def ha(lab, test_regex, is_exact_match=False, is_debug=False, is_run_cleanup=Fal
     from fabric.api import local
     from lab import with_config
     from lab.logger import lab_logger
+    from lab.tims import Tims
 
-    lab_name = lab.rsplit('/', 1)[-1].replace('.yaml', '')
+    lab_name = lab_cfg_path.rsplit('/', 1)[-1].replace('.yaml', '')
 
     available_tc = with_config.ls_configs(directory='ha')
     tests = sorted(filter(lambda x: test_regex == x if is_exact_match else test_regex in x, available_tc))
@@ -97,13 +98,17 @@ def ha(lab, test_regex, is_exact_match=False, is_debug=False, is_run_cleanup=Fal
 
     run_config_yaml = '{lab}-ha-{regex}.yaml'.format(lab=lab_name, regex=test_regex)
     with with_config.open_artifact(run_config_yaml, 'w') as f:
-        f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab))
+        f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab_cfg_path))
         for i, test in enumerate(tests, start=1):
             if is_run_cleanup:
                 f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab_name, lab_name))
             f.write('runner{}:  {{lab.runners.runner_ha.RunnerHA: {{cloud: {}, hardware-lab-config: {}, task-yaml: "{}", is-debug: {}}}}}\n'.format(10*i + 1,  lab_name, lab_name, test, is_debug))
 
-    run_results = run(config_path='artifacts/' + run_config_yaml)
+    run_results = run(config_path='artifacts/' + run_config_yaml, version=None)
+
+    if is_tims:
+        t = Tims()
+        t.publish_results_to_tims(results=run_results)
 
     lab_logger.info('Results: {}'.format(run_results))
     if 'pyats' in os.getenv('PATH'):
@@ -116,6 +121,7 @@ def ha(lab, test_regex, is_exact_match=False, is_debug=False, is_run_cleanup=Fal
             local('easypy artifacts/pyats_job.py -no_archive ' + ('-tims_post -tims_dns "tims/Tcbr2p"' if is_tims else ''))
         except:
             pass
+
 
 @task
 @decorators.print_time
@@ -157,6 +163,7 @@ def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openst
 def run(config_path, version):
     """fab run:bxb-run-rally\t\tGeneral: run any job specified by yaml.
         :param config_path: path to valid run specification, usually one of yaml from $REPO/configs/run
+        :param version: specify a version of the product
     """
     from lab.base_lab import BaseLab
 
@@ -168,14 +175,14 @@ def run(config_path, version):
 @decorators.print_time
 def junit_to_tims(junitxml, outpyats_jobfile):
     import os
-    import xml.etree.ElementTree as ET
+    from xml.etree import ElementTree
     from lab import with_config
 
     tims_ids = []
     test_names = []
     test_cases = {}
 
-    tree = ET.parse(junitxml)
+    tree = ElementTree.parse(junitxml)
     root = tree.getroot()
     assert root.tag == "testsuite"
     for testcase in root:
@@ -221,7 +228,6 @@ def junit_to_tims(junitxml, outpyats_jobfile):
             test_cases[class_name] = []
         test_cases[class_name].append(newcase)
 
-
     from jinja2 import Environment, FileSystemLoader
     env = Environment(loader=FileSystemLoader(os.path.dirname(os.path.abspath(__file__)) + '/configs/pyats'))
     template = env.get_template('pyats.jinja2')
@@ -251,8 +257,8 @@ def conf():
 
     n9k = Nexus(node_id=1, role=Nexus.ROLE, lab='fake-lab')
     n9k.set_oob_creds(ip=n9k_ip, username=n9k_username, password=n9k_password)
-    cdp = n9k.n9_show_cdp_neighbor()
-    lldp = n9k.n9_show_lldp_neighbor()
+    # cdp = n9k.n9_show_cdp_neighbor()
+    # lldp = n9k.n9_show_lldp_neighbor()
 
     with open_artifact(name='new_lab.yaml', mode='w') as f:
         f.write('lab-id: ???? # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n')

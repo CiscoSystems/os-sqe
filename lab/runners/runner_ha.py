@@ -16,6 +16,7 @@ class RunnerHA(Runner):
         self._task_yaml_path = config['task-yaml']
         self._task_body = self.read_config_from_file(config_path=self._task_yaml_path, directory='ha')
         self._is_debug = config['is-debug']
+
         if not self._task_body:
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
 
@@ -57,13 +58,9 @@ class RunnerHA(Runner):
         else:
             pool = multiprocessing.Pool(len(workers_to_run))
 
-            results = pool.map(starter, workers_to_run)  # a list of {'name': 'monitor m scenario or disruptor name', 'success': True or False, 'n_exceptions': 10}
+            results = pool.map(starter, workers_to_run)  # a list of {'name': 'monitor, scenario or disruptor name', 'success': True or False, 'n_exceptions': 10}
 
-        combined_results = {'is_success': True, 'n_exceptions': 0}
+        n_exceptions = 0
         for result in results:
-            name = result.pop('name')
-            combined_results[name] = result
-            combined_results['n_exceptions'] += result['n_exceptions']
-            if not result['is_success']:
-                combined_results['is_success'] = False
-        return combined_results
+            n_exceptions += result.get('n_exceptions', 0)
+        return {self._task_yaml_path: {'n_exceptions': n_exceptions}}

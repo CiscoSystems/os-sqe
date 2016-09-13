@@ -72,7 +72,7 @@ class Tims(object):
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
 
         for test_cfg_path in test_cfg_pathes:
-            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version='1.0.9', vts_version='LATEST', n_exceptions=-10, lab='g7-2')
+            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version='1.0.9', vts_version='LATEST', n_exceptions=-10, lab_id='g7-2')
 
     def publish_result_to_tims(self, test_cfg_path, mercury_version, vts_version, lab, n_exceptions):
         description = 'VTS version: {} Mercury version: {} number of exceptions {}'.format(vts_version, mercury_version, n_exceptions)
@@ -105,22 +105,35 @@ class Tims(object):
                 <ConfigLookup>
                         <TextFieldValue searchoperator="is">
                                 <FieldName>Logical ID</FieldName>
-                                <Value>{lab}</Value>
+                                <Value>{lab_id}</Value>
                         </TextFieldValue>
                 </ConfigLookup>
         </Result>
         '''
 
-        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab=lab)
+        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
         self._api_post(operation=self._OPERATION_ENTITY, body=body)
 
-    def simulate(self):
+    def simulate(self, lab_cfg_path):
         from lab import with_config
+        from lab.laboratory import Laboratory
+
+        lab = Laboratory(config_path=lab_cfg_path)
 
         available_tc = with_config.ls_configs(directory='ha')
         test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
+        results = {'lab': lab}
         for test_cfg_path in test_cfg_pathes:
-            n_exceptions = 2 if 'corosync' in test_cfg_path else 0
-            n_exceptions = 2 if 'ncs-stop-while-adding-os-vm' in test_cfg_path else n_exceptions
-            n_exceptions = 2 if 'control-reboot' in test_cfg_path else n_exceptions
-            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version='1.0.8', vts_version='LATEST', n_exceptions=n_exceptions, lab='g7-2')
+            results[test_cfg_path] = {'n_exceptions': 0}
+
+        self.publish_results_to_tims(results=results)
+
+    def publish_results_to_tims(self, results):
+        """ Publish all results to TIMS.
+        :param results: dictionary in the form {'': {'n_exceptions': 0, }}
+        :return:
+        """
+        lab = results.pop('lab')
+        mercury_version, vts_version = lab.r_get_version()
+        for test_cfg_path, result in results.items():
+            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, vts_version=vts_version, lab=lab, n_exceptions=result['n_exceptions'])
