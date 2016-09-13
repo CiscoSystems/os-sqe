@@ -16,7 +16,7 @@ class LabServer(LabNode, Server):
         Server.__init__(self, ip='Not defined in lab_server.py', username='Not defined in lab_server.py', password='Not defined in lab_server.py')
 
     def __repr__(self):
-        ssh_ip, ssh_u, ssh_p = self.get_oob()
+        ssh_ip, ssh_u, ssh_p = self.get_ssh()
         oob_ip, oob_u, oob_p = self.get_oob()
 
         return u'{l} {n} | sshpass -p {p1} ssh {u1}@{ip1} ipmitool -I lanplus -H {ip2} -U {u2} -P {p2}'.format(l=self.lab(), n=self.get_id(), ip1=ssh_ip, p1=ssh_p, u1=ssh_u, ip2=oob_ip, p2=oob_p, u2=oob_u)

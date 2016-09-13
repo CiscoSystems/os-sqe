@@ -15,7 +15,8 @@ class DeployerMercury(Deployer):
         self._mercury_installer_location = config['mercury_installer_location'].format(version=version)
         self._lab_path = config['hardware_lab_config']
         self._type_of_install = config['type_of_install']
-        self._vts_deployer = DeployerVts(config={'vts_images_location': config['vts_images_location'], 'rhel_creds_location': config['rhel_creds_location'], 'is_force_redeploy': config['is_force_redeploy']})
+        self._is_force_redeploy = config['is_force_redeploy']
+        self._vts_deployer = DeployerVts(config={'vts_images_location': config['vts_images_location'], 'rhel_creds_location': config['rhel_creds_location'], 'is_force_redeploy': self._is_force_redeploy})
         self._is_add_vts_role = config['is_add_vts_role']
 
     def deploy_cloud(self, list_of_servers):
@@ -52,6 +53,7 @@ class DeployerMercury(Deployer):
             build_node.exe(command='./unbootstrap.sh -y', in_directory=old_installer_dir, is_warn_only=True)
             build_node.exe('rm -f openstack-configs', is_warn_only=True)
             build_node.exe('rm -rf {}'.format(old_installer_dir))
+            is_get_tarball = True
 
         if is_get_tarball:
             tar_url = self._mercury_installer_location + '/mercury-installer-internal.tar.gz'
@@ -60,12 +62,14 @@ class DeployerMercury(Deployer):
             installer_dir = ans.split('\r\n')[-1].split('/')[0]
             build_node.exe('rm -f {}'.format(tar_path))
 
-        self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir, is_add_vts_role=False)
+        ans = build_node.exe('cat MERCURY_VERSION', is_warn_only=True)
+        if self._is_force_redeploy or mercury_tag not in ans:
+            self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir, is_add_vts_role=False)
 
-        build_node.exe("find {} -name '*.pyc' -delete".format(installer_dir))
-        build_node.exe('rm -rf /var/log/mercury/*')
+            build_node.exe("find {} -name '*.pyc' -delete".format(installer_dir))
+            build_node.exe('rm -rf /var/log/mercury/*')
 
-        build_node.exe(command='./runner/runner.py -y -s 7,8', in_directory=installer_dir)  # run steps 1-6 during which we get all control and computes nodes re-loaded
+            build_node.exe(command='./runner/runner.py -y -s 7,8', in_directory=installer_dir)  # run steps 1-6 during which we get all control and computes nodes re-loaded
 
         if not self._is_add_vts_role:
             cobbler = lab.get_cobbler()

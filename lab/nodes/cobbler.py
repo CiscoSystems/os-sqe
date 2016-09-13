@@ -5,7 +5,8 @@ class CobblerServer(LabServer):
     ROLE = 'cobbler'
 
     def cmd(self, cmd):
-        pass
+        self.set_ssh_ip(ip=self.get_oob()[0])
+        return self.exe(command=cmd)
 
     def __repr__(self):
         _, ssh_u, ssh_p = self.get_ssh()
@@ -40,19 +41,19 @@ class CobblerServer(LabServer):
             else:
                 network_commands.append('--interface={} --mac={} {}'.format(name, mac, ip_mask_part))
 
-        systems = self.exe('cobbler system list')
+        systems = self.cmd('cobbler system list')
         if system_name in systems:
-            self.exe('cobbler system remove --name={}'.format(system_name))
+            self.cmd('cobbler system remove --name={}'.format(system_name))
 
-        self.exe('cobbler system add --name={} --profile=RHEL7.2-x86_64 --kickstart=/var/lib/cobbler/kickstarts/sqe --comment="{}"'.format(system_name, comment))
+        self.cmd('cobbler system add --name={} --profile=RHEL7.2-x86_64 --kickstart=/var/lib/cobbler/kickstarts/sqe --comment="{}"'.format(system_name, comment))
 
-        self.exe('cobbler system edit --name={} --hostname={} --gateway={}'.format(system_name, node.hostname(), gateway))
+        self.cmd('cobbler system edit --name={} --hostname={} --gateway={}'.format(system_name, node.hostname(), gateway))
 
         for cmd in network_commands:
             self.exe('cobbler system edit --name={} {}'.format(system_name, cmd))
 
         ipmi_ip, ipmi_username, ipmi_password = node.get_oob()
-        self.exe('cobbler system edit --name={} --power-type=ipmilan --power-address={} --power-user={} --power-pass={}'.format(system_name, ipmi_ip, ipmi_username, ipmi_password))
+        self.cmd('cobbler system edit --name={} --power-type=ipmilan --power-address={} --power-user={} --power-pass={}'.format(system_name, ipmi_ip, ipmi_username, ipmi_password))
 
         return system_name
 
@@ -60,10 +61,7 @@ class CobblerServer(LabServer):
         import getpass
         from lab.time_func import time_as_string
         from lab.nodes.fi import FiServer
-        from lab.cimc import CimcServer, CimcCompute
-
-        computes = self.lab().get_nodes_by_class(CimcCompute)
-        map(lambda x: x.cimc_power_down(), computes)  # switch off all computes
+        from lab.cimc import CimcServer
 
         ks_meta = 'ProvTime={}-by-{}'.format(time_as_string(), getpass.getuser())
 
@@ -72,6 +70,8 @@ class CobblerServer(LabServer):
             if filter(lambda x: x.is_pxe(), node.get_nics().values()):
                 nodes_to_deploy_by_cobbler.append(node)
 
+        self.log(message='provisioning {}'.format(nodes_to_deploy_by_cobbler))
+
         nodes_to_check = []
         for node in nodes_to_deploy_by_cobbler:
             if node.is_nics_correct():
@@ -79,7 +79,7 @@ class CobblerServer(LabServer):
             nodes_to_check.append(node)
             system_name = self.cobbler_configure_for(node=node)
             node.cimc_configure()
-            self.exe('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
+            self.cmd('cobbler system edit --name {} --netboot-enabled=True --ksmeta="{}"'.format(system_name, ks_meta))
             node.cimc_power_cycle()
 
         for node in nodes_to_check:
@@ -88,6 +88,6 @@ class CobblerServer(LabServer):
             if 'ProvTime=' + when_provided != ks_meta:
                 raise RuntimeError('Wrong provisioning attempt- timestamps are not matched')
             node.actuate_hostname()
-            node.run('mkdir -p cobbler && mv *.ks *.log *.cfg ProvTime cobbler')
+            node.exe('mkdir -p cobbler && mv *.ks *.log *.cfg ProvTime cobbler')
 
         return nodes_to_deploy_by_cobbler
