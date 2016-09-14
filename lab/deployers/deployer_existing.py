@@ -39,7 +39,7 @@ class DeployerExisting(Deployer):
 
         if not list_of_servers:
             lab = Laboratory(config_path=self._lab_cfg)
-            list_of_servers.extend(lab.get_director())
+            list_of_servers.append(lab.get_director())
             list_of_servers.extend(lab.get_controllers())
             list_of_servers.extend(lab.get_computes())
 

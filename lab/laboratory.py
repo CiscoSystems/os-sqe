@@ -357,6 +357,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
     def r_collect_information(self, regex, comment):
         body = ''
 
+        cloud_version, vts_version = self.r_get_version()
         self.log_to_artifact(name='{}-version.txt'.format(self), body='Version={}\n{}'.format(cloud_version, vts_version))
         for node in self.get_nodes_by_class():
             if 'r_collect_information' in dir(node):
