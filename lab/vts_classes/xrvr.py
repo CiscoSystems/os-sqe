@@ -50,7 +50,7 @@ class Xrvr(LabServer):
         if not self._proxy_to_run:
             self._proxy_to_run = self.lab().get_nodes_by_class(VtsHost)[-1]
 
-        ip = self.get_nic('mx').get_ip_and_mask()[0]
+        ip = self.get_ip_mx()
 
         if is_xrvr:
             _, username, password = self.get_oob()
@@ -68,7 +68,11 @@ class Xrvr(LabServer):
         return ans
 
     def create_expect_command_file(self, cmd, ip, username, password, is_xrvr):
-        file_name = 'expect-{}-{}'.format(self.get_id(), '-'.join(cmd.split(' ')[:5]))
+        import inspect
+
+        stack = inspect.stack()
+        cmd_name = stack[2][3]
+        file_name = 'expect-{}-{}'.format(self.get_id(), cmd_name)
 
         sudo_tmpl = '''spawn sshpass -p {p} ssh -o StrictHostKeyChecking=no {u}@{ip}
 set timeout 20
@@ -215,12 +219,9 @@ expect {{
         own_ip = self.get_nic('t').get_ip_and_mask()[0]
         ips = [x.get_nic('t').get_ip_and_mask()[0] for x in self.lab().get_nodes_by_class(Xrvr)]
         opposite_ip = next(iter(set(ips) - {own_ip}))
-        # noinspection PyBroadException
-        try:
-            self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
-        except:
+        ans = self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
+        if 'please re-run this script with the -s flag' in ans:
             self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh -s {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
-
         return True
 
     def xrnc_restart_dl(self):
