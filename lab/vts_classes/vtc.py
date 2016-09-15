@@ -97,8 +97,7 @@ class Vtc(LabServer):
             return []
         xrvr_ips_from_vtc = [x['address'] for x in devices['collection']['tailf-ncs:device']]
         for xrvr in xrvr_nodes:
-            ip = xrvr.get_nic('mx').get_ip_and_mask()[0]
-            if str(ip) not in xrvr_ips_from_vtc:
+            if str(xrvr.get_ip_mx()) not in xrvr_ips_from_vtc:
                 raise RuntimeError('{0} is not detected by {1}'.format(xrvr, self))
         return xrvr_nodes
 
@@ -415,12 +414,15 @@ set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gate
         self.exe('rm -r ' + wild_card)
 
     def r_is_xrvr_registered(self):
-        xrvrs = self.r_vtc_get_xrvrs()
-        if not xrvrs:
+        try:
+            xrvrs = self.r_vtc_get_xrvrs()
+            if not xrvrs:
+                return False
+            body = self.r_collect_information(regex='ERROR')
+            names_in_body = map(lambda x: 'POST /api/running/devices/device/{}/vts-sync-xrvr/_operations/sync HTTP'.format(x.get_id()) in body, xrvrs)
+            return all(names_in_body)
+        except RuntimeError:
             return False
-        body = self.r_collect_information(regex='ERROR')
-        names_in_body = map(lambda x: 'POST /api/running/devices/device/{}/vts-sync-xrvr/_operations/sync HTTP'.format(x.get_id()) in body, xrvrs)
-        return all(names_in_body)
 
     @staticmethod
     def test_vts_sanity():
