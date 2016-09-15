@@ -14,7 +14,15 @@ class Xrvr(LabServer):
     def __init__(self, node_id, role, lab):
         super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab)
         self._expect_commands = {}
-        self._proxy_to_run = None
+        self.__proxy_to_run = None
+
+    @property
+    def _proxy_to_run(self):
+        from lab.vts_classes.vtc import VtsHost
+
+        if not self.__proxy_to_run:
+            self.__proxy_to_run = self.lab().get_nodes_by_class(VtsHost)[-1]
+        return self.__proxy_to_run
 
     def __repr__(self):
         ip, xrvr_u, p = self.get_xrvr_ip_user_pass()
@@ -45,11 +53,6 @@ class Xrvr(LabServer):
 
     # noinspection PyMethodOverriding
     def cmd(self, cmd, is_xrvr, is_warn_only=False):  # XRVR uses redirection: ssh_username goes to DL while oob_username goes to XRVR, ip and password are the same for both
-        from lab.vts_classes.vtc import VtsHost
-
-        if not self._proxy_to_run:
-            self._proxy_to_run = self.lab().get_nodes_by_class(VtsHost)[-1]
-
         ip = self.get_ip_mx()
 
         if is_xrvr:
@@ -103,8 +106,8 @@ expect {{
 }}
 '''
         tmpl = xrvr_tmpl if is_xrvr else sudo_tmpl
-        str = tmpl.format(p=password, u=username, ip=ip, cmd=cmd)
-        self._proxy_to_run.put_string_as_file_in_dir(string_to_put=str, file_name=file_name)
+        s = tmpl.format(p=password, u=username, ip=ip, cmd=cmd)
+        self._proxy_to_run.put_string_as_file_in_dir(string_to_put=s, file_name=file_name)
         self._expect_commands[cmd] = file_name
 
     @staticmethod

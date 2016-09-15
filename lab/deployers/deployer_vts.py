@@ -45,18 +45,19 @@ class DeployerVts(Deployer):
 
         self.make_cluster(lab=vts_hosts[0].lab())
 
+        for i in range(len(xrncs)):
+            self.deploy_single_xrnc(vts_host=vts_hosts[i], vtc=vtcs[i], xrnc=xrncs[i])
+        lab.r_collect_information(regex='ERROR', comment='after_all_xrvr_vm_started')
+
         if not vtcs[0].r_is_xrvr_registered():
-            for i in range(len(xrncs)):
-                self.deploy_single_xrnc(vts_host=vts_hosts[i], vtc=vtcs[i], xrnc=xrncs[i])
             map(lambda dl: dl.r_xrnc_set_mtu(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 12 about MTU
             dl_server_status = map(lambda dl: dl.r_xrnc_start_dl(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
             if not all(dl_server_status):
                 raise RuntimeError('Failed to start DL servers')
-            lab.r_collect_information(regex='ERROR', comment='after_all_xrvr_registered')
         else:
             self.log('all XRNC are already deployed in the previous run')
 
-        lab.r_collect_information(regex='ERROR', comment='after_all_dl_servers_started')
+        lab.r_collect_information(regex='ERROR', comment='after_all_xrvr_registered')
 
         vtcs[0].r_vtc_day0_config()
         lab.r_collect_information(regex='ERROR', comment='after_day0_config')
@@ -160,6 +161,10 @@ class DeployerVts(Deployer):
             self.log('Vtc {} is already deployed in the previous run.'.format(vtc))
 
     def deploy_single_xrnc(self, vts_host, vtc, xrnc):
+        if xrnc.ping():
+            self.log('Xrnc {} is already deployed in the previous run.'.format(xrnc))
+            return
+
         cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
         iso_path = self._vts_service_dir + '/xrnc_cfg.iso'
 

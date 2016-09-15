@@ -10,13 +10,24 @@ class Server(object):
         self._package_manager = None
         self._mac_server_part = None
         self._temp_dir = None
-        self._ip, self._username, self._password, self._hostname = ip, username, password, None
+        self.__ip, self._username, self._password, self._hostname = ip, username, password, None
+
+    @property
+    def _ip(self):
+        import validators
+
+        if not validators.ipv4(str(self.__ip)):
+            if hasattr(self, '_proxy_to_run'):
+                self.__ip = getattr(self, '_proxy_to_run').get_ssh_ip()
+            else:
+                ValueError('Neither ip no proxy is specified for this node')
+        return self.__ip
 
     def set_ssh_creds(self, username, password, hostname=None):
         self._username, self._password, self._hostname = username, password, hostname
 
     def set_ssh_ip(self, ip):
-        self._ip = ip
+        self.__ip = ip
 
     def get_ssh_ip(self):
         return self._ip
