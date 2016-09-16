@@ -161,8 +161,8 @@ class DeployerVts(Deployer):
             self.log('Vtc {} is already deployed in the previous run.'.format(vtc))
 
     def deploy_single_xrnc(self, vts_host, vtc, xrnc):
-        if xrnc.ping():
-            self.log('Xrnc {} is already deployed in the previous run.'.format(xrnc))
+        if 'xrnc' in vts_host.exe('virsh list'):
+            self.log('{} is already deployed in the previous run.'.format(xrnc))
             return
 
         cfg_body, net_part = xrnc.get_config_and_net_part_bodies()
