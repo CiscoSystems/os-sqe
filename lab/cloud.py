@@ -124,7 +124,7 @@ export OS_AUTH_URL={end_point}
         import json
 
         lst = json.loads(answer.split('\n')[-1])  # neutron returns Created a new port:\r\n[{"Field": "admin_state_up", "Value": true}.... while openstack returns just serialized array
-        if not lst or 'Name' in lst[0] or 'name' in lst[0]:  # [{"ID": "foo", "Name": "bar"}, ...] for list operation
+        if not lst or 'Value' not in lst[0]:  # [{"ID": "foo", "Name": "bar"}, ...] for list operation
             return lst
         else:
             d = {}
