@@ -1,2 +1,2 @@
-# special HA script to cleanup the lab
+# special HA script to os_cleanup the lab
 - method: lab.scenarios.delete

@@ -5,8 +5,8 @@ def start(lab, log, args):
 
     cloud = lab.cloud
 
-    cloud.cleanup()
-    cloud.create_image(name='sriov', url='http://172.29.173.233/ucsm/CentOS-6-x86_64-GenericCloud-20140929_01_Cisco_enic_Login-root_Password-ubuntu.qcow2')
+    cloud.os_cleanup()
+    cloud.os_create_image(name='sriov', url='http://172.29.173.233/ucsm/CentOS-6-x86_64-GenericCloud-20140929_01_Cisco_enic_Login-root_Password-ubuntu.qcow2')
     cloud.create_key_pair()
     internal_nets = cloud.create_net_subnet(common_part_of_name='internal', class_a=1, how_many=2)
     provider_nets = cloud.create_net_subnet(common_part_of_name='provider', class_a=41, how_many=2, vlan=3040)

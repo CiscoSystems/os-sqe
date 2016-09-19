@@ -404,7 +404,7 @@ export OS_AUTH_URL={end_point}
     def os_image_list(self):
         return self.os_cmd('openstack image list -f json')
 
-    def create_image(self, name, url):
+    def os_create_image(self, name, url):
         if not filter(lambda image: image['Name'] == name, self.os_image_list()):
             image_path = self.mediator.wget_file(url=url, to_directory='cloud_images')
             self.os_cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))

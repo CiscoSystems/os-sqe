@@ -143,7 +143,7 @@ class TestFunctional(base_test.BaseTest):
             vni_numbers[network_name] = self.vtc_ui.get_overlay_network(network['network']['id'])['vni_number']
             self.assert_evpn_evi_network_controller(vni_numbers[network_name], ports[network_name][0]['mac_address'])
 
-        self.cloud.cleanup()
+        self.cloud.os_cleanup()
         for network_name, network in networks.iteritems():
             self.assert_evpn_evi_network_controller(vni_numbers[network_name], ports[network_name][0]['mac_address'], configured=False)
 
@@ -170,7 +170,7 @@ class TestFunctional(base_test.BaseTest):
 
                 vni_vs_mac[vni_number] = mac
 
-        self.cloud.cleanup()
+        self.cloud.os_cleanup()
         for vni, mac in vni_vs_mac.iteritems():
             self.assert_evpn_evi_network_controller(vni_number, mac, configured=False)
 
@@ -343,4 +343,4 @@ class TestFunctional(base_test.BaseTest):
             self.delete_access_ports()
         except:
             pass
-        self.cloud.cleanup()
+        self.cloud.os_cleanup()

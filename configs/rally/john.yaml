@@ -19,7 +19,7 @@
         type: "constant"
         times: {n_times}
         concurrency: {concurrency}
-#        pause_on_completion: True  <=== add this line to runner to pause between scenario finishes and context cleanup
+#        pause_on_completion: True  <=== add this line to runner to pause between scenario finishes and context os_cleanup
       context:
         users:
           tenants: {n_tenants}

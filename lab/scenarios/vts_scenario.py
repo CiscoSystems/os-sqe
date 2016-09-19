@@ -8,9 +8,9 @@ class VtsScenario(Worker):
         self._n_nets = self._kwargs['how-many-networks']
 
     def loop(self):
-        self._cloud.cleanup()
+        self._cloud.os_cleanup()
 
-        image_name = self._cloud.create_image(name='vts-image', url='http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2')
+        image_name = self._cloud.os_create_image(name='vts-image', url='http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2')
         self._cloud.create_key_pair()
         internal_nets = self._cloud.create_net_subnet(common_part_of_name='internal', class_a=10, how_many=self._n_nets, is_dhcp=False)
 
