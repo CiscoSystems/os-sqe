@@ -10,13 +10,13 @@ class VtsScenario(Worker):
     def loop(self):
         self._cloud.os_cleanup()
 
-        image_name = self._cloud.os_create_image(name='vts-image', url='http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2')
-        self._cloud.create_key_pair()
-        internal_nets = self._cloud.create_net_subnet(common_part_of_name='internal', class_a=10, how_many=self._n_nets, is_dhcp=False)
+        image = self._cloud.os_image_create()
+        self._cloud.os_keypair_create()
+        internal_nets = self._cloud.os_network_create(common_part_of_name='internal', class_a=10, how_many=self._n_nets, is_dhcp=False)
 
         for i in range(1, self._n_instances + 1):
-            port_pids = self._cloud.create_ports(instance_name=str(i), on_nets=internal_nets, is_fixed_ip=True)
-            instance_name = self._cloud.create_instance(name=str(i), flavor='m1.medium', image=image_name, on_ports=port_pids)
+            port_pids = self._cloud.os_port_create(server_name=str(i), on_nets=internal_nets, is_fixed_ip=True)
+            instance_name = self._cloud.os_server_create(name=str(i), flavor='m1.medium', image_name=image['name'], on_ports=port_pids)
             self._log.info('instance={0} created'.format(instance_name))
             # cloud.cmd('ping -c5 {fip}'.format(fip=fips[i]))
             # instances[i] = Server(ip=fips[i], username='root', lab=None, name='a')
