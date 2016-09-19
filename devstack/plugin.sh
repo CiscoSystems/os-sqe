@@ -29,8 +29,8 @@ function sqe_extra
 
 function sqe_unstack
 {
-    local cleanup_addon=':os_cleanup=os_cleanup'
-    [[ $CISCO_SQE_FACILITY == *":"* ]] && cleanup_addon=',os_cleanup=os_cleanup' # some arguments're already in, just add os_cleanup to the list
+    local cleanup_addon=':cleanup=cleanup'
+    [[ $CISCO_SQE_FACILITY == *":"* ]] && cleanup_addon=',cleanup=cleanup' # some arguments're already in, just add cleanup to the list
 
     fab -f ${dir}/fabfile.py ${CISCO_SQE_FACILITY}${cleanup_addon} # $dir points to newly cloned plugin repo
 }

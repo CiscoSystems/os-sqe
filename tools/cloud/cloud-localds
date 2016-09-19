@@ -46,7 +46,7 @@ EOF
 }
 
 bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; exit 1; }
-os_cleanup() {
+cleanup() {
 	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
 }
 
@@ -109,7 +109,7 @@ fi
 
 TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX") ||
 	fail "failed to make tempdir"
-trap os_cleanup EXIT
+trap cleanup EXIT
 
 if [ -n "$metadata" ]; then
 	cp "$metadata" "$TEMP_D/meta-data" || fail "$metadata: failed to copy"

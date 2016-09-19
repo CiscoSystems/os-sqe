@@ -169,7 +169,7 @@ def restart_screen(ip='localhost', screen_cfg=None):
 
 
 def lab_create_delete(lab_obj, phase, cleanup):
-    if not cleanup != 'do not os_cleanup':
+    if not cleanup != 'do not cleanup':
         lab_obj.create_lab(phase=phase)
     else:
         lab_obj.delete_lab()
@@ -177,7 +177,7 @@ def lab_create_delete(lab_obj, phase, cleanup):
 
 @task
 @timed
-def plus_dhcp6(lab_id=LabIds.plus_dhcp6, phase='lab', devstack_conf_addon='', cleanup='do not os_cleanup'):
+def plus_dhcp6(lab_id=LabIds.plus_dhcp6, phase='lab', devstack_conf_addon='', cleanup='do not cleanup'):
     """aio + dhcp6 server in separate VMs"""
     lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dhcp6', devstack_conf_addon=devstack_conf_addon)
     lab_create_delete(lab, phase, cleanup)
@@ -185,7 +185,7 @@ def plus_dhcp6(lab_id=LabIds.plus_dhcp6, phase='lab', devstack_conf_addon='', cl
 
 @task
 @timed
-def plus_dibbler(lab_id=LabIds.plus_dibbler, phase='lab', cleanup='do not os_cleanup'):
+def plus_dibbler(lab_id=LabIds.plus_dibbler, phase='lab', cleanup='do not cleanup'):
     """aio + dibbler server in separate VMs"""
     lab = MyLab(lab_id=lab_id, topology_name='devstack_aio_plus_dibbler')
     lab_create_delete(lab, phase, cleanup)
@@ -193,7 +193,7 @@ def plus_dibbler(lab_id=LabIds.plus_dibbler, phase='lab', cleanup='do not os_cle
 
 @task
 @timed
-def plus_nxos(phase='lab', cleanup='do not os_cleanup'):
+def plus_nxos(phase='lab', cleanup='do not cleanup'):
     """abc + compute, Cisco ML2 with external nxos switch"""
     lab = MyLab(lab_id=77, topology_name='devstack_abc_compute_plus_nxos')
     lab_create_delete(lab, phase, cleanup)
@@ -201,7 +201,7 @@ def plus_nxos(phase='lab', cleanup='do not os_cleanup'):
 
 @task
 @timed
-def neutron(lab_id=LabIds.devstack_neutron,  cleanup='do not os_cleanup'):
+def neutron(lab_id=LabIds.devstack_neutron,  cleanup='do not cleanup'):
     """Run single machine with neutron only"""
 
     lab = MyLab(lab_id=lab_id, topology_name='neutron6',)
@@ -210,7 +210,7 @@ def neutron(lab_id=LabIds.devstack_neutron,  cleanup='do not os_cleanup'):
 
 @task
 @timed
-def mercury(lab_id=LabIds.devstack_mercury,  cleanup='do not os_cleanup'):
+def mercury(lab_id=LabIds.devstack_mercury,  cleanup='do not cleanup'):
     """Run reference topology for Mercury"""
 
     lab = MyLab(lab_id=lab_id, topology_name='mercury',)
@@ -219,7 +219,7 @@ def mercury(lab_id=LabIds.devstack_mercury,  cleanup='do not os_cleanup'):
 
 @task
 @timed
-def aio6(lab_id=LabIds.devstack_aio6,  cleanup='do not os_cleanup'):
+def aio6(lab_id=LabIds.devstack_aio6,  cleanup='do not cleanup'):
     """Run all in one OS deployed on v6 only virtual host"""
 
     lab = MyLab(lab_id=lab_id, topology_name='aio6',)
@@ -228,7 +228,7 @@ def aio6(lab_id=LabIds.devstack_aio6,  cleanup='do not os_cleanup'):
 
 @task
 @timed
-def multinode(lab_id=LabIds.devstak_multinode, cleanup='do not os_cleanup'):
+def multinode(lab_id=LabIds.devstak_multinode, cleanup='do not cleanup'):
 
     """Deploy devstack multinode: 1 all-but-compute, 3 computes"""
 
@@ -237,7 +237,7 @@ def multinode(lab_id=LabIds.devstak_multinode, cleanup='do not os_cleanup'):
 
 @task
 @timed
-def ucsm(lab_id=LabIds.ucsm, cleanup='do not os_cleanup'):
+def ucsm(lab_id=LabIds.ucsm, cleanup='do not cleanup'):
 
     """Deploy devstack with ucsm plugin: 1 all-but-compute, 3 computes"""
 
@@ -246,7 +246,7 @@ def ucsm(lab_id=LabIds.ucsm, cleanup='do not os_cleanup'):
 
 @task
 @timed
-def ucsm_g10(lab_id=LabIds.ucsm_g10, phase='lab', cleanup='do not os_cleanup'):
+def ucsm_g10(lab_id=LabIds.ucsm_g10, phase='lab', cleanup='do not cleanup'):
 
     """Deploy devstack with ucsm plugin on G10 hardware lab: 1 all-but-compute, 3 computes """
 
@@ -255,7 +255,7 @@ def ucsm_g10(lab_id=LabIds.ucsm_g10, phase='lab', cleanup='do not os_cleanup'):
 
 @task
 @timed
-def neutron46(lab_id=LabIds.devstack_neutron_46, cleanup='do not os_cleanup'):
+def neutron46(lab_id=LabIds.devstack_neutron_46, cleanup='do not cleanup'):
 
     """Deploy devstack neutron only: Special for Neutron API tests"""
 
@@ -265,7 +265,7 @@ def neutron46(lab_id=LabIds.devstack_neutron_46, cleanup='do not os_cleanup'):
 
 @task
 @timed
-def aio46(lab_id=LabIds.devstack_aio_46, cleanup='do not os_cleanup',
+def aio46(lab_id=LabIds.devstack_aio_46, cleanup='do not cleanup',
           devstack_conf_addon=''):
 
     """Deploy devstack aio46: Special for Neutron API tests"""

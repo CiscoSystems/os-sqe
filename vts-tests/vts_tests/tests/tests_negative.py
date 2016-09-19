@@ -80,4 +80,4 @@ class TestNegative(base_test.BaseTest):
         self.assertTrue(self.instance_status, 'Instance status is not ACTIVE')
 
     def tearDown(self):
-        self.cloud.os_cleanup()
+        self.cloud.cleanup()

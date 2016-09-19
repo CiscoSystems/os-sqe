@@ -33,7 +33,7 @@ class TestOSInstanceOperations(base_test.BaseTest):
             self.assertTrue(self.vtc_ui.verify_ports(network['network']['id'], self.ports), 'Ports synced')
         self.assertTrue(self.vtc_ui.verify_instances(self.ports), 'Instance synced')
 
-        self.cloud.os_cleanup()
+        self.cloud.cleanup()
 
         # TODO: Remove sleep
         time.sleep(10)
@@ -69,4 +69,4 @@ class TestOSInstanceOperations(base_test.BaseTest):
             self.delete_access_ports()
         except:
             pass
-        self.cloud.os_cleanup()
+        self.cloud.cleanup()

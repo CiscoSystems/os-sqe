@@ -79,7 +79,7 @@ def ha(lab_cfg_path, test_regex, is_exact_match=False, is_debug=False, is_run_cl
         :param test_regex: regex to match some tc in $REPO/configs/ha
         :param is_exact_match: if true, interpret test_regex as exact match to choose single test
         :param is_debug: is True, switch off parallel execution and run in sequence
-        :param is_run_cleanup: if True, run os_cleanup before anything else
+        :param is_run_cleanup: if True, run cleanup before anything else
         :param is_tims: if True then publish results to TIMS
     """
     import os

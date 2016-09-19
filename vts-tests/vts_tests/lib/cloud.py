@@ -391,7 +391,7 @@ export OS_AUTH_URL={end_point}
         return self.cmd(self._openstack_bin + ' user create -f json --project {project} '
                                               '--password {password} --enable {username}'.format(project=project, username=self._unique_pattern_in_name + username, password=password))
 
-    def os_cleanup(self):
+    def cleanup(self):
         servers = self.cmd(self._list_server_cmd + ' --all')
         routers = self.cmd(self._list_router_cmd)
         ports = self.cmd(self._list_port_cmd)

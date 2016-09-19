@@ -6,6 +6,6 @@
   tasks:
     - shell: pwd
     - name: Clear UCSM
-      shell: "fab ucsm.os_cleanup:{{ ucsm_vip }},{{ ucsm_user }},{{ ucsm_password }}"
+      shell: "fab ucsm.cleanup:{{ ucsm_vip }},{{ ucsm_user }},{{ ucsm_password }}"
     - name: Configure UCSM
       shell: "fab ucsm.configure_for_osp7:../lab/configs/labs/g8.yaml"
