@@ -37,7 +37,7 @@ sed -i 's|raw_input("{0}Enter Hostname of management node:".format("\\n" \* newl
 sed -i 's|raw_input("{0}Enter API address of management node in CIDR format:".format("\\n" \* (newline_count+1)))|'"\"${api_ip}\"|" $out_kickstart_path
 sed -i 's|raw_input("{0}Enter IP address of default gateway on API network:".format("\\n" \* (newline_count+1)))|'"\"${api_gateway}\"|" $out_kickstart_path
 sed -i 's|raw_input("{0}Enter IP address of DNS Server:".format("\\n" \* (newline_count+1)))|'"\"${dns_ip}\"|" $out_kickstart_path
-sed -i 's| raw_input("{0}Enter MGMT address of management node in CIDR format:".format("\\n" \* (newline_count+1)))|'"\"${mgmt_ip}\"|" $out_kickstart_path
+sed -i 's|raw_input("{0}Enter MGMT address of management node in CIDR format:".format("\\n" \* (newline_count+1)))|'"\"${mgmt_ip}\"|" $out_kickstart_path
 
 sed -i '/auth --enableshadow --passalgo=sha512/a rootpw --iscrypted $6$.oKEqTDhB6XJjca4$V4QRX.7nUQ560rcAXjVCDgCxISZpwti.0rfnr/i24mvC1gQeyaQe0e.B/g/xq5/HdfYVEFXkYf1f72rXLfWTx0' $out_kickstart_path
 sed -i 's|timezone UTC --utc|'"$timezone|" $out_kickstart_path
