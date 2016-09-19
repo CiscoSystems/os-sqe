@@ -42,6 +42,11 @@ class DeployerMercury(Deployer):
                 if ans == 'FINISH':
                     break
 
+        mx_net = lab.get_all_nets()['mx']
+        mx_pref_len, mx_gw = mx_net.get_prefix_len(), mx_net.get_gw()
+        build_node.exe('ip a a {}/{} dev br_mgmt'.format(mx_gw, mx_pref_len), is_warn_only=True)  # if address is already assigned, the command returns RTNETLINK answers: File exists (code 2)
+        build_node.exe('iptables -t nat -A POSTROUTING -o br_api -j MASQUERADE')  # this NAT is only used to access to centralized ceph
+
         ans = build_node.exe('ls -d installer*', is_warn_only=True)
         if 'installer-' + mercury_tag in ans:
             installer_dir = ans
