@@ -10,12 +10,13 @@ class RunnerHA(Runner):
     def sample_config(self):
         return {'cloud': 'cloud name', 'task-yaml': 'task-ha.yaml', 'is-debug': False}
 
-    def __init__(self, config):
+    def __init__(self, config, version):
         super(RunnerHA, self).__init__(config=config)
         self._cloud_name = config['cloud']
         self._task_yaml_path = config['task-yaml']
         self._task_body = self.read_config_from_file(config_path=self._task_yaml_path, directory='ha')
         self._is_debug = config['is-debug']
+        self._version = version
 
         if not self._task_body:
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
@@ -31,7 +32,7 @@ class RunnerHA(Runner):
         import fabric.network
 
         try:
-            cloud = filter(lambda x: x.name == self._cloud_name, clouds)[0]
+            cloud = filter(lambda x: x.get_name() == self._cloud_name, clouds)[0]
             lab = servers[0].lab()
         except IndexError:
             raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self._cloud_name))

@@ -67,6 +67,9 @@ class Cloud(WithLogMixIn):
         """
         return [server.get(parameter) for server in self.info.get(role, [])]
 
+    def get_name(self):
+        return self._name
+
     def get_first(self, role, parameter):
         """
             :param role: controller, network, compute, ucsm
@@ -410,7 +413,7 @@ export OS_AUTH_URL={end_point}
             self.os_cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
         return name
 
-    def cleanup(self):
+    def os_cleanup(self):
         servers = self.os_cmd(self._list_server_cmd)
         routers = self.os_cmd(self._list_router_cmd)
         ports = self.os_cmd(self._list_port_cmd)

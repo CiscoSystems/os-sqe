@@ -20,7 +20,7 @@ def cmd(config_path):
     while True:
         device_name = prompt(text='{lab} has: {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=['lab', 'cloud'] + nodes))
         if device_name == 'cloud':
-            d = DeployerExisting({'cloud': config_path.strip('.yaml'), 'hardware-lab-config': config_path})
+            d = DeployerExisting({'cloud': config_path.strip('.yaml'), 'hardware-lab-config': config_path}, version=None)
             device = d.wait_for_cloud([])
         elif device_name == 'lab':
             device = l
@@ -73,13 +73,11 @@ def cmd(config_path):
 
 
 @task
-def ha(lab_cfg_path, test_regex, is_exact_match=False, is_debug=False, is_run_cleanup=False, is_tims=False):
+def ha(lab_cfg_path, test_regex, is_debug=False, is_tims=False):
     """fab ha:g10,tc-vts\t\tRun all VTS tests on lab 'g10'
         :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
-        :param is_exact_match: if true, interpret test_regex as exact match to choose single test
         :param is_debug: is True, switch off parallel execution and run in sequence
-        :param is_run_cleanup: if True, run cleanup before anything else
         :param is_tims: if True then publish results to TIMS
     """
     import os
@@ -91,7 +89,7 @@ def ha(lab_cfg_path, test_regex, is_exact_match=False, is_debug=False, is_run_cl
     lab_name = lab_cfg_path.rsplit('/', 1)[-1].replace('.yaml', '')
 
     available_tc = with_config.ls_configs(directory='ha')
-    tests = sorted(filter(lambda x: test_regex == x if is_exact_match else test_regex in x, available_tc))
+    tests = sorted(filter(lambda x: test_regex in x, available_tc))
 
     if not tests:
         raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
@@ -100,8 +98,6 @@ def ha(lab_cfg_path, test_regex, is_exact_match=False, is_debug=False, is_run_cl
     with with_config.open_artifact(run_config_yaml, 'w') as f:
         f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab_cfg_path))
         for i, test in enumerate(tests, start=1):
-            if is_run_cleanup:
-                f.write('runner%s:  {lab.runners.runner_ha.RunnerHA: {cloud: %s, hardware-lab-config: %s, task-yaml: clean.yaml}}\n' % (10*i, lab_name, lab_name))
             f.write('runner{}:  {{lab.runners.runner_ha.RunnerHA: {{cloud: {}, hardware-lab-config: {}, task-yaml: "{}", is-debug: {}}}}}\n'.format(10*i + 1,  lab_name, lab_name, test, is_debug))
 
     run_results = run(config_path='artifacts/' + run_config_yaml, version=None)
@@ -279,7 +275,7 @@ def collect_info(lab_config_path, regex):
     from lab.deployers.deployer_existing import DeployerExisting
 
     l = Laboratory(lab_config_path)
-    d = DeployerExisting({'cloud': lab_config_path.strip('.yaml'), 'hardware-lab-config': lab_config_path})
+    d = DeployerExisting({'cloud': lab_config_path.strip('.yaml'), 'hardware-lab-config': lab_config_path}, version=None)
     try:
         c = d.wait_for_cloud([])
         c.r_collect_information(regex=regex, comment='')

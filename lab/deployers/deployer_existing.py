@@ -6,10 +6,11 @@ class DeployerExisting(Deployer):
     def sample_config(self):
         return {'cloud': 'arbitrary name', 'hardware-lab-config': 'yaml which describes the lab'}
 
-    def __init__(self, config):
+    def __init__(self, config, version):
         super(DeployerExisting, self).__init__(config=config)
         self._lab_cfg = config['hardware-lab-config']
         self._cloud_name = config['cloud']
+        self._version = version
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):
