@@ -121,3 +121,6 @@ class Wire(object):
 
     def get_vlans(self):
         return self._vlans
+
+    def get_description(self):
+        return '{}: {{peer-id: {}, peer-port: {},  port-channel: {}}}'.format(self._port_S, self._node_N.get_id(), self._port_N, self._pc_id)

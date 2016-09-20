@@ -16,9 +16,9 @@ class LabNode(WithLogMixIn):
         self._ROLE_VS_COUNT.setdefault(role, 0)
         self._ROLE_VS_COUNT[role] += 1
         self._n = self._ROLE_VS_COUNT[role]  # number of this node in a list of nodes for this role
-        self._oob_ip, self._oob_username, self._oob_password = 'Default in LabNode.__init__()', 'Default in LabNode.__init__()', 'Default in LabNode.__init__()'
+        self._oob_ip, self._oob_username, self._oob_password = '?? in LabNode.__init__()', '?? in LabNode.__init__()', '?? in LabNode.__init__()'
         self._nics = dict()  # list of NICs
-        self._ru, self._model = 'Default in LabNod.__init()', 'Default in LabNod.__init()'
+        self._ru, self._model = '?? in LabNod.__init()', '?? in LabNod.__init()'
 
         self._upstream_wires = []
         self._downstream_wires = []
@@ -160,3 +160,11 @@ class LabNode(WithLogMixIn):
         from lab.vts_classes.vtf import Vtf
 
         return type(self) == Vtf
+
+    def get_description(self):
+        wires = ',\n              '.join(map(lambda x: x.get_description(), self._upstream_wires))
+
+        a = '  {{id: "{}", role: {}, oob-ip: {}, ssh-username: None, ssh-password: None, oob-username: "{}", oob-password: "{}", '.format(self._id, self._role, self._oob_ip, self._oob_username, self._oob_password)
+        a += 'hostname: "{}", model: "{}", ru: "{}",\n\n'.format('1', self._model, self._ru)
+        a += '      wires: {{ {}\n      }}\n  }}'.format(wires)
+        return a

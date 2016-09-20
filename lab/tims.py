@@ -114,7 +114,7 @@ class Tims(object):
         body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
         self._api_post(operation=self._OPERATION_ENTITY, body=body)
 
-    def simulate(self, lab_cfg_path):
+    def simulate(self, lab_cfg_path, n_exceptions):
         from lab import with_config
         from lab.laboratory import Laboratory
 
@@ -124,7 +124,7 @@ class Tims(object):
         test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
         results = {'lab': lab}
         for test_cfg_path in test_cfg_pathes:
-            results[test_cfg_path] = {'n_exceptions': 0}
+            results[test_cfg_path] = {'n_exceptions': n_exceptions}
 
         self.publish_results_to_tims(results=results)
 
