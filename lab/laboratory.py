@@ -91,11 +91,11 @@ class Laboratory(WithOspd7, WithLogMixIn):
 
         # now all wires are created and all peers of this node are connected
         for nic_info in all_nics_of_node:  # {'name': name, 'mac-or_pattern': mac, 'ip-or-index': ip, 'net': obj_of_Network, own-ports: [phys_port1, phys_port2]}
-            nic_on_these_wires = filter(lambda y: y.get_own_port(own_node) in nic_info['own-ports'], own_node.get_all_wires())  # find all wires, this NIC sits on
-            own_node.add_nic(nic_name=nic_info['name'], mac_or_pattern=nic_info['mac-or-pattern'], ip_or_index=nic_info['ip-or-index'], net=nic_info['net'], on_wires=nic_on_these_wires)
+            nic_on_these_wires = filter(lambda y: y.get_own_port(own_node) in nic_info.get('own-ports'), own_node.get_all_wires())  # find all wires, this NIC sits on
+            own_node.add_nic(nic_name=nic_info.get('name'), mac_or_pattern=nic_info.get('mac-or-pattern'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires)
 
     @staticmethod
-    def _check_port_id_correctness(klass, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25
+    def _check_port_id_correctness(node, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25
         from lab.cimc import CimcServer
         from lab.nodes.n9k import Nexus
         from lab.nodes.fi import FI, FiServer
@@ -108,40 +108,41 @@ class Laboratory(WithOspd7, WithLogMixIn):
                 raise ValueError('Port id "{}" is wrong, the only possible value is MGMT'.format(port_id))
             return
 
+        klass = type(node)
         if klass is CimcServer:
             if 'MLOM' in port_id:
                 if port_id not in possible_mlom:
-                    raise ValueError('Ucs connected to N9K port id "{}" is wrong, possible MLOM port ids are "{}"'.format(port_id, possible_mlom))
+                    raise ValueError('{}: connected to N9K port id "{}" is wrong, possible MLOM port ids are "{}"'.format(node, port_id, possible_mlom))
                 return
             if 'LOM' in port_id:
                 if port_id not in possible_lom:
-                    raise ValueError('Ucs connected to N9K port id "{}" is wrong, possible LOM port ids are "{}"'.format(port_id, possible_lom))
+                    raise ValueError('{}: Ucs connected to N9K port id "{}" is wrong, possible LOM port ids are "{}"'.format(node, port_id, possible_lom))
                 return
         if klass in [Nexus, FI]:
             if port_id.count('/') != 1:
-                raise ValueError('N9K or FI port id "{}" is wrong, it should contain single "/"'.format(port_id))
+                raise ValueError('{}: port id "{}" is wrong, it should contain single "/"'.format(node, port_id))
             for value in port_id.split('/'):
                 try:
                     int(value)
                 except ValueError:
-                    raise ValueError('N9K or FI port id "{}" is wrong, it have to be <number>/<number>'.format(port_id))
+                    raise ValueError('{}: port id "{}" is wrong, it has to be <number>/<number>'.format(node, port_id))
         if klass is FiServer:
             left, right = port_id.rsplit('/', 1)
             if right not in ['a', 'b']:
-                raise ValueError('UCS connected to FI port id "{}" is wrong, it have to be finished by "/a" or "/b"'.format(port_id))
+                raise ValueError('{}: port id "{}" is wrong, it has to be end as "/a" or "/b"'.format(node, port_id))
 
             for value in left.split('/'):
                 try:
                     int(value)
                 except ValueError:
-                    raise ValueError('UCS connected to FI port id "{}" is wrong, have to be "<number>" or "<number>/<number>" before "/a" or "/b"'.format(port_id))
+                    raise ValueError('{}: port id "{}" is wrong, has to be "<number>" or "<number>/<number>" before "/a" or "/b"'.format(node, port_id))
 
     def _process_single_wire(self, own_node, wire_info):  # Example {MLOMl/0: {peer-id: n98,  peer-port: 1/30, own-mac: '00:FE:C8:E4:B4:CE', port-channel: pc20, vlans: [3, 4]}
         from lab.wire import Wire
 
         own_port_id, peer_info = wire_info
         own_port_id = own_port_id.upper()
-        self._check_port_id_correctness(klass=type(own_node), port_id=own_port_id)
+        self._check_port_id_correctness(node=own_node, port_id=own_port_id)
         try:
             peer_node_id = peer_info['peer-id']
             peer_port_id = peer_info['peer-port']
@@ -155,7 +156,7 @@ class Laboratory(WithOspd7, WithLogMixIn):
                 return
             raise ValueError('Node "{}": specified wrong peer node id: "{}"'.format(own_node.get_id(), peer_node_id))
 
-        self._check_port_id_correctness(klass=type(peer_node), port_id=peer_port_id)
+        self._check_port_id_correctness(node=peer_node, port_id=peer_port_id)
         self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_id(), peer_port_id), node_id=own_node.get_id())  # check that this peer_node-peer_port is unique
         port_channel = peer_info.get('port-channel')
 
@@ -302,10 +303,11 @@ class Laboratory(WithOspd7, WithLogMixIn):
         :param node_id: node which tries to register the object
         """
 
-        if str(obj) in self._unique_dict.keys():
-            raise ValueError('{} node tries to own {} which is already in use by {}'.format(node_id, obj, self._unique_dict[obj]))
+        key = str(obj)
+        if key in self._unique_dict.keys():
+            raise ValueError('{} node tries to own {} which is already in use by {}'.format(node_id, key, self._unique_dict[key]))
         else:
-            self._unique_dict[str(obj)] = node_id
+            self._unique_dict[key] = node_id
 
     def get_type(self):
         return self._lab_type

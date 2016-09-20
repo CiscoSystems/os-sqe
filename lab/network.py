@@ -11,6 +11,9 @@ class Network(object):
         self._is_vts = False  # VTS components will be deployed on this network, if requested
         self._is_via_tor = False  # this network if supposed to go our of lab's TOR
 
+    def __repr__(self):
+        return u'net: {} {} {}'.format(self._name, self._net, self._vlan)
+
     def get_name(self):
         return self._name
 
