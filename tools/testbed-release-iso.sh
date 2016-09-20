@@ -27,8 +27,8 @@ fi
 
 mkdir $in_mnt_path
 
-mount -o loop $in_iso_path $in_mnt_path
-cp -r $in_mnt_path $out_mnt_path
+mount -t iso9660 -o loop $in_iso_path $in_mnt_path
+cp -pRf $in_mnt_path $out_mnt_path
 
 source $config
 
@@ -40,6 +40,8 @@ sed -i 's|raw_input("{0}Enter IP address of DNS Server:".format("\\n" \* (newlin
 sed -i 's|raw_input("{0}Enter MGMT address of management node in CIDR format:".format("\\n" \* (newline_count+1)))|'"\"${mgmt_ip}\"|" $out_kickstart_path
 
 sed -i '/auth --enableshadow --passalgo=sha512/a rootpw --iscrypted $6$.oKEqTDhB6XJjca4$V4QRX.7nUQ560rcAXjVCDgCxISZpwti.0rfnr/i24mvC1gQeyaQe0e.B/g/xq5/HdfYVEFXkYf1f72rXLfWTx0' $out_kickstart_path
-sed -i 's|timezone UTC --utc|'"$timezone|" $out_kickstart_path
+sed -i "/lang en_US.UTF-8/a timezone $timezone --utc" $out_kickstart_path
 
-mkisofs -r -N -allow-leading-dots -d -J -T -o $out_iso_path $out_mnt_path
+label=$(grep -o -m 1 -P 'LABEL=Mercury-\d+' ${out_mnt_path}/isolinux.cfg | awk -F 'LABEL=' '{print $2}')
+
+mkisofs -allow-leading-dots -V "${label}" -b isolinux.bin -c boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -r -T -J -o $out_iso_path $out_mnt_path
