@@ -1,6 +1,7 @@
 in_iso_path=$1
 out_iso_path=$2
 config=$3
+test_info=$4
 ##############################################################################
 # # Example config file
 #
@@ -41,6 +42,9 @@ sed -i 's|raw_input("{0}Enter MGMT address of management node in CIDR format:".f
 
 sed -i '/auth --enableshadow --passalgo=sha512/a rootpw --iscrypted $6$.oKEqTDhB6XJjca4$V4QRX.7nUQ560rcAXjVCDgCxISZpwti.0rfnr/i24mvC1gQeyaQe0e.B/g/xq5/HdfYVEFXkYf1f72rXLfWTx0' $out_kickstart_path
 sed -i "/lang en_US.UTF-8/a timezone $timezone --utc" $out_kickstart_path
+
+# Insert a test information
+sed -i "/#Unpack installer/i echo '${test_info}' > /mnt/sysimage/etc/test-info" $out_kickstart_path
 
 label=$(grep -o -m 1 -P 'LABEL=Mercury-\d+' ${out_mnt_path}/isolinux.cfg | awk -F 'LABEL=' '{print $2}')
 
