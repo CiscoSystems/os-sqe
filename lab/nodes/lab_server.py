@@ -33,11 +33,11 @@ class LabServer(LabNode, Server):
         try:
             index = int(ip_or_index)  # this is shift in the network
             if index in [0, 1, 2, 3, -1]:
-                raise ValueError('{}:  index={} is not possible since 0 =>  network address [1,2,3] => GW addresses -1 => broadcast address'.format(self.get_id(), index))
+                raise IndexError('{}:  index={} is not possible since 0 =>  network address [1,2,3] => GW addresses -1 => broadcast address'.format(self.get_id(), index))
             try:
                 ip = net.get_ip_for_index(index)
             except (IndexError, ValueError):
-                raise ValueError('{}: index {} is out of bound of {}'.format(self.get_id(), index, net))
+                raise IndexError('{}: index {} is out of bound of {}'.format(self.get_id(), index, net))
         except ValueError:
             if validators.ipv4(str(ip_or_index)):
                 try:
