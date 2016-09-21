@@ -74,7 +74,7 @@ class CobblerServer(LabServer):
 
         nodes_to_check = []
         for node in nodes_to_deploy_by_cobbler:
-            if node.is_nics_correct():
+            if node.r_is_nics_correct():
                 continue
             nodes_to_check.append(node)
             system_name = self.cobbler_configure_for(node=node)

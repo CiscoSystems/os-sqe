@@ -234,7 +234,7 @@ class Server(object):
             self._hostname = self.exe('hostname').stdout.strip()
         return self._hostname
 
-    def list_ip_info(self, connection_attempts=100):
+    def r_list_ip_info(self, connection_attempts=100):
         ans_a = self.exe('ip -o a', connection_attempts=connection_attempts, is_warn_only=True)
         if not ans_a:
             return {}
@@ -242,11 +242,9 @@ class Server(object):
         name_ipv4_ipv6 = {}
         for line in ans_a.split('\n'):
             _, nic_name, other = line.split(' ', 2)
-            name_ipv4_ipv6.setdefault(nic_name, {'ipv4': None, 'ipv6': None})
-            if 'inet6' in other:
-                name_ipv4_ipv6[nic_name]['ipv6'] = other.split()[1].strip()
-            else:
-                name_ipv4_ipv6[nic_name]['ipv4'] = other.split()[1].strip()
+            name_ipv4_ipv6.setdefault(nic_name, {'ipv4': [], 'ipv6': []})
+            ip4_or_6 = 'ipv6' if 'inet6' in other else 'ipv4'
+            name_ipv4_ipv6[nic_name][ip4_or_6].append(other.split()[1].strip())
 
         result = {}
         for line in ans_l.split('\n'):

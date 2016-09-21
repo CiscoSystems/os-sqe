@@ -112,6 +112,9 @@ class Nic(object):
         ip = self._net.get_ip_for_index(self._net_index) if type(self._net_index) is int else self._net_index
         return str(ip), str(self._net.get_netmask())
 
+    def get_ip_with_prefix(self):
+        return '{}/{}'.format(self.get_ip_and_mask()[0], self._net.get_prefix_len())
+
     def get_net(self):
         return self._net
 

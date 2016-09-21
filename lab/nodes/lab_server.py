@@ -59,32 +59,30 @@ class LabServer(LabNode, Server):
             self.set_ssh_ip(ip=nic.get_ip_and_mask()[0])
         return nic
 
-    def is_nics_correct(self):
-        actual_nics = self.list_ip_info(connection_attempts=1)
+    def r_is_nics_correct(self):
+        actual_nics = self.r_list_ip_info(connection_attempts=1)
         if not actual_nics:
             return False
 
+        status = True
         for nic in self.get_nics().values():
-            mac = nic.get_mac()  # be careful : after bonding all interfaces of the bond get mac of the first one
-            ip, _ = nic.get_ip_and_mask()
-            prefix_len = nic.get_net().get_prefix_len()
-            ip = ip + '/' + str(prefix_len)
+            requested_mac = nic.get_mac()  # be careful : after bonding all interfaces of the bond get mac of the first one
+            requested_ip = nic.get_ip_with_prefix()
             master_nic_name = nic.get_name()
             if master_nic_name not in actual_nics:
                 self.log(message='has no master NIC {}'.format(master_nic_name), level='warning')
-                return False
-            actual_ip = actual_nics[master_nic_name]['ipv4']
-            if nic.is_pxe() is False and ip != actual_ip:  # this ip might be re-assign to the bridge which has this NIC inside
+                status = False
+            if not nic.is_pxe() and requested_ip not in actual_nics[master_nic_name]['ipv4']:  # this ip might be re-assign to the bridge which has this NIC inside
                 br_name = 'br-' + master_nic_name
-                if br_name not in actual_nics or ip != actual_nics[br_name]['ipv4']:
-                    self.log(message='NIC "{}" has different IP  actual: {}  requested: {}'.format(nic.get_name(), actual_ip, ip), level='warning')
-                    return False
+                if br_name not in actual_nics or requested_ip not in actual_nics[br_name]['ipv4']:
+                    self.log(message='NIC "{}" has different IP  actual: {}  requested: {}'.format(nic.get_name(), actual_nics[master_nic_name]['ipv4'] + actual_nics[br_name]['ipv4'], requested_ip), level='warning')
+                    status = False
             for slave_nic_name, _ in sorted(nic.get_slave_nics().items()):
                 if slave_nic_name not in actual_nics:
                     self.log(message='has no slave NIC {}'.format(slave_nic_name), level='warning')
-                    return False
+                    status = False
                 actual_mac = actual_nics[slave_nic_name]['mac'].upper()
-                if actual_mac != mac.upper():
-                    self.log(message='NIC {} has different mac: actual {} requested {}'.format(slave_nic_name, actual_mac, mac), level='warning')
-                    return False
-        return True
+                if actual_mac != requested_mac.upper():
+                    self.log(message='NIC {} has different mac: actual {} requested {}'.format(slave_nic_name, actual_mac, requested_mac), level='warning')
+                    status = False
+        return status
