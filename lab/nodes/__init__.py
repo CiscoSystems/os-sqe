@@ -94,6 +94,12 @@ class LabNode(WithLogMixIn):
     def get_ip_mx(self):
         return self.get_nic('mx').get_ip_and_mask()[0]
 
+    def get_ip_mx_with_prefix(self):
+        return self.get_nic('mx').get_ip_with_prefix()
+
+    def get_gw_mx_with_prefix(self):
+        return self.get_nic('mx').get_gw_with_prefix()
+
     @abc.abstractmethod
     def cmd(self, cmd):
         pass  # this method allows to do OOB commands like e.g. CIMC or NXAPI

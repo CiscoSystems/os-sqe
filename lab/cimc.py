@@ -302,6 +302,13 @@ class CimcDirector(CimcServer):
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 
+    def r_configure_mx_and_nat(self):
+        mx_ip, mx_gw_ip = self.get_ip_mx_with_prefix(), self.get_gw_mx_with_prefix()
+        self.exe('ip a flush dev br_mgmt')
+        self.exe('ip a a {} dev br_mgmt'.format(mx_ip))
+        self.exe('ip a a {} dev br_mgmt'.format(mx_gw_ip))
+        self.exe('iptables -t nat -A POSTROUTING -o br_api -j MASQUERADE')  # this NAT is only used to access to centralized ceph
+
 
 class CimcController(CimcServer):
     ROLE = 'control-n9'

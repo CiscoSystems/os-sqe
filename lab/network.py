@@ -121,6 +121,9 @@ class Nic(object):
     def get_gw(self):
         return self._net.get_gw()
 
+    def get_gw_with_prefix(self):
+        return '{}/{}'.format(self.get_gw(), self._net.get_prefix_len())
+
     def is_bond(self):
         return len(self._on_wires) > 1  # NIC sits on 2 wires, meaning this is bond
 
