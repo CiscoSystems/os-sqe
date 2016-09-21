@@ -83,6 +83,8 @@ class DeployerMercury(Deployer):
 
         build_node.exe(command='./runner/runner.py -y -p 7,8', in_directory=installer_dir)  # run steps 7-8
 
+        build_node.exe(command='echo {} > /etc/cisco-mercury-release'.format(mercury_tag))
+
         lab.r_collect_information(regex='ERROR', comment='after mercury runner')
 
         openrc_body = build_node.exe(command='cat openstack-configs/openrc')
