@@ -59,7 +59,7 @@ class Vtc(LabServer):
             raise
 
     def set_vip(self, vip):
-        self._vip_a, self._vip_mx = vip, '111.111.111.150'
+        self._vip_a, self._vip_mx = vip, '11.11.11.150'
 
     def get_vtc_vips(self):
         return self._vip_a, self._vip_mx

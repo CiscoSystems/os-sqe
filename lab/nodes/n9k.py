@@ -141,7 +141,7 @@ class Nexus(LabNode):
         actual_port_info = self._actual_ports['Ethernet' + port_id]
         actual_state, actual_desc = actual_port_info['state_rsn_desc'], actual_port_info.get('name', '--')  # for port with no description this field either -- or not in dict
 
-        if actual_state in [u'Link not connected', u'XCVR not inserted']:
+        if actual_state in [u'XCVR not inserted']:
             raise RuntimeError('N9K {}: Port {} seems to be not connected. Check your configuration'.format(self, port_id))
 
         actual_port_channel = filter(lambda x: port_id in x[1], self._actual_pc.items())
@@ -238,10 +238,10 @@ class Nexus(LabNode):
 
     def n9_configure_vlans(self):
         vlans = self._requested_topology['vlans']
-        for vlan_id, name_ports in vlans.items():
+        for vlan_id, vlan_name in vlans.items():
+            vlan_name = str(vlan_name)
             if vlan_id == '1':
                 continue
-            vlan_name = name_ports['name']
             if str(vlan_id) in self._actual_vlans:
                 actual_vlan_name = self._actual_vlans[str(vlan_id)]['name']
                 if actual_vlan_name.lower() != vlan_name.lower():
@@ -286,15 +286,19 @@ class Nexus(LabNode):
             self.n9_configure_port(pc_id=None, port_id=port_id, vlans_string=info['vlans'], desc=info['description'], mode=info['mode'])
 
     def prepare_topology(self):
+        import functools
+
         requested_vlans = {}
 
         vlan_vs_net = {net.get_vlan(): net for net in self.lab().get_all_nets().values()}
-        vlans = []
-        map(lambda w: vlans.extend(w.get_vlans()), self._downstream_wires)
-        for vlan_id in set(vlans):
+        vlans_via_tor = []
+        vlans_on_downstream = set(functools.reduce(lambda lst, w: lst + w.get_vlans(), self._downstream_wires, []))
+        for vlan_id in vlans_on_downstream:
             net = vlan_vs_net[vlan_id]
+            if net.is_via_tor():
+                vlans_via_tor.append(vlan_id)
             vlan_name = '{lab_name}-{net_name}{ssh}'.format(lab_name=self._lab, net_name=net.get_name(), ssh='-SSH' if net.is_ssh() else '')
-            requested_vlans[str(vlan_id)] = {'name': vlan_name, 'ports': '', 'net': net}
+            requested_vlans[str(vlan_id)] = vlan_name
 
         requested_ports = {}
         requested_vpc = {}
@@ -311,7 +315,7 @@ class Nexus(LabNode):
                 continue
             elif wire.is_n9_tor():
                 description = 'TOR uplink'
-                vlans_on_wire = [vl.get('net').get_vlan() for vl in requested_vlans.values() if vl.get('net').is_via_tor()]
+                vlans_on_wire = vlans_via_tor
                 mode = 'trunk'
             elif wire.is_n9_pxe():
                 description = 'PXE link'

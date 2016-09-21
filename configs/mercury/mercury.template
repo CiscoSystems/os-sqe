@@ -31,31 +31,31 @@ NETWORKING:
 
   networks:
   -
-    vlan_id: {api_vlan}  # routable network knonw also as ssh access network
-    subnet: {api_cidr}
-    gateway: {api_gw}
+    vlan_id: {vlan_a}  # routable network known also as ssh access network
+    subnet: {cidr_a}
+    gateway: {gw_a}
     segments:
       - api
   -
-    vlan_id: {mx_vlan}
-    subnet: {mx_cidr}
-    gateway: {mx_gw}
-    build_node: {bld_ip_mx}
+    vlan_id: {vlan_m}
+    subnet: {cidr_m}
+    gateway: {gw_m}
+    build_node: {bld_ip_m}
     pool:
-        - {mx_pool}
+        - {pool_m}
     segments:
       - management
       - provision
   -
-    vlan_id: {tenant_vlan}
-    subnet: {tenant_cidr}
-    gateway: {tenant_gw}
+    vlan_id: {vlan_t}
+    subnet: {cidr_t}
+    gateway: {gw_t}
     pool:
-        - {tenant_pool}
+        - {pool_t}
     segments:
       - tenant
   -
-    vlan_id: 690
+    vlan_id: {vlan_e}
     segments:
        - external
   -
@@ -95,11 +95,11 @@ ADMIN_TENANT_NAME: admin
 ###############################################
 # HA Proxy
 ################################################
-external_lb_vip_address: {lb_ip_api}  # external_lb_vip_address has to be part of API subnet
+external_lb_vip_address: {lb_ip_a}  # external_lb_vip_address has to be part of API subnet
+internal_lb_vip_address: {lb_ip_m}  # internal_lb_vip_address has to be part of MX subnet
 
 VIRTUAL_ROUTER_ID: 3
 
-internal_lb_vip_address: {lb_ip_mx}
 
 #################################################
 # CEPH
@@ -148,6 +148,6 @@ NFV_HOSTS: ALL # The VTS option requires NFV_HOSTS: ALL CPU Pinning and Huge Pag
 # MGMT_NODE_CIMC_IP: {bld_ip_oob}
 # MGMT_CIMC_USERNAME: {bld_username_oob}
 # MGMT_CIMC_PASSWORD: '{bld_password_oob}'
-# MGMT_NODE_API_IP: {bld_ip_api}/{api_pref_len}
-# MGMT_NODE_API_GW: {api_gw}
-# MGMT_NODE_MGMT_IP: {bld_ip_mx}/{mx_pref_len}
+# MGMT_NODE_API_IP: {bld_ip_a_with_prefix}  # Build node IP on API network in format x.x.x.x/x
+# MGMT_NODE_API_GW: {gw_a}
+# MGMT_NODE_MGMT_IP: {bld_ip_m_with_prefix} # Build node IP on MX network in format x.x.x.x/x

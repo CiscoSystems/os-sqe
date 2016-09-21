@@ -1,8 +1,9 @@
 from lab.ospd.with_osdp7 import WithOspd7
+from lab.mercury.with_mercury import WithMercuryMixIn
 from lab.with_log import WithLogMixIn
 
 
-class Laboratory(WithOspd7, WithLogMixIn):
+class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn):
     def __repr__(self):
         return self._lab_name
 

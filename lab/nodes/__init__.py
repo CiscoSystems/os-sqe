@@ -91,6 +91,12 @@ class LabNode(WithLogMixIn):
     def get_nics(self):
         return self._nics
 
+    def get_ip_api(self):
+        return self.get_nic('a').get_ip_and_mask()[0]
+
+    def get_ip_api_with_prefix(self):
+        return self.get_nic('a').get_ip_with_prefix()
+
     def get_ip_mx(self):
         return self.get_nic('mx').get_ip_and_mask()[0]
 
@@ -99,6 +105,12 @@ class LabNode(WithLogMixIn):
 
     def get_gw_mx_with_prefix(self):
         return self.get_nic('mx').get_gw_with_prefix()
+
+    def get_ip_t(self):
+        return self.get_nic('t').get_ip_and_mask()[0]
+
+    def get_ip_t_with_prefix(self):
+        return self.get_nic('t').get_ip_with_prefix()
 
     @abc.abstractmethod
     def cmd(self, cmd):

@@ -68,7 +68,9 @@ class DeployerVts(Deployer):
         if not self.is_valid_installation(vts_hosts):
             raise RuntimeError('VTS installation is invalid')
 
-    def _delete_previous_libvirt_vms(self, vts_host):
+    def delete_previous_libvirt_vms(self, vts_host):
+        if not vts_host.ping():
+            return
         ans = vts_host.exe('virsh list')
         for role in ['xrnc', 'vtc']:
             if role in ans:
@@ -148,7 +150,7 @@ class DeployerVts(Deployer):
 
     def deploy_single_vtc(self, vts_host, vtc):
         if self._is_force_redeploy or not vtc.ping():
-            self._delete_previous_libvirt_vms(vts_host=vts_host)
+            self.delete_previous_libvirt_vms(vts_host=vts_host)
             cfg_body, net_part = vtc.get_config_and_net_part_bodies()
 
             config_iso_path = self._vts_service_dir + '/vtc_config.iso'

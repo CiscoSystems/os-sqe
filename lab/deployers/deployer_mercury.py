@@ -26,6 +26,7 @@ class DeployerMercury(Deployer):
         from lab.laboratory import Laboratory
 
         lab = Laboratory(config_path=self._lab_path)
+        lab.r_n9_configure(is_clean_before=True)
 
         try:
             build_node = filter(lambda x: type(x) is CimcDirector, list_of_servers)[0]
@@ -42,20 +43,21 @@ class DeployerMercury(Deployer):
                 if ans == 'FINISH':
                     break
 
-        mx_net = lab.get_all_nets()['mx']
-        mx_pref_len, mx_gw = mx_net.get_prefix_len(), mx_net.get_gw()
-        build_node.exe('ip a a {}/{} dev br_mgmt'.format(mx_gw, mx_pref_len), is_warn_only=True)  # if address is already assigned, the command returns RTNETLINK answers: File exists (code 2)
-        build_node.exe('iptables -t nat -A POSTROUTING -o br_api -j MASQUERADE')  # this NAT is only used to access to centralized ceph
+        build_node.r_configure_mx_and_nat()
+
+        map(lambda x: self._vts_deployer.delete_previous_libvirt_vms(x), lab.get_vts_hosts())
 
         ans = build_node.exe('ls -d installer*', is_warn_only=True)
         if 'installer-' + mercury_tag in ans:
             installer_dir = ans
             is_get_tarball = False
         elif 'No such file or directory' in ans:
+            installer_dir = 'installer-{}'.format(mercury_tag)
             is_get_tarball = True
         else:
             old_installer_dir = ans
-            build_node.exe(command='./unbootstrap.sh -y', in_directory=old_installer_dir, is_warn_only=True)
+            installer_dir = 'installer-{}'.format(mercury_tag)
+            build_node.exe(command='./unbootstrap.sh -y > /dev/null', in_directory=old_installer_dir, is_warn_only=True)
             build_node.exe('rm -f openstack-configs', is_warn_only=True)
             build_node.exe('rm -rf {}'.format(old_installer_dir))
             is_get_tarball = True
@@ -63,102 +65,41 @@ class DeployerMercury(Deployer):
         if is_get_tarball:
             tar_url = self._mercury_installer_location + '/mercury-installer-internal.tar.gz'
             tar_path = build_node.wget_file(url=tar_url)
-            ans = build_node.exe('tar xzvf {}'.format(tar_path))
-            installer_dir = ans.split('\r\n')[-1].split('/')[0]
+            build_node.exe('tar xzf {}'.format(tar_path))
             build_node.exe('rm -f {}'.format(tar_path))
 
-        ans = build_node.exe('cat MERCURY_VERSION', is_warn_only=True)
+        ans = build_node.exe('cat /etc/cisco-mercury-release', is_warn_only=True)
         if self._is_force_redeploy or mercury_tag not in ans:
-            self.create_setup_yaml(build_node=build_node, installer_dir=installer_dir, is_add_vts_role=False)
+            cfg_body = lab.create_mercury_setup_data_yaml(is_add_vts_role=self._is_add_vts_role)
+            build_node.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='setup_data.yaml', in_directory=installer_dir + '/openstack-configs')
 
             build_node.exe("find {} -name '*.pyc' -delete".format(installer_dir))
             build_node.exe('rm -rf /var/log/mercury/*')
 
-            build_node.exe(command='./runner/runner.py -y -s 7,8', in_directory=installer_dir)  # run steps 1-6 during which we get all control and computes nodes re-loaded
+            try:
+                build_node.exe(command='./runner/runner.py -y -s 7,8 > /dev/null', in_directory=installer_dir)  # run steps 1-6 during which we get all control and computes nodes re-loaded
+            except:
+                build_node.exe('cat /var/log/mercury//mercury_baremetal_install.log')
+                raise RuntimeError
 
-        if not self._is_add_vts_role:
-            cobbler = lab.get_cobbler()
-            cobbler.cobbler_deploy()
-        self._vts_deployer.wait_for_cloud(list_of_servers=lab.get_vts_hosts())
+            if not self._is_add_vts_role:
+                cobbler = lab.get_cobbler()
+                cobbler.cobbler_deploy()
+            self._vts_deployer.wait_for_cloud(list_of_servers=lab.get_vts_hosts())
 
-        build_node.exe(command='./runner/runner.py -y -p 7,8', in_directory=installer_dir)  # run steps 7-8
+            try:
+                build_node.exe(command='./runner/runner.py -y -p 7,8 > /dev/null', in_directory=installer_dir)  # run steps 7-8
+            except:
+                build_node.exe('cat /var/log/mercury//mercury_baremetal_install.log')
+                raise RuntimeError
 
-        build_node.exe(command='echo {} > /etc/cisco-mercury-release'.format(mercury_tag))
+            build_node.exe(command='echo {} > /etc/cisco-mercury-release'.format(mercury_tag))
 
         lab.r_collect_information(regex='ERROR', comment='after mercury runner')
 
         openrc_body = build_node.exe(command='cat openstack-configs/openrc')
         return Cloud.from_openrc(name=self._lab_path.strip('.yaml'), mediator=build_node, openrc_as_string=openrc_body)
 
-    def create_setup_yaml(self, build_node, installer_dir, is_add_vts_role):
-        from lab.with_config import open_artifact
-
-        installer_config_template = self.read_config_from_file(config_path='mercury.template', directory='mercury', is_as_string=True)
-
-        lab = build_node.lab()
-        bld_ip_oob, bld_username_oob, bld_password_oob = build_node.get_oob()
-        bld_ip_api, bld_username_api, bld_password_api = build_node.get_ssh()
-        dns_ip = build_node.lab().get_dns()[0]
-
-        api_net = lab.get_all_nets()['a']
-        api_cidr, api_pref_len, api_vlan, api_gw = api_net.get_cidr(), api_net.get_prefix_len(), api_net.get_vlan(), api_net.get_gw()
-        lb_ip_api = api_net.get_ip_for_index(10)
-        lab.make_sure_that_object_is_unique(str(lb_ip_api), 'MERCURY')
-
-        mx_net = lab.get_all_nets()['mx']
-        mx_cidr, mx_pref_len, mx_vlan, mx_gw = mx_net.get_cidr(), mx_net.get_prefix_len(), mx_net.get_vlan(), mx_net.get_gw()
-        lb_ip_mx = mx_net.get_ip_for_index(10)
-        mx_pool = '{} to {}'.format(mx_net.get_ip_for_index(151), mx_net.get_ip_for_index(192))
-        lab.make_sure_that_object_is_unique(str(lb_ip_mx), 'MERCURY')
-
-        tenant_net = lab.get_all_nets()['t']
-        tenant_cidr, tenant_vlan, tenant_gw = tenant_net.get_cidr(), tenant_net.get_vlan(), tenant_net.get_gw()
-        t_pool = '{} to {}'.format(tenant_net.get_ip_for_index(151), tenant_net.get_ip_for_index(192))
-
-        bld_ip_mx = build_node.get_nic('mx').get_ip_and_mask()[0]
-
-        vtc = lab.get_node_by_id('vtc1')
-        vtc_mx_ip = vtc.get_vtc_vips()[1]
-        _, vtc_username, vtc_password = vtc.get_oob()
-
-        controllers_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_controllers()))
-        computes_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_computes()))
-        vts_hosts_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_vts_hosts()))
-
-        roles_part = '   control:\n     - {}\n   compute:\n     - {}\n'.format(controllers_part, computes_part)
-        if is_add_vts_role:
-            roles_part += '   vts:\n     - {}\n'.format(vts_hosts_part)
-
-        servers_part = ''
-        nodes = lab.get_controllers() + lab.get_computes()
-        if is_add_vts_role:
-            nodes += lab.get_vts_hosts()
-
-        for node in nodes:
-            oob_ip, oob_username, oob_password = node.get_oob()
-            ip_mx = node.get_ip_mx()
-            ru = node.get_hardware_info()[0]
-            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n       management_ip: {ip_mx} \n\n'.format(nm=node.get_hostname(), p=oob_password, ip=oob_ip, ru=ru,
-                                                                                                                                                                                              ip_mx=ip_mx)
-
-        installer_config_body = installer_config_template.format(common_username_oob=bld_username_oob, common_password_oob=bld_password_api, dns_ip=dns_ip, vts_kickstart=' vts: control-sda-c220m4.ks' if self._is_add_vts_role else '',
-                                                                 api_cidr=api_cidr, api_pref_len=api_pref_len, api_vlan=api_vlan, api_gw=api_gw,
-                                                                 mx_cidr=mx_cidr, mx_pref_len=mx_pref_len, mx_vlan=mx_vlan, mx_gw=mx_gw, bld_ip_mx=bld_ip_mx, mx_pool=mx_pool,
-                                                                 tenant_cidr=tenant_cidr, tenant_vlan=tenant_vlan, tenant_gw=tenant_gw, tenant_pool=t_pool,
-                                                                 roles_part=roles_part, servers_part=servers_part,
-                                                                 lb_ip_api=lb_ip_api, lb_ip_mx=lb_ip_mx,
-                                                                 vtc_mx_vip=vtc_mx_ip, vtc_username=vtc_username, vtc_password=vtc_password, common_ssh_username=bld_username_api,
-                                                                 bld_ip_oob=bld_ip_oob, bld_username_oob=bld_username_oob, bld_password_oob=bld_password_oob,
-                                                                 bld_ip_api=bld_ip_api)
-
-        with open_artifact('setup_data.yaml', 'w') as f:
-            f.write(installer_config_body)
-
-        return build_node.put_string_as_file_in_dir(string_to_put=installer_config_body, file_name='setup_data.yaml', in_directory=installer_dir + '/openstack-configs')
-
     def wait_for_cloud(self, list_of_servers):
         cloud = self.deploy_cloud(list_of_servers=list_of_servers)
         return cloud.verify_cloud()
-
-    def configure_nat(self):
-        pass
