@@ -26,7 +26,7 @@ class DeployerMercury(Deployer):
         from lab.laboratory import Laboratory
 
         lab = Laboratory(config_path=self._lab_path)
-        lab.r_n9_configure(is_clean_before=True)
+        #lab.r_n9_configure(is_clean_before=True)
 
         try:
             build_node = filter(lambda x: type(x) is CimcDirector, list_of_servers)[0]
@@ -79,7 +79,7 @@ class DeployerMercury(Deployer):
             try:
                 build_node.exe(command='./runner/runner.py -y -s 7,8 > /dev/null', in_directory=installer_dir)  # run steps 1-6 during which we get all control and computes nodes re-loaded
             except:
-                build_node.exe('cat /var/log/mercury//mercury_baremetal_install.log')
+                build_node.exe('cat /var/log/mercury/installer/mercury_baremetal_install.log')
                 raise RuntimeError
 
             if not self._is_add_vts_role:
@@ -90,7 +90,7 @@ class DeployerMercury(Deployer):
             try:
                 build_node.exe(command='./runner/runner.py -y -p 7,8 > /dev/null', in_directory=installer_dir)  # run steps 7-8
             except:
-                build_node.exe('cat /var/log/mercury//mercury_baremetal_install.log')
+                build_node.exe('cat /var/log/mercury/installer/mercury_baremetal_install.log')
                 raise RuntimeError
 
             build_node.exe(command='echo {} > /etc/cisco-mercury-release'.format(mercury_tag))

@@ -47,11 +47,10 @@ class WithMercuryMixIn(object):
         for node in nodes:
             oob_ip, oob_username, oob_password = node.get_oob()
             ip_mx = node.get_ip_mx()
-            ip_t = node.get_ip_t()
             ru = node.get_hardware_info()[0]
-            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n       management_ip: {ip_mx}\n       tenant_ip: {ip_t}\n\n'.format(nm=node.get_hostname(),
-                                                                                                                                                                                                                       p=oob_password, ip=oob_ip, ru=ru,
-                                                                                                                                                                                                                       ip_mx=ip_mx, ip_t=ip_t)
+            servers_part += '   {nm}:\n       cimc_info: {{"cimc_ip" : "{ip}", "cimc_password" : "{p}"}}\n       rack_info: {{"rack_id": "{ru}"}}\n       management_ip: {ip_mx}\n\n'.format(nm=node.get_hostname(),
+                                                                                                                                                                                             p=oob_password, ip=oob_ip, ru=ru,
+                                                                                                                                                                                             ip_mx=ip_mx)
 
         installer_config_body = installer_config_template.format(common_username_oob=bld_username_oob, common_password_oob=bld_password_api, dns_ip=dns_ip, vts_kickstart=' vts: control-sda-c220m4.ks' if is_add_vts_role else '',
                                                                  cidr_a=a_cidr, vlan_a=a_vlan, gw_a=a_gw,
