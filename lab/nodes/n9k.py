@@ -6,35 +6,7 @@ class Nexus(LabNode):
 
     def __init__(self, node_id, role, lab):
         super(Nexus, self).__init__(node_id=node_id, role=role, lab=lab)
-        self.__actual_vpc = None
-        self.__actual_pc = None
-        self.__actual_vlans = None
-        self.__actual_ports = None
         self.__requested_topology = None
-
-    @property
-    def _actual_vpc(self):
-        if self.__actual_vpc is None:
-            self.n9_get_status()
-        return self.__actual_vpc
-
-    @property
-    def _actual_pc(self):
-        if self.__actual_pc is None:
-            self.n9_get_status()
-        return self.__actual_pc
-
-    @property
-    def _actual_vlans(self):
-        if self.__actual_vlans is None:
-            self.n9_get_status()
-        return self.__actual_vlans
-
-    @property
-    def _actual_ports(self):
-        if self.__actual_ports is None:
-            self.n9_get_status()
-        return self.__actual_ports
 
     @property
     def _requested_topology(self):
@@ -138,13 +110,13 @@ class Nexus(LabNode):
             return {}
 
     def n9_configure_port(self, pc_id, port_id, vlans_string, desc, mode):
-        actual_port_info = self._actual_ports['Ethernet' + port_id]
+        actual_port_info = self.n9_show_ports()['Ethernet' + port_id]
         actual_state, actual_desc = actual_port_info['state_rsn_desc'], actual_port_info.get('name', '--')  # for port with no description this field either -- or not in dict
 
         if actual_state in [u'XCVR not inserted']:
             raise RuntimeError('N9K {}: Port {} seems to be not connected. Check your configuration'.format(self, port_id))
 
-        actual_port_channel = filter(lambda x: port_id in x[1], self._actual_pc.items())
+        actual_port_channel = filter(lambda x: port_id in x[1], self.n9_show_port_channels().items())
         actual_pc_id = int(actual_port_channel[0][0]) if actual_port_channel else 0
 
         if actual_pc_id:
@@ -168,7 +140,7 @@ class Nexus(LabNode):
         for port_id in port_ids:
             self.n9_configure_port(pc_id=pc_id, port_id=port_id, vlans_string=vlans_string, desc=desc, mode=mode)
 
-        actual_port_ids = self._actual_pc.get(str(pc_id), [])
+        actual_port_ids = self.n9_show_port_channels().get(str(pc_id), [])
         if actual_port_ids:  # port channel with this id already exists
             if port_ids != actual_port_ids:  # make sure that requested list of port-ids equals to actual list
                 raise RuntimeError('{}: port-channel {} has different list of ports ({}) then requested ({})'.format(self, pc_id, actual_port_ids, port_ids))
@@ -185,17 +157,11 @@ class Nexus(LabNode):
                 self.cmd(['conf t', 'int ethernet ' + port_id, 'channel-group {0} force mode active'.format(pc_id)])
 
     def n9_create_vpc(self, pc_id):
-        if str(pc_id) not in self._actual_vpc:
+        if str(pc_id) not in self.n9_show_vpc():
             self.cmd(['conf t', 'int port-channel {0}'.format(pc_id), 'vpc {0}'.format(pc_id)], timeout=60)
 
-    def n9_get_status(self):
-        self.__actual_vpc = self.n9_show_vpc()
-        self.__actual_pc = self.n9_show_port_channels()
-        self.__actual_vlans = self.n9_show_vlans()
-        self.__actual_ports = self.n9_show_ports()
-
     def n9_delete_all_vlans(self):
-        vlan_ids = [vlan_id for vlan_id in self._actual_vlans.keys() if vlan_id != '1']
+        vlan_ids = [vlan_id for vlan_id in self.n9_show_vlans().keys() if vlan_id != '1']
         if vlan_ids:
             vlan_delete_str = ['conf t'] + ['no vlan ' + ','.join(vlan_ids[i:i+64]) for i in range(0, len(vlan_ids), 64)]  # need to slice since no more then 64 ids allowed per operation
             self.cmd(vlan_delete_str)
@@ -238,12 +204,13 @@ class Nexus(LabNode):
 
     def n9_configure_vlans(self):
         vlans = self._requested_topology['vlans']
+        actual_vlans = self.n9_show_vlans()
         for vlan_id, vlan_name in vlans.items():
             vlan_name = str(vlan_name)
             if vlan_id == '1':
                 continue
-            if str(vlan_id) in self._actual_vlans:
-                actual_vlan_name = self._actual_vlans[str(vlan_id)]['name']
+            if str(vlan_id) in actual_vlans:
+                actual_vlan_name = actual_vlans[str(vlan_id)]['name']
                 if actual_vlan_name.lower() != vlan_name.lower():
                     raise RuntimeError('{}: vlan id {} already active with name "{}" while trying to assign name "{}". Handle it manually!'.format(self, vlan_id, actual_vlan_name, vlan_name))
                 self.log(message='VLAN id={} already active'.format(vlan_id))
@@ -355,29 +322,27 @@ class Nexus(LabNode):
         self.n9_delete_vpc_domain()
 
     def n9_default_interfaces(self):
-        last_port_id = max(map(lambda name: 0 if 'Ethernet' not in name else int(name.split('/')[-1]), self._actual_ports.keys()))
+        last_port_id = max(map(lambda name: 0 if 'Ethernet' not in name else int(name.split('/')[-1]), self.n9_show_ports().keys()))
         self.cmd(['conf t', 'default int e 1/1-{}'.format(last_port_id)], timeout=60)
 
     def n9_delete_port_channels(self, skip_list=None):
         skip_list = skip_list or []
-        for pc_id in self._actual_pc.keys():
+        for pc_id in self.n9_show_port_channels().keys():
             if pc_id in skip_list:
                 continue
             self.cmd(['conf t', 'no int port-channel {0}'.format(pc_id)], timeout=60)
-            self.__actual_ports.pop('port-channel{}'.format(pc_id))
 
     def n9_delete_vpc_domain(self):
-        vpc_domain_id = self._actual_vpc['domain-id']
+        vpc_domain_id = self.n9_show_vpc()['domain-id']
         if vpc_domain_id != 'not configured':
             self.cmd(['conf t', 'no vpc domain {}'.format(vpc_domain_id)], timeout=60)
 
     def n9_delete_vlan_interfaces(self):
-        vlan_ifs = [if_id for if_id in self._actual_ports.keys() if 'Vlan' in if_id]
+        vlan_ifs = [if_id for if_id in self.n9_show_ports().keys() if 'Vlan' in if_id]
         for vlan_if in vlan_ifs:
             if_id = int(vlan_if.replace('Vlan', ''))
             if if_id != 1:
                 self.cmd(['conf t', 'no int vlan {}'.format(if_id)])
-                self.__actual_ports.pop(vlan_if)
 
     def n9_show_ports(self):
         ans_st = self.cmd(['sh int st'])
