@@ -80,7 +80,7 @@ class DeployerMercury(Deployer):
                 build_node.exe(command='./runner/runner.py -y -s 7,8 > /dev/null', in_directory=installer_dir)  # run steps 1-6 during which we get all control and computes nodes re-loaded
             except:
                 build_node.exe('cat /var/log/mercury/installer/*')
-                raise RuntimeError('Mercury runner.py failed')
+                raise RuntimeError('Mercury ./runner/runner.py -y -s 7,8 failed')
 
             if not self._is_add_vts_role:
                 cobbler = lab.get_cobbler()
@@ -91,7 +91,7 @@ class DeployerMercury(Deployer):
                 build_node.exe(command='./runner/runner.py -y -p 7,8 > /dev/null', in_directory=installer_dir)  # run steps 7-8
             except:
                 build_node.exe('cat /var/log/mercury/installer/*')
-                raise RuntimeError('Mercury runner.py failed')
+                raise RuntimeError('Mercury ./runner/runner.py -y -p 7,8 failed')
 
             build_node.exe(command='echo {} > /etc/cisco-mercury-release'.format(mercury_tag))
 
