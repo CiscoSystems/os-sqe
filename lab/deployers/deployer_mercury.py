@@ -33,6 +33,7 @@ class DeployerMercury(Deployer):
         except IndexError:
             build_node = lab.get_director()
 
+        build_node.cimc_configure()
         mercury_tag = self._mercury_installer_location.split('/')[-1]
         self.log(message='Deploying {} on {}'.format(mercury_tag, build_node))
 

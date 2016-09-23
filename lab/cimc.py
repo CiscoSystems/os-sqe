@@ -86,7 +86,7 @@ class CimcServer(LabServer):
         vnics = {x.Name: {'mac': x.Mac, 'uplink': x.UplinkPort, 'pci-slot': x.UsnicCount, 'dn': x.Dn, 'mtu': x.Mtu, 'name': x.Name, 'pxe-boot': x.PxeBoot} for x in ans1}
         vlans_dict = {x.Dn.replace('/general', ''): {'vlan': x.Vlan, 'vlan_mode': x.VlanMode} for x in ans2}
         for vnic in vnics.values():
-            vlans = vlans_dict[vnic['dn']]
+            vlans = vlans_dict[vnic.get('dn')]
             vnic.update(vlans)
         return vnics
 
