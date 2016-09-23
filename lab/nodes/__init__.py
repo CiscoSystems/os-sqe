@@ -191,7 +191,7 @@ class LabNode(WithLogMixIn):
             a += '\n'
         if self.get_nics():
             nics = ',\n              '.join(map(lambda x: x.get_yaml_body(), self.get_nics().values()))
-            a += ',\n      nics:  {{{}\n'.format(nics)
+            a += ',\n      nics:  {{{}\n      }}\n'.format(nics)
         else:
             a += '\n'
         a += ' }'

@@ -85,6 +85,9 @@ class Nic(object):
             except ValueError:
                 self._slave_nics[name] = {'mac': self._mac, 'port': own_port_id}
 
+    def __repr__(self):
+        return u'{} on {}'.format(self._mac, self._net)
+
     def is_pxe(self):
         return self._net.is_pxe()
 

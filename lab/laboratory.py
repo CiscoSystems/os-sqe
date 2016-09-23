@@ -52,8 +52,8 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             except KeyError as ex:
                 raise ValueError('Network "{}" has no {}'.format(net_name, ex.message))
 
-        for node_description in self._cfg['nodes']:
-            self._process_single_node(node_description)
+        map(lambda node_description: self._create_node(node_description), self._cfg['nodes'])  # first pass - just create nodes
+        map(lambda node: self._connect_node(node), self._nodes)  # second pass - process wires and nics section to connect node to peers
 
         for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
             own_node = self.get_node_by_id(peer_link['own-id'])
@@ -65,8 +65,8 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def get_all_nets(self):
         return self._nets
 
-    def _process_single_node(self, node_description):
-        own_node = self._create_node(node_description)
+    def _connect_node(self, node):
+        node_description = filter(lambda n: n['id'] == node.get_id(), self._cfg['nodes'])[0]
         all_wires_of_node = node_description.get('wires', {})
 
         all_nics_of_node = []  # We need to collect all vlans (1 per NIC) to assign them to wires on which this NIC sits
@@ -83,7 +83,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 nic_on_port_channel = nic_on_port_or_port_channel
                 nic_on_these_phys_port_ids = [x[0] for x in all_wires_of_node.items() if x[1].get('port-channel') == nic_on_port_channel]
                 if len(nic_on_these_phys_port_ids) == 0:
-                    raise ValueError('{}: NIC "{}" tries to sit on port channel "{}" which does not exist'.format(own_node, nic_name, nic_on_port_channel))
+                    raise ValueError('{}: NIC "{}" tries to sit on port channel "{}" which does not exist'.format(node, nic_name, nic_on_port_channel))
                 nic_mac_or_pattern = nic_on_net.get_mac_pattern()  # always use MAC pattern for port channels
 
             for port_id in nic_on_these_phys_port_ids:  # add vlan of this NIC to all wires concerned
@@ -93,12 +93,12 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             all_nics_of_node.append({'name': nic_name, 'mac-or-pattern': nic_mac_or_pattern, 'ip-or-index': nic_ip_or_index, 'net': nic_on_net, 'own-ports': nic_on_these_phys_port_ids})
 
         for wire_info in all_wires_of_node.items():  # now all vlans for wires collected, create wires and interconnect nodes by them
-            self._process_single_wire(own_node=own_node, wire_info=wire_info)
+            self._process_single_wire(own_node=node, wire_info=wire_info)
 
         # now all wires are created and all peers of this node are connected
         for nic_info in all_nics_of_node:  # {'name': name, 'mac-or_pattern': mac, 'ip-or-index': ip, 'net': obj_of_Network, own-ports: [phys_port1, phys_port2]}
-            nic_on_these_wires = filter(lambda y: y.get_own_port(own_node) in nic_info.get('own-ports'), own_node.get_all_wires())  # find all wires, this NIC sits on
-            own_node.add_nic(nic_name=nic_info.get('name'), mac_or_pattern=nic_info.get('mac-or-pattern'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires)
+            nic_on_these_wires = filter(lambda y: y.get_own_port(node) in nic_info.get('own-ports'), node.get_all_wires())  # find all wires, this NIC sits on
+            node.add_nic(nic_name=nic_info.get('name'), mac_or_pattern=nic_info.get('mac-or-pattern'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires)
 
     @staticmethod
     def _check_port_id_correctness(node, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25
@@ -167,7 +167,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         port_channel = peer_info.get('port-channel')
 
         vlans = peer_info.get('vlans', [])
-        Wire(node_n=peer_node, port_n=peer_port_id, node_s=own_node, port_s=own_port_id, port_channel=port_channel, vlans=vlans)
+        Wire(node_n=peer_node, port_n=peer_port_id, node_s=own_node, port_s=own_port_id, port_channel=port_channel, vlans=vlans, mac=peer_info.get('own-mac'))
 
     @staticmethod
     def _get_role_class(role):
