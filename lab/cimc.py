@@ -203,6 +203,16 @@ class CimcServer(LabServer):
         else:
             self.log(' is already ON')
 
+    def cimc_reset(self):
+        from ImcSdk.ImcMos import ComputeRackUnit
+
+        #mo = handle.config_resolve_dn("sys/rack-unit-1")
+
+        #mo.admin_power = ComputeRackUnit.CONST_ADMIN_POWER_BMC_RESET_IMMEDIATE
+        #set_imc_managedobject(mo, class_id="ComputeRackUnit", params={ComputeRackUnit.ADMIN_POWER:
+        #                                                 ComputeRackUnit.CONST_ADMIN_POWER_BMC_RESET_IMMEDIATE,
+        #                                             ComputeRackUnit.DN: "sys/rack-unit-1"})
+
     def cimc_power_cycle(self):
         current_power_state = self.cimc_get_power_status()
         self._cimc_power('up' if current_power_state == 'off' else 'cycle-immediate')

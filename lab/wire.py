@@ -122,5 +122,5 @@ class Wire(object):
     def get_vlans(self):
         return self._vlans
 
-    def get_description(self):
-        return '{}: {{peer-id: {}, peer-port: {},  port-channel: {}}}'.format(self._port_S, self._node_N.get_id(), self._port_N, self._pc_id)
+    def get_yaml_body(self):
+        return '{:8}: {{peer-id: {:8}, peer-port: {:8},  port-channel: {:4}}}'.format(self._port_S, self._node_N.get_id(), self._port_N, self._pc_id)

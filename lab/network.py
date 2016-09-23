@@ -132,3 +132,6 @@ class Nic(object):
 
     def get_mac(self):
         return self._mac
+
+    def get_yaml_body(self):
+        return '{:6}: {{ip: {:20}, port: {:5}}}'.format(self._name, self.get_ip_and_mask()[0], self._on_wires[0].get_pc_id())

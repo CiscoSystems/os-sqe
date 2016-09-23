@@ -27,6 +27,10 @@ class WithConfig(object):
     def get_log_file_names():
         return os.path.join(WithConfig.REPO_DIR, 'iron-lady.log'), os.path.join(WithConfig.REPO_DIR, 'json.log')
 
+    @staticmethod
+    def open_artifact(name, mode):
+        return open_artifact(name=name, mode=mode)
+
 
 CONFIG_DIR = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs'))
 KEY_PUBLIC_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'public'))

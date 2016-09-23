@@ -1,16 +1,21 @@
 from lab.ospd.with_osdp7 import WithOspd7
 from lab.mercury.with_mercury import WithMercuryMixIn
 from lab.with_log import WithLogMixIn
+from lab.with_config import WithConfig
 
 
-class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn):
+class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def __repr__(self):
         return self._lab_name
+
+    def sample_config(self):
+        return 'path to lab config'
 
     def __init__(self, config_path):
         from lab import with_config
         from lab.network import Network
 
+        super(Laboratory, self).__init__(config_path)
         self._supported_lab_types = ['MERCURY', 'OSPD']
         self._cfg = with_config.read_config_from_file(config_path=config_path)
         self._id = self._cfg['lab-id']
@@ -372,3 +377,105 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn):
         cloud_version = self.get_director().r_get_version()
         vts_version = self.get_vtc()[0].r_vtc_get_version()
         return cloud_version, vts_version
+
+    def save_lab_config(self):
+        with self.open_artifact(name='{}.yaml'.format(self._lab_name), mode='w') as f:
+            f.write('lab-id: {} # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n'.format(self.get_id()))
+            f.write('lab-name: {} # any string to be used on logging\n'.format(self._lab_name))
+            f.write('lab-type: {} # supported types: MERCURY, OSPD\n'.format(self._lab_type))
+            f.write('description-url: "{}"\n'.format(self._lab_name))
+            f.write('\n')
+            f.write('dns: [171.70.168.183]\n')
+            f.write('ntp: [171.68.38.66]\n')
+            f.write('\n')
+
+            f.write('nodes: [\n')
+            node_bodys = [node.get_yaml_body() for node in self.get_nodes_by_class()]
+            f.write(',\n\n'.join(node_bodys))
+            f.write('\n]\n\n')
+
+            f.write('peer-links: [ # Section which describes peer-links in the form {own-id: n92, own-port:  1/46, peer-id: n91, peer-port: 1/46, port-channel: pc100}\n   ')
+
+            n91, n92 = self.get_n9k()
+            peer_links = []
+            for wire in n91.get_wires_to(n92):
+                peer_links.append('{{own-id: {}, own-port:  {}, peer-id: {}, peer-port: {}, port-channel: peer-link}}'.format(n91.get_id(), n92.get_id(), wire.get_own_port(n91), wire.get_peer_port(n91)))
+            f.write(',\n   '.join(peer_links))
+            f.write('\n]\n')
+
+    @staticmethod
+    def r_construct_lab_config():
+        from fabric.operations import prompt
+        import validators
+        from collections import OrderedDict
+        from lab.nodes.n9k import Nexus
+        from lab.nodes.tor import Oob, Tor
+        from lab.cimc import CimcServer
+
+        def get_ip(msg):
+            while True:
+                ip = prompt(text=msg + '> ')
+                if validators.ipv4(ip):
+                    return ip
+                else:
+                    continue
+
+        n91_ip = get_ip('Enter one of your N9K IP')
+        n9k_username = 'admin'
+        n9k_password = 'CTO1234!'
+        n9_username = prompt(text='Enter username for N9K at {} (default is {}): '.format(n91_ip, n9k_username)) or n9k_username
+        n9_password = prompt(text='Enter password for N9K at {} (default is {}): '.format(n91_ip, n9k_password)) or n9k_password
+
+        n91 = Nexus(node_id='n91', role=Nexus.ROLE, lab='fake-lab')
+        n91.set_oob_creds(ip=n91_ip, username=n9k_username, password=n9k_password)
+
+        nodes = OrderedDict()
+        nodes = {}
+        # for node in self.get_nodes_by_class(CimcServer):
+        #     nodes[node.get_id()] = node.cimc_list_vnics()
+        #     nodes[node.get_id()] = node.cimc_list_lom_ports()
+        #     node.cimc_get_mgmt_nic()
+
+        peer_links = list()
+        oob = None
+        tor = None
+        n92 = None
+        for cdp in n91.n9_show_cdp_neighbor():
+            if cdp.get('intf_id') == 'mgmt0':
+                oob = Oob(node_id='oob', role=Oob.ROLE, lab='fake-lab')
+                oob.set_oob_creds(ip=cdp.get('v4mgmtaddr'), username='?????', password='?????')
+                nodes.setdefault('oob', oob)
+            elif 'TOR' in cdp.get('sysname', ''):
+                tor = Tor(node_id='tor', role=Tor.ROLE, lab='fake-lab')
+                tor.set_oob_creds(ip=cdp.get('v4mgmtaddr'), username='?????', password='?????')
+                nodes.setdefault('tor', tor)
+            else:
+                ip = cdp.get('v4mgmtaddr')
+                if n92 and n92.get_oob()[0] != ip:
+                    raise RuntimeError('Failed to detect peer: different ips: {} and {}'.format(n92.get_oob()[0], ip))
+                if not n92:
+                    n92 = Nexus(node_id='n92', role=Nexus.ROLE, lab='fake-lab')
+                    n92.set_oob_creds(ip=ip, username=n9_username, password=n9_password)
+
+        nodes['n91'] = n91
+        nodes['n92'] = n92
+
+        pc = n91.n9_show_port_channels()
+        vpc = n91.n9_show_vpc()
+
+        lldps = n91.n9_show_lldp_neighbor()
+        ports = n91.n9_show_ports()
+        cimc_username = 'admin'
+        cimc_password = 'cisco123!'
+        for lldp in lldps:
+            port_id = lldp.get('l_port_id').replace('Eth', 'Ethernet')
+            port_info = ports[port_id]
+            cimc_ip = lldp.get('mgmt_addr')
+            cimc_ip = get_ip('Something connected to {}, CIMC address not known , please provide it'.format(port_id)) if cimc_ip == u'Management Address: not advertised' else cimc_ip
+
+            cimc_username = prompt(text='Enter username for N9K at {} (default is {}): '.format(cimc_ip, cimc_username)) or cimc_username
+            cimc_password = prompt(text='Enter password for N9K at {} (default is {}): '.format(cimc_ip, cimc_password)) or cimc_password
+            cimc = CimcServer(node_id='???', role='???', lab='fake-lab')
+            cimc.set_oob_creds(ip=cimc_ip, username=cimc_username, password=cimc_password)
+            loms = cimc.cimc_list_lom_ports()
+            nodes[1] = cimc

@@ -179,10 +179,20 @@ class LabNode(WithLogMixIn):
 
         return type(self) == Vtf
 
-    def get_description(self):
-        wires = ',\n              '.join(map(lambda x: x.get_description(), self._upstream_wires))
+    def get_yaml_body(self):
 
-        a = '  {{id: "{}", role: {}, oob-ip: {}, ssh-username: None, ssh-password: None, oob-username: "{}", oob-password: "{}", '.format(self._id, self._role, self._oob_ip, self._oob_username, self._oob_password)
-        a += 'hostname: "{}", model: "{}", ru: "{}",\n\n'.format('1', self._model, self._ru)
-        a += '      wires: {{ {}\n      }}\n  }}'.format(wires)
+        a = ' {{id: "{}", role: {}, oob-ip: {}, ssh-username: None, ssh-password: None, oob-username: "{}", oob-password: "{}", '.format(self._id, self._role, self._oob_ip, self._oob_username, self._oob_password)
+        a += 'hostname: "{}", model: "{}", ru: "{}"'.format('1', self._model, self._ru)
+
+        if self._upstream_wires:
+            wires = ',\n              '.join(map(lambda x: x.get_yaml_body(), self._upstream_wires))
+            a += ',\n      wires: {{{}\n      }}'.format(wires)
+        else:
+            a += '\n'
+        if self.get_nics():
+            nics = ',\n              '.join(map(lambda x: x.get_yaml_body(), self.get_nics().values()))
+            a += ',\n      nics:  {{{}\n'.format(nics)
+        else:
+            a += '\n'
+        a += ' }'
         return a
