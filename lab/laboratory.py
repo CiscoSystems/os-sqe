@@ -205,14 +205,16 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             try:
                 node.set_oob_creds(ip=node_description['oob-ip'], username=node_description['oob-username'], password=node_description['oob-password'])
                 node.set_hardware_info(ru=node_description.get('ru', 'Default in Laboratory._create_node()'), model=node_description.get('model', 'Default in Laboratory._create_node()'))
-                if 'set_ssh_creds' in dir(node):
+                if hasattr(node, 'set_ssh_creds'):
                     node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'], hostname=node_description.get('hostname', '{}-{}.ctocllab.cisco.com'.format(self, node_id)))
-                if 'set_ucsm_id' in dir(node):
+                if hasattr(node, 'set_ucsm_id'):
                     node.set_ucsm_id(node_description['ucsm-id'])
-                if 'set_vip' in dir(node):
+                if hasattr(node, 'set_vip'):
                     node.set_vip(node_description['vip'])
-                if 'set_sriov' in dir(node):
+                if hasattr(node, 'set_sriov'):
                     node.set_sriov(self._is_sriov)
+                if hasattr(node, 'set_proxy'):
+                    node.set_proxy(node_description['proxy'])
                 self._nodes.append(node)
                 return node
             except KeyError as ex:
