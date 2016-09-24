@@ -197,11 +197,10 @@ class LabNode(WithLogMixIn):
         a += ' }'
         return a
 
-    def calculate_mac(self, mac):
+    def calculate_mac(self, port_id, mac):
         import validators
 
-        if mac in [None, 'None']:
-            return None
+        mac = str(mac)
         if not validators.mac_address(mac):
             if self.is_cimc_server():
                 o2 = 'A0'  # UCS connected to N9
@@ -228,7 +227,6 @@ class LabNode(WithLogMixIn):
             elif self.is_vts_host():
                 o3 = 'F5'
             else:
-                raise ValueError('{}: no way to determine the node class'.format(self))
-            mac = '00:{lab:02}:{o2}:{o3}:{count:02}:CA'.format(lab=self.get_id(), o2=o2, o3=o3, count=self._n)
-        self.lab().make_sure_that_object_is_unique(obj=mac, node_id=self.get_id())  # check that this peer_node-peer_port is unique
+                return None
+            mac = '{}0:{:02}:{}:{}:{:02}:CA'.format('1' if port_id == 'MLOM/1' else '0', self.lab().get_id(), o2, o3, self._n)
         return mac

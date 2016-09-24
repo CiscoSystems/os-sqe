@@ -69,18 +69,25 @@ class Network(object):
 class Nic(object):
     def __init__(self, name, node, net, net_index, on_wires):
         self._node = node  # nic belongs to the node
-        self._name = name  # this is NIC name which coincides with network name
+        self._names = []  # this is NIC name which coincides with network name
         self._net = net    # valid lab.network.Network
         self._net_index = net_index  # might be also not int but a sting which says that ip for this NIC is not yet available
         self._on_wires = on_wires  # this NIC sits on this list of wires, usually 2 for port channel and 1 for PXE boot via LOM
+        self._macs = []
 
         for wire in self._on_wires:
             own_port_id = wire.get_own_port(node)
             self._is_on_lom = own_port_id in ['LOM-1', 'LOM-2']
-            wire.correct_mac_by_net_info(self._net)
+            mac = wire.get_mac()
+            mac = mac[:-2] + str(net.get_mac_pattern()) if own_port_id not in ['LOM-1', 'LOM-2'] else mac
+            self._macs.append(mac)
+            if len(self._on_wires) == 1:
+                self._names = [name]  # if nic sits on single wire, nic names has just a single value coinciding with given name
+            else:
+                self._names.append(name + ('0' if own_port_id in ['MLOM/0', 'LOM-1'] else '1'))
 
     def __repr__(self):
-        return u'{} on {}'.format(self._on_wires, self._net)
+        return u'{} {} {}'.format(self.get_ip_with_prefix(), self.get_names(), self.get_macs())
 
     def is_pxe(self):
         return self._net.is_pxe()
@@ -94,11 +101,8 @@ class Nic(object):
     def is_ssh(self):
         return self._net.is_ssh()
 
-    def get_slave_nics(self):
-        return self._slave_nics
-
-    def get_name(self):
-        return self._name
+    def get_names(self):
+        return self._names
 
     def get_ip_and_mask(self):
         """ Not all NICs has any ip assigned, usually this ip will be decided later based on the info which is not available during deployment
@@ -121,14 +125,11 @@ class Nic(object):
     def get_gw_with_prefix(self):
         return '{}/{}'.format(self.get_gw(), self._net.get_prefix_len())
 
-    def is_bond(self):
-        return len(self._on_wires) > 1  # NIC sits on 2 wires, meaning this is bond
-
     def get_vlan(self):
         return self._net.get_vlan()
 
-    def get_mac(self):
-        return self._mac
+    def get_macs(self):
+        return self._macs
 
     def get_yaml_body(self):
-        return '{:6}: {{ip: {:20}, port: {:5}}}'.format(self._name, self.get_ip_and_mask()[0], self._on_wires[0].get_pc_id())
+        return '{:6}: {{ip: {:20}, port: {:5}}}'.format(self._names[0][:-1] if len(self._names) > 1 else self._names[0], self.get_ip_and_mask()[0], self._on_wires[0].get_pc_id())

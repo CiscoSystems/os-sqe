@@ -53,11 +53,21 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 raise ValueError('Network "{}" has no {}'.format(net_name, ex.message))
 
         map(lambda node_description: self._create_node(node_description), self._cfg['nodes'])  # first pass - just create nodes
-        map(lambda node: self._connect_node(node), self._nodes)  # second pass - process wires and nics section to connect node to peers
+        map(lambda n: self._connect_node(n), self._nodes)  # second pass - process wires and nics section to connect node to peers
 
         for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
             own_node = self.get_node_by_id(peer_link['own-id'])
             self._process_single_wire(own_node=own_node, wire_info=(peer_link['own-port'], {'peer-id': peer_link['peer-id'], 'peer-port': peer_link['peer-port'], 'port-channel': peer_link['port-channel']}))
+
+        for node in self._nodes:
+            for nic in node.get_nics().values():
+                self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_id())
+                for mac in nic.get_macs():
+                    self.make_sure_that_object_is_unique(obj=mac, node_id=node.get_id())  # check that all MAC are unique
+            for wire in node.get_all_wires():
+                peer_node = wire.get_peer_node(node)
+                peer_port_id = wire.get_peer_port(node)
+                self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_id(), peer_port_id), node_id=node.get_id())  # check that this peer_node-peer_port is unique
 
     def is_sriov(self):
         return self._is_sriov
@@ -163,11 +173,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             raise ValueError('Node "{}": specified wrong peer node id: "{}"'.format(own_node.get_id(), peer_node_id))
 
         self._check_port_id_correctness(node=peer_node, port_id=peer_port_id)
-        self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_id(), peer_port_id), node_id=own_node.get_id())  # check that this peer_node-peer_port is unique
         port_channel = peer_info.get('port-channel')
 
         vlans = peer_info.get('vlans', [])
-        mac = own_node.calculate_mac(mac=peer_info.get('own-mac'))
+        mac = own_node.calculate_mac(port_id=own_port_id, mac=peer_info.get('own-mac'))
         Wire(node_n=peer_node, port_n=peer_port_id, node_s=own_node, port_s=own_port_id, port_channel=port_channel, vlans=vlans, mac=mac)
 
     @staticmethod

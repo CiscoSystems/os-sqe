@@ -10,10 +10,7 @@ class Wire(object):
         self._pc_id = self._calculate_pc_id(port_channel)
         self._is_peer_link = self.is_n9_n9()
         self._vlans = vlans  # single wire may have many vlans
-        if mac:
-            self._mac = '10' + mac[2:] if self._port_S == 'MLOM/1' else mac  # different macs for port channel to support bonding
-        else:
-            self. _mac = None
+        self._mac = mac
 
         self._is_intentionally_down = False
 
@@ -132,6 +129,5 @@ class Wire(object):
     def get_peer_link_yaml_body(self):
         return '{{own-id: {:8}, own-port: {:8}, peer-id: {:8}, peer-port: {:8}, port-channel: {:4}}}'.format(self._node_S.get_id(), self._port_S, self._node_N.get_id(), self._port_N, self._pc_id)
 
-    def correct_mac_by_net_info(self, net):
-        if self._port_S in ['MLOM/0', 'MLOM/1'] and  self._mac:
-            self._mac = self._mac[:-2] + str(net.get_mac_pattern())
+    def get_mac(self):
+        return self._mac
