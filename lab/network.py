@@ -67,26 +67,20 @@ class Network(object):
 
 
 class Nic(object):
-    def __init__(self, name, mac, node, net, net_index, on_wires):
+    def __init__(self, name, node, net, net_index, on_wires):
         self._node = node  # nic belongs to the node
         self._name = name  # this is NIC name which coincides with network name
         self._net = net    # valid lab.network.Network
         self._net_index = net_index  # might be also not int but a sting which says that ip for this NIC is not yet available
         self._on_wires = on_wires  # this NIC sits on this list of wires, usually 2 for port channel and 1 for PXE boot via LOM
-        self._mac = mac.upper()
 
-        self._slave_nics = {}
         for wire in self._on_wires:
             own_port_id = wire.get_own_port(node)
             self._is_on_lom = own_port_id in ['LOM-1', 'LOM-2']
-            uplink = own_port_id.split('/')[-1]
-            try:
-                self._slave_nics[name + uplink] = {'mac': self._mac.replace('00:', '{:02}:'.format(int(uplink) * 10)), 'port': own_port_id}
-            except ValueError:
-                self._slave_nics[name] = {'mac': self._mac, 'port': own_port_id}
+            wire.correct_mac_by_net_info(self._net)
 
     def __repr__(self):
-        return u'{} on {}'.format(self._mac, self._net)
+        return u'{} on {}'.format(self._on_wires, self._net)
 
     def is_pxe(self):
         return self._net.is_pxe()

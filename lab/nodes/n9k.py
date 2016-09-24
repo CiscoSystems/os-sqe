@@ -18,9 +18,6 @@ class Nexus(LabNode):
         ip, username, password = self.get_oob()
         return u'{l} {id} sshpass -p {p} ssh {u}@{ip} use http://{ip} for NX-API'.format(l=self.lab(), id=self.get_id(), p=password, u=username, ip=ip)
 
-    def form_mac(self, pattern):
-        pass
-
     def get_pcs_to_fi(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""
         return set([str(x.get_pc_id()) for x in self._downstream_wires if x.is_n9_fi()])

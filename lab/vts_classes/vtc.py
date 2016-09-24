@@ -12,9 +12,6 @@ class Vtc(LabServer):
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
         self._is_api_via_vip = True
 
-    def form_mac(self, net_octet_in_mac):
-        return '00:{lab:02}:A0:F0:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
-
     def __repr__(self):
         ssh_ip, ssh_u, ssh_p = self.get_ssh()
         oob_ip, oob_u, oob_p = self.get_oob()
@@ -504,6 +501,3 @@ set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gate
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
     ROLE = 'vts-host-n9'
-
-    def form_mac(self, net_octet_in_mac):
-        return '00:{lab:02}:A0:FF:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)

@@ -4,9 +4,6 @@ from lab.server import Server
 
 class LabServer(LabNode, Server):
 
-    def form_mac(self, pattern):
-        pass
-
     def __init__(self, node_id, role, lab):
         self._tmp_dir_exists = False
         self._package_manager = None
@@ -24,7 +21,7 @@ class LabServer(LabNode, Server):
     def cmd(self, cmd):
         raise NotImplementedError
 
-    def add_nic(self, nic_name, mac_or_pattern, ip_or_index, net, on_wires):
+    def add_nic(self, nic_name, ip_or_index, net, on_wires):
         import validators
         from lab.network import Nic
 
@@ -49,11 +46,7 @@ class LabServer(LabNode, Server):
 
         self.lab().make_sure_that_object_is_unique(obj=ip, node_id=self.get_id())
 
-        mac = mac_or_pattern if validators.mac_address(str(mac_or_pattern)) else self.form_mac(mac_or_pattern)
-
-        self.lab().make_sure_that_object_is_unique(obj=mac, node_id=self.get_id())
-
-        nic = Nic(name=nic_name, mac=mac, node=self, net=net, net_index=index, on_wires=on_wires)
+        nic = Nic(name=nic_name, node=self, net=net, net_index=index, on_wires=on_wires)
         self._nics[nic_name] = nic
         if nic.is_ssh():
             self.set_ssh_ip(ip=nic.get_ip_and_mask()[0])

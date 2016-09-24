@@ -1,6 +1,6 @@
 class Wire(object):
     def __repr__(self):
-        return u'S:{sn}:{sp} -> N:{nn}:{np} ({pc}) on vlans: {vlan}'.format(sn=self._node_S.get_id(), sp=self._port_S, nn=self._node_N.get_id(), np=self._port_N, pc=self.get_pc_id(), vlan=self._vlans)
+        return u'{}-{}({}) -> {}:{} pc{} vlans: {}'.format(self._node_S.get_id(), self._port_S, self._mac,  self._node_N.get_id(), self._port_N, self.get_pc_id(), self._vlans)
 
     def __init__(self, node_n, port_n, node_s, port_s, port_channel, vlans, mac):
         self._node_N = node_n
@@ -10,7 +10,10 @@ class Wire(object):
         self._pc_id = self._calculate_pc_id(port_channel)
         self._is_peer_link = self.is_n9_n9()
         self._vlans = vlans  # single wire may have many vlans
-        self._mac = mac
+        if mac:
+            self._mac = '10' + mac[2:] if self._port_S == 'MLOM/1' else mac  # different macs for port channel to support bonding
+        else:
+            self. _mac = None
 
         self._is_intentionally_down = False
 
@@ -124,4 +127,11 @@ class Wire(object):
         return self._vlans
 
     def get_yaml_body(self):
-        return '{:8}: {{peer-id: {:8}, peer-port: {:8},  own-mac: {:20}, port-channel: {:4}}}'.format(self._port_S, self._node_N.get_id(), self._port_N, self._mac.upper(), self._pc_id)
+        return '{:8}: {{peer-id: {:8}, peer-port: {:8},  own-mac: {:20}, port-channel: {:4}}}'.format(self._port_S, self._node_N.get_id(), self._port_N, self._mac.upper() if self._mac else 'None', self._pc_id)
+
+    def get_peer_link_yaml_body(self):
+        return '{{own-id: {:8}, own-port: {:8}, peer-id: {:8}, peer-port: {:8}, port-channel: {:4}}}'.format(self._node_S.get_id(), self._port_S, self._node_N.get_id(), self._port_N, self._pc_id)
+
+    def correct_mac_by_net_info(self, net):
+        if self._port_S in ['MLOM/0', 'MLOM/1'] and  self._mac:
+            self._mac = self._mac[:-2] + str(net.get_mac_pattern())

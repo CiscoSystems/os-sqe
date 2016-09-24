@@ -98,7 +98,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         # now all wires are created and all peers of this node are connected
         for nic_info in all_nics_of_node:  # {'name': name, 'mac-or_pattern': mac, 'ip-or-index': ip, 'net': obj_of_Network, own-ports: [phys_port1, phys_port2]}
             nic_on_these_wires = filter(lambda y: y.get_own_port(node) in nic_info.get('own-ports'), node.get_all_wires())  # find all wires, this NIC sits on
-            node.add_nic(nic_name=nic_info.get('name'), mac_or_pattern=nic_info.get('mac-or-pattern'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires)
+            node.add_nic(nic_name=nic_info.get('name'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires)
 
     @staticmethod
     def _check_port_id_correctness(node, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25
@@ -167,7 +167,8 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         port_channel = peer_info.get('port-channel')
 
         vlans = peer_info.get('vlans', [])
-        Wire(node_n=peer_node, port_n=peer_port_id, node_s=own_node, port_s=own_port_id, port_channel=port_channel, vlans=vlans, mac=peer_info.get('own-mac'))
+        mac = own_node.calculate_mac(mac=peer_info.get('own-mac'))
+        Wire(node_n=peer_node, port_n=peer_port_id, node_s=own_node, port_s=own_port_id, port_channel=port_channel, vlans=vlans, mac=mac)
 
     @staticmethod
     def _get_role_class(role):
@@ -381,6 +382,8 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         return cloud_version, vts_version
 
     def save_lab_config(self):
+        import functools
+
         with self.open_artifact(name='{}.yaml'.format(self._lab_name), mode='w') as f:
             f.write('lab-id: {} # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n'.format(self.get_id()))
             f.write('lab-name: {} # any string to be used on logging\n'.format(self._lab_name))
@@ -398,10 +401,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
             f.write('peer-links: [ # Section which describes peer-links in the form {own-id: n92, own-port:  1/46, peer-id: n91, peer-port: 1/46, port-channel: pc100}\n   ')
 
-            n91, n92 = self.get_n9k()
             peer_links = []
-            for wire in n91.get_wires_to(n92):
-                peer_links.append('{{own-id: {}, own-port:  {}, peer-id: {}, peer-port: {}, port-channel: peer-link}}'.format(n91.get_id(), n92.get_id(), wire.get_own_port(n91), wire.get_peer_port(n91)))
+
+            for wire in set(functools.reduce(lambda lst, x: lst + x.get_peer_link_wires(), self.get_n9k(), [])):
+                peer_links.append(wire.get_peer_link_yaml_body())
             f.write(',\n   '.join(peer_links))
             f.write('\n]\n')
 

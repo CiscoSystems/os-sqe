@@ -17,13 +17,6 @@ class FiServer(LabServer):
         self._server_id = str(server_id)
         self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i='-'.join(self._server_id.split('/')), n=self.name(), bc='B' if '/' in self._server_id else 'C')
 
-    def form_mac(self, net_octet):
-        if '/' in self._server_id:
-            chasis, n_in_chasis = self._server_id.split('/')
-            return '{lab:02}:00:B{ch}:{n_ch:02}:00:{net}'.format(lab=self.lab().get_id(), ch=int(chasis), n_ch=int(n_in_chasis), net=net_octet)
-        else:
-            return '{lab:02}:00:C0:{n:02}:00:{net}'.format(lab=self.lab().get_id(), n=int(self._server_id), net=net_octet)
-
     def get_ucsm_info(self):
         return self._server_id, self._service_profile_name
 

@@ -39,6 +39,9 @@ class LabNode(WithLogMixIn):
     def get_role(self):
         return self._role
 
+    def get_peer_link_wires(self):
+        return self._peer_link_wires
+
     def get_n_in_role(self):
         return self._n
 
@@ -115,9 +118,6 @@ class LabNode(WithLogMixIn):
     @abc.abstractmethod
     def cmd(self, cmd):
         pass  # this method allows to do OOB commands like e.g. CIMC or NXAPI
-
-    def form_mac(self, pattern):
-        raise NotImplementedError('{}.form_mac() is not implemented'.format(type(self)))  # this method forms mac based on lab id node id and provided pattern
 
     def set_hardware_info(self, ru, model):
         self._ru, self._model = ru, model
@@ -196,3 +196,39 @@ class LabNode(WithLogMixIn):
             a += '\n'
         a += ' }'
         return a
+
+    def calculate_mac(self, mac):
+        import validators
+
+        if mac in [None, 'None']:
+            return None
+        if not validators.mac_address(mac):
+            if self.is_cimc_server():
+                o2 = 'A0'  # UCS connected to N9
+            elif self.is_fi_server():
+                server_id = getattr(self, 'get_server_id')()  # UCS connected to FI
+                o2 = 'B' + server_id.split('/')[-1] if '/' in server_id else 'C' + server_id
+            else:
+                o2 = 'E9'  # virtual machines
+
+            if self.is_director():
+                o3 = 'DD'
+            elif self.is_controller():
+                o3 = 'CC'
+            elif self.is_compute():
+                o3 = 'C0'
+            elif self.is_ceph():
+                o3 = 'CE'
+            elif self.is_vtc():
+                o3 = 'F0'
+            elif self.is_xrvr():
+                o3 = 'F1'
+            elif self.is_vtf():
+                o3 = 'F2'
+            elif self.is_vts_host():
+                o3 = 'F5'
+            else:
+                raise ValueError('{}: no way to determine the node class'.format(self))
+            mac = '00:{lab:02}:{o2}:{o3}:{count:02}:CA'.format(lab=self.get_id(), o2=o2, o3=o3, count=self._n)
+        self.lab().make_sure_that_object_is_unique(obj=mac, node_id=self.get_id())  # check that this peer_node-peer_port is unique
+        return mac

@@ -235,7 +235,7 @@ class CimcServer(LabServer):
                 if slave_port in ['LOM-1', 'LOM-2']:
                     actual_mac = actual_loms[slave_port]['mac']
                     if slave_mac != actual_mac.upper():
-                        raise ValueError('Node "{}": "{}" has "{}" while specified "{}". Edit lab config!'.format(self.get_id(), slave_port, actual_mac, slave_mac))
+                        raise ValueError('{}: "{}" actual mac is "{}" while requested "{}". Edit lab config!'.format(self.get_id(), slave_port, actual_mac, slave_mac))
                 else:
                     if 'eth' not in self.get_nics() and nic.is_ssh():  # if no NIC called eth and it's nic on ssh network, use default eth0, eth1
                         if slave_name in actual_vnics:
@@ -299,9 +299,6 @@ class CimcServer(LabServer):
 class CimcDirector(CimcServer):
     ROLE = 'director-n9'
 
-    def form_mac(self, net_octet_in_mac):
-        return '00:{lab:02}:A0:DD:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
-
     def r_get_version(self):
         return self.exe('cat /etc/cisco-mercury-release')
 
@@ -323,19 +320,10 @@ class CimcDirector(CimcServer):
 class CimcController(CimcServer):
     ROLE = 'control-n9'
 
-    def form_mac(self, net_octet_in_mac):
-        return '00:{lab:02}:A0:CC:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
-
 
 class CimcCompute(CimcServer):
     ROLE = 'compute-n9'
 
-    def form_mac(self, net_octet_in_mac):
-        return '00:{lab:02}:A0:C0:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
-
 
 class CimcCeph(CimcServer):
     ROLE = 'ceph-n9'
-
-    def form_mac(self, net_octet_in_mac):
-        return '00:{lab:02}:A0:CE:{count:02}:{net}'.format(lab=self._lab.get_id(), count=self._n, net=net_octet_in_mac)
