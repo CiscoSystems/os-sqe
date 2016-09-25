@@ -230,30 +230,32 @@ class CimcServer(LabServer):
         actual_loms = self.cimc_list_lom_ports()
 
         for nic_order, nic in enumerate(self.get_nics().values()):  # NIC order starts from 0
-            for slave_name, slave_mac_port in sorted(nic.get_slave_nics().items()):
-                slave_mac, slave_port = slave_mac_port['mac'], slave_mac_port['port']
-                if slave_port in ['LOM-1', 'LOM-2']:
-                    actual_mac = actual_loms[slave_port]['mac']
-                    if slave_mac != actual_mac.upper():
-                        raise ValueError('{}: "{}" actual mac is "{}" while requested "{}". Edit lab config!'.format(self.get_id(), slave_port, actual_mac, slave_mac))
+            names = nic.get_names()
+            macs = nic.get_macs()
+            port_ids = nic.get_port_ids()
+            for name, mac, port_id in zip(names, macs, port_ids):
+                if port_id in ['LOM-1', 'LOM-2']:
+                    actual_mac = actual_loms[port_id]['mac']
+                    if mac.upper() != actual_mac.upper():
+                        raise ValueError('{}: "{}" actual mac is "{}" while requested "{}". Edit lab config!'.format(self.get_id(), port_id, actual_mac, mac))
                 else:
                     if 'eth' not in self.get_nics() and nic.is_ssh():  # if no NIC called eth and it's nic on ssh network, use default eth0, eth1
-                        if slave_name in actual_vnics:
-                            self.cimc_delete_vnic(vnic_name=slave_name)
-                        slave_name = 'eth' + slave_name[-1]
-                    if slave_name in actual_vnics:
-                        if slave_mac == actual_vnics[slave_name]['mac'] and str(nic.get_vlan()) == str(actual_vnics[slave_name]['vlan']):  # this nic is already in CIMC
-                            self.logger(message='vNIC {} is already configured'.format(slave_name))
-                            if slave_name in actual_vnics:
-                                actual_vnics.pop(slave_name)
+                        if name in actual_vnics:
+                            self.cimc_delete_vnic(vnic_name=name)
+                        name = 'eth' + name[-1]
+                    if name in actual_vnics:
+                        if mac == actual_vnics[name]['mac'] and str(nic.get_vlan()) == str(actual_vnics[name]['vlan']):  # this nic is already in CIMC
+                            self.logger(message='vNIC {} is already configured'.format(name))
+                            if name in actual_vnics:
+                                actual_vnics.pop(name)
                             continue
                         else:
-                            self.logger('deleting {} since mac or vlan is not correct: {}'.format(slave_name, actual_vnics[slave_name]))
-                            self.cimc_delete_vnic(vnic_name=slave_name)
-                    pci_slot_id, uplink_port = slave_port.split('/')
-                    self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order='ANY', name=slave_name, mac=slave_mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe())
-                    if slave_name in actual_vnics:
-                        actual_vnics.pop(slave_name)
+                            self.logger('deleting {} since mac or vlan is not correct: {}'.format(name, actual_vnics[name]))
+                            self.cimc_delete_vnic(vnic_name=name)
+                    pci_slot_id, uplink_port = port_id.split('/')
+                    self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order='ANY', name=name, mac=mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe())
+                    if name in actual_vnics:
+                        actual_vnics.pop(name)
         for vnic_name in actual_vnics.keys():  # delete all actual which are not requested
             self.cimc_delete_vnic(vnic_name)
 
