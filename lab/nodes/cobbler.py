@@ -25,21 +25,20 @@ class CobblerServer(LabServer):
 
         network_commands = []
         gateway = None
-        for nic in node.get_nics().values():
+        for master_name, nic in node.get_nics().items():
             ip, mask = nic.get_ip_and_mask()
             ip_mask_part = '--ip-address={} --netmask={} --static 1'.format(ip, mask) if not nic.is_pxe() and validators.ipv4(str(ip)) else ''
-            mac = nic.get_mac()
-            name = nic.get_name()
+            macs = nic.get_macs()
+            names = nic.get_names()
             if nic.is_ssh():
                 gateway = nic.get_net().get_gw()
-            if nic.is_bond():
+            if len(names) > 1:
                 bond_mode = 'mode=802.3ad lacp_rate=1' if nic.is_ssh() else 'mode=balance-xor'
-                for name_slave, mac_port in nic.get_slave_nics().items():
-                    mac = mac_port['mac']
-                    network_commands.append('--interface={} --mac={} --interface-type=bond_slave --interface-master={}'.format(name_slave, mac, name))
-                network_commands.append('--interface={} --interface-type=bond --bonding-opts="{} miimon=50 xmit_hash_policy=1 updelay=0 downdelay=0 " {}'.format(name, bond_mode, ip_mask_part))
+                for slv_name, slv_mac in zip(names, macs):
+                    network_commands.append('--interface={} --mac={} --interface-type=bond_slave --interface-master={}'.format(slv_name, slv_mac, master_name))
+                network_commands.append('--interface={} --interface-type=bond --bonding-opts="{} miimon=50 xmit_hash_policy=1 updelay=0 downdelay=0 " {}'.format(master_name, bond_mode, ip_mask_part))
             else:
-                network_commands.append('--interface={} --mac={} {}'.format(name, mac, ip_mask_part))
+                network_commands.append('--interface={} --mac={} {}'.format(master_name, macs[0], ip_mask_part))
 
         ans = self.cmd('cobbler system list | grep {}'.format(system_name))
         if system_name in ans:
