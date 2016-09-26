@@ -56,21 +56,31 @@ class LabServer(LabNode, Server):
             return False
 
         status = True
-        for nic in self.get_nics().values():
-            requested_macs = nic.get_macs()
+        for main_name, nic in self.get_nics().items():
+            requested_mac = nic.get_macs()[0].lower()
             requested_ip = nic.get_ip_with_prefix()
-            requested_names = nic.get_names()
-            for name in requested_names:
-                if name not in actual_nics:
-                    self.log(message='has no NIC {}'.format(name), level='warning')
+            if len(nic.get_names()) > 1:
+                requested_name_with_ip = 'br-' + main_name
+                requested_names = nic.get_names() + [main_name] + [requested_name_with_ip]
+            else:
+                requested_names = nic.get_names()
+                requested_name_with_ip = requested_names[0]
+
+            if not nic.is_pxe():
+                if requested_ip not in actual_nics:
+                    self.log(message='{}: requested IP {} is not assigned, actually it has {}'.format(main_name, requested_ip, actual_nics.get(requested_name_with_ip, {}).get('ipv4', 'None')), level='warning')
                     status = False
-                if not nic.is_pxe() and requested_ip not in actual_nics[name]['ipv4']:  # this ip might be re-assign to the bridge which has this NIC inside
-                    br_name = 'br-' + name[:-1]
-                    if br_name not in actual_nics or requested_ip not in actual_nics[br_name]['ipv4']:
-                        self.log(message='NIC "{}" has different IP  actual: {}  requested: {}'.format(nic.get_name(), actual_nics[name]['ipv4'] + actual_nics[br_name]['ipv4'], requested_ip), level='warning')
+                else:
+                    iface = actual_nics[requested_ip][0]
+                    if iface != requested_name_with_ip:
+                        self.log(message='requested IP {} is assigned to {} while supposed to be to {}'.format(requested_ip, iface, requested_name_with_ip), level='warning')
                         status = False
-                actual_mac = actual_nics[name]['mac'].upper()
-                if actual_mac != requested_macs.upper():
-                    self.log(message='NIC {} has different mac: actual {} requested {}'.format(name, actual_mac, requested_macs), level='warning')
+
+            if requested_mac not in actual_nics:
+                self.log(message='{}: requested MAC {} is not assigned, actually it has {}'.format(main_name, requested_mac, actual_nics.get(main_name, {}).get('mac', 'None')), level='warning')
+                status = False
+            else:
+                if requested_names != actual_nics[requested_mac]:
+                    self.log(message='requested names are {} while actual are {}'.format(requested_names, actual_nics[requested_mac]), level='warning')
                     status = False
         return status

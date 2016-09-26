@@ -240,13 +240,17 @@ class Server(object):
             return {}
         ans_l = self.exe('ip -o l', connection_attempts=connection_attempts, is_warn_only=True)
         name_ipv4_ipv6 = {}
+        result = {}
+
         for line in ans_a.split('\n'):
             _, nic_name, other = line.split(' ', 2)
             name_ipv4_ipv6.setdefault(nic_name, {'ipv4': [], 'ipv6': []})
             ip4_or_6 = 'ipv6' if 'inet6' in other else 'ipv4'
-            name_ipv4_ipv6[nic_name][ip4_or_6].append(other.split()[1].strip())
+            ip = other.split()[1].strip()
+            name_ipv4_ipv6[nic_name][ip4_or_6].append(ip)
+            result.setdefault(ip, [])
+            result[ip].append(nic_name)
 
-        result = {}
         for line in ans_l.split('\n'):
             number, nic_name, other = line.split(':', 2)
             nic_name = nic_name.strip()
@@ -254,9 +258,11 @@ class Server(object):
                 continue
             status, mac_part = other.split('link/ether')
             mac = mac_part.split(' brd ')[0].strip()
-            ipv4 = name_ipv4_ipv6.get(nic_name, {'ipv4': None})['ipv4']
-            ipv6 = name_ipv4_ipv6.get(nic_name, {'ipv6': None})['ipv6']
-            result[nic_name] = {'mac': mac.upper(), 'ipv4': ipv4, 'ipv6': ipv6}
+            ipv4 = name_ipv4_ipv6.get(nic_name, {'ipv4': []})['ipv4']
+            ipv6 = name_ipv4_ipv6.get(nic_name, {'ipv6': []})['ipv6']
+            result[nic_name] = {'mac': mac, 'ipv4': ipv4, 'ipv6': ipv6}
+            result.setdefault(mac, [])
+            result[mac].append(nic_name)
         return result
 
     def register_rhel(self, rhel_subscription_creds_url):
