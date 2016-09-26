@@ -124,7 +124,9 @@ class Wire(object):
         return self._vlans
 
     def get_yaml_body(self):
-        return '{:8}: {{peer-id: {:8}, peer-port: {:8},  own-mac: {:20}, port-channel: {:4}}}'.format(self._port_S, self._node_N.get_id(), self._port_N, self._mac.upper() if self._mac else 'None', self._pc_id)
+        return '{:6}: {{peer-id: {:6}, peer-port: {:8} {:18} {:28}}}'.format(self._port_S, self._node_N.get_id(), self._port_N,
+                                                                             '' if self._port_S == 'MGMT' else ', port-channel: pc{}'.format(self._pc_id),
+                                                                             ', own-mac: {}'.format(self._mac.lower()) if self._port_S in ['LOM-1', 'LOM-2', 'MGMT'] and self._node_S.is_cimc_server() else '')
 
     def get_peer_link_yaml_body(self):
         return '{{own-id: {:8}, own-port: {:8}, peer-id: {:8}, peer-port: {:8}, port-channel: {:4}}}'.format(self._node_S.get_id(), self._port_S, self._node_N.get_id(), self._port_N, self._pc_id)

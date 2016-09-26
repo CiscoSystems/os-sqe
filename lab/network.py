@@ -137,4 +137,4 @@ class Nic(object):
         return self._port_ids
 
     def get_yaml_body(self):
-        return '{:6}: {{ip: {:20}, port: {:5}}}'.format(self._names[0][:-1] if len(self._names) > 1 else self._names[0], self.get_ip_and_mask()[0], self._on_wires[0].get_pc_id())
+        return '{:6}: {{ip: {:10}, port: pc{}}}'.format(self._names[0][:-1] if len(self._names) > 1 else self._names[0], self.get_ip_and_mask()[0], self._on_wires[0].get_pc_id())

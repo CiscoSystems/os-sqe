@@ -63,7 +63,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             for nic in node.get_nics().values():
                 self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_id())
                 for mac in nic.get_macs():
-                    self.make_sure_that_object_is_unique(obj=mac, node_id=node.get_id())  # check that all MAC are unique
+                    self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_id())  # check that all MAC are unique
             for wire in node.get_all_wires():
                 peer_node = wire.get_peer_node(node)
                 peer_port_id = wire.get_peer_port(node)
