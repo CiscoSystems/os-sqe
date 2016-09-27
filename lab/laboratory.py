@@ -349,7 +349,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             ip, xrvr_username, xrvr_password = node.get_xrvr_ip_user_pass()
             xrvr_ips.append(ip)
 
-        for node in self.get_director() + self.get_vts_hosts():
+        for node in [self.get_director()] + self.get_vts_hosts():
             ip, username, _ = node.get_ssh()
             inventory[node.get_id()] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': KEY_PRIVATE_PATH,
                                                                 'xrvr_ip_mx': xrvr_ips, 'xrvr_username': xrvr_username, 'xrvr_password': xrvr_password}}
