@@ -79,6 +79,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         node_description = filter(lambda n: n['id'] == node.get_id(), self._cfg['nodes'])[0]
         all_wires_of_node = node_description.get('wires', {})
 
+        proxy_id = node_description.get('proxy', None)
+        if proxy_id:
+            node.set_proxy_server(self.get_node_by_id(proxy_id))
+
         all_nics_of_node = []  # We need to collect all vlans (1 per NIC) to assign them to wires on which this NIC sits
         for nic_name, ip_ports in node_description.get('nics', {}).items():  # {api: {ip: 10.23.221.184, port: pc26}, mx: {...}, ...}
             nic_on_net = self._nets[nic_name]  # NIC name coincides with network name on which it sits
@@ -223,8 +227,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                     node.set_vip(node_description['vip'])
                 if hasattr(node, 'set_sriov'):
                     node.set_sriov(self._is_sriov)
-                if hasattr(node, 'set_proxy'):
-                    node.set_proxy(node_description['proxy'])
                 self._nodes.append(node)
                 return node
             except KeyError as ex:

@@ -8,6 +8,7 @@ class LabServer(LabNode, Server):
         self._tmp_dir_exists = False
         self._package_manager = None
         self._mac_server_part = None
+        self._proxy_server = None
 
         LabNode.__init__(self, node_id=node_id, role=role, lab=lab)
         Server.__init__(self, ip='Not defined in lab_server.py', username='Not defined in lab_server.py', password='Not defined in lab_server.py')
@@ -20,6 +21,9 @@ class LabServer(LabNode, Server):
 
     def cmd(self, cmd):
         raise NotImplementedError
+
+    def set_proxy_server(self, proxy):
+        self._proxy_server = proxy
 
     def add_nic(self, nic_name, ip_or_index, net, on_wires):
         import validators
@@ -60,11 +64,9 @@ class LabServer(LabNode, Server):
             requested_mac = nic.get_macs()[0].lower()
             requested_ip = nic.get_ip_with_prefix()
             if len(nic.get_names()) > 1:
-                requested_name_with_ip = 'br-' + main_name
-                requested_names = nic.get_names() + [main_name] + [requested_name_with_ip]
+                requested_name_with_ip = [main_name, 'br-' + main_name]
             else:
-                requested_names = nic.get_names()
-                requested_name_with_ip = requested_names[0]
+                requested_name_with_ip = nic.get_names()
 
             if not nic.is_pxe():
                 if requested_ip not in actual_nics:
@@ -72,15 +74,11 @@ class LabServer(LabNode, Server):
                     status = False
                 else:
                     iface = actual_nics[requested_ip][0]
-                    if iface != requested_name_with_ip:
-                        self.log(message='requested IP {} is assigned to {} while supposed to be to {}'.format(requested_ip, iface, requested_name_with_ip), level='warning')
+                    if iface not in requested_name_with_ip:  # might be e.g. a or br-a
+                        self.log(message='requested IP {} is assigned to "{}" while supposed to be one of "{}"'.format(requested_ip, iface, requested_name_with_ip), level='warning')
                         status = False
 
             if requested_mac not in actual_nics:
                 self.log(message='{}: requested MAC {} is not assigned, actually it has {}'.format(main_name, requested_mac, actual_nics.get(main_name, {}).get('mac', 'None')), level='warning')
                 status = False
-            else:
-                if requested_names != actual_nics[requested_mac]:
-                    self.log(message='requested names are {} while actual are {}'.format(requested_names, actual_nics[requested_mac]), level='warning')
-                    status = False
         return status

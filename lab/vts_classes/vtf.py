@@ -9,13 +9,10 @@ class Vtf(LabServer):
         self._expect_commands = {}
         self._proxy_to_run = None
         self._vtf_container_name = None
+        self._vtf_container_name = 'neutron_vtf_4388'  # TODO: parametrize build number
 
     def __repr__(self):
         return u'{id} ({ip}) proxy {p}'.format(id=self.get_id(), ip=self._oob_ip, p=self._proxy_to_run)
-
-    def set_proxy(self, proxy):
-        self._proxy_to_run = proxy
-        self._vtf_container_name = 'neutron_vtf_4388'  # TODO: parametrize build number
 
     # noinspection PyMethodOverriding
     def cmd(self, cmd):

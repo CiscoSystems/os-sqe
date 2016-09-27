@@ -83,6 +83,10 @@ class Server(object):
             command = command.replace('sudo ', '')
             run_or_sudo = sudo
 
+        proxy_server = getattr(self, '_proxy_server')
+        if proxy_server:
+            ip, username, password = self.get_ssh()
+            return proxy_server.exe(host=self, command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
         with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
             with cd(in_directory):
                 try:
