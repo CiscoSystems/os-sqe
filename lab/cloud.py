@@ -104,8 +104,7 @@ export OS_AUTH_URL={end_point}
 
     def os_cmd(self, cmd, server=None, is_warn_only=False):
         server = server or self.mediator
-        ans = server.exe(command='{cmd} --os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(cmd=cmd, u=self._user, t=self._tenant, p=self._password, a=self.get_end_point()),
-                         is_warn_only=is_warn_only)
+        ans = server.exe(command='{cmd} --os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(cmd=cmd, u=self._user, t=self._tenant, p=self._password, a=self.get_end_point()), is_warn_only=is_warn_only)
         if '-f csv' in cmd:
             return self._process_csv_output(ans)
         elif '-f json' in cmd:
@@ -320,12 +319,15 @@ export OS_AUTH_URL={end_point}
         compute_node.exe(command='grep {instance_id} | grep -i error'.format(instance_id=instance_details['id']))
 
     def r_collect_information(self, regex, comment):
-        hosts = self.os_host_list()
-        body = ''
-        for host in sorted(hosts):
-            for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex=regex)]:
-                ans = self.mediator.as_proxy(host=host, command=cmd, is_warn_only=True)
-                body += self._format_single_cmd_output(cmd=cmd, ans=ans, node=host)
+        try:
+            hosts = self.os_host_list()
+            body = ''
+            for host in sorted(hosts):
+                for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex=regex)]:
+                    ans = self.mediator.as_proxy(host=host, command=cmd, is_warn_only=True)
+                    body += self._format_single_cmd_output(cmd=cmd, ans=ans, node=host)
+        except:
+            body = 'This cloud is not active'
 
         addon = '_' + '_'.join(comment.split()) if comment else ''
         self.log_to_artifact(name='cloud_{}{}.txt'.format(self._name, addon), body=body)
