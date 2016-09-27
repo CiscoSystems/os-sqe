@@ -367,17 +367,21 @@ class Vtc(LabServer):
     def r_vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
         import jinja2
 
-        map(lambda x: x.r_xrvr_day0_config(), self.get_xrvrs())
-        template = jinja2.Template('''
+        sync = jinja2.Template('''
+{% for name in names %}
+request devices device {{ name }} sync-from
+{% endfor %}
+''')
+        xrvr = jinja2.Template('''
 set resource-pools vni-pool vnipool range 4096 65535
 {% for xrvr_name in xrvr_names %}
-request devices device {{ xrvr_name }} sync-from
 set devices device {{ xrvr_name }} asr9k-extension:device-info device-use leaf
 set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
 set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info loopback-if-num 0
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ xrvr_name }}
-request devices device {{ xrvr_name }} sync-from
 {% endfor %}
+''')
+        domain = jinja2.Template('''
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters distribution-mode decentralized-l2
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters control-plane-protocol bgp-evpn
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters arp-suppression
@@ -387,33 +391,42 @@ set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gate
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters arp-suppression
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters packet-replication ingress-replication
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 ad-l3-gw-parent L3GW-0
-commit
+''')
+        tmpl_agroups = jinja2.Template('''
 {% for switch in switches %}
-set devices authgroups group {{ switch.get_id() }} umap admin remote-name {{ switch.get_oob()[1] }}
-set devices authgroups group {{ switch.get_id() }} umap admin remote-password {{ switch.get_oob()[2] }}
-commit
-set devices device {{ switch.get_id() }} address {{ switch.get_oob()[0] }}
-set devices device {{ switch.get_id() }} authgroup {{ switch.get_id() }}
-set devices device {{ switch.get_id() }} device-type cli ned-id cisco-nx
-set devices device {{ switch.get_id() }} device-type cli protocol telnet 
-set devices device {{ switch.get_id() }} n9k-extension:device-info platform N9K
-set devices device {{ switch.get_id() }} n9k-extension:device-info device-use leaf
-set devices device {{ switch.get_id() }} n9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
-set devices device {{ switch.get_id() }} n9k-extension:device-info bgp-peering-info loopback-if-num 0
-set devices device {{ switch.get_id() }} state admin-state unlocked
-commit
-request devices device {{ switch.get_id() }} sync-from
-set resource-pools vlan-pool {{ switch.get_id() }} range 3000 3999
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices {{ switch.get_id() }}
+        set devices authgroups group {{ switch['id'] }} umap admin remote-name {{ switch['username'] }}
+        set devices authgroups group {{ switch['id'] }} umap admin remote-password {{ switch['password'] }}
 {% endfor %}
 ''')
-        n9 = [self.lab().get_node_by_id('n91'), self.lab().get_node_by_id('n92')]
-        command = template.render(xrvr_names=self.get_xrvr_names(), switches=n9, domain_group='D1', bgp_asn=23)
-        self.r_vtc_ncs_cli(command=command)
+        tmpl_switches = jinja2.Template('''
+{% for switch in switches %}
+set resource-pools vlan-pool {{ switch['id'] }} range 3000 3999
+set devices device {{ switch['id'] }} address {{ switch['ip'] }}
+set devices device {{ switch['id'] }} authgroup {{ switch['id'] }}
+set devices device {{ switch['id'] }} device-type cli ned-id cisco-nx
+set devices device {{ switch['id'] }} device-type cli protocol telnet
+set devices device {{ switch['id'] }} n9k-extension:device-info platform N9K
+set devices device {{ switch['id'] }} n9k-extension:device-info device-use leaf
+set devices device {{ switch['id'] }} n9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
+set devices device {{ switch['id'] }} n9k-extension:device-info bgp-peering-info loopback-if-num 0
+set devices device {{ switch['id'] }} state admin-state unlocked
+set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ switch['id'] }}
+{% endfor %}
+''')
+
+        map(lambda y: y.r_xrvr_day0_config(), self.get_xrvrs())
+        self.r_vtc_ncs_cli(command=domain.render(domain_group='D1'))
+        self.r_vtc_ncs_cli(command=xrvr.render(xrvr_names=self.get_xrvr_names(), domain_group='D1', bgp_asn=23))
+
+        switches = [{'id': x.get_id(), 'ip': x.get_oob()[0], 'username': x.get_oob()[1], 'password': x.get_oob()[2]}for x in [self.lab().get_node_by_id('n91'), self.lab().get_node_by_id('n92')]]
+        self.r_vtc_ncs_cli(command=tmpl_agroups.render(switches=switches))
+        self.r_vtc_ncs_cli(command=tmpl_switches.render(switches=switches, domain_group='D1', bgp_asn=23))
+
+        self.r_vtc_ncs_cli(command=sync.render(names=self.get_xrvr_names() + ['n91', 'n92']))
 
     def r_vtc_delete_openstack_objects(self, is_via_ncs=True):
         if is_via_ncs:
-            self.exe('ncs_cli << EOF\nconfigure\ndelete openstack port\ndelete openstack subnet\ndelete openstack network\ncommit\nexit\nexit\nEOF')
+            self.r_vtc_ncs_cli('delete openstack port\ndelete openstack subnet\ndelete openstack network')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
             return NotImplemented
