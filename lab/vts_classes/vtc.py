@@ -376,6 +376,7 @@ set devices device {{ xrvr_name }} asr9k-extension:device-info device-use leaf
 set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
 set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info loopback-if-num 0
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ xrvr_name }}
+request devices device {{ xrvr_name }} sync-from
 {% endfor %}
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters distribution-mode decentralized-l2
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters control-plane-protocol bgp-evpn
@@ -386,11 +387,11 @@ set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gate
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters arp-suppression
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters packet-replication ingress-replication
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 ad-l3-gw-parent L3GW-0
-
+commit
 {% for switch in switches %}
 set devices authgroups group {{ switch.get_id() }} umap admin remote-name {{ switch.get_oob()[1] }}
 set devices authgroups group {{ switch.get_id() }} umap admin remote-password {{ switch.get_oob()[2] }}
-
+commit
 set devices device {{ switch.get_id() }} address {{ switch.get_oob()[0] }}
 set devices device {{ switch.get_id() }} authgroup {{ switch.get_id() }}
 set devices device {{ switch.get_id() }} device-type cli ned-id cisco-nx
@@ -400,11 +401,11 @@ set devices device {{ switch.get_id() }} n9k-extension:device-info device-use le
 set devices device {{ switch.get_id() }} n9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
 set devices device {{ switch.get_id() }} n9k-extension:device-info bgp-peering-info loopback-if-num 0
 set devices device {{ switch.get_id() }} state admin-state unlocked
+commit
 request devices device {{ switch.get_id() }} sync-from
-
+set resource-pools vlan-pool {{ switch.get_id() }} range 3000 3999
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices {{ switch.get_id() }}
 {% endfor %}
-
 ''')
         command = template.render(xrvr_names=self.get_xrvr_names(), switches=self.lab().get_n9k(), domain_group='D1', bgp_asn=23)
         self.r_vtc_ncs_cli(command=command)
