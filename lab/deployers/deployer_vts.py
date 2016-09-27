@@ -108,12 +108,12 @@ class DeployerVts(Deployer):
         if self._vts_images_location not in vts_host.exe(command='cat VTS-VERSION', is_warn_only=True):
             self.log('Installing  needed RPMS...')
             vts_host.register_rhel(self._rhel_creds_location)
-            vts_host.exe(command='sudo yum update -y')
-            vts_host.exe('yum groupinstall "Virtualization Platform" -y')
-            vts_host.exe('yum install genisoimage qemu-kvm expect -y')
+            vts_host.exe(command='sudo yum update -y -q')
+            vts_host.exe('yum groupinstall "Virtualization Platform" -y -q')
+            vts_host.exe('yum install genisoimage qemu-kvm expect -y -q')
             for rpm in ['sshpass-1.05-1.el7.rf.x86_64.rpm', 'openvswitch-2.5.0-1.el7.centos.x86_64.rpm']:
                 vts_host.exe('wget http://172.29.173.233/redhat/{}'.format(rpm))
-                vts_host.exe(command='rpm -ivh {}'.format(rpm), is_warn_only=True)
+                vts_host.exe(command='rpm -i {}'.format(rpm), is_warn_only=True)
                 vts_host.exe(command='rm -f {}'.format(rpm))
 
             vts_host.exe('systemctl start libvirtd')
@@ -135,14 +135,14 @@ class DeployerVts(Deployer):
     def _make_openvswitch(self, vts_host):
         for nic_name in ['a', 'mx', 't']:
             nic = vts_host.get_nic(nic_name)
-            if 'br-{}'.format(nic.get_name()) not in vts_host.exe('ovs-vsctl show'):
-                vts_host.exe('ovs-vsctl add-br br-{0} && ip l s dev br-{0} up'.format(nic.get_name()))
+            if 'br-{}'.format(nic_name) not in vts_host.exe('ovs-vsctl show'):
+                vts_host.exe('ovs-vsctl add-br br-{0} && ip l s dev br-{0} up'.format(nic_name))
                 ip_nic, _ = nic.get_ip_and_mask()
                 net_bits = nic.get_net().get_prefix_len()
                 default_route_part = '&& ip r a default via {}'.format(nic.get_net().get_gw()) if nic.is_ssh() else ''
-                vts_host.exe('ip a flush dev {n} && ip a a {ip}/{nb} dev br-{n} && ovs-vsctl add-port br-{n} {n} {rp}'.format(n=nic.get_name(), ip=ip_nic, nb=net_bits, rp=default_route_part))
+                vts_host.exe('ip a flush dev {n} && ip a a {ip}/{nb} dev br-{n} && ovs-vsctl add-port br-{n} {n} {rp}'.format(n=nic_name, ip=ip_nic, nb=net_bits, rp=default_route_part))
                 vts_host.exe('ip l a dev vlan{} type dummy'.format(nic.get_vlan()))
-                vts_host.exe('ovs-vsctl add-port br-{} vlan{}'.format(nic.get_name(), nic.get_vlan()))
+                vts_host.exe('ovs-vsctl add-port br-{} vlan{}'.format(nic_name, nic.get_vlan()))
                 vts_host.exe('ovs-vsctl set interface vlan{} type=internal'.format(nic.get_vlan()))
                 vts_host.exe('ip l s dev vlan{} up'.format(nic.get_vlan()))
             else:

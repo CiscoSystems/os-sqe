@@ -26,7 +26,6 @@ class DeployerMercury(Deployer):
         from lab.laboratory import Laboratory
 
         lab = Laboratory(config_path=self._lab_path)
-        lab.r_n9_configure(is_clean_before=True)
 
         try:
             build_node = filter(lambda x: type(x) is CimcDirector, list_of_servers)[0]
@@ -43,9 +42,8 @@ class DeployerMercury(Deployer):
                 if ans == 'FINISH':
                     break
 
+        lab.r_n9_configure(is_clean_before=True)
         build_node.r_configure_mx_and_nat()
-
-        map(lambda x: self._vts_deployer.delete_previous_libvirt_vms(x), lab.get_vts_hosts())
 
         ans = build_node.exe('ls -d installer*', is_warn_only=True)
         if 'installer-' + mercury_tag in ans:
