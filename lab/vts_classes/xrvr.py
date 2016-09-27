@@ -201,7 +201,7 @@ expect {{
                                    xrnc_name=xrnc_name, xrvr_name=xrvr_name)
         with with_config.open_artifact(xrnc_name, 'w') as f:
             f.write(cfg_body)
-        net_part = net_part_tmpl.format(mx_nic_name=mx_nic.get_name(), t_nic_name=te_nic.get_name(), t_vlan=te_vlan)
+        net_part = net_part_tmpl.format(mx_nic_name='mx', t_nic_name='t', t_vlan=te_vlan)
 
         return cfg_body, net_part
 

@@ -4,7 +4,7 @@ from lab.deployers import Deployer
 class DeployerVts(Deployer):
 
     def sample_config(self):
-        return {'vts_images_location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', 'is_force_redeploy': True}
+        return {'vts_images_location': 'http://wwwin-nfv-orch.cisco.com/mercury/VTC-latest/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', 'is_force_redeploy': True}
 
     def __init__(self, config):
         super(DeployerVts, self).__init__(config=config)
