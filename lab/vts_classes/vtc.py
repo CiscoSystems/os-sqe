@@ -255,7 +255,7 @@ class Vtc(LabServer):
         mx_vlan = mx_nic.get_net().get_vlan()
 
         cfg_body = cfg_tmpl.format(vtc_a_ip=a_ip, a_net_mask=a_net_mask, a_gw=a_gw, vtc_mx_ip=mx_ip, mx_net_mask=mx_net_mask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=ssh_username, password=ssh_password, hostname=hostname)
-        net_part = net_part_tmpl.format(a_nic_name=a_nic.get_name(), mx_nic_name=mx_nic.get_name(), mx_vlan=mx_vlan)
+        net_part = net_part_tmpl.format(a_nic_name='a', mx_nic_name='mx', mx_vlan=mx_vlan)
 
         with with_config.open_artifact(hostname, 'w') as f:
             f.write(cfg_body)
