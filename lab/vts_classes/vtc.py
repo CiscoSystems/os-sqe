@@ -8,7 +8,7 @@ class Vtc(LabServer):
     ROLE = 'vtc'
 
     def __init__(self, node_id, role, lab):
-        super(LabServer, self).__init__(node_id=node_id, role=role, lab=lab)
+        super(Vtc, self).__init__(node_id=node_id, role=role, lab=lab)
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
         self._is_api_via_vip = True
 
@@ -335,7 +335,7 @@ class Vtc(LabServer):
         else:
             raise RuntimeError(response.text)
 
-    def check_cluster_is_formed(self, n_retries=1):
+    def vtc_is_cluster_formed(self, n_retries=1):
         import requests.exceptions
 
         nodes = self.lab().get_nodes_by_class(Vtc)

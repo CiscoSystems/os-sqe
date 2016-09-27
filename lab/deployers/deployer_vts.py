@@ -85,7 +85,7 @@ class DeployerVts(Deployer):
         from lab.vts_classes.vtc import Vtc
 
         vtc_list = lab.get_nodes_by_class(Vtc)
-        if vtc_list[0].check_cluster_is_formed():
+        if vtc_list[0].vtc_is_cluster_formed():
             self.log('Cluster is already formed')
             return
 
@@ -99,7 +99,7 @@ class DeployerVts(Deployer):
 
         vtc_list[0].exe(command='sudo ./master_node_install.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 4
 
-        if vtc_list[0].check_cluster_is_formed(n_retries=100):
+        if vtc_list[0].vtc_is_cluster_formed(n_retries=100):
             return  # cluster is successfully formed
         else:
             raise RuntimeError('Failed to form VTC cluster after 100 attempts')
