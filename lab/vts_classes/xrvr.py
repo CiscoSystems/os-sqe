@@ -140,8 +140,34 @@ expect {{
         return self.cmd('show running-config', is_xrvr=True)
 
     def r_xrvr_day0_config(self):
-        self.cmd('show running-config', is_xrvr=True)
-        pass
+        import jinja2
+
+        template = jinja2.Template('''configure
+router ospf 100
+ router-id 99.99.99.99
+ address-family ipv4 unicast
+ area 0.0.0.0
+  default-cost 10
+  interface Loopback0
+  interface GigabitEthernet0/0/0/0
+  exit
+ exit
+
+interface Loopback0
+ ipv4 address 99.99.99.99 255.255.255.255
+ exit
+
+router bgp {{ bgp_asn }}
+ bgp router-id 99.99.99.99
+ address-family ipv4 unicast
+ address-family l2vpn evpn
+  retain route-target all
+  exit
+ exit
+''')
+        command = template.render(bgp_asn=23)
+
+        self.cmd(command, is_xrvr=True)
 
     def xrvr_show_host(self, evi, mac):
         # mac should look like 0010.1000.2243

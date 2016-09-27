@@ -407,7 +407,8 @@ set resource-pools vlan-pool {{ switch.get_id() }} range 3000 3999
 set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices {{ switch.get_id() }}
 {% endfor %}
 ''')
-        command = template.render(xrvr_names=self.get_xrvr_names(), switches=self.lab().get_n9k(), domain_group='D1', bgp_asn=23)
+        n9 = [self.lab().get_node_by_id('n91'), self.lab().get_node_by_id('n92')]
+        command = template.render(xrvr_names=self.get_xrvr_names(), switches=n9, domain_group='D1', bgp_asn=23)
         self.r_vtc_ncs_cli(command=command)
 
     def r_vtc_delete_openstack_objects(self, is_via_ncs=True):
