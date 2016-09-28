@@ -107,16 +107,18 @@ class Nic(object):
         return self._names
 
     def get_ip_and_mask(self):
-        """ Not all NICs has any ip assigned, usually this ip will be decided later based on the info which is not available during deployment
-            So one cat get instead of IP the string which describes  this situation.
+        return str(self.get_ip()), str(self._net.get_netmask())
 
-        :return: tuple of (ip, netmask)
+    def get_ip(self):
+        """ Not all NICs has any ip assigned, usually this ip will be decided later based on the info which is not available during deployment
+            So one cat get instead of IP the string which describes this situation.
+
+        :return: ip calculated by index
         """
-        ip = self._net.get_ip_for_index(self._net_index) if type(self._net_index) is int else self._net_index
-        return str(ip), str(self._net.get_netmask())
+        return self._net.get_ip_for_index(self._net_index) if type(self._net_index) is int else self._net_index
 
     def get_ip_with_prefix(self):
-        return '{}/{}'.format(self.get_ip_and_mask()[0], self._net.get_prefix_len())
+        return '{}/{}'.format(self.get_ip(), self._net.get_prefix_len())
 
     def get_net(self):
         return self._net

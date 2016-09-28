@@ -11,15 +11,6 @@ class Xrvr(LabServer):
     def __init__(self, node_id, role, lab):
         super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab)
         self._expect_commands = {}
-        self.__proxy_to_run = None
-
-    @property
-    def _proxy_to_run(self):
-        from lab.vts_classes.vtc import VtsHost
-
-        if not self.__proxy_to_run:
-            self.__proxy_to_run = self.lab().get_nodes_by_class(VtsHost)[-1]
-        return self.__proxy_to_run
 
     def __repr__(self):
         ip, xrvr_u, p = self.get_xrvr_ip_user_pass()
@@ -56,15 +47,15 @@ class Xrvr(LabServer):
             _, username, password = self.get_oob()
             if cmd not in self._expect_commands:
                 self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=True)
-            ans = self._proxy_to_run.exe(command='expect {0}'.format(self._expect_commands[cmd]))
+            ans = self.exe(command='expect {0}'.format(self._expect_commands[cmd]))
         else:
             _, username, password = self.get_ssh()
             if 'sudo' in cmd:
                 if cmd not in self._expect_commands:
                     self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=False)
-                ans = self._proxy_to_run.exe(command='expect {0}'.format(self._expect_commands[cmd]))
+                ans = self.exe(command='expect {0}'.format(self._expect_commands[cmd]))
             else:
-                ans = self._proxy_to_run.exe(command="sshpass -p {p} ssh -o StrictHostKeyChecking=no -t {u}@{ip} '{cmd}'".format(p=password, u=username, ip=ip, cmd=cmd), is_warn_only=is_warn_only)
+                ans = self.exe(command=cmd, is_warn_only=is_warn_only)
         return ans
 
     def create_expect_command_file(self, cmd, ip, username, password, is_xrvr):
@@ -104,7 +95,7 @@ expect {{
 '''
         tmpl = xrvr_tmpl if is_xrvr else sudo_tmpl
         s = tmpl.format(p=password, u=username, ip=ip, cmd=cmd)
-        self._proxy_to_run.put_string_as_file_in_dir(string_to_put=s, file_name=file_name)
+        self._proxy_server.put_string_as_file_in_dir(string_to_put=s, file_name=file_name)
         self._expect_commands[cmd] = file_name
 
     @staticmethod

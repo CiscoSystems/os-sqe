@@ -17,8 +17,8 @@ class Server(object):
         import validators
 
         if not validators.ipv4(str(self.__ip)):
-            if hasattr(self, '_proxy_to_run'):
-                self.__ip = getattr(self, '_proxy_to_run').get_ssh_ip()
+            if hasattr(self, 'get_nic'):
+                self.__ip = getattr(self, 'get_nic')('mx').get_ip()
             else:
                 ValueError('Neither ip no proxy is specified for this node')
         return self.__ip
@@ -85,8 +85,9 @@ class Server(object):
 
         proxy_server = getattr(self, '_proxy_server')
         if proxy_server:
-            ip, username, password = self.get_ssh()
-            return proxy_server.exe(host=self, command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+            _, username, password = self.get_ssh()
+            ip = self.get_ssh_ip()
+            return proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
         with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
             with cd(in_directory):
                 try:
