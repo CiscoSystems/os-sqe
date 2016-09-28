@@ -236,6 +236,7 @@ router bgp {{ bgp_asn }}
         for cmd in [self._form_log_grep_cmd(log_files='/var/log/sr/*', regex=regex)]:
             ans = self.cmd(cmd=cmd, is_xrvr=False, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
+        body += self._format_single_cmd_output(cmd='show running config', ans=self.xrvr_show_running_config())
         return body
 
     def r_xrnc_set_mtu(self):
