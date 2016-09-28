@@ -1,0 +1,13 @@
+---
+- Folder: PERFOMANCE AND SCALE
+- Description: runs iperf and reports its results
+
+- class: lab.monitors.vts_monitor.VtsMonitor
+  duration: 2000
+  period: 2
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  how-many-networks: 3
+  how-many-servers: 20
+  what-to-run-inside: iperf -n 100M  -M 9000
+  n_repeats: 1
