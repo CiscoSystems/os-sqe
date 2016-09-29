@@ -157,12 +157,13 @@ class Server(object):
         loc = url.split('/')[-1]
         if to_directory != '.':
             self.exe('mkdir -p {0}'.format(to_directory))
-        self.exe(command='test -e  {loc} || curl -s -R {url} -o {loc}'.format(loc=loc, url=url))  # download to $HOME directory and use as cache
-        calc_checksum = self.exe(command='{meth} {loc}'.format(meth=method, loc=loc))
+        self.exe('mkdir -p cache')
+        self.exe(command='test -e {loc} || curl -s -R {url} -o {loc}'.format(loc=loc, url=url), in_directory='cache')  # download to $HOME directory and use as cache
+        calc_checksum = self.exe(command='{meth} {loc}'.format(meth=method, loc=loc), in_directory='cache')
         if checksum:
             if calc_checksum.split()[0] != checksum:
                 raise RuntimeError('image {} taken from {} has wrong checksum. Check it manually'.format(loc, url))
-        self.exe('cp $HOME/{} .'.format(loc), in_directory=to_directory)
+        self.exe('cp $HOME/cache/{} .'.format(loc), in_directory=to_directory)
         return self.exe(command='readlink -f {0}'.format(loc), in_directory=to_directory)
 
     def check_or_install_packages(self, package_names):

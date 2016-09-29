@@ -63,7 +63,7 @@ class DeployerMercury(Deployer):
 
         if is_get_tarball:
             tar_url = self._mercury_installer_location + '/mercury-installer-internal.tar.gz'
-            tar_path = build_node.wget_file(url=tar_url)
+            tar_path = build_node.r_get_remote_file(url=tar_url)
             build_node.exe('tar xzf {}'.format(tar_path))
             build_node.exe('rm -f {}'.format(tar_path))
 
