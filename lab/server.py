@@ -3,31 +3,16 @@ class Server(object):
     USE_SSH_KEY = 'ssh_key'
 
     def __repr__(self):
-        return u''
+        return u'sshpass -p {} ssh {}@{}'.format(self._password, self._username, self._ip)
 
     def __init__(self, ip, username, password):
         self._tmp_dir_exists = False
         self._package_manager = None
         self._mac_server_part = None
-        self._temp_dir = None
-        self.__ip, self._username, self._password, self._hostname = ip, username, password, None
-
-    @property
-    def _ip(self):
-        import validators
-
-        if not validators.ipv4(str(self.__ip)):
-            if hasattr(self, 'get_nic'):
-                self.__ip = getattr(self, 'get_nic')('mx').get_ip()
-            else:
-                ValueError('Neither ip no proxy is specified for this node')
-        return self.__ip
-
-    def set_ssh_creds(self, username, password, hostname=None):
-        self._username, self._password, self._hostname = username, password, hostname
+        self._ip, self._username, self._password, self._hostname = ip, username, password, None
 
     def set_ssh_ip(self, ip):
-        self.__ip = ip
+        self._ip = ip
 
     def get_ssh_ip(self):
         return self._ip
@@ -83,11 +68,6 @@ class Server(object):
             command = command.replace('sudo ', '')
             run_or_sudo = sudo
 
-        proxy_server = getattr(self, '_proxy_server')
-        if proxy_server:
-            _, username, password = self.get_ssh()
-            ip = self.get_ssh_ip()
-            return proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
         with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
             with cd(in_directory):
                 try:
@@ -202,16 +182,16 @@ class Server(object):
             self.exe(command='git checkout tags/{0}'.format(tags), in_directory=local_repo_dir)
         return self.exe(command='pwd', in_directory=local_repo_dir)
 
-    def create_user(self, new_username):
+    def r_create_user(self, new_username):
         tmp_password = 'cisco123'
         if not self.exe(command='grep {0} /etc/passwd'.format(new_username), is_warn_only=True):
             encrypted_password = self.exe(command='openssl passwd -crypt {0}'.format(tmp_password))
             self.exe(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
             self.exe(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
             self.exe(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
-        self.set_ssh_creds(username=new_username, password=tmp_password)
+        self._username, self._password = new_username, tmp_password
         self.r_deploy_ssh_key()
-        self.set_ssh_creds(username=new_username, password='ssh_key')
+        self._password = 'ssh_key'
 
     def r_deploy_ssh_key(self):
         from lab import with_config
@@ -269,35 +249,3 @@ class Server(object):
             result.setdefault(mac, [])
             result[mac].append(nic_name)
         return result
-
-    def register_rhel(self, rhel_subscription_creds_url):
-        import requests
-        import json
-
-        text = requests.get(rhel_subscription_creds_url).text
-        rhel_json = json.loads(text)
-        rhel_username = rhel_json['rhel-username']
-        rhel_password = rhel_json['rhel-password']
-        rhel_pool_id = rhel_json['rhel-pool-id']
-
-        repos_to_enable = ' '.join(['--enable=rhel-7-server-rpms',
-                                    '--enable=rhel-7-server-optional-rpms',
-                                    '--enable=rhel-7-server-extras-rpms',
-                                    # '--enable=rhel-7-server-openstack-7.0-rpms', '--enable=rhel-7-server-openstack-7.0-director-rpms'
-                                    ])
-
-        self.exe(command='subscription-manager register --force --username={0} --password={1}'.format(rhel_username, rhel_password))
-        self.exe(command='subscription-manager attach --pool={}'.format(rhel_pool_id))
-        self.exe(command='subscription-manager repos --disable=*')
-        self.exe(command='subscription-manager repos {}'.format(repos_to_enable))
-
-    @property
-    def temp_dir(self):
-        if not self._temp_dir:
-            import os
-            import random
-
-            chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
-            self._temp_dir = os.path.join('/tmp', 'server-tmp-' + ''.join(random.sample(chars, 10)))
-            self.exe('mkdir -p {0}'.format(self._temp_dir))
-        return self._temp_dir

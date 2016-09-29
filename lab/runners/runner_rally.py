@@ -31,9 +31,9 @@ class RunnerRally(Runner):
         
         open_rc_body = cloud[0].create_open_rc()
 
-        server.create_user(new_username='rally')
-        server.put_string_as_file_in_dir(string_to_put=open_rc_body, file_name=open_rc_path)
-        server.put_string_as_file_in_dir(string_to_put=self._task_body, file_name=task_path)
+        server.r_create_user(new_username='rally')
+        server.r_put_string_as_file_in_dir(string_to_put=open_rc_body, file_name=open_rc_path)
+        server.r_put_string_as_file_in_dir(string_to_put=self._task_body, file_name=task_path)
 
         rally_installed = True if server.exe(command='test -d rally', warn_only=True) else False
 

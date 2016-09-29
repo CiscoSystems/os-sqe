@@ -92,7 +92,7 @@ class DeployerVts(Deployer):
         cisco_bin_dir = '/opt/cisco/package/vtc/bin/'
         for vtc in vtc_list:
             cfg_body = vtc.get_cluster_conf_body()  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 1
-            vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory=cisco_bin_dir)
+            vtc.r_put_string_as_file_in_dir(string_to_put=cfg_body, file_name='cluster.conf', in_directory=cisco_bin_dir)
             vtc.exe(command='sudo ./modify_host_vtc.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 2
         for vtc in vtc_list:
             vtc.exe(command='sudo ./cluster_install.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 3
@@ -107,18 +107,14 @@ class DeployerVts(Deployer):
     def _install_needed_rpms(self, vts_host):
         if self._vts_images_location not in vts_host.exe(command='cat VTS-VERSION', is_warn_only=True):
             self.log('Installing  needed RPMS...')
-            vts_host.register_rhel(self._rhel_creds_location)
+            vts_host.r_register_rhel(self._rhel_creds_location)
             vts_host.exe(command='sudo yum update -y -q')
             vts_host.exe('yum groupinstall "Virtualization Platform" -y -q')
             vts_host.exe('yum install genisoimage qemu-kvm expect -y -q')
-            for rpm in ['sshpass-1.05-1.el7.rf.x86_64.rpm', 'openvswitch-2.5.0-1.el7.centos.x86_64.rpm']:
-                vts_host.exe('wget http://172.29.173.233/redhat/{}'.format(rpm))
-                vts_host.exe(command='rpm -i {}'.format(rpm), is_warn_only=True)
-                vts_host.exe(command='rm -f {}'.format(rpm))
-
+            vts_host.r_install_sshpass_openvswitch_expect()
             vts_host.exe('systemctl start libvirtd')
             vts_host.exe('systemctl start openvswitch')
-            vts_host.put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
+            vts_host.r_put_string_as_file_in_dir(string_to_put='VTS from {}\n'.format(self._vts_images_location), file_name='VTS-VERSION')
             self.log('RPMS are installed')
         else:
             self.log('All needed RPMS are already installed in the previous run')
@@ -154,7 +150,7 @@ class DeployerVts(Deployer):
             cfg_body, net_part = vtc.get_config_and_net_part_bodies()
 
             config_iso_path = self._vts_service_dir + '/vtc_config.iso'
-            config_txt_path = vts_host.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='config.txt', in_directory=self._vts_service_dir)
+            config_txt_path = vts_host.r_put_string_as_file_in_dir(string_to_put=cfg_body, file_name='config.txt', in_directory=self._vts_service_dir)
             vts_host.exe('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
 
             self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part)
@@ -171,7 +167,7 @@ class DeployerVts(Deployer):
         iso_path = self._vts_service_dir + '/xrnc_cfg.iso'
 
         cfg_name = 'xrnc.cfg'
-        vtc.put_string_as_file_in_dir(string_to_put=cfg_body, file_name=cfg_name)
+        vtc.r_put_string_as_file_in_dir(string_to_put=cfg_body, file_name=cfg_name)
         vtc.exe('cp /opt/cisco/package/vts/bin/build_vts_config_iso.sh $HOME')
         vtc.exe('./build_vts_config_iso.sh xrnc {}'.format(cfg_name))  # https://cisco.jiveon.com/docs/DOC-1455175 step 8: use sudo /opt/cisco/package/vts/bin/build_vts_config_iso.sh xrnc xrnc.cfg
         ip, username, password = vtc.get_ssh()
@@ -185,7 +181,7 @@ class DeployerVts(Deployer):
 
         disk_part = self._disk_part_tmpl.format(qcow_path=qcow_file, iso_path=iso_path)
         domain_body = self._libvirt_domain_tmpl.format(hostname=role, disk_part=disk_part, net_part=net_part, emulator='/usr/libexec/qemu-kvm')
-        domain_xml_path = server.put_string_as_file_in_dir(string_to_put=domain_body, file_name='{0}_domain.xml'.format(role), in_directory=self._vts_service_dir)
+        domain_xml_path = server.r_put_string_as_file_in_dir(string_to_put=domain_body, file_name='{0}_domain.xml'.format(role), in_directory=self._vts_service_dir)
 
         server.exe('virsh define {xml} && virsh start {role} && virsh autostart {role}'.format(xml=domain_xml_path, role=role))
 
@@ -193,7 +189,7 @@ class DeployerVts(Deployer):
         net_part, cfg_body = vtf.get_domain_andconfig_body()
         compute = vtf.get_ocompute()
         config_iso_path = self._vts_service_dir + '/vtc_config.iso'
-        config_txt_path = compute.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='system.cfg', in_directory=self._vts_service_dir)
+        config_txt_path = compute.r_put_string_as_file_in_dir(string_to_put=cfg_body, file_name='system.cfg', in_directory=self._vts_service_dir)
         compute.exe('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
         self._get_image_and_run_virsh(server=compute, role='vtf', iso_path=config_iso_path, net_part=net_part)
 

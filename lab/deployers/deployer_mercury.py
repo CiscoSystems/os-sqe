@@ -70,7 +70,7 @@ class DeployerMercury(Deployer):
         ans = build_node.exe('cat /etc/cisco-mercury-release', is_warn_only=True)
         if self._is_force_redeploy or mercury_tag not in ans:
             cfg_body = lab.create_mercury_setup_data_yaml(is_add_vts_role=self._is_add_vts_role)
-            build_node.put_string_as_file_in_dir(string_to_put=cfg_body, file_name='setup_data.yaml', in_directory=installer_dir + '/openstack-configs')
+            build_node.r_put_string_as_file_in_dir(string_to_put=cfg_body, file_name='setup_data.yaml', in_directory=installer_dir + '/openstack-configs')
 
             build_node.exe("find {} -name '*.pyc' -delete".format(installer_dir))
             build_node.exe('rm -rf /var/log/mercury/*')

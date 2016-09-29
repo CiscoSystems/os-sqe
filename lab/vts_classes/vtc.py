@@ -13,9 +13,8 @@ class Vtc(LabServer):
         self._is_api_via_vip = True
 
     def __repr__(self):
-        ssh_ip, ssh_u, ssh_p = self.get_ssh()
         oob_ip, oob_u, oob_p = self.get_oob()
-        return u'{l} {n} | sshpass -p {p1} ssh {u1}@{ip1}  https://{ip1} with {u2}/{p2}'.format(l=self.lab(), n=self.get_id(), ip1=ssh_ip, p1=ssh_p, u1=ssh_u, ip2=oob_ip, p2=oob_p, u2=oob_u)
+        return u'{l} {n} | {s} https://{ip} with {u}/{p}'.format(l=self.lab(), n=self.get_id(), s=self._server, ip=self.get_vtc_vips()[0], p=oob_p, u=oob_u)
 
     def disable_vip(self):
         self._is_api_via_vip = False

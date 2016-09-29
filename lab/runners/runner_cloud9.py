@@ -68,7 +68,7 @@ output:
             filebeat = 'filebeat-1.0.0-x86_64.rpm'
             server.exe(command='curl -L -O http://172.29.173.233/{0}'.format(filebeat))
             server.exe(command='sudo rpm --force -vi {0}'.format(filebeat))
-            server.put_string_as_file_in_dir(string_to_put=filebeat_config_body, file_name='filebeat.yml', in_directory='/etc/filebeat')
+            server.r_put_string_as_file_in_dir(string_to_put=filebeat_config_body, file_name='filebeat.yml', in_directory='/etc/filebeat')
             server.exe(command='sudo /etc/init.d/filebeat restart')
             server.exe(command='sudo /etc/init.d/filebeat status')
 
@@ -81,7 +81,7 @@ output:
     def run_on_director(self):
         user = 'sqe'
         self.director.exe(command='sudo rm -f /home/{0}/.bashrc'.format(user), warn_only=True)
-        self.director.create_user(new_username=user)
+        self.director.r_create_user(new_username=user)
 
         overcloud, undercloud = self.__copy_stack_files(user=user)
 

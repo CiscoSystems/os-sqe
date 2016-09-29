@@ -38,7 +38,7 @@ log_user 1
 send "quit\r"
 expect eof
 '''.format(p=password, u=username, ip=ip, cmd=cmd, c=self._vtf_container_name)
-        self._proxy_to_run.put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
+        self._proxy_to_run.r_put_string_as_file_in_dir(string_to_put=tmpl, file_name=file_name)
         self._expect_commands[cmd] = file_name
 
     def vtf_show_vxlan_tunnel(self):

@@ -146,10 +146,10 @@ runners:
             scenario_file: {cloud99_repo}/configs/scenarios/neutron_create_and_list_ports.json
 '''.format(rally_venv=rally_venv, cloud99_repo=cloud99_repo)
 
-        director.put_string_as_file_in_dir(string_to_put=executor_yaml, file_name='executor.yaml', in_directory='{0}/configs'.format(cloud99_repo))
-        director.put_string_as_file_in_dir(string_to_put=monitors_yaml, file_name='monitors.yaml', in_directory='{0}/configs'.format(cloud99_repo))
-        director.put_string_as_file_in_dir(string_to_put=openstack_config_yaml, file_name='openstack_config.yaml', in_directory='{0}/configs'.format(cloud99_repo))
-        director.put_string_as_file_in_dir(string_to_put=runner_yaml, file_name='runners.yaml', in_directory='{0}/configs'.format(cloud99_repo))
+        director.r_put_string_as_file_in_dir(string_to_put=executor_yaml, file_name='executor.yaml', in_directory='{0}/configs'.format(cloud99_repo))
+        director.r_put_string_as_file_in_dir(string_to_put=monitors_yaml, file_name='monitors.yaml', in_directory='{0}/configs'.format(cloud99_repo))
+        director.r_put_string_as_file_in_dir(string_to_put=openstack_config_yaml, file_name='openstack_config.yaml', in_directory='{0}/configs'.format(cloud99_repo))
+        director.r_put_string_as_file_in_dir(string_to_put=runner_yaml, file_name='runners.yaml', in_directory='{0}/configs'.format(cloud99_repo))
 
         #director.run(command='export PYTHONPATH=. && export HAPATH=. && {0}/bin/python ha_engine/ha_main.py -f configs/executor.yaml'.format(cloud99_venv), in_directory=cloud99_repo)
 
@@ -180,7 +180,7 @@ function power-cycle(){{
 export RALLY_PLUGIN_PATHS={cloud99_repo}/rally_plugins
 '''.format(cloud99_venv=cloud99_venv, cloud99_repo=cloud99_repo, rally_venv=rally_venv, cloud_rc=cloud_rc_name)
 
-        director.put_string_as_file_in_dir(string_to_put=bashrc, file_name='.bashrc')
+        director.r_put_string_as_file_in_dir(string_to_put=bashrc, file_name='.bashrc')
 
     def execute(self, clouds, servers):
         super(RunnerCloud99, self).execute(clouds, servers)

@@ -84,10 +84,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             node.set_proxy_server(self.get_node_by_id(proxy_id))
 
         all_nics_of_node = []  # We need to collect all vlans (1 per NIC) to assign them to wires on which this NIC sits
-        for nic_name, ip_ports in node_description.get('nics', {}).items():  # {api: {ip: 10.23.221.184, port: pc26}, mx: {...}, ...}
+        for nic_name, ip_port_is_ssh in node_description.get('nics', {}).items():  # {api: {ip: 10.23.221.184, port: pc26}, mx: {...}, ...}
             nic_on_net = self._nets[nic_name]  # NIC name coincides with network name on which it sits
-            nic_ip_or_index = ip_ports.get('ip')
-            nic_on_port_or_port_channel = ip_ports['port']
+            nic_ip_or_index = ip_port_is_ssh.get('ip')
+            nic_on_port_or_port_channel = ip_port_is_ssh['port']
+            is_ssh = ip_port_is_ssh.get('is_ssh', False)
             # nic port might be physical port like LOM0 or port channel like pc40, wires contains a list of physical ports, some with port-channel attribute
             if nic_on_port_or_port_channel in all_wires_of_node:  # it's  a physical port
                 nic_on_phys_port = nic_on_port_or_port_channel
@@ -104,7 +105,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 all_wires_of_node[port_id].setdefault('vlans', [])
                 all_wires_of_node[port_id]['vlans'].append(nic_on_net.get_vlan())
 
-            all_nics_of_node.append({'name': nic_name, 'mac-or-pattern': nic_mac_or_pattern, 'ip-or-index': nic_ip_or_index, 'net': nic_on_net, 'own-ports': nic_on_these_phys_port_ids})
+            all_nics_of_node.append({'name': nic_name, 'mac-or-pattern': nic_mac_or_pattern, 'ip-or-index': nic_ip_or_index, 'net': nic_on_net, 'own-ports': nic_on_these_phys_port_ids, 'is_ssh': is_ssh})
 
         for wire_info in all_wires_of_node.items():  # now all vlans for wires collected, create wires and interconnect nodes by them
             self._process_single_wire(own_node=node, wire_info=wire_info)
@@ -112,7 +113,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         # now all wires are created and all peers of this node are connected
         for nic_info in all_nics_of_node:  # {'name': name, 'mac-or_pattern': mac, 'ip-or-index': ip, 'net': obj_of_Network, own-ports: [phys_port1, phys_port2]}
             nic_on_these_wires = filter(lambda y: y.get_own_port(node) in nic_info.get('own-ports'), node.get_all_wires())  # find all wires, this NIC sits on
-            node.add_nic(nic_name=nic_info.get('name'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires)
+            node.add_nic(nic_name=nic_info.get('name'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires, is_ssh=nic_info.get('is_ssh'))
 
     @staticmethod
     def _check_port_id_correctness(node, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25
@@ -220,7 +221,9 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 node.set_oob_creds(ip=node_description['oob-ip'], username=node_description['oob-username'], password=node_description['oob-password'])
                 node.set_hardware_info(ru=node_description.get('ru', 'Default in Laboratory._create_node()'), model=node_description.get('model', 'Default in Laboratory._create_node()'))
                 if hasattr(node, 'set_ssh_creds'):
-                    node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'], hostname=node_description.get('hostname', '{}-{}.ctocllab.cisco.com'.format(self, node_id)))
+                    node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'])
+                if hasattr(node, 'set_hostname'):
+                    node.set_hostname(node_description.get('hostname', '{}-{}.ctocllab.cisco.com'.format(self, node_id)))
                 if hasattr(node, 'set_ucsm_id'):
                     node.set_ucsm_id(node_description['ucsm-id'])
                 if hasattr(node, 'set_vip'):

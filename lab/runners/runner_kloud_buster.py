@@ -18,8 +18,8 @@ class RunnerKloudBuster(Runner):
         results_path = 'kloudbuster-results.json'
         venv_path = '~/venv_kloudbuster'
 
-        server.create_user(new_username='kloudbuster')
-        server.put_string_as_file_in_dir(string_to_put=open_rc_body, file_name=open_rc_path)
+        server.r_create_user(new_username='kloudbuster')
+        server.r_put_string_as_file_in_dir(string_to_put=open_rc_body, file_name=open_rc_path)
         repo_dir = server.clone_repo(repo_url='https://github.com/openstack/kloudbuster.git')
         server.exe(command='virtualenv {0}'.format(venv_path))
         server.exe(command='{0}/bin/pip install -r requirements.txt'.format(venv_path), in_directory=repo_dir)

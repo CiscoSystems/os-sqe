@@ -1,23 +1,19 @@
 from lab.nodes import LabNode
-from lab.server import Server
 
 
-class LabServer(LabNode, Server):
+class LabServer(LabNode):
 
     def __init__(self, node_id, role, lab):
         self._tmp_dir_exists = False
         self._package_manager = None
         self._mac_server_part = None
         self._proxy_server = None
+        self._server = None
 
-        LabNode.__init__(self, node_id=node_id, role=role, lab=lab)
-        Server.__init__(self, ip='Not defined in lab_server.py', username='Not defined in lab_server.py', password='Not defined in lab_server.py')
+        super(LabServer, self).__init__(node_id=node_id, role=role, lab=lab)
 
     def __repr__(self):
-        ssh_ip, ssh_u, ssh_p = self.get_ssh()
-        oob_ip, oob_u, oob_p = self.get_oob()
-
-        return u'{l} {n} | sshpass -p {p1} ssh {u1}@{ip1} ipmitool -I lanplus -H {ip2} -U {u2} -P {p2}'.format(l=self.lab(), n=self.get_id(), ip1=ssh_ip, p1=ssh_p, u1=ssh_u, ip2=oob_ip, p2=oob_p, u2=oob_u)
+        return u'{} {} {} '.format(self.lab(), self.get_id(), self._server)
 
     def cmd(self, cmd):
         raise NotImplementedError
@@ -25,7 +21,12 @@ class LabServer(LabNode, Server):
     def set_proxy_server(self, proxy):
         self._proxy_server = proxy
 
-    def add_nic(self, nic_name, ip_or_index, net, on_wires):
+    def set_ssh_creds(self, username, password):
+        from lab.server import Server
+
+        self._server = Server(ip=None, username=username, password=password)
+
+    def add_nic(self, nic_name, ip_or_index, net, on_wires, is_ssh):
         import validators
         from lab.network import Nic
 
@@ -50,12 +51,12 @@ class LabServer(LabNode, Server):
 
         nic = Nic(name=nic_name, node=self, net=net, net_index=index, on_wires=on_wires)
         self._nics[nic_name] = nic
-        if nic.is_ssh():
-            self.set_ssh_ip(ip=nic.get_ip_and_mask()[0])
+        if is_ssh:
+            self._server.set_ssh_ip(ip=nic.get_ip_and_mask()[0])
         return nic
 
     def r_is_nics_correct(self):
-        actual_nics = self.r_list_ip_info(connection_attempts=1)
+        actual_nics = self._server.r_list_ip_info(connection_attempts=1)
         if not actual_nics:
             return False
 
@@ -82,3 +83,44 @@ class LabServer(LabNode, Server):
                 self.log(message='{}: requested MAC {} is not assigned, actually it has {}'.format(main_name, requested_mac, actual_nics.get(main_name, {}).get('mac', 'None')), level='warning')
                 status = False
         return status
+
+    def exe(self, command, in_directory='.', is_warn_only=False, connection_attempts=100):
+        if self._proxy_server:
+            ip, username, password = self._server.get_ssh()
+            return self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+        else:
+            return self._server.exe(command=command, in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+
+    def r_register_rhel(self, rhel_subscription_creds_url):
+        import requests
+        import json
+
+        text = requests.get(rhel_subscription_creds_url).text
+        rhel_json = json.loads(text)
+        rhel_username = rhel_json['rhel-username']
+        rhel_password = rhel_json['rhel-password']
+        rhel_pool_id = rhel_json['rhel-pool-id']
+
+        repos_to_enable = ' '.join(['--enable=rhel-7-server-rpms',
+                                    '--enable=rhel-7-server-optional-rpms',
+                                    '--enable=rhel-7-server-extras-rpms',
+                                    # '--enable=rhel-7-server-openstack-7.0-rpms', '--enable=rhel-7-server-openstack-7.0-director-rpms'
+                                    ])
+
+        self.exe(command='subscription-manager register --force --username={0} --password={1}'.format(rhel_username, rhel_password))
+        self.exe(command='subscription-manager attach --pool={}'.format(rhel_pool_id))
+        self.exe(command='subscription-manager repos --disable=*')
+        self.exe(command='subscription-manager repos {}'.format(repos_to_enable))
+
+    def r_install_sshpass_openvswitch_expect(self):
+        for rpm in ['sshpass-1.05-1.el7.rf.x86_64.rpm', 'openvswitch-2.5.0-1.el7.centos.x86_64.rpm']:
+            local_path = self.r_get_remote_file(url='http://172.29.173.233/redhat/{}'.format(rpm))
+            self.exe(command='rpm -i {}'.format(local_path), is_warn_only=True)
+            self.exe(command='rm -f {}'.format(local_path))
+        self.exe('yum install -q -y expect')
+
+    def r_get_remote_file(self, url, to_directory='.', checksum=None, method='sha512sum'):
+        return self._server.wget_file(url, to_directory=to_directory, checksum=checksum, method=method)
+
+    def r_put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
+        return self._server.put_string_as_file_in_dir(string_to_put, file_name, in_directory=in_directory)

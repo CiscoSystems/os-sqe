@@ -370,7 +370,7 @@ export OS_AUTH_URL={end_point}
     def os_keypair_create(self):
         from lab import with_config
         with open(with_config.KEY_PUBLIC_PATH) as f:
-            public_path = self.mediator.put_string_as_file_in_dir(string_to_put=f.read(), file_name='sqe_public_key')
+            public_path = self.mediator.r_put_string_as_file_in_dir(string_to_put=f.read(), file_name='sqe_public_key')
 
         self.os_cmd('openstack keypair create {sqe_pref}-key1 --public-key {public}'.format(sqe_pref=self._unique_pattern_in_name, public=public_path))
 

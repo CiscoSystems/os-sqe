@@ -33,8 +33,7 @@ class Xrvr(LabServer):
         return self.get_ip_mx(), u, p
 
     def get_xrnc_ip_user_pass(self):
-        _, u, p = self.get_ssh()
-        return self.get_ip_mx(), u, p
+        return self._server.get_ssh()
 
     def get_ip_t(self):
         return self.get_nic('t').get_ip_and_mask()[0]
@@ -47,13 +46,13 @@ class Xrvr(LabServer):
             _, username, password = self.get_oob()
             if cmd not in self._expect_commands:
                 self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=True)
-            ans = self.exe(command='expect {0}'.format(self._expect_commands[cmd]))
+            ans = self._proxy_server.exe(command='expect {0}'.format(self._expect_commands[cmd]))
         else:
-            _, username, password = self.get_ssh()
+            ip, username, password = self._server.get_ssh()
             if 'sudo' in cmd:
                 if cmd not in self._expect_commands:
                     self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=False)
-                ans = self.exe(command='expect {0}'.format(self._expect_commands[cmd]))
+                ans = self._proxy_server.exe(command='expect {0}'.format(self._expect_commands[cmd]))
             else:
                 ans = self.exe(command=cmd, is_warn_only=is_warn_only)
         return ans
@@ -95,7 +94,7 @@ expect {{
 '''
         tmpl = xrvr_tmpl if is_xrvr else sudo_tmpl
         s = tmpl.format(p=password, u=username, ip=ip, cmd=cmd)
-        self._proxy_server.put_string_as_file_in_dir(string_to_put=s, file_name=file_name)
+        self._proxy_server.r_put_string_as_file_in_dir(string_to_put=s, file_name=file_name)
         self._expect_commands[cmd] = file_name
 
     @staticmethod
@@ -141,6 +140,7 @@ router ospf 100
   default-cost 10
   interface Loopback0
   interface GigabitEthernet0/0/0/0
+  commit
   exit
  exit
 
@@ -193,7 +193,7 @@ router bgp {{ bgp_asn }}
         xrnc_name = xrvr_name.replace('xrvr', 'xrnc')
 
         _, vtc_username, vtc_password = self.lab().get_node_by_id('vtc1').get_oob()
-        _, ssh_username, ssh_password = self.get_ssh()
+        _, ssh_username, ssh_password = self._server.get_ssh()
         _, oob_username, oob_password = self.get_oob()
 
         mx_nic = self.get_nic('mx')  # XRNC sits on mx and t nets

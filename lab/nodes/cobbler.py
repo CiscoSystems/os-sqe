@@ -5,13 +5,12 @@ class CobblerServer(LabServer):
     ROLE = 'cobbler'
 
     def cmd(self, cmd):
-        self.set_ssh_ip(ip=self.get_oob()[0])
+        self._server.set_ssh_ip(ip=self.get_oob()[0])
         return self.exe(command=cmd, is_warn_only=True)
 
     def __repr__(self):
-        _, ssh_u, ssh_p = self.get_ssh()
         ip, oob_u, oob_p = self.get_oob()
-        return u'{l} {n} | sshpass -p {p1} ssh {u1}@{ip} http://{ip}/cobbler_api with {u2}/{p2}'.format(l=self.lab(), n=self.get_id(), ip=ip, p1=ssh_p, u1=ssh_u, p2=oob_p, u2=oob_u)
+        return u'{l} {n} http://{ip}/cobbler_api with {u}/{p}'.format(l=self.lab(), n=self.get_id(), ip=ip, p=oob_p, u=oob_u)
 
     def cobbler_configure_for(self, node):
         import validators
