@@ -16,7 +16,7 @@ class Nexus(LabNode):
 
     def __repr__(self):
         ip, username, password = self.get_oob()
-        return u'{l} {id} sshpass -p {p} ssh {u}@{ip} use http://{ip} for NX-API'.format(l=self.lab(), id=self.get_id(), p=password, u=username, ip=ip)
+        return u'{l} {id} NX-API: http://{ip} {u}/{p}'.format(l=self.lab(), id=self.get_id(), p=password, u=username, ip=ip)
 
     def get_pcs_to_fi(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""

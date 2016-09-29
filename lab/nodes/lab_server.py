@@ -26,6 +26,15 @@ class LabServer(LabNode):
 
         self._server = Server(ip=None, username=username, password=password)
 
+    def set_hostname(self, hostname):
+        self._server.set_hostname(hostname=hostname)
+
+    def get_hostname(self):
+        return self._server.get_hostname()
+
+    def get_ssh(self):
+        return self._server.get_ssh()
+
     def add_nic(self, nic_name, ip_or_index, net, on_wires, is_ssh):
         import validators
         from lab.network import Nic

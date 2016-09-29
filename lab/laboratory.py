@@ -223,7 +223,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 if hasattr(node, 'set_ssh_creds'):
                     node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'])
                 if hasattr(node, 'set_hostname'):
-                    node.set_hostname(node_description.get('hostname', '{}-{}.ctocllab.cisco.com'.format(self, node_id)))
+                    node.set_hostname(node_description.get('hostname', '{}.ctocllab.cisco.com'.format(node_id)))
                 if hasattr(node, 'set_ucsm_id'):
                     node.set_ucsm_id(node_description['ucsm-id'])
                 if hasattr(node, 'set_vip'):

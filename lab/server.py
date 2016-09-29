@@ -20,6 +20,9 @@ class Server(object):
     def get_ssh(self):
         return self._ip, self._username, self._password
 
+    def set_hostname(self, hostname):
+        self._hostname = hostname
+
     def get_hostname(self):
         return self._hostname
 
