@@ -242,7 +242,7 @@ router bgp {{ bgp_asn }}
             self.cmd('sudo /opt/cisco/package/sr/bin/setupXRNC_HA.sh -s {}'.format(opposite_ip), is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 11
         return True
 
-    def xrnc_restart_dl(self):
+    def r_xrnc_restart_dl(self):
         return self.cmd('sudo crm resource restart dl_server', is_xrvr=False)
 
     def xrnc_get_interfaces_config(self):

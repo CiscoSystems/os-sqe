@@ -29,7 +29,7 @@ class Vtc(LabServer):
         type_of_call, url_path = resource.split()
         url_path = url_path.strip('/')
         _, username, password = self.get_oob()
-        vip = self.get_vtc_vips()[0] if self._is_api_via_vip else self.get_ssh_ip()
+        vip = self.get_vtc_vips()[0] if self._is_api_via_vip else self._server.get_ssh_ip()
         url = 'https://{ip}:{port}/{resource}'.format(ip=vip, port=8888, resource=url_path)
         auth = (username, password)
 
@@ -243,7 +243,7 @@ class Vtc(LabServer):
         dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
         hostname = '{id}-{lab}'.format(lab=self.lab(), id=self.get_id())
 
-        _, ssh_username, ssh_password = self.get_ssh()
+        _, ssh_username, ssh_password = self._server.get_ssh()
 
         a_nic = self.get_nic('a')  # Vtc sits on out-of-tor network marked is_ssh
         a_ip, a_net_mask = a_nic.get_ip_and_mask()
@@ -285,7 +285,7 @@ class Vtc(LabServer):
         import requests
         from time import sleep
 
-        vtc_ip, _, _ = self.get_ssh()
+        vtc_ip, _, _ = self._server.get_ssh()
         _, username, password = self.get_oob()
         default_username, default_password = 'admin', 'admin'
 
@@ -296,9 +296,9 @@ class Vtc(LabServer):
         api_java_servlet = 'https://{}:8443/VTS/JavaScriptServlet'.format(vtc_ip)
         api_update_password = 'https://{}:8443/VTS/rs/ncs/user?updatePassword=true&isEnforcePassword=true'.format(vtc_ip)
 
-        while not self.ping():
+        while not self._server.ping():
             sleep(15)
-        while not self.ping(8443):
+        while not self._server.ping(8443):
             sleep(15)
 
         while True:
@@ -366,59 +366,52 @@ class Vtc(LabServer):
     def r_vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
         import jinja2
 
-        sync = jinja2.Template('''
-{% for name in names %}
-request devices device {{ name }} sync-from
-{% endfor %}
-''')
-        xrvr = jinja2.Template('''
-set resource-pools vni-pool vnipool range 4096 65535
-{% for xrvr_name in xrvr_names %}
-set devices device {{ xrvr_name }} asr9k-extension:device-info device-use leaf
-set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
-set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info loopback-if-num 0
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ xrvr_name }}
-{% endfor %}
-''')
         domain = jinja2.Template('''
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters distribution-mode decentralized-l2
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters control-plane-protocol bgp-evpn
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters arp-suppression
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters packet-replication ingress-replication
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters distribution-mode decentralized-l3
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters control-plane-protocol bgp-evpn
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters arp-suppression
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters packet-replication ingress-replication
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 ad-l3-gw-parent L3GW-0
-''')
-        tmpl_agroups = jinja2.Template('''
-{% for switch in switches %}
-        set devices authgroups group {{ switch['id'] }} umap admin remote-name {{ switch['username'] }}
-        set devices authgroups group {{ switch['id'] }} umap admin remote-password {{ switch['password'] }}
-{% endfor %}
-''')
+            set resource-pools vni-pool vnipool range 4096 65535
+
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters distribution-mode decentralized-l2
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters control-plane-protocol bgp-evpn
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters arp-suppression
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters packet-replication ingress-replication
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters distribution-mode decentralized-l3
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters control-plane-protocol bgp-evpn
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters arp-suppression
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters packet-replication ingress-replication
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 ad-l3-gw-parent L3GW-0''')
+        xrvr = jinja2.Template('''{% for xrvr_name in xrvr_names %}
+            set devices device {{ xrvr_name }} asr9k-extension:device-info device-use leaf
+            set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
+            set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info loopback-if-num 0
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ xrvr_name }}
+            {% endfor %}''')
         tmpl_switches = jinja2.Template('''
-{% for switch in switches %}
-set resource-pools vlan-pool {{ switch['id'] }} range 3000 3999
-set devices device {{ switch['id'] }} address {{ switch['ip'] }}
-set devices device {{ switch['id'] }} authgroup {{ switch['id'] }}
-set devices device {{ switch['id'] }} device-type cli ned-id cisco-nx
-set devices device {{ switch['id'] }} device-type cli protocol telnet
-set devices device {{ switch['id'] }} n9k-extension:device-info platform N9K
-set devices device {{ switch['id'] }} n9k-extension:device-info device-use leaf
-set devices device {{ switch['id'] }} n9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
-set devices device {{ switch['id'] }} n9k-extension:device-info bgp-peering-info loopback-if-num 0
-set devices device {{ switch['id'] }} state admin-state unlocked
-set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ switch['id'] }}
-{% endfor %}
-''')
+            {% for switch in switches %}
+            set devices authgroups group {{ switch['id'] }} umap admin remote-name {{ switch['username'] }}
+            set devices authgroups group {{ switch['id'] }} umap admin remote-password {{ switch['password'] }}
+            set resource-pools vlan-pool {{ switch['id'] }} range 3000 3999
+            set devices device {{ switch['id'] }} address {{ switch['ip'] }}
+            set devices device {{ switch['id'] }} authgroup {{ switch['id'] }}
+            set devices device {{ switch['id'] }} device-type cli ned-id cisco-nx
+            set devices device {{ switch['id'] }} device-type cli protocol telnet
+            set devices device {{ switch['id'] }} n9k-extension:device-info platform N9K
+            set devices device {{ switch['id'] }} n9k-extension:device-info device-use leaf
+            set devices device {{ switch['id'] }} state admin-state unlocked
+            commit
+            request devices device {{ switch['id'] }} sync-from
+            set devices device {{ switch['id'] }} n9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
+            set devices device {{ switch['id'] }} n9k-extension:device-info bgp-peering-info loopback-if-num 0
+            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ switch['id'] }}
+            {% endfor %}''')
+        sync = jinja2.Template('''
+            {% for name in names %}
+            request devices device {{ name }} sync-from
+            {% endfor %}''')
 
         map(lambda y: y.r_xrvr_day0_config(), self.get_xrvrs())
         self.r_vtc_ncs_cli(command=domain.render(domain_group='D1'))
         self.r_vtc_ncs_cli(command=xrvr.render(xrvr_names=self.get_xrvr_names(), domain_group='D1', bgp_asn=23))
 
         switches = [{'id': x.get_id(), 'ip': x.get_oob()[0], 'username': x.get_oob()[1], 'password': x.get_oob()[2]}for x in [self.lab().get_node_by_id('n91'), self.lab().get_node_by_id('n92')]]
-        self.r_vtc_ncs_cli(command=tmpl_agroups.render(switches=switches))
         self.r_vtc_ncs_cli(command=tmpl_switches.render(switches=switches, domain_group='D1', bgp_asn=23))
 
         self.r_vtc_ncs_cli(command=sync.render(names=self.get_xrvr_names() + ['n91', 'n92']))
@@ -440,7 +433,7 @@ set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gate
         wild_card = 'VTS*tar.bz2'
         self.exe('show_tech_support')
         ans = self.exe('ls ' + wild_card)
-        self.r_get_file_from_dir(file_name=ans, local_path='artifacts')
+        self._server.r_get_file_from_dir(file_name=ans, local_path='artifacts')
         self.exe('rm -r ' + wild_card)
 
     def r_is_xrvr_registered(self):
