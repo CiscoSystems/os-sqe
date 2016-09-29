@@ -352,7 +352,7 @@ class Vtc(LabServer):
 
         reported_ips = [x['address'] for x in cluster['collection']['tcm:members']]
         for node in nodes:
-            if node.get_ssh_ip() not in reported_ips:
+            if node.get_ssh()[0] not in reported_ips:
                 return False
         return True
 

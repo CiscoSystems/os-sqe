@@ -69,8 +69,6 @@ class DeployerVts(Deployer):
             raise RuntimeError('VTS installation is invalid')
 
     def delete_previous_libvirt_vms(self, vts_host):
-        if not vts_host.ping():
-            return
         ans = vts_host.exe('virsh list')
         for role in ['xrnc', 'vtc']:
             if role in ans:
@@ -153,7 +151,8 @@ class DeployerVts(Deployer):
             config_txt_path = vts_host.r_put_string_as_file_in_dir(string_to_put=cfg_body, file_name='config.txt', in_directory=self._vts_service_dir)
             vts_host.exe('mkisofs -o {iso} {txt}'.format(iso=config_iso_path, txt=config_txt_path))
 
-            self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part)
+            self._get_image_and_run_virsh(server=vts_host, role='vtc', iso_path=config_iso_path, net_part=net_part,
+                                          checksum='9cf59a6c913d144aff6f6f49dd79b12596ce312a3bfe9554896f719869f0616d705327f9ca5d7dec12faa5227504eb712387868924a4d182bf655cf002878fb5')
             vtc.vtc_change_default_password()
         else:
             self.log('Vtc {} is already deployed in the previous run.'.format(vtc))
@@ -173,11 +172,11 @@ class DeployerVts(Deployer):
         ip, username, password = vtc.get_ssh()
         vts_host.exe('sshpass -p {p} scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {u}@{ip}:xrnc_cfg.iso {d}'.format(p=password, u=username, ip=ip, d=self._vts_service_dir))
 
-        self._get_image_and_run_virsh(server=vts_host, role='xrnc', iso_path=iso_path, net_part=net_part)
+        self._get_image_and_run_virsh(server=vts_host, role='xrnc', iso_path=iso_path, net_part=net_part, checksum='8c30a5729fd2ae1248aeff9752f9307ca98bee7dabd53131255d6416d60a67e155edb62834b1173ed156e0eaecc57c4422bc9f90d1d310ae0a8ef33651485872')
 
-    def _get_image_and_run_virsh(self, server, role, iso_path, net_part):
+    def _get_image_and_run_virsh(self, server, role, iso_path, net_part, checksum):
         image_url = self._vts_images_location + role + '.qcow2'
-        qcow_file = server.wget_file(url=image_url, to_directory=self._vts_service_dir, checksum=None)
+        qcow_file = server.r_get_remote_file(url=image_url, to_directory=self._vts_service_dir, checksum=checksum)
 
         disk_part = self._disk_part_tmpl.format(qcow_path=qcow_file, iso_path=iso_path)
         domain_body = self._libvirt_domain_tmpl.format(hostname=role, disk_part=disk_part, net_part=net_part, emulator='/usr/libexec/qemu-kvm')
