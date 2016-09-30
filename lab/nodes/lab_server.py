@@ -93,12 +93,20 @@ class LabServer(LabNode):
                 status = False
         return status
 
-    def exe(self, command, in_directory='.', is_warn_only=False, connection_attempts=100):
+    def exe(self, command, in_directory='.', is_warn_only=False, connection_attempts=100, estimated_time=None):
+        import time
+
+        if estimated_time:
+            self.log('Running {}... (usually it takes {} secs)'.format(command, estimated_time))
+        started_at = time.time()
         if self._proxy_server:
             ip, username, password = self._server.get_ssh()
-            return self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+            ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
         else:
-            return self._server.exe(command=command, in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+            ans = self._server.exe(command=command, in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+        if estimated_time:
+            self.log('{} finished and actually took {} secs'.format(command, time.time() - started_at))
+        return ans
 
     def r_register_rhel(self, rhel_subscription_creds_url):
         import requests
@@ -133,3 +141,10 @@ class LabServer(LabNode):
 
     def r_put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
         return self._server.put_string_as_file_in_dir(string_to_put, file_name, in_directory=in_directory)
+
+    def r_is_online(self):
+        if self._proxy_server:
+            ans = self._proxy_server.exe(command='ping -c 1 {}'.format(self._server.get_ssh()[0]), is_warn_only=True)
+            return '1 received, 0% packet loss' in ans
+        else:
+            return self._server.ping()

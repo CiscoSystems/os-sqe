@@ -265,3 +265,17 @@ router bgp {{ bgp_asn }}
 
     def r_border_leaf(self):
         self.cmd(cmd='conf t interface Loopback0', is_xrvr=True)
+
+    def r_xrnc_wait_all_online(self, n_retries=1):
+        import time
+
+        nodes = self.lab().get_xrvr()
+        while True:
+            if all([node.r_is_online() for node in nodes]):
+                return True
+            n_retries -= 1
+            if n_retries == 0:
+                raise RuntimeError('After {} retries some XRVR are not up'.format(n_retries))
+            else:
+                time.sleep(30)
+                continue

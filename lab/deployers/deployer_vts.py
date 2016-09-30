@@ -47,7 +47,10 @@ class DeployerVts(Deployer):
 
         for i in range(len(xrncs)):
             self.deploy_single_xrnc(vts_host=vts_hosts[i], vtc=vtcs[i], xrnc=xrncs[i])
-        lab.r_collect_information(regex='ERROR', comment='after_all_xrvr_vm_started')
+
+        xrncs[0].r_xrnc_wait_all_online(100)
+
+        lab.r_collect_information(regex='ERROR', comment='after_all_xrnc_vm_started')
 
         if not vtcs[0].r_is_xrvr_registered():
             map(lambda dl: dl.r_xrnc_set_mtu(), xrncs)  # https://cisco.jiveon.com/docs/DOC-1455175 Step 12 about MTU
@@ -83,7 +86,7 @@ class DeployerVts(Deployer):
         from lab.vts_classes.vtc import Vtc
 
         vtc_list = lab.get_nodes_by_class(Vtc)
-        if vtc_list[0].vtc_is_cluster_formed():
+        if vtc_list[0].r_vtc_wait_cluster_formed():
             self.log('Cluster is already formed')
             return
 
@@ -97,7 +100,7 @@ class DeployerVts(Deployer):
 
         vtc_list[0].exe(command='sudo ./master_node_install.sh', in_directory=cisco_bin_dir)  # https://cisco.jiveon.com/docs/DOC-1443548 VTS 2.2: L2 HA Installation Steps  Step 4
 
-        if vtc_list[0].vtc_is_cluster_formed(n_retries=100):
+        if vtc_list[0].r_vtc_wait_cluster_formed(n_retries=100):
             return  # cluster is successfully formed
         else:
             raise RuntimeError('Failed to form VTC cluster after 100 attempts')

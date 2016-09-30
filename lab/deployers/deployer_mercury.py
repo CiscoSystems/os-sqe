@@ -48,7 +48,7 @@ class DeployerMercury(Deployer):
         ans = build_node.exe('ls -d installer*', is_warn_only=True)
         if 'installer-' + mercury_tag in ans:
             installer_dir = ans
-            build_node.exe(command='./unbootstrap.sh -y > /dev/null', in_directory=installer_dir, is_warn_only=True)
+            build_node.exe(command='./unbootstrap.sh -y > /dev/null', in_directory=installer_dir, is_warn_only=True, estimated_time=100)
             is_get_tarball = False
         elif 'No such file or directory' in ans:
             installer_dir = 'installer-{}'.format(mercury_tag)
@@ -56,7 +56,7 @@ class DeployerMercury(Deployer):
         else:
             old_installer_dir = ans
             installer_dir = 'installer-{}'.format(mercury_tag)
-            build_node.exe(command='./unbootstrap.sh -y > /dev/null', in_directory=old_installer_dir, is_warn_only=True)
+            build_node.exe(command='./unbootstrap.sh -y > /dev/null', in_directory=old_installer_dir, is_warn_only=True, estimated_time=100)
             build_node.exe('rm -f openstack-configs', is_warn_only=True)
             build_node.exe('rm -rf {}'.format(old_installer_dir))
             is_get_tarball = True
@@ -76,7 +76,7 @@ class DeployerMercury(Deployer):
             build_node.exe('rm -rf /var/log/mercury/*')
 
             try:
-                build_node.exe(command='./runner/runner.py -y -s 7,8 > /dev/null', in_directory=installer_dir)  # run steps 1-6 during which we get all control and computes nodes re-loaded
+                build_node.exe(command='./runner/runner.py -y -s 7,8 > /dev/null', in_directory=installer_dir, estimated_time=600)  # run steps 1-6 during which we get all control and computes nodes re-loaded
             except:
                 build_node.exe('cat /var/log/mercury/installer/*')
                 raise RuntimeError('Mercury ./runner/runner.py -y -s 7,8 failed')
@@ -87,7 +87,7 @@ class DeployerMercury(Deployer):
             self._vts_deployer.wait_for_cloud(list_of_servers=lab.get_vts_hosts())
 
             try:
-                build_node.exe(command='./runner/runner.py -y -p 7,8 > /dev/null', in_directory=installer_dir)  # run steps 7-8
+                build_node.exe(command='./runner/runner.py -y -p 7,8 > /dev/null', in_directory=installer_dir, estimated_time=600)  # run steps 7-8
             except:
                 build_node.exe('cat /var/log/mercury/installer/*')
                 raise RuntimeError('Mercury ./runner/runner.py -y -p 7,8 failed')

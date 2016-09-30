@@ -334,7 +334,7 @@ class Vtc(LabServer):
         else:
             raise RuntimeError(response.text)
 
-    def vtc_is_cluster_formed(self, n_retries=1):
+    def r_vtc_wait_cluster_formed(self, n_retries=1):
         import requests.exceptions
 
         nodes = self.lab().get_nodes_by_class(Vtc)
