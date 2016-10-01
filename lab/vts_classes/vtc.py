@@ -379,6 +379,7 @@ class Vtc(LabServer):
             set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters packet-replication ingress-replication
             set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 ad-l3-gw-parent L3GW-0''')
         xrvr = jinja2.Template('''{% for xrvr_name in xrvr_names %}
+            request devices device {{ xrvr_name }} sync-from
             set devices device {{ xrvr_name }} asr9k-extension:device-info device-use leaf
             set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
             set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info loopback-if-num 0
