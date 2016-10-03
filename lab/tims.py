@@ -1,5 +1,5 @@
 class Tims(object):
-    FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f'}
+    FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'PERFOMANCE AND SCALE': 'Tcbr1840f'}
     TIMS_PROJECT_ID = 'Tcbr1p'
 
     _OPERATION_ENTITY = 'entity'
@@ -64,15 +64,12 @@ class Tims(object):
             try:
                 folder_id = self.FOLDERS[folder_name]
             except KeyError:
-                raise ValueError('test {} specifies wrong Folder, possible values {}'.format(test_cfg_path, self.FOLDERS.keys()))
+                raise ValueError('test {} specifies wrong Folder {}, possible values {}'.format(test_cfg_path, folder_name, self.FOLDERS.keys()))
 
             description = 'This is the configuration actually used in testing:\n' + cfg_body + '\nuploaded from <a href="https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}">'.format(test_cfg_path)
             body += test_case_template.format(username=self._username, test_name=test_name, logical_id=test_cfg_path, description=description, folder_id=folder_id, project_id=self.TIMS_PROJECT_ID)
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
-
-        for test_cfg_path in test_cfg_pathes:
-            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version='1.0.9', vts_version='LATEST', n_exceptions=-10, lab_id='g7-2')
 
     def publish_result_to_tims(self, test_cfg_path, mercury_version, vts_version, lab, n_exceptions):
         description = 'VTS version: {} Mercury version: {} number of exceptions {}'.format(vts_version, mercury_version, n_exceptions)
@@ -114,7 +111,7 @@ class Tims(object):
         body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
         self._api_post(operation=self._OPERATION_ENTITY, body=body)
 
-    def simulate(self, lab_cfg_path, n_exceptions):
+    def simulate(self, lab_cfg_path, regex_to_fail):
         from lab import with_config
         from lab.laboratory import Laboratory
 
@@ -122,9 +119,10 @@ class Tims(object):
 
         available_tc = with_config.ls_configs(directory='ha')
         test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
+
         results = {'lab': lab}
         for test_cfg_path in test_cfg_pathes:
-            results[test_cfg_path] = {'n_exceptions': n_exceptions}
+            results[test_cfg_path] = {'n_exceptions': 1 if regex_to_fail in test_cfg_path else 0}
 
         self.publish_results_to_tims(results=results)
 
