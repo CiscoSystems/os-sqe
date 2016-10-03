@@ -41,7 +41,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 self._nets[net_name] = net
                 if net_desc.get('is-via-tor', False):
                     net.set_is_via_tor()
-                for is_xxx in ['pxe', 'ssh', 'vts']:
+                for is_xxx in ['pxe', 'vts']:
                     if net_desc.get('is-' + is_xxx, False):
                         if is_xxx not in net_markers_used:
                             getattr(net, 'set_is_' + is_xxx)()  # will set marker to True
@@ -111,9 +111,15 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             self._process_single_wire(own_node=node, wire_info=wire_info)
 
         # now all wires are created and all peers of this node are connected
+        n_is_ssh = 0
         for nic_info in all_nics_of_node:  # {'name': name, 'mac-or_pattern': mac, 'ip-or-index': ip, 'net': obj_of_Network, own-ports: [phys_port1, phys_port2]}
             nic_on_these_wires = filter(lambda y: y.get_own_port(node) in nic_info.get('own-ports'), node.get_all_wires())  # find all wires, this NIC sits on
-            node.add_nic(nic_name=nic_info.get('name'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires, is_ssh=nic_info.get('is_ssh'))
+            is_ssh = nic_info.get('is_ssh')
+            node.add_nic(nic_name=nic_info.get('name'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires, is_ssh=is_ssh)
+            if is_ssh:
+                n_is_ssh += 1
+        if len(node.get_nics()) > 0 and n_is_ssh != 1:
+            raise ValueError('{}: has {} NICs marked as "is_ssh". Fix configuration.'.format(node, n_is_ssh))
 
     @staticmethod
     def _check_port_id_correctness(node, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25

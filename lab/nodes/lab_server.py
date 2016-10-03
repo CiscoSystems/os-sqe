@@ -58,7 +58,7 @@ class LabServer(LabNode):
             else:
                 raise ValueError('{}: specified value "{}" is neither ip nor index in network'.format(self.get_id(), ip_or_index))
 
-        nic = Nic(name=nic_name, node=self, net=net, net_index=index, on_wires=on_wires)
+        nic = Nic(name=nic_name, node=self, net=net, net_index=index, on_wires=on_wires, is_ssh=is_ssh)
         self._nics[nic_name] = nic
         if is_ssh:
             self._server.set_ssh_ip(ip=nic.get_ip_and_mask()[0])

@@ -7,7 +7,6 @@ class Network(object):
         self._vlan = vlan  # single network needs to sit on single vlan
         self._mac_pattern = mac_pattern
         self._is_pxe = False  # NICs on this network will be configured as PXE enabled
-        self._is_ssh = False  # Credentials on this network will be used to ssh to servers
         self._is_vts = False  # VTS components will be deployed on this network, if requested
         self._is_via_tor = False  # this network if supposed to go our of lab's TOR
 
@@ -31,12 +30,6 @@ class Network(object):
 
     def set_is_pxe(self):
         self._is_pxe = True
-
-    def is_ssh(self):
-        return self._is_ssh
-
-    def set_is_ssh(self):
-        self._is_ssh = True
 
     def is_vts(self):
         return self._is_vts
@@ -67,7 +60,7 @@ class Network(object):
 
 
 class Nic(object):
-    def __init__(self, name, node, net, net_index, on_wires):
+    def __init__(self, name, node, net, net_index, on_wires, is_ssh):
         self._node = node  # nic belongs to the node
         self._names = []  # this is NIC name which coincides with network name
         self._net = net    # valid lab.network.Network
@@ -75,6 +68,7 @@ class Nic(object):
         self._on_wires = on_wires  # this NIC sits on this list of wires, usually 2 for port channel and 1 for PXE boot via LOM
         self._macs = []
         self._port_ids = []
+        self._is_ssh = is_ssh
 
         for wire in self._on_wires:
             own_port_id = wire.get_own_port(node)
@@ -101,7 +95,7 @@ class Nic(object):
         return self._net.is_vts()
 
     def is_ssh(self):
-        return self._net.is_ssh()
+        return self._is_ssh
 
     def get_names(self):
         return self._names
