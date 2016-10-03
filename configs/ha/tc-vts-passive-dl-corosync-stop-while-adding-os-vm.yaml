@@ -14,7 +14,7 @@
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
-  node-to-disrupt: passive-dl
+  node-to-disrupt: slave-dl
   method-to-disrupt: corosync-stop
   n_repeats: 10
   downtime: 100

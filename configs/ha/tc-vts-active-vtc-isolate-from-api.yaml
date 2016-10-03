@@ -13,7 +13,7 @@
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 3
-  node-to-disrupt: active-vtc
+  node-to-disrupt: master-vtc
   method-to-disrupt: isolate-from-api
   n_repeats: 1
   downtime: 30
