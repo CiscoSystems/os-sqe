@@ -25,7 +25,7 @@ class RunnerHA(Runner):
     def __repr__(self):
         import os
 
-        return u'{0}-{1}'.format(self._cloud_name, os.path.basename(self._task_yaml_path))
+        return u'{}'.format(os.path.basename(self._task_yaml_path))
 
     def execute(self, clouds, servers):
         import importlib
