@@ -1,4 +1,4 @@
-How to build new image
+How to build new image (according to http://docs.openstack.org/developer/diskimage-builder/developer/index.html#quickstart)
 
 Preperation:
     git clone https://git.openstack.org/openstack/diskimage-builder

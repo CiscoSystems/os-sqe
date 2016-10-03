@@ -12,7 +12,7 @@ virtualenv venv
 source venv/bin/activate
 
 pip install -e ./diskimage-builder
-disk-image-create fedora vm selinux-permissive dnsmasq users ip-addresses -a amd64 -o ${image_name}
+disk-image-create fedora vm selinux-permissive dnsmasq iperf users ip-addresses -a amd64 -o ${image_name}
 deactivate
 
 cat >${image_name}.sha256sum.txt<<EOF

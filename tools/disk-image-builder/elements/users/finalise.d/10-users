@@ -6,7 +6,7 @@ function user_add() {
 
     useradd $username
     echo -e $password | (passwd --stdin $username)
-
+    install -m 0600 -o $username -g $username $home/key_rsa.pub /home/$username/.ssh/authorized_keys
     cat >>/etc/sudoers.d/${username}<<EOF
 $username ALL=NOPASSWD: ALL
 EOF
