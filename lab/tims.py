@@ -134,4 +134,4 @@ class Tims(object):
         lab = results.pop('lab')
         mercury_version, vts_version = lab.r_get_version()
         for test_cfg_path, result in results.items():
-            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, vts_version=vts_version, lab=lab, n_exceptions=result['n_exceptions'])
+            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, vts_version=vts_version, lab=lab, n_exceptions=result.get('n_exceptions', 0))
