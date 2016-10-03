@@ -16,7 +16,7 @@
   node-to-disrupt: slave-vtc
   method-to-disrupt: isolate-from-mx
   n_repeats: 2
-  downtime: 100
+  downtime: 10
   uptime: 20
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'

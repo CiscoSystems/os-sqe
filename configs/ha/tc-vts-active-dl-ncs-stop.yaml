@@ -3,7 +3,7 @@
 - Description: first create OS VM then start disruptor
 
 - class: lab.monitors.vts_monitor.VtsMonitor
-  duration: 2000
+  duration: 600
   period: 2
 
 - class: lab.scenarios.vts_scenario.VtsScenario
@@ -16,7 +16,7 @@
   node-to-disrupt: master-dl
   method-to-disrupt: ncs-stop
   n_repeats: 10
-  downtime: 100
+  downtime: 10
   uptime: 20
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'

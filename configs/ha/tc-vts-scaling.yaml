@@ -3,7 +3,7 @@
 - Description: runs iperf and reports its results
 
 - class: lab.monitors.vts_monitor.VtsMonitor
-  duration: 2000
+  duration: 600
   period: 2
 
 - class: lab.scenarios.vts_scenario.VtsScenario
