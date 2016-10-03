@@ -9,6 +9,7 @@
   delay: 20
   how-many-networks: 1
   how-many-servers: 3
+  n_repeats: 1
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
