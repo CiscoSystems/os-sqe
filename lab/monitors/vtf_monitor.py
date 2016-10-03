@@ -7,7 +7,7 @@ class VtfNotSynced(Exception):
 
 class VtfMonitor(Worker):
 
-    def setup(self):
+    def setup_worker(self):
         from lab.vts_classes.vtc import Vtc
 
         if self._ip:
@@ -16,7 +16,7 @@ class VtfMonitor(Worker):
         else:
             self._vtc = self._lab.get_nodes_by_class(Vtc)[0]
 
-    def loop(self):
+    def loop_worker(self):
         # List of networks defined in OpenStack
         networks = self._cloud.list_networks()
 

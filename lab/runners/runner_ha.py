@@ -2,13 +2,13 @@ from lab.runners import Runner
 
 
 def starter(worker):
-    worker.setup()
-    return worker.start()
+    worker.setup_worker()
+    return worker.start_worker()
 
 
 class RunnerHA(Runner):
     def sample_config(self):
-        return {'cloud': 'cloud name', 'task-yaml': 'task-ha.yaml', 'is-debug': False}
+        return {'cloud': 'cloud name', 'task-yaml': 'task-ha.yaml', 'is-debug': False, 'is-parallel': True}
 
     def __init__(self, config, version):
         super(RunnerHA, self).__init__(config=config)
@@ -16,6 +16,7 @@ class RunnerHA(Runner):
         self._task_yaml_path = config['task-yaml']
         self._task_body = self.read_config_from_file(config_path=self._task_yaml_path, directory='ha')
         self._is_debug = config['is-debug']
+        self._is_parallel = config['is-parallel']
         self._version = version
 
         if not self._task_body:
@@ -46,7 +47,9 @@ class RunnerHA(Runner):
                 path_to_module, class_name = block['class'].rsplit('.', 1)
                 module = importlib.import_module(path_to_module)
                 klass = getattr(module, class_name)
-                workers_to_run.append(klass(cloud=cloud, lab=lab, **block))
+                worker = klass(cloud=cloud, lab=lab, **block)
+                worker.set_is_debug(self._is_debug)
+                workers_to_run.append(worker)
             except KeyError:
                 raise ValueError('There is no "class" specifying the worker class path in {0}'.format(self._task_yaml_path))
             except ImportError:
@@ -54,14 +57,13 @@ class RunnerHA(Runner):
 
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
 
-        if self._is_debug:
-            results = map(starter, workers_to_run)
-        else:
+        if self._is_parallel:
             pool = multiprocessing.Pool(len(workers_to_run))
-
             results = pool.map(starter, workers_to_run)  # a list of {'name': 'monitor, scenario or disruptor name', 'success': True or False, 'n_exceptions': 10}
+        else:
+            results = map(starter, workers_to_run)
 
         n_exceptions = 0
         for result in results:
             n_exceptions += result.get('n_exceptions', 0)
-        return {self._task_yaml_path: {'n_exceptions': n_exceptions}}
+        return {'n_exceptions': n_exceptions}

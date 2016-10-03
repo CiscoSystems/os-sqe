@@ -5,6 +5,7 @@ class Worker(object):
     def __init__(self,  cloud, lab, **kwargs):
         import validators
 
+        self._is_debug = False
         self._kwargs = kwargs
         self._cloud = cloud
         self._lab = lab
@@ -18,9 +19,12 @@ class Worker(object):
             else:
                 raise ValueError('Provided invalid ip address: "{0}"'.format(self._ip))
 
+    def set_is_debug(self, is_debug):
+        self._is_debug = is_debug
+
     # noinspection PyBroadException
     # noinspection PyAttributeOutsideInit
-    def start(self):
+    def start_worker(self):
         import time
         from lab.logger import Logger
 
@@ -38,20 +42,23 @@ class Worker(object):
 
         if delay:
             self._log.info('delay by {0} secs...'.format(delay))
-        time.sleep(delay)
+        if not self._is_debug:
+            time.sleep(delay)
 
-        self._log.info('status=Start arguments={0}'.format(self._kwargs))
+        self._log.info('status=started arguments={0}'.format(self._kwargs))
         results = {'name': str(self), 'n_exceptions': 0, 'is_success': True}
+        if self._is_debug:
+            return results  # don't actually run anything to check that infrastructure works
         try:
             if duration:
                 start_time = time.time()
                 end_time = start_time + duration
                 while time.time() < end_time:
-                    self.loop()
+                    self.loop_worker()
                     time.sleep(period)
             elif n_repeats:
                 for _ in range(n_repeats):
-                    self.loop()
+                    self.loop_worker()
                     time.sleep(period)
         except:
             results['n_exceptions'] += 1
@@ -61,9 +68,9 @@ class Worker(object):
         return results
 
     @abc.abstractmethod
-    def setup(self, **kwargs):
+    def setup_worker(self, **kwargs):
         pass
 
     @abc.abstractmethod
-    def loop(self):
+    def loop_worker(self):
         return {}

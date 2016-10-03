@@ -3,11 +3,11 @@ from lab.worker import Worker
 
 class ServerReboot(Worker):
     # noinspection PyAttributeOutsideInit
-    def setup(self):
+    def setup_worker(self):
         self.name = self._kwargs.get('name', '')
         self.hard = self._kwargs.get('hard', 'False').lower() == 'true'
 
-    def loop(self):
+    def loop_worker(self):
         servers = self._cloud.server_list()
         for server in servers:
             server_name = server['Name']

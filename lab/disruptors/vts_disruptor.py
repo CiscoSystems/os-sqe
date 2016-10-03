@@ -3,11 +3,14 @@ from lab.worker import Worker
 
 class VtsDisruptor(Worker):
 
+    def __repr__(self):
+        return u'worker=VtsDisruptor'
+
     # noinspection PyAttributeOutsideInit
-    def setup(self):
+    def setup_worker(self):
         from lab.vts_classes.vtc import Vtc
 
-        possible_nodes = ['active-vtc', 'passive-vtc', 'active-dl', 'passive-dl']
+        possible_nodes = ['master-vtc', 'slave-vtc', 'master-dl', 'slave-dl']
         possible_methods = ['isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop']
         try:
             self._downtime = self._kwargs['downtime']
@@ -26,7 +29,7 @@ class VtsDisruptor(Worker):
             self._vtc.set_oob_creds(ip=self._ip, username=self._username, password=self._password)
         if 'vtc' in self._node_to_disrupt:
             cluster = self._vtc.r_vtc_show_ha_cluster_members()
-            cluster = {x['role']: x['address'] for x in cluster}
+            cluster = {x['role']: x['address'] for x in cluster['collection']['tcm:members']}
             master_slave = self._node_to_disrupt.split('-')[0]
             for vtc in lab.get_nodes_by_class(Vtc):
                 if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[master_slave]:
@@ -36,7 +39,7 @@ class VtsDisruptor(Worker):
             active_passive = self._node_to_disrupt.split('-')[0]
             self._node_to_disrupt = self._vtc.r_vtc_get_xrvrs()[0 if active_passive == 'active' else -1]
 
-    def loop(self):
+    def loop_worker(self):
         import time
 
         self._log.info('host={}; status=going-off {}'.format(self._vtc, self._node_to_disrupt.disrupt(start_or_stop='start', method_to_disrupt=self._method_to_disrupt)))

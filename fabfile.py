@@ -73,11 +73,12 @@ def cmd(config_path):
 
 
 @task
-def ha(lab_cfg_path, test_regex, is_debug=False, is_tims=False):
+def ha(lab_cfg_path, test_regex, is_debug=True, is_parallel=True, is_tims=False):
     """fab ha:g10,tc-vts\t\tRun all VTS tests on lab 'g10'
         :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
-        :param is_debug: is True, switch off parallel execution and run in sequence
+        :param is_debug: if True, do not run actual workers just test the infrastructure
+        :param is_parallel: if False, switch off parallel execution and run in sequence
         :param is_tims: if True then publish results to TIMS
     """
     import os
@@ -85,6 +86,7 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_tims=False):
     from lab import with_config
     from lab.logger import lab_logger
     from lab.tims import Tims
+    from lab.laboratory import Laboratory
 
     lab_name = lab_cfg_path.rsplit('/', 1)[-1].replace('.yaml', '')
 
@@ -98,12 +100,13 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_tims=False):
     with with_config.open_artifact(run_config_yaml, 'w') as f:
         f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab_cfg_path))
         for i, test in enumerate(tests, start=1):
-            f.write('runner{}:  {{lab.runners.runner_ha.RunnerHA: {{cloud: {}, hardware-lab-config: {}, task-yaml: "{}", is-debug: {}}}}}\n'.format(10*i + 1,  lab_name, lab_name, test, is_debug))
+            f.write('runner{}:  {{lab.runners.runner_ha.RunnerHA: {{cloud: {}, hardware-lab-config: {}, task-yaml: "{}", is-debug: {}, is-parallel: {}}}}}\n'.format(10*i + 1,  lab_name, lab_name, test, is_debug, is_parallel))
 
     run_results = run(config_path='artifacts/' + run_config_yaml, version=None)
 
     if is_tims:
         t = Tims()
+        run_results['lab'] = Laboratory(lab_cfg_path)
         t.publish_results_to_tims(results=run_results)
 
     lab_logger.info('Results: {}'.format(run_results))

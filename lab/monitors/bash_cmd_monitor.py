@@ -4,7 +4,7 @@ from lab.worker import Worker
 class BashCmdMonitor(Worker):
 
     # noinspection PyAttributeOutsideInit
-    def setup(self):
+    def setup_worker(self):
         import validators
         from lab.nodes.lab_server import LabServer
 
@@ -17,6 +17,6 @@ class BashCmdMonitor(Worker):
             lab = self._cloud.mediator.lab()
             self._node = lab.get_nodes_by_id(self._ip)
 
-    def loop(self):
+    def loop_worker(self):
         res = self._node.exe(self._cmd, warn_only=True)
         self._log.info('node={0}, result={1}'.format(self._node, ''.join(res)))

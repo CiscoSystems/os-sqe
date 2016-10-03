@@ -3,10 +3,10 @@ from lab.worker import Worker
 
 class ServerSuspend(Worker):
     # noinspection PyAttributeOutsideInit
-    def setup(self):
+    def setup_worker(self):
         self.name = self._kwargs.get('name', '')
 
-    def loop(self):
+    def loop_worker(self):
         servers = self._cloud.server_list()
         for server in servers:
             server_name = server['Name']

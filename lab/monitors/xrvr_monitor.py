@@ -7,7 +7,7 @@ class XrvrNotSynced(Exception):
 
 class XrvrMonitor(Worker):
 
-    def setup(self):
+    def setup_worker(self):
         from lab.vts_classes.vtc import Vtc
         from lab.vts_classes.xrvr import Xrvr
 
@@ -20,7 +20,7 @@ class XrvrMonitor(Worker):
         else:
             raise Exception('There is not XRVR node')
 
-    def loop(self):
+    def loop_worker(self):
         import json
 
         networks = self._cloud.list_networks()

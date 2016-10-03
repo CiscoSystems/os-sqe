@@ -20,13 +20,13 @@ class VtsInstancesNotSynced(Exception):
 class VtsOverlayMonitor(Worker):
 
     # noinspection PyAttributeOutsideInit
-    def setup(self):
+    def setup_worker(self):
         from lab.vts_classes.vtc import Vtc
 
         self._lab = self._cloud.mediator.lab()
         self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes_by_class(Vtc)[0]
 
-    def loop(self):
+    def loop_worker(self):
         networks = self._cloud.list_networks()
         for network in networks:
             net_synced = self._vtc.verify_network(network)

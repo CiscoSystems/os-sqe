@@ -2,9 +2,11 @@ from lab.worker import Worker
 
 
 class VtsMonitor(Worker):
+    def __repr__(self):
+        return u'worker=VtsMonitor'
 
     # noinspection PyAttributeOutsideInit
-    def setup(self):
+    def setup_worker(self):
         from lab.vts_classes.vtc import Vtc
 
         lab = self._cloud.mediator.lab()
@@ -14,5 +16,5 @@ class VtsMonitor(Worker):
         self._vtfs = self._vtc.r_vtc_get_vtfs()
         self._xrvrs = self._vtc.r_vtc_get_xrvrs()
 
-    def loop(self):
+    def loop_worker(self):
         self._log.info('cluster={}'.format(self._vtc.r_vtc_show_ha_cluster_members()))

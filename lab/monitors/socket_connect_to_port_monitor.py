@@ -7,13 +7,13 @@ class SocketConnectToPort(Worker):
         return u'SocketConnectToPort{}:{}({}s)'.format(self._ip, self._port, self._timeout)
 
     # noinspection PyAttributeOutsideInit
-    def setup(self):
+    def setup_worker(self):
 
         self._ip, self._port = self._kwargs['ip-port'].split(':')
         self._port = int(self._port)
         self._timeout = self._kwargs.get('timeout', 1)
 
-    def loop(self):
+    def loop_worker(self):
         import socket
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

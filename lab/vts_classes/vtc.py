@@ -76,14 +76,12 @@ class Vtc(LabServer):
         return self.lab().get_nodes_by_class(Xrvr)
 
     def r_vtc_get_vtfs(self):
-        vtf_host_last = self.lab().get_nodes_by_class(VtsHost)[-1]
         ans = self._rest_api(resource='GET /api/running/cisco-vts', headers={'Accept': 'application/vnd.yang.data+json'})
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
         vtf_nodes = self.lab().get_nodes_by_class(Vtf)
         for vtf in vtf_nodes:
             _, username, password = vtf.get_oob()
             vtf.set_oob_creds(ip=vtf_ips_from_vtc.pop(0), username=username, password=password)
-            vtf.set_proxy(proxy=vtf_host_last)
         return vtf_nodes
 
     def r_vtc_get_xrvrs(self):
