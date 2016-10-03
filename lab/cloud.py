@@ -339,8 +339,9 @@ export OS_AUTH_URL={end_point}
     def os_image_create(self):
         name = self._unique_pattern_in_name + '-fedora'
         if not filter(lambda image: image['Name'] == name, self.os_image_list()):
-            image_path = self.mediator.wget_file(url=self._image['url'], to_directory='cloud_images', checksum=self._image['checksum'], method=self._image['method'])
+            image_path = self.mediator.r_get_remote_file(url=self._image['url'], to_directory='cloud_images', checksum=self._image['checksum'], method=self._image['method'])
             self.os_cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
+            self.log('image={} status=requested'.format(name))
         return self.os_image_wait(name)
 
     def os_image_analyse_problem(self, image):
@@ -364,6 +365,7 @@ export OS_AUTH_URL={end_point}
             if image['status'] == 'ERROR':
                 self.os_image_analyse_problem(image)
             elif image['status'] == 'active':
+                self.log('image={} status=active'.format(name))
                 return image
             time.sleep(15)
 

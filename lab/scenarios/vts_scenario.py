@@ -6,6 +6,10 @@ class VtsScenario(Worker):
     def setup(self):
         self._n_instances = self._kwargs['how-many-servers']
         self._n_nets = self._kwargs['how-many-networks']
+        self._what_to_run_inside = self._kwargs['what-to-run-inside']
+
+    def __repr__(self):
+        return u'scenario=VtsScenario'
 
     def loop(self):
         self._cloud.os_cleanup()
@@ -16,8 +20,9 @@ class VtsScenario(Worker):
 
         for i in range(1, self._n_instances + 1):
             port_pids = self._cloud.os_port_create(server_name=str(i), on_nets=internal_nets, is_fixed_ip=True)
-            instance_name = self._cloud.os_server_create(name=str(i), flavor='m1.medium', image_name=image['name'], on_ports=port_pids)
-            self._log.info('instance={0} created'.format(instance_name))
+            self._log.info('instance={} status=requested'.format(i))
+            self._cloud.os_server_create(name=str(i), flavor='m1.medium', image_name=image['name'], on_ports=port_pids)
+            self._log.info('instance={} status=created'.format(i))
             # cloud.cmd('ping -c5 {fip}'.format(fip=fips[i]))
             # instances[i] = Server(ip=fips[i], username='root', lab=None, name='a')
 
