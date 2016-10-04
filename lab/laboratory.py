@@ -15,8 +15,15 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab import with_config
         from lab.network import Network
 
-        super(Laboratory, self).__init__(config_path)
         self._supported_lab_types = ['MERCURY', 'OSPD']
+        self._unique_dict = dict()  # to make sure that all needed objects are unique
+        self._nodes = list()
+        self._director = None
+        self._nets = {}
+        if config_path is None:
+            return
+
+        super(Laboratory, self).__init__(config_path)
         self._cfg = with_config.read_config_from_file(config_path=config_path)
         self._id = self._cfg['lab-id']
         self._lab_name = self._cfg['lab-name']
@@ -24,15 +31,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         if self._lab_type not in self._supported_lab_types:
             raise ValueError('"{}" is not one of supported types: {}'.format(self._lab_type, self._supported_lab_types))
 
-        self._unique_dict = dict()  # to make sure that all needed objects are unique
-        self._nodes = list()
-        self._director = None
         self._is_sriov = self._cfg.get('use-sr-iov', False)
 
         self._dns, self._ntp = self._cfg['dns'], self._cfg['ntp']
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
-
-        self._nets = {}
 
         net_markers_used = []
         for net_name, net_desc in self._cfg['nets'].items():
@@ -442,12 +444,13 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         def get_ip(msg):
             while True:
-                ip = prompt(text=msg + '> ')
-                if validators.ipv4(ip):
-                    return ip
+                ip4 = prompt(text=msg + '> ')
+                if validators.ipv4(ip4):
+                    return ip4
                 else:
                     continue
 
+        lab = Laboratory(config_path=None)
         n91_ip = get_ip('Enter one of your N9K IP')
         n9k_username = 'admin'
         n9k_password = 'CTO1234!'
@@ -469,6 +472,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         tor = None
         n92 = None
         for cdp in n91.n9_show_cdp_neighbor():
+            print cdp
             if cdp.get('intf_id') == 'mgmt0':
                 oob = Oob(node_id='oob', role=Oob.ROLE, lab='fake-lab')
                 oob.set_oob_creds(ip=cdp.get('v4mgmtaddr'), username='?????', password='?????')

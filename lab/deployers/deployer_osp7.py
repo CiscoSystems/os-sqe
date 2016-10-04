@@ -1,10 +1,6 @@
 from lab.deployers import Deployer
 
 
-class ErrorDeployerOSP7(Exception):
-    pass
-
-
 class DeployerOSP7(Deployer):
 
     def sample_config(self):
@@ -16,10 +12,8 @@ class DeployerOSP7(Deployer):
                 }
 
     def __init__(self, config):
-        import os
         from netaddr import IPNetwork
         import requests
-        from lab.with_config import CONFIG_DIR
 
         super(DeployerOSP7, self).__init__(config=config)
 
@@ -35,8 +29,7 @@ class DeployerOSP7(Deployer):
         self.director_server = None
         self.images_dir = 'images'
 
-        with open(os.path.join(CONFIG_DIR, 'osp7', 'undercloud_conf.template')) as f:
-            self.undercloud_config_template = f.read()
+        self.undercloud_config_template = self.read_config_from_file(config_path='undercloud_conf.template', directory='osp7', is_as_string=True)
 
     def __wget_images(self):
         images = {'discovery-ramdisk-7.0.0-32.tar': 'd1ddf17d68c36d8dd6ff4083018bd530a79baa29008db8cd4eb19a09e038d0df',
@@ -44,26 +37,26 @@ class DeployerOSP7(Deployer):
                   'overcloud-full-7.0.0-32.tar': '33c08823e459f19df49b8a997637df6029337113fd717e4bc9119965c40dee94'
                   }
 
-        for file_name, checksum in images.iteritems():
-            self.wget_file(url=self.images_url + '/' + file_name, to_directory=self.images_dir, checksum=checksum, server=self.director_server)
-            self.run(command='tar -xf {}'.format(file_name), in_directory=self.images_dir, server=self.director_server)
-        self.run(command='source ../stackrc && openstack overcloud image upload', in_directory=self.images_dir, server=self.director_server)
+        for file_name, checksum in images.items():
+            self.director_server.wget_file(url=self.images_url + '/' + file_name, to_directory=self.images_dir, checksum=checksum)
+            self.director_server.exe(command='tar -xf {}'.format(file_name), in_directory=self.images_dir)
+        self.director_server.exe(command='source ../stackrc && openstack overcloud image upload', in_directory=self.images_dir)
 
     def __create_user_stack(self):
         new_username = 'stack'
 
-        if not self.run(command='grep {0} /etc/passwd'.format(new_username), server=self.director_server, warn_only=True):
-            encrypted_password = self.run(command='openssl passwd -crypt {0}'.format(self.director_server.password), server=self.director_server)
-            self.run(command='sudo adduser -p {0} {1}'.format(encrypted_password, new_username), server=self.director_server)
-            self.run(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username), server=self.director_server)
-            self.run(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username), server=self.director_server)
+        if not self.director_server.exe(command='grep {0} /etc/passwd'.format(new_username), warn_only=True):
+            encrypted_password = self.director_server.exe(command='openssl passwd -crypt {0}'.format(self.director_server.password))
+            self.director_server.exe(command='sudo adduser -p {0} {1}'.format(encrypted_password, new_username))
+            self.director_server.exe(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
+            self.director_server.exe(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
 
         self.director_server.username = new_username
 
     def __hostname_and_etc_hosts(self):
-        hostname = self.run(command='hostname', server=self.director_server)
-        if not self.run(command='grep {0} /etc/hosts'.format(hostname), server=self.director_server, warn_only=True):
-            self.run(command='sudo echo 127.0.0.1\t{0} >> /etc/hosts'.format(hostname), server=self.director_server)
+        hostname = self.director_server.exe(command='hostname')
+        if not self.director_server.exe(command='grep {0} /etc/hosts'.format(hostname), warn_only=True):
+            self.director_server.exe(command='sudo echo 127.0.0.1\t{0} >> /etc/hosts'.format(hostname))
 
     def __subscribe_and_install(self):
         repos_to_enable = ['--enable=rhel-7-server-rpms',
@@ -126,7 +119,7 @@ class DeployerOSP7(Deployer):
         results = self.director_server.exe(command='source stackrc && ironic node-list').split('\n')
         uuids = [line.split()[1] for line in results if line.startswith('+') or line.startswith('| UUID')]
         if len(uuids) < n_controls:
-            raise ErrorDeployerOSP7('not enough bare-metal nodes to deploy {0} controllers'.format(n_controls))
+            raise ValueError('not enough bare-metal nodes to deploy {0} controllers'.format(n_controls))
 
         n_computes = len(uuids) - n_controls
 
@@ -151,14 +144,13 @@ class DeployerOSP7(Deployer):
     def __assign_ips_to_user(self):
         for line in self.director_server.exe(command='source stackrc && nova list').split('\n'):
             ip_on_pxe_int = line
-            iface_on_user = self.director_server.exe("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {print $2}'".format(ip_on_pxe_int=ip_on_pxe_int))
+            iface_on_user = self.director_server.exe("ssh heat-admin@{ip_on_pxe_int} /usr/sbin/ip -o l | awk '/:aa:/ {{print $2}}'".format(ip_on_pxe_int=ip_on_pxe_int))
             iface_on_user.strip(':')
-            self.director_server.exe("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {iface_on_user}".format(ip_on_pxe_int=ip_on_pxe_int))
+            self.director_server.exe("ssh heat-admin@{ip_on_pxe_int} sudo ip a a 10.23.230.135/27 dev {{iface_on_user}}".format(ip_on_pxe_int=ip_on_pxe_int))
 
     def __create_overcloud_config_and_template(self, servers):
         import json
-        import os
-        from lab.with_config import read_config_from_file, CONFIG_DIR
+        from lab.with_config import read_config_from_file
 
         config = {'nodes': []}
         mac_profiles = []
@@ -184,7 +176,7 @@ class DeployerOSP7(Deployer):
         self.director_server.get(remote_path='overcloud.json', local_path='overcloud.json')
 
         yaml_name = 'networking-cisco-environment.yaml'
-        config_tmpl = read_config_from_file(yaml_path=yaml_name, directory='osp7', is_as_string=True)
+        config_tmpl = read_config_from_file(config_path=yaml_name, directory='osp7', is_as_string=True)
         config = config_tmpl.format(network_ucsm_ip=ucsm_ip, network_ucsm_username=ucsm_username, network_ucsm_password=ucsm_password,
                                     network_ucsm_host_list=','.join(mac_profiles))
         self.director_server.r_put_string_as_file_in_dir(string_to_put=config, file_name=yaml_name, in_directory='templates')

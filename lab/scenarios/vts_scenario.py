@@ -10,7 +10,7 @@ class VtsScenario(Worker):
         self._build_node = self._lab.get_director()
 
     def __repr__(self):
-        return u'scenario=VtsScenario'
+        return u'worker=VtsScenario'
 
     def loop_worker(self):
         from lab.nodes.lab_server import LabServer
