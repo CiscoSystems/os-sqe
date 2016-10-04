@@ -304,7 +304,7 @@ class CimcDirector(CimcServer):
     def r_get_version(self):
         return self.exe('cat /etc/cisco-mercury-release')
 
-    def r_collect_information(self, regex):
+    def r_collect_logs(self, regex):
         body = ''
         for cmd in [self._form_log_grep_cmd(log_files='/var/log/mercury/installer/*', regex=regex)]:
             ans = self.exe(command=cmd, is_warn_only=True)

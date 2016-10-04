@@ -222,13 +222,15 @@ router bgp {{ bgp_asn }}
 
         return cfg_body, net_part
 
-    def r_collect_information(self, regex):
-        body = ''
+    def r_collect_logs(self, regex):
+        logs = ''
         for cmd in [self._form_log_grep_cmd(log_files='/var/log/sr/*', regex=regex)]:
             ans = self.cmd(cmd=cmd, is_xrvr=False, is_warn_only=True)
-            body += self._format_single_cmd_output(cmd=cmd, ans=ans)
-        body += self._format_single_cmd_output(cmd='show running config', ans=self.xrvr_show_running_config())
-        return body
+            logs += self._format_single_cmd_output(cmd=cmd, ans=ans)
+        return logs
+
+    def r_collect_config(self):
+        return self._format_single_cmd_output(cmd='show running config', ans=self.xrvr_show_running_config())
 
     def r_xrnc_set_mtu(self):
         self.cmd('sudo ip l s dev br-underlay mtu 1400', is_xrvr=False)  # https://cisco.jiveon.com/docs/DOC-1455175 step 12 about MTU

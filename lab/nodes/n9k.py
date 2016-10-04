@@ -351,10 +351,8 @@ class Nexus(LabNode):
             result[dic['interface']]['name'] = dic.get('name', '')
         return result
 
-    def n9_save_running_config(self):
-        body = self.cmd(commands=['sh run'], method='cli_ascii')['result']['msg']
-        self.log_to_artifact(name='{}-running-config.txt'.format(self.get_id()), body=body)
-        return body
+    def n9_show_running_config(self):
+        return self.cmd(commands=['sh run'], method='cli_ascii')['result']['msg']
 
     def n9_show_vpc(self):
         ans = self.cmd(['sh vpc'])
@@ -412,3 +410,6 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'router bgp 23', 'router-id {}'.format(this_switch_bgp_nei_ip), 'address-family ipv4 unicast', 'address-family l2vpn evpn', 'retain route-target all',
                   'neighbor {}'.format(xrvr_bgp_ips[0]), 'remote-as 23', 'update-source Vlan{}'.format(tenant_vlan_id), 'address-family l2vpn evpn', 'send-community both',
                   'neighbor {}'.format(xrvr_bgp_ips[1]), 'remote-as 23', 'update-source Vlan{}'.format(tenant_vlan_id), 'address-family l2vpn evpn', 'send-community both'], timeout=60)
+
+    def r_collect_config(self):
+        return self._format_single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())

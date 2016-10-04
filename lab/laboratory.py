@@ -386,15 +386,18 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             node.r_border_leaf()
 
     def r_collect_information(self, regex, comment):
-        body = ''
-
+        logs = 'LOGS:\n'
+        configs = '\n\nCONFIGS:\n'
         cloud_version, vts_version = self.r_get_version()
         self.log_to_artifact(name='{}-version.txt'.format(self), body='Version={}\n{}'.format(cloud_version, vts_version))
         for node in self.get_nodes_by_class():
-            if 'r_collect_information' in dir(node):
-                body += node.r_collect_information(regex=regex)
+            if hasattr(node, 'r_collect_logs'):
+                logs += node.r_collect_logs(regex=regex)
+            if hasattr(node, 'r_collect_config'):
+                configs += node.r_collect_config()
         addon = '-' + '-'.join(comment.split()) if comment else ''
-        self.log_to_artifact(name='{}{}.txt'.format(self, addon), body=body)
+        self.log_to_artifact(name='lab-{}{}.txt'.format(self, addon), body=logs + configs)
+        self.log_to_artifact(name='configs-{}{}.txt'.format(self, addon), body=configs)
 
     def r_get_version(self):
         cloud_version = self.get_director().r_get_version()

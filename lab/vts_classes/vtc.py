@@ -354,7 +354,7 @@ class Vtc(LabServer):
                 return False
         return True
 
-    def r_collect_information(self, regex):
+    def r_collect_logs(self, regex):
         body = ''
         for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex=regex), 'cat /var/log/ncs/localhost\:8888.access']:
             ans = self.exe(cmd, is_warn_only=True)
@@ -440,7 +440,7 @@ class Vtc(LabServer):
             xrvrs = self.r_vtc_get_xrvrs()
             if not xrvrs:
                 return False
-            body = self.r_collect_information(regex='ERROR')
+            body = self.r_collect_logs(regex='ERROR')
             names_in_body = map(lambda x: 'POST /api/running/devices/device/{}/vts-sync-xrvr/_operations/sync HTTP'.format(x.get_id()) in body, xrvrs)
             return all(names_in_body)
         except RuntimeError:

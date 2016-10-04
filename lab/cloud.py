@@ -318,7 +318,7 @@ export OS_AUTH_URL={end_point}
         compute_node = Server(ip=instance_details['os-ext-srv-attr:host'], username='root', password='cisco123')
         compute_node.exe(command='grep {instance_id} | grep -i error'.format(instance_id=instance_details['id']))
 
-    def r_collect_information(self, regex, comment):
+    def r_collect_logs(self, regex, comment):
         try:
             hosts = self.os_host_list()
             body = ''
@@ -345,7 +345,7 @@ export OS_AUTH_URL={end_point}
         return self.os_image_wait(name)
 
     def os_image_analyse_problem(self, image):
-        self.r_collect_information(regex=image['Name'], comment='image problem')
+        self.r_collect_logs(regex=image['Name'], comment='image problem')
         raise RuntimeError('image {} failed'.format(image['name']))
 
     def os_image_delete(self, name):
