@@ -324,7 +324,7 @@ export OS_AUTH_URL={end_point}
             body = ''
             for host in sorted(hosts):
                 for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex=regex)]:
-                    ans = self.mediator.exe('ssh -o StrictHostKeyChecking=no {} {}'.format(host, cmd), is_warn_only=True)
+                    ans = self.mediator.exe("ssh -o StrictHostKeyChecking=no {} '{}'".format(host, cmd), is_warn_only=True)
                     body += self._format_single_cmd_output(cmd=cmd, ans=ans, node=host)
         except:
             body = 'This cloud is not active'
