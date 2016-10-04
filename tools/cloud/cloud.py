@@ -8,7 +8,7 @@ from domain import VM
 from cloudtools import erase_net, erase_pool, erase_vm, remove_all_imgs, shutdown_vm
 
 
-class Lab:
+class OldLab:
     nets = {}
     report = {}
 

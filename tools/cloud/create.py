@@ -3,7 +3,7 @@ import os
 import yaml
 
 from config import opts, ConfigError, TOPO_PATH
-from cloud import Lab
+from cloud import OldLab
 
 
 def main():
@@ -19,7 +19,7 @@ def main():
 
     cloud_img = os.path.abspath(opts.cloud_img_path)
 
-    lab = Lab(
+    lab = OldLab(
         opts.lab_id,
         topo_config,
         opts.img_dir,
