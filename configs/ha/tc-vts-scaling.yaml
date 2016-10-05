@@ -9,6 +9,6 @@
 - class: lab.scenarios.vts_scenario.VtsScenario
   how-many-networks: 3
   how-many-servers: 20
-  what-to-run-inside: iperf -n 100M  -M 9000
+  what-to-run-inside: iperf -n 10G  -M 9000
   n_repeats: 1
   delay: 10
