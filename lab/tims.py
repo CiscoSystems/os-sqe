@@ -74,17 +74,10 @@ class Tims(WithLogMixIn):
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
 
-    def publish_result_to_tims(self, test_cfg_path, mercury_version, vts_version, lab, n_exceptions, description):
-        if n_exceptions > 0:
-            status = 'failed'
-        elif n_exceptions == 0:
-            status = 'passed'
-        else:
-            status = 'pending'
-
+    def publish_result_to_tims(self, test_cfg_path, mercury_version, vts_version, lab, exceptions, run_info=''):
         result_template = '''
         <Result>
-                <Title><![CDATA[Result for {test_cfg_path}]]></Title>
+                <Title><![CDATA[Result for {test_cfg_path} {run_info}]]></Title>
                 <Description><![CDATA[{description}]]></Description>
                 <Owner>
                         <UserID>{username}</UserID>
@@ -110,7 +103,10 @@ class Tims(WithLogMixIn):
         </Result>
         '''
 
-        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description='# exceptions={}\n{}\n'.format(n_exceptions, vts_version, description), mercury_version=mercury_version, status=status, lab_id=lab)
+        status = 'passed' if len(exceptions) == 0 else 'failed'
+        description = 'VTS version:\n{}\nNumber of excpetions {}\n{}'.format(vts_version, len(exceptions), '\n'.join(map(str, exceptions)))
+
+        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, run_info=run_info, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
         report_id = ans.rsplit('Tcbr', 1)[-1].split('<')[0]
         report_url = 'http://tims/warp.cmd?ent=Tcbr{}'.format(report_id)
@@ -128,5 +124,5 @@ class Tims(WithLogMixIn):
         test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
 
         for test_cfg_path in test_cfg_pathes:
-            n_exceptions = {'n_exceptions': 1 if regex_to_fail in test_cfg_path else 0}
-            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, vts_version=vts_version, lab='FAKE', n_exceptions=n_exceptions, description='')
+            exceptions = ['exception 1'] if regex_to_fail in test_cfg_path else []
+            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, vts_version=vts_version, lab='FAKE', exceptions=exceptions)

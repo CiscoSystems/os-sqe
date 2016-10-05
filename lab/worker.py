@@ -9,7 +9,18 @@ class Worker(object):
         self._kwargs = kwargs
         self._cloud = cloud
         self._lab = lab
+        self._log = None
         self._ip = kwargs.get('ip')
+        self._delay = self._kwargs.get('delay', 0)
+        self._period = self._kwargs.get('period', 0)
+        self._duration = self._kwargs.get('duration')
+        self._n_repeats = self._kwargs.get('n_repeats')
+        if self._duration and self._n_repeats:
+            raise ValueError('{}: specifies both duration and n_repeats. Decide which one you want to use.'.format(self._kwargs))
+        if self._duration is None and self._n_repeats is None:
+            raise ValueError('{}: specifies neither duration no n_repeats. Decide which one you want to use.'.format(self._kwargs))
+        if self._n_repeats and self._n_repeats < 1:
+            raise ValueError('{}: n_repeats should >=1'.format(self._kwargs))
         if self._ip:
             if validators.ipv4(self._ip):
                 try:
@@ -22,46 +33,36 @@ class Worker(object):
     def set_is_debug(self, is_debug):
         self._is_debug = is_debug
 
-    # noinspection PyBroadException
-    # noinspection PyAttributeOutsideInit
     def start_worker(self):
         import time
         from lab.logger import Logger
 
-        self._log = Logger(name=str(self))
-        delay = self._kwargs.get('delay', 0)
-        duration = self._kwargs.get('duration')
-        n_repeats = self._kwargs.get('n_repeats')
-        if duration and n_repeats:
-            raise ValueError('{}: specifies both duration and n_repeats. Decide which one you want to use.'.format(self._kwargs))
-        if duration is None and n_repeats is None:
-            raise ValueError('{}: specifies neither duration no n_repeats. Decide which one you want to use.'.format(self._kwargs))
-        if n_repeats and n_repeats < 1:
-            raise ValueError('{}: n_repeats should >=1'.format(self._kwargs))
-        period = self._kwargs.get('period', 0)
+        results = {'name': str(self), 'exceptions': []}
 
-        if delay:
-            self._log.info('delay by {0} secs...'.format(delay))
-        if not self._is_debug:
-            time.sleep(delay)
-
-        self._log.info('status=started arguments={0}'.format(self._kwargs))
-        results = {'name': str(self), 'n_exceptions': 0, 'is_success': True}
-        if self._is_debug:
-            return results  # don't actually run anything to check that infrastructure works
+        # noinspection PyBroadException
         try:
-            if duration:
+            self._log = Logger(name=str(self))
+            self._log.info('status=started arguments={0}'.format(self._kwargs))
+            self.setup_worker()
+            if self._delay:
+                self._log.info('delay by {0} secs...'.format(self._delay))
+            if not self._is_debug:
+                time.sleep(self._delay)
+
+            if self._is_debug:
+                return results  # don't actually run anything to check that infrastructure works
+            if self._duration:
                 start_time = time.time()
-                end_time = start_time + duration
+                end_time = start_time + self._duration
                 while time.time() < end_time:
                     self.loop_worker()
-                    time.sleep(period)
-            elif n_repeats:
-                for _ in range(n_repeats):
+                    time.sleep(self._period)
+            elif self._n_repeats:
+                for _ in range(self._n_repeats):
                     self.loop_worker()
-                    time.sleep(period)
-        except:
-            results['n_exceptions'] += 1
+                    time.sleep(self._period)
+        except Exception as ex:
+            results['exceptions'].append(ex)
             self._log.exception('EXCEPTION')
 
         self._log.info('status=finished arguments={0}'.format(self._kwargs))
