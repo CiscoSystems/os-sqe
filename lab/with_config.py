@@ -13,11 +13,10 @@ class WithConfig(object):
     def sample_config(self):
         raise NotImplementedError('class {0} do not implement method sample_config()'.format(type(self)))
 
-    @staticmethod
-    def verify_config(sample_config, config):
+    def verify_config(self, sample_config, config):
         from lab.config_verificator import verify_config
 
-        verify_config(sample_config=sample_config, config=config)
+        verify_config(owner=self, sample_config=sample_config, config=config)
 
     @staticmethod
     def read_config_from_file(config_path, directory='', is_as_string=False):

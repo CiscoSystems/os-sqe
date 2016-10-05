@@ -1,22 +1,22 @@
-def verify_config(sample_config, config, current_key=None):
+def verify_config(owner, sample_config, config, current_key=None):
     """Verify that config corresponds to sample_config"""
     import validators
 
     def raise_exception(message):
-        raise ValueError(message)
+        raise ValueError('in {} config {}\nsample:   {}\nprovided: {}'.format(owner, message, sorted(sample_config.items()), sorted(config.items())))
 
     if isinstance(sample_config, list):
         if not len(config):
             raise_exception('empty_list')
         for element in config:
-            verify_config(sample_config=sample_config[0], config=element, current_key=current_key)
+            verify_config(owner=owner, sample_config=sample_config[0], config=element, current_key=current_key)
     elif isinstance(sample_config, dict):
         for sample_key, sample_value in sample_config.items():
             if sample_key not in config:
-                raise_exception('Key "{}" not in config'.format(sample_key))
+                raise_exception('key "{}" is not provided'.format(sample_key))
             if config[sample_key] is None:
                 raise_exception('Value of "{}" is empty'.format(sample_key))
-            verify_config(sample_config=sample_value, config=config[sample_key], current_key=sample_key)
+            verify_config(owner=owner, sample_config=sample_value, config=config[sample_key], current_key=sample_key)
     else:
         # from this point config and sample_config start to be simple values
         if type(sample_config) is str:

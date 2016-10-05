@@ -1,4 +1,7 @@
-class Tims(object):
+from lab.with_log import WithLogMixIn
+
+
+class Tims(WithLogMixIn):
     FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'PERFOMANCE AND SCALE': 'Tcbr1840f'}
     TIMS_PROJECT_ID = 'Tcbr1p'
 
@@ -109,7 +112,9 @@ class Tims(object):
         '''
 
         body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
-        self._api_post(operation=self._OPERATION_ENTITY, body=body)
+        ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
+        tims_id = ans.rsplit('Tcbr', 1)[-1].split('<')[0]
+        self.log('Published {} to http://tims/warp.cmd?ent=Tcbr{}'.format(test_cfg_path, tims_id))
 
     def simulate(self, lab_cfg_path, regex_to_fail):
         from lab import with_config

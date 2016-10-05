@@ -62,9 +62,9 @@ class Worker(object):
                     time.sleep(period)
         except:
             results['n_exceptions'] += 1
-            results['is_success'] = False
             self._log.exception('EXCEPTION')
 
+        self._log.info('status=finished arguments={0}'.format(self._kwargs))
         return results
 
     @abc.abstractmethod

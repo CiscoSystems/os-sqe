@@ -8,7 +8,7 @@ def starter(worker):
 
 class RunnerHA(Runner):
     def sample_config(self):
-        return {'cloud': 'cloud name', 'task-yaml': 'task-ha.yaml', 'is-debug': False, 'is-parallel': True}
+        return {'cloud': 'name', 'task-yaml': 'task-ha.yaml', 'is-debug': False, 'is-parallel': True, 'is-report-to-tims': True}
 
     def __init__(self, config, version):
         super(RunnerHA, self).__init__(config=config)
@@ -17,17 +17,14 @@ class RunnerHA(Runner):
         self._task_body = self.read_config_from_file(config_path=self._task_yaml_path, directory='ha')
         self._is_debug = config['is-debug']
         self._is_parallel = config['is-parallel']
+        self._is_report_to_tims = config['is-report-to-tims']
         self._version = version
 
         if not self._task_body:
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
 
-    def __repr__(self):
-        import os
-
-        return u'{}'.format(os.path.basename(self._task_yaml_path))
-
     def execute(self, clouds, servers):
+        from lab.tims import Tims
         import importlib
         import multiprocessing
         import fabric.network
@@ -55,6 +52,7 @@ class RunnerHA(Runner):
             except ImportError:
                 raise ValueError('{0} failed to import'.format(path_to_module))
 
+        self.log('running {} {} debug in {}'.format(self._task_yaml_path, 'with' if self._is_debug else 'without', 'parallel' if self._is_parallel else 'sequence'))
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
 
         if self._is_parallel:
@@ -66,4 +64,10 @@ class RunnerHA(Runner):
         n_exceptions = 0
         for result in results:
             n_exceptions += result.get('n_exceptions', 0)
+
+        if self._is_report_to_tims:
+            t = Tims()
+            mercury_version, vts_version = lab.r_get_version()
+            t.publish_result_to_tims(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, vts_version=vts_version, lab=lab, n_exceptions=n_exceptions)
+
         return {'n_exceptions': n_exceptions}
