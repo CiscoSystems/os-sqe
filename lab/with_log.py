@@ -44,3 +44,11 @@ class WithLogMixIn(object):
             lab_logger.exception(message)
         else:
             raise RuntimeError('Specified "{}" logger level is not known'.format(level))
+
+    def log_to_slack(self, message):
+        import requests
+        import json
+
+        data = json.dumps({"channel": "#autoreports", "username": "leeroy", "text": '{}: {}'.format(self, message)})
+        requests.post(url='https://hooks.slack.com/services/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', data=data)
+        self.log('{} and reported to slack autoreports channel'.format(message))

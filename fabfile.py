@@ -52,6 +52,7 @@ def cmd(config_path):
                 elif len(methods_in_filter) > 1:
                     lab_logger.info('input  "{}" matches:\n{}'.format(input_method_name, '\n'.join(methods_in_filter)))
                     continue
+            lab_logger.info('executing {}'.format(input_method_name))
             method_to_execute = getattr(device, input_method_name)
             parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
             arguments = []

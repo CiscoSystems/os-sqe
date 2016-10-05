@@ -74,8 +74,7 @@ class Tims(WithLogMixIn):
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
 
-    def publish_result_to_tims(self, test_cfg_path, mercury_version, vts_version, lab, n_exceptions):
-        description = 'VTS version: {} Mercury version: {} number of exceptions {}'.format(vts_version, mercury_version, n_exceptions)
+    def publish_result_to_tims(self, test_cfg_path, mercury_version, vts_version, lab, n_exceptions, description):
         if n_exceptions > 0:
             status = 'failed'
         elif n_exceptions == 0:
@@ -111,32 +110,23 @@ class Tims(WithLogMixIn):
         </Result>
         '''
 
-        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
+        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description='# exceptions={}\n{}\n'.format(n_exceptions, vts_version, description), mercury_version=mercury_version, status=status, lab_id=lab)
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
-        tims_id = ans.rsplit('Tcbr', 1)[-1].split('<')[0]
-        self.log('Published {} to http://tims/warp.cmd?ent=Tcbr{}'.format(test_cfg_path, tims_id))
+        report_id = ans.rsplit('Tcbr', 1)[-1].split('<')[0]
+        report_url = 'http://tims/warp.cmd?ent=Tcbr{}'.format(report_id)
+        self.log('Published {} to {}'.format(test_cfg_path, report_url))
+        return report_url
 
     def simulate(self, lab_cfg_path, regex_to_fail):
         from lab import with_config
         from lab.laboratory import Laboratory
 
         lab = Laboratory(config_path=lab_cfg_path)
+        mercury_version, vts_version = lab.r_get_version()
 
         available_tc = with_config.ls_configs(directory='ha')
         test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
 
-        results = {'lab': lab}
         for test_cfg_path in test_cfg_pathes:
-            results[test_cfg_path] = {'n_exceptions': 1 if regex_to_fail in test_cfg_path else 0}
-
-        self.publish_results_to_tims(results=results)
-
-    def publish_results_to_tims(self, results):
-        """ Publish all results to TIMS.
-        :param results: dictionary in the form {'': {'n_exceptions': 0, }}
-        :return:
-        """
-        lab = results.pop('lab')
-        mercury_version, vts_version = lab.r_get_version()
-        for test_cfg_path, result in results.items():
-            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, vts_version=vts_version, lab=lab, n_exceptions=result.get('n_exceptions', 0))
+            n_exceptions = {'n_exceptions': 1 if regex_to_fail in test_cfg_path else 0}
+            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, vts_version=vts_version, lab='FAKE', n_exceptions=n_exceptions, description='')

@@ -35,6 +35,9 @@ class RunnerHA(Runner):
         except IndexError:
             raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self._cloud_name))
 
+        type_of_run = ' {} {} debug in {}'.format(self._task_yaml_path, 'with' if self._is_debug else 'without', 'parallel' if self._is_parallel else 'sequence')
+        self.log('Running ' + type_of_run)
+
         workers_to_run = []
         path_to_module = 'Before reading task body'
         for block in self._task_body:
@@ -52,7 +55,6 @@ class RunnerHA(Runner):
             except ImportError:
                 raise ValueError('{0} failed to import'.format(path_to_module))
 
-        self.log('running {} {} debug in {}'.format(self._task_yaml_path, 'with' if self._is_debug else 'without', 'parallel' if self._is_parallel else 'sequence'))
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
 
         if self._is_parallel:
@@ -65,9 +67,12 @@ class RunnerHA(Runner):
         for result in results:
             n_exceptions += result.get('n_exceptions', 0)
 
+        tims_report = ''
         if self._is_report_to_tims:
             t = Tims()
             mercury_version, vts_version = lab.r_get_version()
-            t.publish_result_to_tims(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, vts_version=vts_version, lab=lab, n_exceptions=n_exceptions)
+            report_url = t.publish_result_to_tims(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, vts_version=vts_version, lab=lab, n_exceptions=n_exceptions, description=type_of_run)
+            tims_report = 'and reported to {}'.format(report_url)
+        self.log_to_slack(message=' {} finished with # exceptions={} {}'.format(type_of_run, n_exceptions, tims_report))
 
         return {'n_exceptions': n_exceptions}
