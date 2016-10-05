@@ -238,7 +238,7 @@ export OS_AUTH_URL={end_point}
             phys_net_addon = '--provider:physical_network={phys_net} --provider:network_type=vlan --provider:segmentation_id={vlan}'.format(phys_net=self._provider_physical_network, vlan=vlan+i) if vlan else ''
 
             net_line = 'openstack network create {name} {addon} -f shell'.format(name=net_names[i], addon=phys_net_addon)
-            cidr, gw, start, stop = cidrs[i], cidrs[i][1], cidrs[i][10], cidrs[i][200]
+            cidr, gw, start, stop = cidrs[i], cidrs[i][1], cidrs[i][11], cidrs[i][200]
             sub_line = 'neutron subnet-create {n_n} {cidr} --name {s_n} --gateway {gw} --dns-nameserver {dns} {dhcp} --allocation-pool start={ip1},end={ip2} -f shell'.format(n_n=net_names[i],
                                                                                                                                                                               s_n=subnet_names[i],
                                                                                                                                                                               cidr=cidr, gw=gw, dns=self._dns,
