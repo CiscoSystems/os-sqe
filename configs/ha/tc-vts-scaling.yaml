@@ -11,3 +11,4 @@
   how-many-servers: 20
   what-to-run-inside: iperf -n 100M  -M 9000
   n_repeats: 1
+  delay: 10

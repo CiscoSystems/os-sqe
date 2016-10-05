@@ -10,7 +10,7 @@ class VtsMonitor(Worker):
         from lab.vts_classes.vtc import Vtc
 
         lab = self._cloud.mediator.lab()
-        self._vtc = Vtc(node_id='Vtc{}'.format(self._ip), role='vtc', lab=None, hostname='NoDefined') if self._ip else lab.get_nodes_by_class(Vtc)[0]
+        self._vtc = Vtc(node_id='Vtc{}'.format(self._ip), role='vtc', lab=None) if self._ip else lab.get_nodes_by_class(Vtc)[0]
         if self._ip:
             self._vtc.set_oob_creds(ip=self._ip, username=self._username, password=self._password)
         self._vtfs = self._vtc.r_vtc_get_vtfs()
@@ -18,3 +18,6 @@ class VtsMonitor(Worker):
 
     def loop_worker(self):
         self._log.info('cluster={}'.format(self._vtc.r_vtc_show_ha_cluster_members()))
+        self._log.info('networks={}'.format(self._vtc.r_vtc_show_openstack_network()))
+        self._log.info('subnetworks={}'.format(self._vtc.r_vtc_show_openstack_subnet()))
+        self._log.info('ports={}'.format(self._vtc.r_vtc_show_openstack_port()))
