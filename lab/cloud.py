@@ -298,6 +298,7 @@ export OS_AUTH_URL={end_point}
     def wait_instances_ready(self, names=None, status='ACTIVE'):
         import time
 
+        n_of_attempts = 0
         while True:
             all_instances = self.os_server_list()
             our_instances = filter(lambda x: x['Name'] in names, all_instances) if names else all_instances
@@ -309,7 +310,10 @@ export OS_AUTH_URL={end_point}
                 for instance in instances_in_error:
                     self.analyse_instance_problems(instance)
                 raise RuntimeError('These instances failed: {0}'.format(instances_in_error))
+            if n_of_attempts == 10:
+                raise RuntimeError('Instances {} are not active after {} secs'.format(our_instances, 30 * n_of_attempts))
             time.sleep(30)
+            n_of_attempts += 1
 
     def analyse_instance_problems(self, instance):
         from lab.server import Server
