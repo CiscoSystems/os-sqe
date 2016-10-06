@@ -1,4 +1,16 @@
+import abc
+from lab.with_config import WithConfig
+from lab.with_log import WithLogMixIn
 from lab.with_status import WithStatusMixIn
+
+
+class LabWorker(WithConfig, WithLogMixIn):
+    @abc.abstractmethod
+    def execute(self, servers_and_clouds):
+        raise NotImplemented
+
+    def __repr__(self):
+        return u'{}'.format(type(self).__name__)
 
 
 class BaseLab(WithStatusMixIn):
@@ -13,8 +25,8 @@ class BaseLab(WithStatusMixIn):
         self.deployers = []
         self.runners = []
 
-        self.servers = []
-        self.clouds = []
+        self._servers_and_clouds = {'servers': [], 'clouds': []}
+        self._results = []
 
         config = read_config_from_file(config_path=yaml_name, directory='run')
         for section_name, class_path_vs_config in sorted(config.items()):
@@ -42,23 +54,14 @@ class BaseLab(WithStatusMixIn):
         import time
         from lab.logger import lab_logger
 
-        results = {}
         self.status()
-        for provider in self.providers:
+
+        separator = 100 * '-'
+        for obj in self.providers + self.deployers + self.runners:
             start_time = time.time()
-            lab_logger.info('Running {}'.format(provider))
-            self.servers.extend(provider.wait_for_servers())
-            results[str(provider)] = 'spent_time={0}'.format(time.time() - start_time)
-        for deployer in self.deployers:
-            lab_logger.info('Running {}'.format(deployer))
-            start_time = time.time()
-            cloud = deployer.wait_for_cloud(self.servers)
-            self.clouds.append(cloud)
-            results[str(deployer)] = {'spent_time': time.time() - start_time, 'status': True}
-        for runner in self.runners:
-            lab_logger.info('Running {}'.format(runner))
-            start_time = time.time()
-            res = runner.execute(self.clouds, self.servers)
-            res['spent_time'] = time.time() - start_time
-            results[str(runner)] = res
-        return results
+            lab_logger.info(separator)
+            lab_logger.info('Call {}.execute()...'.format(obj))
+            lab_logger.info(separator)
+            output = obj.execute(self._servers_and_clouds)
+            self._results.append({str(obj): {'spent_time': time.time() - start_time, 'output': output}})
+        return self._results

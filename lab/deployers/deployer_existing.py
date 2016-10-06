@@ -1,7 +1,7 @@
-from lab.deployers import Deployer
+from lab.base_lab import LabWorker
 
 
-class DeployerExisting(Deployer):
+class DeployerExisting(LabWorker):
 
     def sample_config(self):
         return {'cloud': 'arbitrary name', 'hardware-lab-config': 'yaml which describes the lab'}
@@ -58,6 +58,5 @@ class DeployerExisting(Deployer):
 
         return Cloud.from_openrc(name=self._cloud_name, mediator=director, openrc_as_string=openrc_body)
 
-    def wait_for_cloud(self, list_of_servers):
-        cloud = self.deploy_cloud(list_of_servers)
-        return cloud
+    def execute(self, servers_and_clouds):
+        servers_and_clouds['clouds'].append(self.deploy_cloud(servers_and_clouds['servers']))

@@ -74,7 +74,7 @@ def cmd(config_path):
 
 
 @task
-def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=False, is_tims=True):
+def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True):
     """fab ha:g10,tc-vts\t\tRun all VTS tests on lab 'g10'
         :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha

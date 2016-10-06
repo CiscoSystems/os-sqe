@@ -1,11 +1,11 @@
-from lab.runners import Runner
+from lab.base_lab import LabWorker
 
 
 def starter(worker):
     return worker.start_worker()
 
 
-class RunnerHA(Runner):
+class RunnerHA(LabWorker):
     def sample_config(self):
         return {'cloud': 'name', 'task-yaml': 'task-ha.yaml', 'is-debug': False, 'is-parallel': True, 'is-report-to-tims': True}
 
@@ -22,15 +22,15 @@ class RunnerHA(Runner):
         if not self._task_body:
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
 
-    def execute(self, clouds, servers):
+    def execute(self, servers_and_clouds):
         from lab.tims import Tims
         import importlib
         import multiprocessing
         import fabric.network
 
         try:
-            cloud = filter(lambda x: x.get_name() == self._cloud_name, clouds)[0]
-            lab = servers[0].lab()
+            cloud = filter(lambda x: x.get_name() == self._cloud_name, servers_and_clouds['clouds'])[0]
+            lab = servers_and_clouds['servers'][0].lab()
         except IndexError:
             raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self._cloud_name))
 
