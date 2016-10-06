@@ -1,7 +1,7 @@
 import abc
 
 
-class Worker(object):
+class ParallelWorker(object):
     def __init__(self,  cloud, lab, **kwargs):
         import validators
 

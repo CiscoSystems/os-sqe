@@ -1,7 +1,7 @@
-from lab.worker import Worker
+from lab.parallelworker import ParallelWorker
 
 
-class VtsScenario(Worker):
+class VtsScenario(ParallelWorker):
     # noinspection PyAttributeOutsideInit
     def setup_worker(self):
         self._n_instances = self._kwargs['how-many-servers']

@@ -1,11 +1,11 @@
-from lab.worker import Worker
+from lab.parallelworker import ParallelWorker
 
 
 class XrvrNotSynced(Exception):
     pass
 
 
-class XrvrMonitor(Worker):
+class XrvrMonitor(ParallelWorker):
 
     def setup_worker(self):
         from lab.vts_classes.vtc import Vtc

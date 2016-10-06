@@ -1,7 +1,7 @@
-from lab.worker import Worker
+from lab.parallelworker import ParallelWorker
 
 
-class VtsDisruptor(Worker):
+class VtsDisruptor(ParallelWorker):
 
     def __repr__(self):
         return u'worker=VtsDisruptor'

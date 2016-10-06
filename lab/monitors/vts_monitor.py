@@ -1,7 +1,7 @@
-from lab.worker import Worker
+from lab.parallelworker import ParallelWorker
 
 
-class VtsMonitor(Worker):
+class VtsMonitor(ParallelWorker):
     def __repr__(self):
         return u'worker=VtsMonitor'
 

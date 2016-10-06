@@ -74,4 +74,4 @@ class RunnerHA(LabWorker):
             tims_report = 'and reported to {}'.format(report_url)
         self.log_to_slack(message=' {} finished with # exceptions={} {}'.format(type_of_run, len(exceptions), tims_report))
 
-        return {'n_exceptions': len(exceptions)}
+        return results

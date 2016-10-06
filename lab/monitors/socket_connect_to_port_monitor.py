@@ -1,7 +1,7 @@
-from lab.worker import Worker
+from lab.parallelworker import ParallelWorker
 
 
-class SocketConnectToPort(Worker):
+class SocketConnectToPort(ParallelWorker):
 
     def __repr__(self):
         return u'SocketConnectToPort{}:{}({}s)'.format(self._ip, self._port, self._timeout)

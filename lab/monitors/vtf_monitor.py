@@ -1,11 +1,11 @@
-from lab.worker import Worker
+from lab.parallelworker import ParallelWorker
 
 
 class VtfNotSynced(Exception):
     pass
 
 
-class VtfMonitor(Worker):
+class VtfMonitor(ParallelWorker):
 
     def setup_worker(self):
         from lab.vts_classes.vtc import Vtc

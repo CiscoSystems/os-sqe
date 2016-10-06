@@ -1,7 +1,7 @@
-from lab.worker import Worker
+from lab.parallelworker import ParallelWorker
 
 
-class ServerResume(Worker):
+class ServerResume(ParallelWorker):
     # noinspection PyAttributeOutsideInit
     def setup_worker(self):
         self.name = self._kwargs.get('name', '')
