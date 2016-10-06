@@ -74,10 +74,12 @@ class Tims(WithLogMixIn):
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
 
-    def publish_result_to_tims(self, test_cfg_path, mercury_version, vts_version, lab, exceptions, run_info=''):
+    def publish_result_to_tims(self, test_cfg_path, mercury_version, lab, results):
+        import json
+
         result_template = '''
         <Result>
-                <Title><![CDATA[Result for {test_cfg_path} {run_info}]]></Title>
+                <Title><![CDATA[Result for $I]]></Title>
                 <Description><![CDATA[{description}]]></Description>
                 <Owner>
                         <UserID>{username}</UserID>
@@ -88,6 +90,7 @@ class Tims(WithLogMixIn):
                 </ListFieldValue>
 
                 <Status>{status}</Status>
+
                 <CaseLookup>
                         <TextFieldValue searchoperator="is">
                                 <FieldName>Logical ID</FieldName>
@@ -103,10 +106,9 @@ class Tims(WithLogMixIn):
         </Result>
         '''
 
-        status = 'passed' if len(exceptions) == 0 else 'failed'
-        description = 'VTS version:\n{}\nNumber of excpetions {}\n{}'.format(vts_version, len(exceptions), '\n'.join(map(str, exceptions)))
-
-        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, run_info=run_info, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
+        status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'
+        description = json.dumps(results, indent=4)
+        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
         report_id = ans.rsplit('Tcbr', 1)[-1].split('<')[0]
         report_url = 'http://tims/warp.cmd?ent=Tcbr{}'.format(report_id)
@@ -124,5 +126,5 @@ class Tims(WithLogMixIn):
         test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
 
         for test_cfg_path in test_cfg_pathes:
-            exceptions = ['exception 1'] if regex_to_fail in test_cfg_path else []
-            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, vts_version=vts_version, lab='FAKE', exceptions=exceptions)
+            results = [{'name': 'worker=ParallelWorker', 'input': 'generic input', 'exceptions': [RuntimeError('gernerc error') if regex_to_fail in test_cfg_path else []]}]
+            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, lab='FAKE', results=results)

@@ -7,6 +7,7 @@ class ParallelWorker(object):
 
         self._is_debug = False
         self._kwargs = kwargs
+        self._results = {'name': str(self), 'exceptions': [], 'output': [], 'input': kwargs}
         self._cloud = cloud
         self._lab = lab
         self._log = None
@@ -41,15 +42,13 @@ class ParallelWorker(object):
         import time
         from lab.logger import Logger
 
-        results = {'name': str(self), 'exceptions': [], 'output': []}
-
         # noinspection PyBroadException
         try:
             self._log = Logger(name=str(self))
             self._log.info('status=started arguments={}'.format(self._kwargs))
-            if self._is_debug: # don't actually run anything to check that infrastructure works
-                results['output'].append(self.debug_ouput())
-                return results
+            if self._is_debug:  # don't actually run anything to check that infrastructure works
+                self._results['output'].append(self.debug_output())
+                return self._results
             self.setup_worker()
             if self._delay:
                 self._log.info('delay by {0} secs...'.format(self._delay))
@@ -59,14 +58,14 @@ class ParallelWorker(object):
             for _ in range(self._n_repeats):
                 loop_output = self.loop_worker()
                 if loop_output:
-                    results['output'].append(loop_output)
+                    self._results['output'].append(loop_output)
                 time.sleep(self._period)
         except Exception as ex:
-            results['exceptions'].append(ex)
+            self._results['exceptions'].append(ex)
             self._log.exception('EXCEPTION')
 
         self._log.info('status=finished arguments={0}'.format(self._kwargs))
-        return results
+        return self._results
 
     @abc.abstractmethod
     def setup_worker(self, **kwargs):
@@ -77,5 +76,5 @@ class ParallelWorker(object):
         raise NotImplemented
 
     @staticmethod
-    def debug_ouput():
+    def debug_output():
         return 'Generic debug output'
