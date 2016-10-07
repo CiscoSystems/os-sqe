@@ -4,43 +4,64 @@ from lab.parallelworker import ParallelWorker
 class VtsScenario(ParallelWorker):
     # noinspection PyAttributeOutsideInit
     def setup_worker(self):
-        self._n_instances = self._kwargs['how-many-servers']
+        import collections
+
+        self._n_instances = int(self._kwargs['how-many-servers'])
+        if self._n_instances % 2 != 0:
+            raise ValueError('{}: how-many-servers={} must be even'.format(self, self._n_instances))
+        self._even_server_numbers = [10 + x for x in range(self._n_instances) if x % 2 == 0]
+        self._odd_server_numbers = [10 + x for x in range(self._n_instances) if x % 2 != 0]
+
         self._n_nets = self._kwargs['how-many-networks']
         self._what_to_run_inside = self._kwargs.get('what-to-run-inside')  # if nothing specified - do not run anything in addition to ping
         self._build_node = self._lab.get_director()
+        self._hosts = self._cloud.os_host_list()
+        self._computes = collections.OrderedDict()
+        for i, name in enumerate(sorted([x['Host Name'] for x in self._hosts if x['Service'] == 'compute'])):
+            self._computes[name] = []
+        if len(self._computes) < 2:
+            raise RuntimeError('{}: not possible to run on this cloud, number of compute nodes less then 2'.format(self))
         self._cloud.os_cleanup()
         self._image = self._cloud.os_image_create()
         self._cloud.os_keypair_create()
 
-    def __repr__(self):
-        return u'worker=VtsScenario'
-
     def loop_worker(self):
-        from lab.nodes.lab_server import LabServer
+        from lab.server import Server
 
-        internal_nets = self._cloud.os_network_create(common_part_of_name='internal', class_a=10, how_many=self._n_nets, is_dhcp=False)
+        internal_nets = self._cloud.os_network_create(common_part_of_name='internal', class_a=1, how_many=self._n_nets, is_dhcp=False)
 
-        servers_per_compute_node = {1: [], 2: []}
         all_servers = []
-        for i in range(1, self._n_instances + 1):
-            port_pids = self._cloud.os_port_create(server_name=str(i), on_nets=internal_nets, is_fixed_ip=True)
-            self._log.info('instance={} status=requested'.format(i))
-            server_info = self._cloud.os_server_create(name=str(i), flavor='m1.medium', image_name=self._image['name'], on_ports=port_pids)
-            server = LabServer(node_id='vm{}'.format(i), role='OS-VM', lab='FAKE')
-            server.set_proxy_server(self._build_node)
 
+        even_port_pids = self._cloud.os_ports_create(server_numbers=self._even_server_numbers, on_nets=internal_nets, is_fixed_ip=True)
+        odd_port_pids = self._cloud.os_ports_create(server_numbers=self._odd_server_numbers, on_nets=internal_nets, is_fixed_ip=True)
+
+        self._log.info('instances={} status=requested'.format(self._even_server_numbers))
+        even_server_info = self._cloud.os_servers_create(server_numbers=self._even_server_numbers, flavor='m1.medium', image_name=self._image['name'], zone=self._computes.keys()[0], on_ports=even_port_pids)
+        self._log.info('instances={} status=created'.format(self._even_server_numbers))
+
+        self._log.info('instances={} status=requested'.format(self._odd_server_numbers))
+        odd_server_info = self._cloud.os_servers_create(server_numbers=self._odd_server_numbers, flavor='m1.medium', image_name=self._image['name'], zone=self._computes.keys()[1], on_ports=odd_port_pids)
+        self._log.info('instances={} status=created'.format(self._odd_server_numbers))
+
+        for info in even_server_info + odd_server_info:
+            server = Server(ip=info['ip'], username='admin', password='cisco123')
+            server.set_proxy_server(self._build_node)
+            self._computes[info['zone']].append(server)
             all_servers.append(server)
-            servers_per_compute_node[server_info['compute-node']].append(server)
-            self._log.info('instance={} status=created'.format(i))
 
         for server in all_servers:
-            server.exe('ping -c5 {}'.format(servers_per_compute_node[1][0].get_ssh_ip()))
+            server.exe('ping -c5 {}'.format(all_servers[0].get_ssh_ip()))
 
+        answers = []
         if self._what_to_run_inside.startswith('iperf'):
-            for server in servers_per_compute_node[1]:
+            for i in range(self._n_instances / 2):
+                server = self._computes[0]['servers'][i]
                 server.exe('iperf -s -p 1111 &')
-            for server in servers_per_compute_node[2]:
-                server.exe('{} -c {} -p 1111'.format(self._what_to_run_inside, servers_per_compute_node[1][0].get_ssh_ip()))
+            for i in range(self._n_instances / 2):
+                server = self._computes[1]['servers'][i]
+                ip = self._computes[0]['servers'][i].get_ssh_ip()
+                answers.append(server.exe('{} -c {} -p 1111'.format(self._what_to_run_inside, ip)))
+        return answers
 
     @staticmethod
     def debug_output():

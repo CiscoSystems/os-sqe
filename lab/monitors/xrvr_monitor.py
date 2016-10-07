@@ -23,7 +23,7 @@ class XrvrMonitor(ParallelWorker):
     def loop_worker(self):
         import json
 
-        networks = self._cloud.list_networks()
+        networks = self._cloud.os_network_list()
         overlay_networks = self._vtc.get_overlay_networks()['items']
 
         xrvr_sync = True

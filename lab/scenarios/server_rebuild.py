@@ -8,8 +8,8 @@ class ServerRebuild(ParallelWorker):
         self.image = self._kwargs['image']
 
     def loop_worker(self):
-        servers = self._cloud.server_list()
+        servers = self._cloud.os_server_list()
         for server in servers:
             server_name = server['Name']
             if self.name in server_name:
-                self._cloud.server_rebuild(server_name, image=self.image)
+                self._cloud.os_server_rebuild(server_name, image=self.image)

@@ -16,7 +16,7 @@ def start(lab, log, args):
     cloud.create_router(number=1, on_nets=internal_nets)
 
     instances = ['cf-sriov-ins-1',  'sf-sriov-ins-1', 'cf-sriov-ins-11', 'sf-sriov-ins-12']
-    fips = cloud.create_fips(how_many=len(instances))
+    fips = cloud.os_create_fips(how_many=len(instances))
 
     for i, instance in enumerate(instances):
         ports = []

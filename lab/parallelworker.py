@@ -2,6 +2,9 @@ import abc
 
 
 class ParallelWorker(object):
+    def __repr__(self):
+        return u'worker={}'.format(type(self))
+
     def __init__(self,  cloud, lab, **kwargs):
         import validators
 
@@ -61,7 +64,7 @@ class ParallelWorker(object):
                     self._results['output'].append(loop_output)
                 time.sleep(self._period)
         except Exception as ex:
-            self._results['exceptions'].append(ex)
+            self._results['exceptions'].append(str(ex))
             self._log.exception('EXCEPTION')
 
         self._log.info('status=finished arguments={0}'.format(self._kwargs))

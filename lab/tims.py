@@ -79,7 +79,7 @@ class Tims(WithLogMixIn):
 
         result_template = '''
         <Result>
-                <Title><![CDATA[Result for $I]]></Title>
+                <Title><![CDATA[Result for {test_cfg_path}]]></Title>
                 <Description><![CDATA[{description}]]></Description>
                 <Owner>
                         <UserID>{username}</UserID>
@@ -110,8 +110,8 @@ class Tims(WithLogMixIn):
         description = json.dumps(results, indent=4)
         body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
-        report_id = ans.rsplit('Tcbr', 1)[-1].split('<')[0]
-        report_url = 'http://tims/warp.cmd?ent=Tcbr{}'.format(report_id)
+        report_id = ans.split('</ID>')[0].rsplit('>', 1)[-1]
+        report_url = 'http://tims/warp.cmd?ent={}'.format(report_id)
         self.log('Published {} to {}'.format(test_cfg_path, report_url))
         return report_url
 

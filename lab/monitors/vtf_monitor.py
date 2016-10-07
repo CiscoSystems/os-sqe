@@ -18,7 +18,7 @@ class VtfMonitor(ParallelWorker):
 
     def loop_worker(self):
         # List of networks defined in OpenStack
-        networks = self._cloud.list_networks()
+        networks = self._cloud.os_network_list()
 
         # <vtf_ip> : True/False
         vtf_sync = {}

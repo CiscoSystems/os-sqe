@@ -27,7 +27,7 @@ class VtsOverlayMonitor(ParallelWorker):
         self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes_by_class(Vtc)[0]
 
     def loop_worker(self):
-        networks = self._cloud.list_networks()
+        networks = self._cloud.os_network_list()
         for network in networks:
             net_synced = self._vtc.verify_network(network)
             self._log.info('os_network={0}; synced={1}'.format(network['id'], net_synced))

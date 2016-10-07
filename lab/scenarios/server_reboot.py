@@ -8,8 +8,8 @@ class ServerReboot(ParallelWorker):
         self.hard = self._kwargs.get('hard', 'False').lower() == 'true'
 
     def loop_worker(self):
-        servers = self._cloud.server_list()
+        servers = self._cloud.os_server_list()
         for server in servers:
             server_name = server['Name']
             if self.name in server_name:
-                self._cloud.server_reboot(server_name, hard=self.hard)
+                self._cloud.os_server_reboot(server_name, hard=self.hard)

@@ -7,8 +7,8 @@ class ServerResume(ParallelWorker):
         self.name = self._kwargs.get('name', '')
 
     def loop_worker(self):
-        servers = self._cloud.server_list()
+        servers = self._cloud.os_server_list()
         for server in servers:
             server_name = server['Name']
             if self.name in server_name:
-                self._cloud.server_resume(server_name)
+                self._cloud.os_server_resume(server_name)
