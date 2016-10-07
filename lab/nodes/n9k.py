@@ -261,7 +261,7 @@ class Nexus(LabNode):
             net = vlan_vs_net[vlan_id]
             if net.is_via_tor():
                 vlans_via_tor.append(vlan_id)
-            vlan_name = '{lab_name}-{net_name}{ssh}'.format(lab_name=self._lab, net_name=net.get_name(), ssh='-SSH' if net.is_ssh() else '')
+            vlan_name = '{lab_name}-{net_name}'.format(lab_name=self._lab, net_name=net.get_name())
             requested_vlans[str(vlan_id)] = vlan_name
 
         requested_ports = {}
