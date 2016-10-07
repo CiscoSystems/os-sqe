@@ -93,7 +93,7 @@ same_host_filter || echo server affinity set
 source functions.sh
 
 # Show what's currently running.
-hyp.sh
+./hyp.sh
 
 
 if [ ! -z "$opt_create" ] ; then
@@ -107,7 +107,7 @@ if [ ! -z "$opt_create" ] ; then
     nova secgroup-add-rule default udp 1 65000 0.0.0.0/0
 
     # Update quotas
-    nova quota-update --cores -1 --ram -1 --instances -1 --server-groups -1 `openstack project show -c id -f value $OS_TENANT_NAME`
+    nova quota-update --cores -1 --ram -1 --instances -1 --server-groups -1 `openstack project show -c id -f value ${OS_TENANT_NAME}`
     neutron quota-update --port -1 --tenant_id `openstack project show -c id -f value ${OS_TENANT_NAME}`
 
     # Upload image to Glance.
@@ -248,9 +248,9 @@ for COUNT in `seq ${opt_first} ${opt_last}`; do
 	"$@"
     }
     # Runs VM; saves ID to vm_id
-    show_and_run nova boot --image CSR1KV --flavor FOR_CSR --nic net-id=$NP1 --nic net-id=$NP2 --nic net-id=$NP3 \
-	    --config-drive=true --file iosxe_config.txt=$tmpfile \
-	    $SAME_HOST_HINT $DIFFERENT_HOST_HINT ${VM_NAME}
+    show_and_run nova boot --image CSR1KV --flavor FOR_CSR --nic net-id=${NP1} --nic net-id=${NP2} --nic net-id=${NP3} \
+	    --config-drive=true --file iosxe_config.txt=${tmpfile} \
+	    ${SAME_HOST_HINT} ${DIFFERENT_HOST_HINT} ${VM_NAME}
     vm_id=(`nova list | grep "${VM_NAME} " | awk -F"|" '{print $2}' | sed "s/ //g"`)
 
     if [ -z "$vm_id" ] ; then
@@ -270,7 +270,7 @@ for COUNT in `seq ${opt_first} ${opt_last}`; do
 	# This is a seed VM; add it to the seed list so that other seed VMs avoid it
         # -pkn This logic breaks in repeated runs of the script. Seed ID list
         # should be dynamilcally learnt from the compute hosts. 
-	last_seed_vm=$vm_id
+	last_seed_vm=${vm_id}
         seed_ids="$seed_ids $vm_id"
     fi
 
@@ -279,7 +279,7 @@ for COUNT in `seq ${opt_first} ${opt_last}`; do
 
     # Work out our next IP address components
     let i=i+1
-    if [ $i -eq 254 ]; then
+    if [ ${i} -eq 254 ]; then
         let i=1
         let j=j+1
     fi
@@ -300,5 +300,5 @@ if [ "$opt_security" ] ; then
 fi
 
 #-----------------------------------------------------------------------
-hyp.sh
+./hyp.sh
 
