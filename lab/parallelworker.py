@@ -3,7 +3,7 @@ import abc
 
 class ParallelWorker(object):
     def __repr__(self):
-        return u'worker={}'.format(type(self))
+        return u'worker={}'.format(type(self).__name__)
 
     def __init__(self,  cloud, lab, **kwargs):
         import validators

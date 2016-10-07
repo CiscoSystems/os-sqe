@@ -1,7 +1,7 @@
-from lab.deployers import Deployer
+from lab.base_lab import LabWorker
 
 
-class DeployerVts(Deployer):
+class DeployerVts(LabWorker):
 
     def sample_config(self):
         return {'vts_images_location': 'http://wwwin-nfv-orch.cisco.com/mercury/VTC-latest/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', 'is_force_redeploy': True}
@@ -198,8 +198,8 @@ class DeployerVts(Deployer):
         # on VTC ncs_cli: configure set devices device XT{TAB} asr -- bgp[TAB] bgp-asi 23 commit
         # on DL ps -ef | grep dl -> then restart dl_vts_reg.py
 
-    def wait_for_cloud(self, list_of_servers):
-        self.deploy_vts(list_of_servers=list_of_servers)
+    def execute(self, servers_and_clouds):
+        self.deploy_vts(list_of_servers=servers_and_clouds['servers'])
 
     @staticmethod
     def is_valid_installation(vts_hosts):

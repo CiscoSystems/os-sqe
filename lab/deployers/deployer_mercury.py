@@ -1,7 +1,7 @@
-from lab.deployers import Deployer
+from lab.base_lab import LabWorker
 
 
-class DeployerMercury(Deployer):
+class DeployerMercury(LabWorker):
 
     def sample_config(self):
         return {'mercury_installer_location': 'http://path-to-mercury-release-server-folder', 'type_of_install': 'iso or tarball', 'hardware_lab_config': 'valid lab configuration',
@@ -99,6 +99,7 @@ class DeployerMercury(Deployer):
         openrc_body = build_node.exe(command='cat openstack-configs/openrc')
         return Cloud.from_openrc(name=self._lab_path.strip('.yaml'), mediator=build_node, openrc_as_string=openrc_body)
 
-    def wait_for_cloud(self, list_of_servers):
-        cloud = self.deploy_cloud(list_of_servers=list_of_servers)
+    def execute(self, servers_and_clouds):
+        cloud = self.deploy_cloud(list_of_servers=servers_and_clouds['servers'])
+        servers_and_clouds['clouds'].append(cloud)
         return cloud.verify_cloud()

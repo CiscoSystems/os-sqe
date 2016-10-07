@@ -1,7 +1,7 @@
-from lab.deployers import Deployer
+from lab.base_lab import LabWorker
 
 
-class DeployerOSP7(Deployer):
+class DeployerOSP7(LabWorker):
 
     def sample_config(self):
         return {'rh-secret': 'http:// file with RH creds',
@@ -199,6 +199,7 @@ class DeployerOSP7(Deployer):
         self.__deploy_overcloud()
         return Cloud(cloud='osp7', user='demo', admin='admin', tenant='demo', password=self.cloud_password, mediator=self.director_server)
 
-    def wait_for_cloud(self, list_of_servers):
-        cloud = self.deploy_cloud(list_of_servers=list_of_servers)
+    def execute(self, servers_and_clouds):
+        cloud = self.deploy_cloud(list_of_servers=servers_and_clouds['servers'])
+        servers_and_clouds['clouds'].append(cloud)
         return cloud.verify_cloud()
