@@ -101,7 +101,16 @@ class LabServer(LabNode):
         started_at = time.time()
         if self._proxy_server:
             ip, username, password = self._server.get_ssh()
-            ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+            while True:
+                ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=True)
+                if ans.failed:
+                    if connection_attempts == 0:
+                        raise RuntimeError('Can not execute {} since {}'.format(command, ans))
+                    connection_attempts -= 1
+                    time.sleep(10)
+                    continue
+                else:
+                    break
         else:
             ans = self._server.exe(command=command, in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
         if estimated_time:
