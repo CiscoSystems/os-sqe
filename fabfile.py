@@ -165,12 +165,12 @@ def run(config_path, version):
 
 
 @task
-def conf():
+def conf(start_ip):
     """fab conf\t\t\t\tTries to create lab configuration yaml
     """
     from lab.laboratory import Laboratory
 
-    Laboratory.r_construct_lab_config()
+    Laboratory.r_construct_lab_config(start_ip=start_ip)
 
 
 @task
