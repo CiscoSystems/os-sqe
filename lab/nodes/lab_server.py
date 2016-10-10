@@ -157,3 +157,6 @@ class LabServer(LabNode):
             return '1 received, 0% packet loss' in ans
         else:
             return self._server.ping()
+
+    def r_list_ip_info(self):
+        return self._server.r_list_ip_info()

@@ -21,7 +21,7 @@ def cmd(config_path):
         device_name = prompt(text='{lab} has: {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=['lab', 'cloud'] + nodes))
         if device_name == 'cloud':
             d = DeployerExisting({'cloud': config_path.strip('.yaml'), 'hardware-lab-config': config_path}, version=None)
-            device = d.wait_for_cloud([])
+            device = d.execute({'servers': [], 'clouds': []})
         elif device_name == 'lab':
             device = l
         elif device_name in ['quit', 'q', 'exit']:
@@ -165,12 +165,12 @@ def run(config_path, version):
 
 
 @task
-def conf(start_ip):
+def conf(bld_ip, n9_ip):
     """fab conf\t\t\t\tTries to create lab configuration yaml
     """
-    from lab.laboratory import Laboratory
+    from lab.configurator import try_to_deduce_config
 
-    Laboratory.r_construct_lab_config(start_ip=start_ip)
+    try_to_deduce_config(bld_ip=bld_ip, n9_ip=n9_ip)
 
 
 @task
@@ -228,15 +228,6 @@ def ansible():
 
 @task
 @decorators.print_time
-def tims():
-    from lab.tims import Tims
-
-    t = Tims()
-    t.publish_tests_to_tims()
-
-
-@task
-@decorators.print_time
 def collect_info(lab_config_path, regex):
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
@@ -244,39 +235,8 @@ def collect_info(lab_config_path, regex):
     l = Laboratory(lab_config_path)
     d = DeployerExisting({'cloud': lab_config_path.strip('.yaml'), 'hardware-lab-config': lab_config_path}, version=None)
     try:
-        c = d.wait_for_cloud([])
+        c = d.execute({'servers': [], 'clouds': []})
         c.r_collect_information(regex=regex, comment='')
     except RuntimeError:
         pass  # it's ok if cloud is not yet deployed in the lab
     l.r_collect_information(regex=regex, comment='')
-
-
-@task
-def functional_test(lab_config_path):
-    import jinja2
-    from lab.laboratory import Laboratory
-    from lab import with_config
-    l = Laboratory(lab_config_path)
-
-    with open('vts-tests/tests_config_template.jinja2') as f:
-        body = f.read()
-
-    tmpl = jinja2.Template(body)
-
-    switch = l.get_n9k()[-1]
-    bld = l.get_director()[0]
-    bld_port = bld.get_wires_to(switch)[0].get_peer_port(bld)
-
-    bld_ip_api, bld_hostname = bld.get_ssh_ip(), bld.get_hostname(),
-
-    vtc_vip = l.get_vtc()[0].get_vtc_vips()[0]
-    _, vtc_username, vtc_password = l.get_vtc()[0].get_oob()
-    vtcs = [{'number': x.get_n_in_role(), 'ip_api': x.get_ssh_ip(), 'username': x.get_ssh()[1], 'password': x.get_ssh()[2], 'hostname': x.get_hostname()} for x in l.get_vtc()]
-    xrncs = [{'number': x.get_n_in_role(), 'ip_mx': x.get_ip_mx(), 'username': x.get_ssh()[1], 'password': x.get_ssh()[2], 'hostname': x.get_hostname()} for x in l.get_xrvr()]
-    xrvrs = [{'number': x.get_n_in_role(), 'ip_mx': x.get_ip_mx(), 'username': x.get_ssh()[1], 'password': x.get_ssh()[2], 'hostname': x.get_hostname()} for x in l.get_xrvr()]
-    image_on_openstack = 'fedora'
-
-    cfg = tmpl.render(bld_ip_api=bld_ip_api, bld_hostname=bld_hostname, bld_id=bld.get_id(), switch_id=switch.get_id(), bld_port=bld_port, image_on_openstack=image_on_openstack,
-                      vtc_username=vtc_username, vtc_password=vtc_password, vtcs=vtcs, xrvrs=xrvrs, xrncs=xrncs, vtc_vip=vtc_vip)
-    with with_config.open_artifact('VTS_TESTS_CONFIG', 'w') as f:
-        f.write(cfg)

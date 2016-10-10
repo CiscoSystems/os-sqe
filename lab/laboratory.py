@@ -432,9 +432,3 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 peer_links.append(wire.get_peer_link_yaml_body())
             f.write(',\n   '.join(peer_links))
             f.write('\n]\n')
-
-    @staticmethod
-    def r_construct_lab_config(start_ip):
-        from lab.configurator import try_to_deduce_config
-
-        try_to_deduce_config(start_ip)

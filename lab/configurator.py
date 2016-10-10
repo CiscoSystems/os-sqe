@@ -10,30 +10,31 @@ def get_ip(msg, ip):
             continue
 
 
-def analyse_cloud():
+def analyse_cloud(bld_ip):
     from fabric.operations import prompt
     from lab.cimc import CimcDirector
 
-    bld_ip = get_ip('Specify one of your N9K IP', ip=None)
-    bld_username = 'admin'
-    bld_password = 'CTO1234!'
+    bld_ip = get_ip('Specify your mgmt node IP', ip=bld_ip)
+    bld_username = 'root'
+    bld_password = 'cisco123'
 
     bld_username = prompt(text='Enter username for N9K at {} (default is {}): '.format(bld_ip, bld_username)) or bld_username
     bld_password = prompt(text='Enter password for N9K at {} (default is {}): '.format(bld_ip, bld_password)) or bld_password
 
     bld = CimcDirector(node_id='bld', role=CimcDirector.ROLE, lab='fake-lab')
+    bld.r_list_ip_info()
     bld.set_oob_creds(ip=bld_ip, username=bld_username, password=bld_password)
 
 
-def try_to_deduce_config(start_ip):
+def analyze_n9(n9_ip):
     from fabric.operations import prompt
+    from lab.logger import lab_logger
     from lab.nodes.n9k import Nexus
     from lab.nodes.tor import Oob, Tor
-    from lab.cimc import CimcServer
-    from lab.logger import lab_logger
     from lab.wire import Wire
+    from lab.cimc import CimcServer
 
-    n91_ip = get_ip('Specify one of your N9K IP', start_ip)
+    n91_ip = get_ip('Specify one of your N9K IP', n9_ip)
     n9k_username = 'admin'
     n9k_password = 'CTO1234!'
 
@@ -98,3 +99,8 @@ def try_to_deduce_config(start_ip):
         cimc.set_oob_creds(ip=cimc_ip, username=cimc_username, password=cimc_password)
         # loms = cimc.cimc_list_lom_ports()
         nodes[1] = cimc
+
+
+def try_to_deduce_config(n9_ip, bld_ip):
+    analyse_cloud(bld_ip)
+    analyze_n9(n9_ip)
