@@ -76,7 +76,7 @@ class DeployerMercury(LabWorker):
             build_node.exe('rm -rf /var/log/mercury/*')
 
             try:
-                build_node.exe(command='./runner/runner.py -y -s 7,8 > /dev/null', in_directory=installer_dir, estimated_time=600)  # run steps 1-6 during which we get all control and computes nodes re-loaded
+                build_node.exe(command='./runner/runner.py -y -s 7,8 > /dev/null', in_directory=installer_dir, estimated_time=4000)  # run steps 1-6 during which we get all control and computes nodes re-loaded
             except:
                 build_node.exe('cat /var/log/mercury/installer/*')
                 raise RuntimeError('Mercury ./runner/runner.py -y -s 7,8 failed')
@@ -84,7 +84,7 @@ class DeployerMercury(LabWorker):
             if not self._is_add_vts_role:
                 cobbler = lab.get_cobbler()
                 cobbler.cobbler_deploy()
-            self._vts_deployer.wait_for_cloud(list_of_servers=lab.get_vts_hosts())
+            self._vts_deployer.execute({'servers': lab.get_vts_hosts(), 'clouds': []})
 
             try:
                 build_node.exe(command='./runner/runner.py -y -p 7,8 > /dev/null', in_directory=installer_dir, estimated_time=600)  # run steps 7-8
