@@ -29,7 +29,8 @@ class Cloud(WithLogMixIn):
         self._dns = '171.70.168.183'
         self._unique_pattern_in_name = 'sqe-test'
         self._instance_counter = 0  # this counter is used to count how many instances are created via this class
-        self._image = {'name': 'image',  'url': 'http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2', 'method': 'sha256sum', 'checksum': '06da8eefb68bd29e1d8957f3ebb8678bd731fe4c68a8af9ef437c6846cd2bb9'}
+        self._images = {'iperf': {'url': 'http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2', 'method': 'sha256sum', 'checksum': '23c76e2a02bdeaccbe9345bbd728f01c2955f848ec7d531edb44431fff5f97d9'},
+                        'csr':   {'url': 'http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', 'method': 'sha256sum', 'checksum': 'b12c3f2dc0cb33eafc17326c4d64ead483ffa570e52c9bd2f0e2e52b28a2c532'}}
 
     def __repr__(self):
         return 'Cloud {n}: {a} {u} {p}'.format(u=self._user, n=self._name, p=self._password, a=self.get_end_point())
@@ -333,10 +334,13 @@ export OS_AUTH_URL={end_point}
     def os_host_list(self):
         return self.os_cmd('openstack host list -f json')
 
-    def os_image_create(self):
-        name = self._unique_pattern_in_name + '-' + self._image['name']
-        if not filter(lambda image: image['Name'] == name, self.os_image_list()):
-            image_path = self.mediator.r_get_remote_file(url=self._image['url'], to_directory='cloud_images', checksum=self._image['checksum'], method=self._image['method'])
+    def os_image_create(self, image_name):
+        if image_name not in self._images:
+            raise ValueError('{}: Dont know image {}'.format(self, image_name))
+        image = self._images[image_name]
+        name = self._unique_pattern_in_name + '-' + image_name
+        if not filter(lambda i: i['Name'] == name, self.os_image_list()):
+            image_path = self.mediator.r_get_remote_file(url=image['url'], to_directory='cloud_images', checksum=image['checksum'], method=image['method'])
             self.os_cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
             self.log('image={} status=requested'.format(name))
         return self.os_image_wait(name)

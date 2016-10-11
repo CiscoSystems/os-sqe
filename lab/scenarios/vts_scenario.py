@@ -22,7 +22,7 @@ class VtsScenario(ParallelWorker):
         if len(self._computes) < 2:
             raise RuntimeError('{}: not possible to run on this cloud, number of compute nodes less then 2'.format(self))
         self._cloud.os_cleanup()
-        self._image = self._cloud.os_image_create()
+        self._image = self._cloud.os_image_create('iperf')
         self._cloud.os_keypair_create()
 
     def loop_worker(self):

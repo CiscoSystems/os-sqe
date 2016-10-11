@@ -59,4 +59,6 @@ class DeployerExisting(LabWorker):
         return Cloud.from_openrc(name=self._cloud_name, mediator=director, openrc_as_string=openrc_body)
 
     def execute(self, servers_and_clouds):
-        servers_and_clouds['clouds'].append(self.deploy_cloud(servers_and_clouds['servers']))
+        cloud = self.deploy_cloud(servers_and_clouds['servers'])
+        servers_and_clouds['clouds'].append(cloud)
+        return cloud
