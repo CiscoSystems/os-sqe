@@ -29,7 +29,7 @@ class Cloud(WithLogMixIn):
         self._dns = '171.70.168.183'
         self._unique_pattern_in_name = 'sqe-test'
         self._instance_counter = 0  # this counter is used to count how many instances are created via this class
-        self._images = {'iperf': {'url': 'http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2', 'method': 'sha256sum', 'checksum': '23c76e2a02bdeaccbe9345bbd728f01c2955f848ec7d531edb44431fff5f97d9'},
+        self._images = {'iperf': {'url': 'http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2', 'method': 'md5sum', 'checksum': '9a8ef5c7b07ad6b996553e56f7807625'},
                         'csr':   {'url': 'http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', 'method': 'sha256sum', 'checksum': 'b12c3f2dc0cb33eafc17326c4d64ead483ffa570e52c9bd2f0e2e52b28a2c532'}}
 
     def __repr__(self):
@@ -338,13 +338,22 @@ export OS_AUTH_URL={end_point}
     def os_image_create(self, image_name):
         if image_name not in self._images:
             raise ValueError('{}: Dont know image {}'.format(self, image_name))
-        image = self._images[image_name]
+        image_info = self._images[image_name]
         name = self._unique_pattern_in_name + '-' + image_name
-        if not filter(lambda i: i['Name'] == name, self.os_image_list()):
-            image_path = self.mediator.r_get_remote_file(url=image['url'], to_directory='cloud_images', checksum=image['checksum'], method=image['method'])
-            self.os_cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
+        image_in_cloud = filter(lambda i: i['Name'] == name, self.os_image_list())
+
+        if image_in_cloud:
+            image = self.os_image_show(name)
+            is_create_image = image['checksum'] != image_info['checksum']
+        else:
+            is_create_image = True
+        if is_create_image:
+            image_path = self.mediator.r_get_remote_file(url=image_info['url'], to_directory='cloud_images', checksum=image_info['checksum'], method=image_info['method'])
             self.log('image={} status=requested'.format(name))
-        return self.os_image_wait(name)
+            self.os_cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
+            return self.os_image_wait(name)
+        else:
+            return image
 
     def os_image_analyse_problem(self, image):
         self.r_collect_information(regex=image['Name'], comment='image problem')
@@ -421,6 +430,7 @@ export OS_AUTH_URL={end_point}
         port_ids = []
         for server_number in server_numbers:
             port_ids.append(self.os_port_create(server_number=server_number, on_nets=on_nets, is_fixed_ip=is_fixed_ip, sriov=sriov))
+        return port_ids
 
     def os_port_delete(self, name):
         return self.os_cmd('neutron port-delete {}'.format(name))
@@ -433,8 +443,8 @@ export OS_AUTH_URL={end_point}
 
     def os_servers_create(self, server_numbers, flavor, image_name, on_ports, zone):
         server_names = []
-        for server_number, on_port in zip(server_numbers, on_ports):
-            ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, on_ports))
+        for server_number, ports in zip(server_numbers, on_ports):
+            ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, ports))
             server_name = '{}-{}'.format(self._unique_pattern_in_name, server_number)
             server_names.append(server_name)
             self.os_cmd('openstack server create {name} --flavor {flavor} --image "{image}" --availability-zone nova:{zone} --security-group default --key-name sqe-test-key1 {ports_part}'.format(name=server_name, flavor=flavor, image=image_name,
