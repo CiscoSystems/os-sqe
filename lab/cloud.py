@@ -314,8 +314,9 @@ export OS_AUTH_URL={end_point}
         ans = {}
         # noinspection PyBroadException
         try:
-            hosts = self.os_host_list()
-            for host in sorted(hosts):
+            hosts = [self.os_host_list()]
+
+            for host in set([x['Host Name'] for x in hosts]):
                 ans[host] = self.mediator.exe("ssh -o StrictHostKeyChecking=no {} '{}'".format(host, cmd), is_warn_only=True)
         except:
             ans['This cloud is not active'] = ''
