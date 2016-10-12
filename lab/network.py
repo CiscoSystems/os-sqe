@@ -7,8 +7,7 @@ class Network(object):
         self._vlan = vlan  # single network needs to sit on single vlan
         self._mac_pattern = mac_pattern
         self._is_pxe = False  # NICs on this network will be configured as PXE enabled
-        self._is_vts = False  # VTS components will be deployed on this network, if requested
-        self._is_via_tor = False  # this network if supposed to go our of lab's TOR
+        self._is_via_tor = False  # this network if supposed to go out of lab's TOR
 
     def __repr__(self):
         return u'net: {} {} {}'.format(self._name, self._net, self._vlan)
@@ -30,12 +29,6 @@ class Network(object):
 
     def set_is_pxe(self):
         self._is_pxe = True
-
-    def is_vts(self):
-        return self._is_vts
-
-    def set_is_vts(self):
-        self._is_vts = True
 
     def set_is_via_tor(self):
         self._is_via_tor = True
@@ -90,9 +83,6 @@ class Nic(object):
 
     def is_on_lom(self):
         return self._is_on_lom
-
-    def is_vts(self):
-        return self._net.is_vts()
 
     def is_ssh(self):
         return self._is_ssh

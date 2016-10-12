@@ -165,12 +165,13 @@ def run(config_path, version):
 
 
 @task
-def conf(bld_ip, n9_ip):
+def conf():
     """fab conf\t\t\t\tTries to create lab configuration yaml
     """
-    from lab.configurator import try_to_deduce_config
+    from lab.configurator import LabConfigurator
 
-    try_to_deduce_config(bld_ip=bld_ip, n9_ip=n9_ip)
+    c = LabConfigurator()
+    c.execute()
 
 
 @task

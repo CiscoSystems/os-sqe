@@ -13,7 +13,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     def __init__(self, config_path):
         from lab import with_config
-        from lab.network import Network
 
         self._supported_lab_types = ['MERCURY', 'OSPD']
         self._unique_dict = dict()  # to make sure that all needed objects are unique
@@ -36,21 +35,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         self._dns, self._ntp = self._cfg['dns'], self._cfg['ntp']
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
-        net_markers_used = []
+        self._is_via_pxe_already_seen = False
         for net_name, net_desc in self._cfg['nets'].items():
             try:
-                net = Network(name=net_name, cidr=net_desc['cidr'], mac_pattern=net_desc['mac-pattern'], vlan=str(net_desc['vlan']))
-                self._nets[net_name] = net
-                if net_desc.get('is-via-tor', False):
-                    net.set_is_via_tor()
-                for is_xxx in ['pxe', 'vts']:
-                    if net_desc.get('is-' + is_xxx, False):
-                        if is_xxx not in net_markers_used:
-                            getattr(net, 'set_is_' + is_xxx)()  # will set marker to True
-                            net_markers_used.append(is_xxx)
-                        else:
-                            raise ValueError('Check net section- more then one network is marked as is-' + is_xxx)
-
+                self.add_network(net_name=net_name, cidr=net_desc['cidr'], mac_pattern=net_desc['mac-pattern'], vlan_id=str(net_desc['vlan']), is_via_tor=net_desc.get('is-via-tor', False), is_via_pxe=net_desc.get('is-pxe', False))
             except KeyError as ex:
                 raise ValueError('Network "{}" has no {}'.format(net_name, ex.message))
 
@@ -70,6 +58,23 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 peer_node = wire.get_peer_node(node)
                 peer_port_id = wire.get_peer_port(node)
                 self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_id(), peer_port_id), node_id=node.get_id())  # check that this peer_node-peer_port is unique
+
+    def add_network(self, net_name, cidr, vlan_id, mac_pattern, is_via_tor, is_via_pxe):
+        from lab.network import Network
+
+        if is_via_pxe:
+            if self._is_via_pxe_already_seen:
+                raise ValueError('Check net section- more then one network is marked as is-pxe')
+            else:
+                self._is_via_pxe_already_seen = True
+
+        net = Network(name=net_name, cidr=cidr, vlan=vlan_id, mac_pattern=mac_pattern)
+        self._nets[net_name] = net
+        if is_via_tor:
+            net.set_is_via_tor()
+        if is_via_pxe:
+            net.set_is_pxe()
+        return net
 
     def is_sriov(self):
         return self._is_sriov
