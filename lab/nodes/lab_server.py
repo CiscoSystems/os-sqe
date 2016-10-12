@@ -103,7 +103,7 @@ class LabServer(LabNode):
             ip, username, password = self._server.get_ssh()
             while True:
                 ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=True)
-                if ans.failed:
+                if 'No route to host' in ans:
                     if connection_attempts == 0:
                         raise RuntimeError('Can not execute {} since {}'.format(command, ans))
                     connection_attempts -= 1
