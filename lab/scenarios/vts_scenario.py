@@ -7,13 +7,11 @@ class VtsScenario(ParallelWorker):
         import collections
 
         self._n_instances = int(self._kwargs['how-many-servers'])
-        if self._n_instances % 2 != 0:
-            raise ValueError('{}: how-many-servers={} must be even'.format(self, self._n_instances))
         self._even_server_numbers = [10 + x for x in range(self._n_instances) if x % 2 == 0]
         self._odd_server_numbers = [10 + x for x in range(self._n_instances) if x % 2 != 0]
 
         self._n_nets = self._kwargs['how-many-networks']
-        self._what_to_run_inside = self._kwargs.get('what-to-run-inside')  # if nothing specified - do not run anything in addition to ping
+        self._what_to_run_inside = self._kwargs.get('what-to-run-inside', 'Nothing')  # if nothing specified - do not run anything in addition to ping
         self._build_node = self._lab.get_director()
         self._hosts = self._cloud.os_host_list()
         self._computes = collections.OrderedDict()
@@ -36,21 +34,24 @@ class VtsScenario(ParallelWorker):
         odd_port_pids = self._cloud.os_ports_create(server_numbers=self._odd_server_numbers, on_nets=internal_nets, is_fixed_ip=True)
 
         self._log.info('instances={} status=requested'.format(self._even_server_numbers))
-        even_server_info = self._cloud.os_servers_create(server_numbers=self._even_server_numbers, flavor='m1.medium', image_name=self._image['name'], zone=self._computes.keys()[0], on_ports=even_port_pids)
+        server_info = self._cloud.os_servers_create(server_numbers=self._even_server_numbers, flavor='m1.medium', image_name=self._image['name'], zone=self._computes.keys()[0], on_ports=even_port_pids)
         self._log.info('instances={} status=created'.format(self._even_server_numbers))
 
-        self._log.info('instances={} status=requested'.format(self._odd_server_numbers))
-        odd_server_info = self._cloud.os_servers_create(server_numbers=self._odd_server_numbers, flavor='m1.medium', image_name=self._image['name'], zone=self._computes.keys()[1], on_ports=odd_port_pids)
-        self._log.info('instances={} status=created'.format(self._odd_server_numbers))
+        if self._odd_server_numbers:
+            self._log.info('instances={} status=requested'.format(self._odd_server_numbers))
+            server_info += self._cloud.os_servers_create(server_numbers=self._odd_server_numbers, flavor='m1.medium', image_name=self._image['name'], zone=self._computes.keys()[1], on_ports=odd_port_pids)
+            self._log.info('instances={} status=running'.format(self._odd_server_numbers))
 
-        for info in even_server_info + odd_server_info:
-            server = Server(ip=info['ip'], username='admin', password='cisco123')
-            server.set_proxy_server(self._build_node)
-            self._computes[info['zone']].append(server)
+        for info in server_info:
+            ip = info['addresses'].split('=')[-1]
+            zone = info['OS-EXT-SRV-ATTR:host']
+            server = Server(ip=ip, username='admin', password='cisco123')
+            self._computes[zone].append(server)
             all_servers.append(server)
 
         for server in all_servers:
-            server.exe('ping -c5 {}'.format(all_servers[0].get_ssh_ip()))
+            ans = self._build_node.exe('ping -c5 {}'.format(server.get_ssh_ip()), is_warn_only=True)
+            pass
 
         answers = []
         if self._what_to_run_inside.startswith('iperf'):

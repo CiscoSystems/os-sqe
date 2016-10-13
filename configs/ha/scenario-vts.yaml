@@ -1,5 +1,4 @@
 - class: lab.scenarios.vts_scenario.VtsScenario
   how-many-networks: 2
-  how-many-servers: 2
+  how-many-servers: 1
   n_repeats: 1
-  what-to-run-inside: iperf -n 10M  -M 9000
