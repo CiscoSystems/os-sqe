@@ -9,9 +9,7 @@ class Tims(WithLogMixIn):
     _OPERATION_UPDATE = 'update'
 
     def __init__(self):
-        import os
-
-        self._username = os.getenv('USER')
+        self._username = 'kshileev'
 
     def _api_post(self, operation, body):
         import requests
@@ -82,7 +80,7 @@ class Tims(WithLogMixIn):
                 <Title><![CDATA[Result for {test_cfg_path}]]></Title>
                 <Description><![CDATA[{description}]]></Description>
                 <Owner>
-                        <UserID>{username}</UserID>
+                        <UserID>kshileev</UserID>
                 </Owner>
                 <ListFieldValue multi-value="true">
                     <FieldName><![CDATA[ Software Version ]]></FieldName>
@@ -108,7 +106,7 @@ class Tims(WithLogMixIn):
 
         status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'
         description = json.dumps(results, indent=4)
-        body = result_template.format(username=self._username, test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
+        body = result_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
         report_id = ans.split('</ID>')[0].rsplit('>', 1)[-1]
         report_url = 'http://tims/warp.cmd?ent={}'.format(report_id)
