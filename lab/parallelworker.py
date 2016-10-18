@@ -68,6 +68,7 @@ class ParallelWorker(object):
             self._log.exception('EXCEPTION')
 
         self._log.info('status=finished arguments={0}'.format(self._kwargs))
+        self.teardown_worker()
         return self._results
 
     @abc.abstractmethod
@@ -77,6 +78,9 @@ class ParallelWorker(object):
     @abc.abstractmethod
     def loop_worker(self):
         raise NotImplemented
+
+    def teardown_worker(self):
+        self._log.info('Empty teardown method')
 
     @staticmethod
     def debug_output():
