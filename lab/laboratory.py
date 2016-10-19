@@ -437,3 +437,8 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 peer_links.append(wire.get_peer_link_yaml_body())
             f.write(',\n   '.join(peer_links))
             f.write('\n]\n')
+
+    def exe(self, cmd):
+        from lab.nodes.lab_server import LabServer
+
+        return {node.get_id(): node.exe(cmd) for node in self.get_nodes_by_class(LabServer)}
