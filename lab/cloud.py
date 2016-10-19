@@ -322,16 +322,6 @@ export OS_AUTH_URL={end_point}
             ans['This cloud is not active'] = ''
         return ans
 
-    def r_collect_information(self, regex, comment):
-        body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex=regex)]:
-            for host, text in self.exe(cmd).items():
-                body += self._format_single_cmd_output(cmd=cmd, ans=text, node=host)
-
-        addon = '_' + '_'.join(comment.split()) if comment else ''
-        self.log_to_artifact(name='cloud_{}{}.txt'.format(self._name, addon), body=body)
-        return body
-
     def os_host_list(self):
         return self.os_cmd('openstack host list -f json')
 
@@ -479,6 +469,16 @@ export OS_AUTH_URL={end_point}
         map(lambda port: self.os_port_delete(port['name']), sqe_ports)
         map(lambda net: self.os_network_delete(net['Name']), sqe_networks)
         map(lambda keypair: self.os_keypair_delete(keypair['Name']), sqe_keypairs)
+
+    def r_collect_information(self, regex, comment):
+        body = ''
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex=regex), 'neutronserver grep ^mechanism_driver /etc/neutron/plugins/ml2/ml2_conf.ini', 'neutronserver grep -A 5 "\[ml2_cc\]" /etc/neutron/plugins/ml2/ml2_conf.ini']:
+            for host, text in self.exe(cmd).items():
+                body += self._format_single_cmd_output(cmd=cmd, ans=text, node=host)
+
+        addon = '_' + '_'.join(comment.split()) if comment else ''
+        self.log_to_artifact(name='cloud_{}{}.txt'.format(self._name, addon), body=body)
+        return body
 
     def _clean_router(self, router_name):
         import re
