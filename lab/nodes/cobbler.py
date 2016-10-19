@@ -5,7 +5,6 @@ class CobblerServer(LabServer):
     ROLE = 'cobbler'
 
     def cmd(self, cmd):
-        self._server.set_ssh_ip(ip=self.get_oob()[0])
         return self.exe(command=cmd, is_warn_only=True)
 
     def __repr__(self):

@@ -24,7 +24,7 @@ class LabServer(LabNode):
     def set_ssh_creds(self, username, password):
         from lab.server import Server
 
-        self._server = Server(ip=None, username=username, password=password)
+        self._server = Server(ip=self.get_oob()[0], username=username, password=password)
 
     def set_hostname(self, hostname):
         self._server.set_hostname(hostname=hostname)
@@ -102,7 +102,7 @@ class LabServer(LabNode):
         if self._proxy_server:
             ip, username, password = self._server.get_ssh()
             while True:
-                ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}'".format(password, username, ip, command), in_directory=in_directory, is_warn_only=True)
+                ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # {}".format(password, username, ip, command, self.get_id()), in_directory=in_directory, is_warn_only=True)
                 if 'No route to host' in ans:
                     if connection_attempts == 0:
                         raise RuntimeError('Can not execute {} since {}'.format(command, ans))
