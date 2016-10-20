@@ -179,6 +179,9 @@ router bgp {{ bgp_asn }}
     def r_xrvr_show_evpn(self):
         return self.cmd('show running-config evpn', is_xrvr=True)
 
+    def r_xrvr_show_bgp_l2vpn_evpn(self):
+        return self.cmd('sh bgp l2vpn evpn', is_xrvr=True)
+
     def xrvr_show_connections_xrvr_vtf(self):
         return self.exe('netstat -ant |grep 21345')
 

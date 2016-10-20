@@ -341,6 +341,15 @@ class Nexus(LabNode):
             if if_id != 1:
                 self.cmd(['conf t', 'no int vlan {}'.format(if_id)])
 
+    def n9_show_bgp_l2vpn_evpn(self):
+        return self.cmd('sh bgp l2vpn evpn')
+
+    def n9_show_bgp_sessions(self):
+        return self.cmd('sh bgp sessions')
+
+    def n9_show_bgp_all(self):
+        return self.cmd('sh bgp all')
+
     def n9_show_ports(self):
         ans_st = self.cmd(['sh int st'])
         ans_br = self.cmd(['sh int br'])
@@ -383,6 +392,9 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'feature lldp'])
         lldp_neis = self.cmd(['sh lldp nei det'])
         return lldp_neis['result']['body']['TABLE_nbor_detail']['ROW_nbor_detail']
+
+    def n9_show_l2route_evpn_mac_all(self):
+        return self.cmd(' sh l2route evpn mac all')
 
     def n9_show_users(self):
         res = self.cmd(['show users'])
