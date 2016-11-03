@@ -54,16 +54,14 @@ class Logger(object):
         import os
 
         self._logger = None
-        ans = os.getenv('DISABLE_SQE_LOG', 'NO-NO')
+        ans = os.getenv('DISABLE_SQE_LOG', 'NO-NO')  # disable log is needed for correct processing ansible inventory in $repo/inventory.py
         if ans == 'NO-NO':
             self._create_logger(name)
 
     def _create_logger(self, name):
         import inspect
-        import os
         from lab.with_config import WithConfig
 
-        os.system('rm *.log')
         text_log_name, json_log_name = WithConfig.get_log_file_names()
         formatter = logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s:  %(message)s')
 
