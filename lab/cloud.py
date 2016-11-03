@@ -466,8 +466,8 @@ export OS_AUTH_URL={end_point}
 
         map(lambda server: self.os_server_delete(server['Name']), sqe_servers)
         map(lambda router: self._clean_router(router['name']), sqe_routes)
-        map(lambda port: self.os_port_delete(port['name']), sqe_ports)
-        map(lambda net: self.os_network_delete(net['Name']), sqe_networks)
+        map(lambda port: self.os_port_delete(port['id']), sqe_ports)
+        map(lambda net: self.os_network_delete(net['ID']), sqe_networks)
         map(lambda keypair: self.os_keypair_delete(keypair['Name']), sqe_keypairs)
 
     def r_collect_information(self, regex, comment):
