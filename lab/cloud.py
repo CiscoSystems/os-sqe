@@ -8,7 +8,7 @@ class Cloud(WithLogMixIn):
     ROLE_COMPUTE = 'compute'
     ROLE_MEDIATOR = 'mediator'
 
-    def __init__(self, cloud, user, admin, tenant, password, end_point=None, mediator=None):
+    def __init__(self, cloud, user, admin, tenant, password, end_point, mediator):
         self._show_subnet_cmd = 'neutron subnet-show -f shell '
 
         self._fip_network = 'Default Value Set In Cloud.__init__()'
@@ -21,11 +21,8 @@ class Cloud(WithLogMixIn):
         self._tenant = tenant
         self._password = password
         self.info = {'controller': [], 'ucsm': [], 'network': [], 'compute': []}
-        self.service_end_points = {x: {} for x in self.services()}
-        self.mac_2_ip = {}
-        self.hostname_2_ip = {}
-        self.end_point = end_point
-        self.mediator = mediator  # special server to be used to execute CLI commands for this cloud
+        self._end_point = end_point
+        self._mediator = mediator  # special server to be used to execute CLI commands for this cloud
         self._dns = '171.70.168.183'
         self._unique_pattern_in_name = 'sqe-test'
         self._instance_counter = 0  # this counter is used to count how many instances are created via this class
@@ -33,65 +30,13 @@ class Cloud(WithLogMixIn):
                         'csr':   {'url': 'http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', 'method': 'sha256sum', 'checksum': 'b12c3f2dc0cb33eafc17326c4d64ead483ffa570e52c9bd2f0e2e52b28a2c532'}}
 
     def __repr__(self):
-        return 'Cloud {n}: {a} {u} {p}'.format(u=self._user, n=self._name, p=self._password, a=self.get_end_point())
+        return 'Cloud {n}: {a} {u} {p}'.format(u=self._user, n=self._name, p=self._password, a=self._end_point)
 
-    @staticmethod
-    def services():
-        return ['nova', 'neutron']
-
-    def get_end_point(self):
-        return self.end_point or 'http://{0}:5000/v2.0'.format(self.get_first(self.ROLE_CONTROLLER, 'ip'))
-
-    def get(self, role, parameter):
-        """
-            :param role: controller, network, compute, ucsm
-            :param parameter: ip, mac, hostname
-            :return: a list of values for given parameter of given role
-        """
-        return [server.get(parameter) for server in self.info.get(role, [])]
+    def _add_name_prefix(self, name):
+        return '{}-{}'.format(self._unique_pattern_in_name, name)
 
     def get_name(self):
         return self._name
-
-    def get_first(self, role, parameter):
-        """
-            :param role: controller, network, compute, ucsm
-            :param parameter: ip, mac, hostname
-            :return: the first value for given parameter of given role
-        """
-        values = self.get(role=role, parameter=parameter)
-        if values:
-            return values[0]
-        else:
-            return 'NoValueFor' + role + parameter
-
-    def add_server(self, config_name, server):
-        """ Set all parameters for the given server
-        :param config_name:
-        :param server:
-        """
-        if config_name.startswith('aio'):
-            role = self.ROLE_CONTROLLER
-        else:
-            role = None
-            for x in self.info.keys():
-                if x in config_name:
-                    role = x
-                    break
-            if role is None:
-                raise RuntimeError('Failed to deduce cloud role for server {0}'.format(server))
-
-        self.hostname_2_ip[server.hostname] = server.ip
-        self.mac_2_ip[server.ip_mac] = server.ip
-
-        _info = {'ip': server.ip, 'mac': server.ip_mac, 'username': server.username, 'hostname': server.hostname, 'password': server.password}
-        self.info[role].append(_info)
-
-    def add_service_end_point(self, service, url, end_point):
-        self.service_end_points[service].update({url: end_point})
-
-    def get_service_end_point(self, service, url):
-        return self.service_end_points[service][url]
 
     def create_open_rc(self):
         """ Creates open_rc for the given cloud"""
@@ -101,11 +46,11 @@ export OS_TENANT_NAME={tenant}
 export OS_PASSWORD={password}
 export OS_AUTH_URL={end_point}
 """
-        return open_rc.format(user=self._user, tenant=self._tenant, password=self._password, end_point=self.get_end_point())
+        return open_rc.format(user=self._user, tenant=self._tenant, password=self._password, end_point=self._end_point)
 
     def os_cmd(self, cmd, server=None, is_warn_only=False):
-        server = server or self.mediator
-        ans = server.exe(command='{cmd} --os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(cmd=cmd, u=self._user, t=self._tenant, p=self._password, a=self.get_end_point()), is_warn_only=is_warn_only)
+        server = server or self._mediator
+        ans = server.exe(command='{cmd} --os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(cmd=cmd, u=self._user, t=self._tenant, p=self._password, a=self._end_point), is_warn_only=is_warn_only)
         if '-f csv' in cmd:
             return self._process_csv_output(ans)
         elif '-f json' in cmd:
@@ -262,6 +207,12 @@ export OS_AUTH_URL={end_point}
         fips = map(lambda _: self.os_cmd('neutron floatingip-create {0}'.format(self._fip_network)), range(how_many))
         return fips
 
+    def os_flavor_create(self, name):
+        name_with_prefix = self._add_name_prefix(name)
+        self.os_cmd('openstack flavor create {} --vcpu 2 --ram 4096 --disk 40 --public'.format(name_with_prefix))
+        self.os_cmd('openstack flavor set {} --property hw:numa_nodes=1'.format(name_with_prefix))
+        self.os_cmd('openstack flavor set {} --property hw:mem_page_size=large'.format(name_with_prefix))
+
     def os_server_reboot(self, name, hard=False):
         flags = ['--hard' if hard else '--soft']
         self.os_cmd('openstack server reboot {flags} {name}'.format(flags=' '.join(flags), name=name))
@@ -315,9 +266,9 @@ export OS_AUTH_URL={end_point}
         # noinspection PyBroadException
         try:
             hosts = self.os_host_list()
-            unique_hosts = set([x['Host Name'] for x in hosts])
+            unique_hosts = set([x.get('Host Name', 'see {}:327'.format(__file__)) for x in hosts])
             for host in unique_hosts:
-                ans[host] = self.mediator.exe("ssh -o StrictHostKeyChecking=no {} '{}'".format(host, cmd), is_warn_only=True)
+                ans[host] = self._mediator.exe("ssh -o StrictHostKeyChecking=no {} '{}'".format(host, cmd), is_warn_only=True)
         except:
             ans['This cloud is not active'] = ''
         return ans
@@ -330,15 +281,10 @@ export OS_AUTH_URL={end_point}
             raise ValueError('{}: Dont know image {}'.format(self, image_name))
         image_info = self._images[image_name]
         name = self._unique_pattern_in_name + '-' + image_name
-        image_in_cloud = filter(lambda i: i['Name'] == name, self.os_image_list())
 
-        if image_in_cloud:
-            image = self.os_image_show(name)
-            is_create_image = image['checksum'] != image_info['checksum']
-        else:
-            is_create_image = True
-        if is_create_image:
-            image_path = self.mediator.r_get_remote_file(url=image_info['url'], to_directory='cloud_images', checksum=image_info['checksum'], method=image_info['method'])
+        image = self.os_image_show(name)
+        if image is str or image['checksum'] != image_info['checksum']:
+            image_path = self._mediator.r_get_remote_file(url=image_info['url'], to_directory='cloud_images', checksum=image_info['checksum'], method=image_info['method'])
             self.log('image={} status=requested'.format(name))
             self.os_cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
             return self.os_image_wait(name)
@@ -356,7 +302,7 @@ export OS_AUTH_URL={end_point}
         return self.os_cmd('openstack image list -f json')
 
     def os_image_show(self, name):
-        return self.os_cmd('openstack image show -f json {}'.format(name))
+        return self.os_cmd('openstack image show -f json {}'.format(name), is_warn_only=True)
 
     def os_image_wait(self, name):
         import time
@@ -373,7 +319,7 @@ export OS_AUTH_URL={end_point}
     def os_keypair_create(self):
         from lab import with_config
         with open(with_config.KEY_PUBLIC_PATH) as f:
-            public_path = self.mediator.r_put_string_as_file_in_dir(string_to_put=f.read(), file_name='sqe_public_key')
+            public_path = self._mediator.r_put_string_as_file_in_dir(string_to_put=f.read(), file_name='sqe_public_key')
 
         self.os_cmd('openstack keypair create {sqe_pref}-key1 --public-key {public}'.format(sqe_pref=self._unique_pattern_in_name, public=public_path))
 
@@ -431,19 +377,20 @@ export OS_AUTH_URL={end_point}
     def os_router_list(self):
         return self.os_cmd('neutron router-list -f json')
 
-    def os_servers_create(self, server_numbers, flavor, image_name, on_ports, zone):
+    def os_servers_create(self, server_numbers, flavor, image, on_ports, zone):
         server_names = []
         for server_number, ports in zip(server_numbers, on_ports):
             ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, ports))
             server_name = '{}-{}'.format(self._unique_pattern_in_name, server_number)
             server_names.append(server_name)
-            self.os_cmd('openstack server create {name} --flavor {flavor} --image "{image}" --availability-zone nova:{zone} --security-group default --key-name sqe-test-key1 {ports_part}'.format(name=server_name, flavor=flavor, image=image_name,
+            self.os_cmd('openstack server create {name} --flavor {flavor} --image "{image}" --availability-zone nova:{zone} --security-group default --key-name sqe-test-key1 {ports_part}'.format(name=server_name,
+                                                                                                                                                                                                   flavor=flavor['name'], image=image['name'],
                                                                                                                                                                                                    zone=zone, ports_part=ports_part))
         self.wait_instances_ready(names=server_names)
         return map(lambda x: self.os_server_show(x), server_names)
 
     def os_server_delete(self, name):
-        return self.os_cmd('openstack server delete {}'.format(name))
+        return self.os_cmd('openstack server delete {}'.format(self._add_name_prefix(name)))
 
     def os_server_list(self):
         return self.os_cmd('openstack server list -f json')

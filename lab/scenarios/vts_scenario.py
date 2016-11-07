@@ -20,6 +20,7 @@ class VtsScenario(ParallelWorker):
         if len(self._computes) < 2:
             raise RuntimeError('{}: not possible to run on this cloud, number of compute nodes less then 2'.format(self))
         self._cloud.os_cleanup()
+        self._flavor = self._cloud.os_flavor_create('vts')
         self._image = self._cloud.os_image_create('iperf')
         self._cloud.os_keypair_create()
 
@@ -34,12 +35,12 @@ class VtsScenario(ParallelWorker):
         odd_port_pids = self._cloud.os_ports_create(server_numbers=self._odd_server_numbers, on_nets=internal_nets, is_fixed_ip=True)
 
         self._log.info('instances={} status=requested'.format(self._even_server_numbers))
-        server_info = self._cloud.os_servers_create(server_numbers=self._even_server_numbers, flavor='m1.medium', image_name=self._image['name'], zone=self._computes.keys()[0], on_ports=even_port_pids)
+        server_info = self._cloud.os_servers_create(server_numbers=self._even_server_numbers, flavor=self._flavor, image=self._image, zone=self._computes.keys()[0], on_ports=even_port_pids)
         self._log.info('instances={} status=created'.format(self._even_server_numbers))
 
         if self._odd_server_numbers:
             self._log.info('instances={} status=requested'.format(self._odd_server_numbers))
-            server_info += self._cloud.os_servers_create(server_numbers=self._odd_server_numbers, flavor='m1.medium', image_name=self._image['name'], zone=self._computes.keys()[1], on_ports=odd_port_pids)
+            server_info += self._cloud.os_servers_create(server_numbers=self._odd_server_numbers, flavor=self._flavor, image=self._image, zone=self._computes.keys()[1], on_ports=odd_port_pids)
             self._log.info('instances={} status=running'.format(self._odd_server_numbers))
 
         for info in server_info:
