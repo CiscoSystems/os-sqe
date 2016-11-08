@@ -5,7 +5,6 @@ class JsonFormatter(logging.Formatter):
     def __init__(self):
         import os
 
-        self._repo_tag = os.system('git describe --always')
         self._jenkins_tag = os.getenv('BUILD_TAG', 'no_jenkins')
         self._deployer_tag = 'not implemented'
 
@@ -38,7 +37,6 @@ class JsonFormatter(logging.Formatter):
         if '@timestamp' not in d:
             d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
         d['name'] = record.name
-        d['sqe-repo-tag'] = self._repo_tag
         d['deployer-info'] = self._deployer_tag
         d['jenkins'] = self._jenkins_tag
         return json.dumps(d)

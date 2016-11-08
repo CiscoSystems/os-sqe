@@ -5,6 +5,7 @@ import os
 class WithConfig(object):
     REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
+    CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
 
     def __init__(self, config):
         self.verify_config(sample_config=self.sample_config(), config=config)
@@ -24,14 +25,26 @@ class WithConfig(object):
 
     @staticmethod
     def get_log_file_names():
-        return os.path.join(WithConfig.REPO_DIR, 'iron-lady.log'), os.path.join(WithConfig.REPO_DIR, 'json.log')
+        import os
+
+        return '/var/log/vmtp/sqe.log' if 'vtmp' in os.listdir('/var/log') else '/tmp/sqe.log', os.path.join(WithConfig.ARTIFACTS_DIR, 'json.log')
+
+    @staticmethod
+    def ls_configs(directory=''):
+        import os
+
+        folder = os.path.abspath(os.path.join(WithConfig.CONFIG_DIR, directory))
+        return sorted(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))
 
     @staticmethod
     def open_artifact(name, mode):
-        return open_artifact(name=name, mode=mode)
+        import os
+
+        if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
+            os.makedirs(WithConfig.ARTIFACTS_DIR)
+        return open(os.path.join(WithConfig.ARTIFACTS_DIR, name), mode)
 
 
-CONFIG_DIR = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs'))
 KEY_PUBLIC_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'public'))
 KEY_PRIVATE_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'private'))
 
@@ -59,7 +72,7 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
         actual_path = config_path  # it's a full path to the local file
     else:
         actual_path = None
-        for conf_dir in [CONFIG_DIR, os.path.expanduser('~/osqe-configs/lab_configs')]:
+        for conf_dir in [WithConfig.CONFIG_DIR, os.path.expanduser('~/osqe-configs/lab_configs')]:
             try_this_path = os.path.join(conf_dir, directory, config_path)
             if os.path.isfile(try_this_path):
                 actual_path = try_this_path
@@ -78,18 +91,3 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
         raise ValueError('{0} is empty!'.format(actual_path))
 
     return body_or_yaml
-
-
-def ls_configs(directory=''):
-    import os
-
-    folder = os.path.abspath(os.path.join(CONFIG_DIR, directory))
-    return sorted(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))
-
-
-def open_artifact(name, mode):
-    import os
-
-    if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
-        os.makedirs(WithConfig.ARTIFACTS_DIR)
-    return open(os.path.join(WithConfig.ARTIFACTS_DIR, name), mode)

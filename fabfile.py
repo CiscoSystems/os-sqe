@@ -82,21 +82,20 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True)
         :param is_parallel: if False, switch off parallel execution and run in sequence
         :param is_tims: if True then publish results to TIMS
     """
-    import os
-    from fabric.api import local
-    from lab import with_config
+    from lab.with_config import WithConfig
     from lab.logger import lab_logger
 
     lab_name = lab_cfg_path.rsplit('/', 1)[-1].replace('.yaml', '')
 
-    available_tc = with_config.ls_configs(directory='ha')
+    available_tc = WithConfig.ls_configs(directory='ha')
     tests = sorted(filter(lambda x: test_regex in x, available_tc))
 
     if not tests:
+        lab_logger.info('STATUS: STATUS_FAILED')
         raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
     run_config_yaml = '{lab}-ha-{regex}.yaml'.format(lab=lab_name, regex=test_regex)
-    with with_config.open_artifact(run_config_yaml, 'w') as f:
+    with WithConfig.open_artifact(run_config_yaml, 'w') as f:
         f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab_cfg_path))
         for i, test in enumerate(tests, start=1):
             f.write('runner{}:  {{lab.runners.runner_ha.RunnerHA: {{cloud: {}, task-yaml: "{}", is-debug: {}, is-parallel: {}, is-report-to-tims: {}}}}}\n'.format(10*i + 1,  lab_name, test, is_debug, is_parallel, is_tims))
@@ -104,16 +103,6 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True)
     run_results = run(config_path='artifacts/' + run_config_yaml, version=None)
 
     lab_logger.info('Results: {}'.format(run_results))
-    if 'pyats' in os.getenv('PATH'):
-        pyast_template = with_config.read_config_from_file('pyats.template', 'pyats', is_as_string=True)
-        pyats_body = pyast_template.format(run_results)
-        with with_config.open_artifact('pyats_job.py', 'w') as f:
-            f.write(pyats_body)
-        # noinspection PyBroadException
-        try:
-            local('easypy artifacts/pyats_job.py -no_archive ' + ('-tims_post -tims_dns "tims/Tcbr2p"' if is_tims else ''))
-        except:
-            pass
 
 
 @task
@@ -127,9 +116,9 @@ def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openst
     :param rally_repo: specify rally git repo if needed
     :param rally_patch: specify review if needed
     """
-    from lab.with_config import ls_configs, open_artifact
+    from lab.with_config import WithConfig
 
-    lab_confirmed = filter(lambda x: lab in x, ls_configs())
+    lab_confirmed = filter(lambda x: lab in x, WithConfig.ls_configs())
 
     if not lab_confirmed:
         raise ValueError('There is no hardware configuration for lab {0}'.format(lab))
@@ -141,10 +130,10 @@ def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openst
         task_body = task_body.replace('{concurrency}', concurrency)
         task_body = task_body.replace('{n_tenants}', '{0}'.format(n_tenants))
 
-    with open_artifact('task-rally.yaml', 'w') as f:
+    with WithConfig.open_artifact('task-rally.yaml', 'w') as f:
         f.write(task_body)
 
-    with open_artifact('rally-runner.yaml', 'w') as f:
+    with WithConfig.open_artifact('rally-runner.yaml', 'w') as f:
         f.write('deployer:  {lab.deployers.deployer_existing_osp7.DeployerExistingOSP7: {cloud: %s, hardware-lab-config: %s}}\n' % (lab, lab))
         f.write('runner:    {{lab.runners.runner_rally.RunnerRally: {{cloud: {lab}, hardware-lab-config: {lab}, task-yaml: artifacts/task-rally.yaml, rally-repo: "{repo}", rally-patch: "{patch}" }}}}\n'.format(
             lab=lab, repo=rally_repo, patch=rally_patch))
