@@ -3,7 +3,6 @@
 - Description: runs parametrised number of CSR images
 
 - class: lab.scenarios.ntt_scenario.NttScenario
-  how-many-networks: 3
-  how-many-servers: 20
-  n_repeats: 1
-  delay: 10
+  configuration: 10per_compute
+  pauses: [5, 4, 3, 2, 1]
+  n_repeats: 5
