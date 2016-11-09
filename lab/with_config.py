@@ -27,6 +27,8 @@ class WithConfig(object):
     def get_log_file_names():
         import os
 
+        if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
+            os.makedirs(WithConfig.ARTIFACTS_DIR)
         return '/var/log/vmtp/sqe.log' if 'vtmp' in os.listdir('/var/log') else '/tmp/sqe.log', os.path.join(WithConfig.ARTIFACTS_DIR, 'json.log')
 
     @staticmethod
