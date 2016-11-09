@@ -61,15 +61,14 @@ class Logger(object):
         from lab.with_config import WithConfig
 
         text_log_name, json_log_name = WithConfig.get_log_file_names()
-        formatter = logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s:  %(message)s')
 
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(formatter)
+        console_handler.setFormatter(logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s: %(message)s'))
 
         file_handler = logging.FileHandler(text_log_name)
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s [%(name)s] %(message)s'))
 
         json_handler = logging.FileHandler(json_log_name)
         json_handler.setLevel(logging.DEBUG)

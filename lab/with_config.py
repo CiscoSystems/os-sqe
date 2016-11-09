@@ -29,7 +29,7 @@ class WithConfig(object):
 
         if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
             os.makedirs(WithConfig.ARTIFACTS_DIR)
-        return '/var/log/vmtp/sqe.log' if 'vtmp' in os.listdir('/var/log') else '/tmp/sqe.log', os.path.join(WithConfig.ARTIFACTS_DIR, 'json.log')
+        return '/var/log/vmtp/sqe.log' if 'vmtp' in os.listdir('/var/log') else '/tmp/sqe.log', os.path.join(WithConfig.ARTIFACTS_DIR, 'json.log')
 
     @staticmethod
     def ls_configs(directory=''):
