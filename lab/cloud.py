@@ -292,7 +292,7 @@ export OS_AUTH_URL={end_point}
         name = self._unique_pattern_in_name + '-' + image_name
 
         image = self.os_image_show(name)
-        if image is str or image['checksum'] != image_info['checksum']:
+        if not image or image['checksum'] != image_info['checksum']:
             image_path = self._mediator.r_get_remote_file(url=image_info['url'], to_directory='cloud_images', checksum=image_info['checksum'], method=image_info['method'])
             self.log('image={} status=requested'.format(name))
             self.os_cmd('openstack image create {name} --public --protected --disk-format qcow2 --container-format bare --file {path}'.format(name=name, path=image_path))
