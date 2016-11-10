@@ -68,7 +68,10 @@ export OS_AUTH_URL={end_point}
     def _process_json_output(answer):
         import json
 
-        lst = json.loads(answer.split('\n')[-1])  # neutron returns Created a new port:\r\n[{"Field": "admin_state_up", "Value": true}.... while openstack returns just serialized array
+        try:
+            lst = json.loads(answer.split('\n')[-1])  # neutron returns Created a new port:\r\n[{"Field": "admin_state_up", "Value": true}.... while openstack returns just serialized array
+        except ValueError:  # this may happen e.g. openstack image show non-existing -f json which gives "Could not find resource sqe-test-iperf"
+            return {}
         if not lst or 'Value' not in lst[0]:  # [{"ID": "foo", "Name": "bar"}, ...] for list operation
             return lst
         else:
