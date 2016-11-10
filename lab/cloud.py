@@ -213,6 +213,12 @@ export OS_AUTH_URL={end_point}
         self.os_cmd('openstack flavor set {} --property hw:numa_nodes=1'.format(name_with_prefix))
         self.os_cmd('openstack flavor set {} --property hw:mem_page_size=large'.format(name_with_prefix))
 
+    def os_flavor_delete(self, name):
+        self.os_cmd('openstack flavor delete {}'.format(name))
+
+    def os_flavor_list(self):
+        return self.os_cmd('openstack flavor list -f json')
+
     def os_server_reboot(self, name, hard=False):
         flags = ['--hard' if hard else '--soft']
         self.os_cmd('openstack server reboot {flags} {name}'.format(flags=' '.join(flags), name=name))
@@ -404,18 +410,21 @@ export OS_AUTH_URL={end_point}
         ports = self.os_port_list()
         keypairs = self.os_keypair_list()
         networks = self.os_network_list()
+        flavors = self.os_flavor_list()
 
         sqe_servers = filter(lambda x: self._unique_pattern_in_name in x['Name'], servers)
         sqe_ports = filter(lambda x: self._unique_pattern_in_name in x['name'], ports)
         sqe_networks = filter(lambda x: self._unique_pattern_in_name in x['Name'], networks)
         sqe_routes = filter(lambda x: self._unique_pattern_in_name in x['name'], routers)
         sqe_keypairs = filter(lambda x: self._unique_pattern_in_name in x['Name'], keypairs)
+        sqe_flavors = filter(lambda x: self._unique_pattern_in_name in x['Name'], flavors)
 
         map(lambda server: self.os_server_delete(server['Name']), sqe_servers)
         map(lambda router: self._clean_router(router['name']), sqe_routes)
         map(lambda port: self.os_port_delete(port['id']), sqe_ports)
         map(lambda net: self.os_network_delete(net['ID']), sqe_networks)
         map(lambda keypair: self.os_keypair_delete(keypair['Name']), sqe_keypairs)
+        map(lambda flavor: self.os_flavor_delete(flavor['Name']), sqe_flavors)
 
     def r_collect_information(self, regex, comment):
         body = ''
