@@ -23,15 +23,14 @@ class VtsDisruptor(ParallelWorker):
                     raise ValueError('method-to-disrupt must be  one of: {0}'.format(possible_methods))
         except KeyError:
             raise ValueError('This monitor requires downtime and node-to-disrupt')
-        lab = self._cloud.mediator.lab()
-        self._vtc = Vtc(node_id='VtcSpecial', role='vtc', lab=None) if self._ip else lab.get_nodes_by_class(Vtc)[0]
+        self._vtc = Vtc(node_id='VtcSpecial', role='vtc', lab=None) if self._ip else self._lab.get_nodes_by_class(Vtc)[0]
         if self._ip:
             self._vtc.set_oob_creds(ip=self._ip, username=self._username, password=self._password)
         if 'vtc' in self._node_to_disrupt:
             cluster = self._vtc.r_vtc_show_ha_cluster_members()
             cluster = {x['role']: x['address'] for x in cluster['collection']['tcm:members']}
             master_slave = self._node_to_disrupt.split('-')[0]
-            for vtc in lab.get_nodes_by_class(Vtc):
+            for vtc in self._lab.get_nodes_by_class(Vtc):
                 if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[master_slave]:
                     self._node_to_disrupt = vtc
                     break

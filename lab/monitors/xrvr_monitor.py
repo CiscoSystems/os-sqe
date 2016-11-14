@@ -11,7 +11,6 @@ class XrvrMonitor(ParallelWorker):
         from lab.vts_classes.vtc import Vtc
         from lab.vts_classes.xrvr import Xrvr
 
-        self._lab = self._cloud.mediator.lab()
         self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes(Vtc)[0]
 
         xrvr_nodes = self._lab.get_nodes(Xrvr)

@@ -22,7 +22,7 @@ class RunnerRally(Runner):
         if not cloud:
             raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self._cloud_name))
 
-        server = servers[0] if servers else cloud[0].mediator
+        server = servers[0] if servers else cloud[0].get_mediator()
         open_rc_path = '{0}.openrc'.format(self._cloud_name)
         rally_html = 'rally-results.html'
         task_path = 'rally-task.yaml'

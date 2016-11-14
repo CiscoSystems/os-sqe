@@ -23,7 +23,6 @@ class VtsOverlayMonitor(ParallelWorker):
     def setup_worker(self):
         from lab.vts_classes.vtc import Vtc
 
-        self._lab = self._cloud.mediator.lab()
         self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes_by_class(Vtc)[0]
 
     def loop_worker(self):
