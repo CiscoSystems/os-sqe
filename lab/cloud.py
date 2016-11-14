@@ -214,7 +214,7 @@ export OS_AUTH_URL={end_point}
         name_with_prefix = self._add_name_prefix(name)
         self.os_cmd('openstack flavor create {} --vcpu 2 --ram 4096 --disk 40 --public'.format(name_with_prefix))
         self.os_cmd('openstack flavor set {} --property hw:numa_nodes=1'.format(name_with_prefix))
-        self.os_cmd('openstack flavor set {} --property hw:mem_page_size=large'.format(name_with_prefix))
+        return self.os_cmd('openstack flavor set {} --property hw:mem_page_size=large -f json'.format(name_with_prefix))
 
     def os_flavor_delete(self, name):
         self.os_cmd('openstack flavor delete {}'.format(name))

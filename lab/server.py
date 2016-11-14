@@ -164,8 +164,8 @@ class Server(object):
         calc_checksum = self.exe(command='{meth} {loc}'.format(meth=method, loc=loc), in_directory='cache')
         if method:
             if checksum is None:
-                checksum = requests.get(url='{}.{}.txt'.format(url, method))
-            if calc_checksum.split()[0] != checksum.text.strip('\n'):
+                checksum = requests.get(url='{}.{}.txt'.format(url, method)).text
+            if calc_checksum.split()[0] != checksum.strip('\n'):
                 raise RuntimeError('image {} taken from {} has wrong checksum. Check it manually'.format(loc, url))
         self.exe('cp $HOME/cache/{} .'.format(loc), in_directory=to_directory)
         return self.exe(command='readlink -f {0}'.format(loc), in_directory=to_directory)
