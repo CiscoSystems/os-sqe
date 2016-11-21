@@ -106,6 +106,7 @@ output:
 
     def execute(self, clouds, servers):
         super(RunnerCloud9, self).execute(clouds, servers)
+        return True
 
 
 if __name__ == '__main__':

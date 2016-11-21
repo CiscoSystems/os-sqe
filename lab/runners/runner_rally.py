@@ -50,3 +50,4 @@ class RunnerRally(Runner):
             server.exe(command='{0}/bin/rally task start {1}'.format(venv_path, task_path))
             server.exe(command='{0}/bin/rally task report --out {1}'.format(venv_path, rally_html))
             server.get(remote_path=rally_html, local_path=os.path.join(self.ARTIFACTS_DIR, rally_html))
+        return True

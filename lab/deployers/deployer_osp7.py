@@ -202,4 +202,4 @@ class DeployerOSP7(LabWorker):
     def execute(self, servers_and_clouds):
         cloud = self.deploy_cloud(list_of_servers=servers_and_clouds['servers'])
         servers_and_clouds['clouds'].append(cloud)
-        return cloud.verify_cloud()
+        return True

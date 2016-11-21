@@ -200,6 +200,7 @@ class DeployerVts(LabWorker):
 
     def execute(self, servers_and_clouds):
         self.deploy_vts(list_of_servers=servers_and_clouds['servers'])
+        return True
 
     @staticmethod
     def is_valid_installation(vts_hosts):

@@ -13,5 +13,4 @@ class RunnerTempest(Runner):
         super(RunnerTempest, self).__init__(config=config)
 
     def execute(self, clouds, servers):
-        
-        pass
+        return True

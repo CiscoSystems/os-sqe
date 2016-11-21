@@ -62,6 +62,5 @@ class BaseLab(WithStatusMixIn):
             lab_logger.info(separator)
             lab_logger.info('Call {}.execute()...'.format(obj))
             lab_logger.info(separator)
-            output = obj.execute(self._servers_and_clouds)
-            self._results.append({str(obj): {'spent_time': time.time() - start_time, 'output': output}})
+            self._results.append({'class': str(obj), 'spent_time': time.time() - start_time, 'status': obj.execute(self._servers_and_clouds)})
         return self._results

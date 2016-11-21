@@ -105,7 +105,8 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True)
     start_time = datetime.now()
     run_results = run(config_path='artifacts/' + run_config_yaml, version=None)
     elk.filter_error_warning_date_range(start=start_time)
-    lab_logger.info('Status: {}'.format(run_results.get('STATUS', 'Failed')))
+    status = all(map(lambda x: x.get('output', False), run_results))
+    lab_logger.info('Status: {}'.format(status))
 
 
 @task

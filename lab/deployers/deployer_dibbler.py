@@ -33,4 +33,4 @@ iface "{iface}" {
         raise RuntimeError('Server {0} expected by config is not provided!'.format(self.hostname))
 
     def execute(self, servers_and_clouds):
-        return
+        return True

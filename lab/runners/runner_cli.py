@@ -34,3 +34,4 @@ class RunnerCLI(Runner):
                 if command.startswith('neutron') or command.startswith('nova'):
                     command = '{0} {1}'.format(command, cloud)
                 self.run(command=command, server=server)
+        return True
