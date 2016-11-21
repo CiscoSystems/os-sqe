@@ -50,6 +50,8 @@ curl -XPOST 'localhost:9200/_search?pretty' -d '
 '''
     r = json.loads(local(a, capture=True))
     for log in r['hits']['hits']:
+        if 'logdate' not in log['_source']:
+            continue
         logdate = log['_source']['logdate']
         date = datetime.strptime(logdate[:19], '%Y-%m-%d %H:%M:%S')  # [:19] truncates milliseconds or AM PM
         if date > start:

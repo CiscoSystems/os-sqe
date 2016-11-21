@@ -135,12 +135,19 @@ class Vtc(LabServer):
 
     def disrupt(self, start_or_stop, method_to_disrupt):
         vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
+
         if method_to_disrupt == 'vm-shutdown':
-            vts_host.exe(command='virsh {} vtc'.format('suspend' if start_or_stop == 'start' else 'resume'))
+            ans = vts_host.exe('virsh list | grep vtc')
+            vm_name = ans.split()[1]
+            vts_host.exe(command='virsh {} {}'.format('suspend' if start_or_stop == 'start' else 'resume', vm_name))
         elif method_to_disrupt == 'isolate-from-mx':
-            vts_host.exe('ip l s dev vtc-mx-port {}'.format('down' if start_or_stop == 'start' else 'up'))
+            ans = vts_host.exe('ip l | grep mgmt | grep vtc')
+            if_name = ans.split()[1][:-1]
+            vts_host.exe('ip l s dev {} {}'.format(if_name, 'down' if start_or_stop == 'start' else 'up'))
         elif method_to_disrupt == 'isolate-from-api':
-            vts_host.exe('ip l s dev vtc-a-port {}'.format('down' if start_or_stop == 'start' else 'up'))
+            ans = vts_host.exe('ip l | grep api | grep vtc')
+            if_name = ans.split()[1][:-1]
+            vts_host.exe('ip l s dev {} {}'.format(if_name, 'down' if start_or_stop == 'start' else 'up'))
         elif method_to_disrupt == 'vm-reboot' and start_or_stop == 'start':
             self.exe('sudo shutdown -r now')
 

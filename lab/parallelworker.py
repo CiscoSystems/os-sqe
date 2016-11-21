@@ -48,6 +48,7 @@ class ParallelWorker(object):
         # noinspection PyBroadException
         try:
             self._log = Logger(name=str(self))
+            self._log.info(80 * '-')
             self._log.info('status=started arguments={}'.format(self._kwargs))
             if self._is_debug:  # don't actually run anything to check that infrastructure works
                 self._results['output'].append(self.debug_output())
@@ -69,6 +70,7 @@ class ParallelWorker(object):
 
         self._log.info('status=finished arguments={0}'.format(self._kwargs))
         self.teardown_worker()
+        self._log.info(80 * '-')
         return self._results
 
     @abc.abstractmethod
@@ -80,7 +82,7 @@ class ParallelWorker(object):
         raise NotImplemented
 
     def teardown_worker(self):
-        self._log.info('Empty teardown method')
+        pass
 
     @staticmethod
     def debug_output():

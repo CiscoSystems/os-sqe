@@ -1,7 +1,47 @@
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 1
+  node-to-disrupt: slave-vtc
+  method-to-disrupt: isolate-from-api
+  n_repeats: 1
+  downtime: 10
+  uptime: 10
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 60
+  node-to-disrupt: slave-vtc
+  method-to-disrupt: isolate-from-mx
+  n_repeats: 1
+  downtime: 10
+  uptime: 10
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 120
   node-to-disrupt: master-vtc
   method-to-disrupt: isolate-from-api
-  n_repeats: 2
-  downtime: 100
-  uptime: 20
+  n_repeats: 1
+  downtime: 10
+  uptime: 10
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 180
+  node-to-disrupt: master-vtc
+  method-to-disrupt: isolate-from-mx
+  n_repeats: 1
+  downtime: 10
+  uptime: 10
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 240
+  node-to-disrupt: master-vtc
+  method-to-disrupt: vm-shutdown
+  n_repeats: 1
+  downtime: 10
+  uptime: 10
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 300
+  node-to-disrupt: slave-vtc
+  method-to-disrupt: vm-shutdown
+  n_repeats: 1
+  downtime: 10
+  uptime: 10
