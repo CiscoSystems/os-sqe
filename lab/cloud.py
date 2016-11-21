@@ -398,8 +398,8 @@ export OS_AUTH_URL={end_point}
         self.wait_instances_ready(names=server_names)
         return map(lambda x: self.os_server_show(x), server_names)
 
-    def os_server_delete(self, name):
-        return self.os_cmd('openstack server delete {}'.format(self._add_name_prefix(name)))
+    def os_server_delete(self, name=None, server_id=None):
+        return self.os_cmd('openstack server delete {}'.format(self._add_name_prefix(name) if name else server_id))
 
     def os_server_list(self):
         return self.os_cmd('openstack server list -f json')
@@ -422,7 +422,7 @@ export OS_AUTH_URL={end_point}
         sqe_keypairs = filter(lambda x: self._unique_pattern_in_name in x['Name'], keypairs)
         sqe_flavors = filter(lambda x: self._unique_pattern_in_name in x['Name'], flavors)
 
-        map(lambda server: self.os_server_delete(server['Name']), sqe_servers)
+        map(lambda server: self.os_server_delete(server_id=server['ID']), sqe_servers)
         map(lambda router: self._clean_router(router['name']), sqe_routes)
         map(lambda port: self.os_port_delete(port['id']), sqe_ports)
         map(lambda net: self.os_network_delete(net['ID']), sqe_networks)
