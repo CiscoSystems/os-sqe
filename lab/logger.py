@@ -97,5 +97,9 @@ class Logger(object):
         if self._logger:
             self._logger.exception(*args)
 
+    def error(self, *args):
+        if self._logger:
+            self._logger.error(*args)
+
 
 lab_logger = Logger('LAB-LOG')

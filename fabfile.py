@@ -82,8 +82,10 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True)
         :param is_parallel: if False, switch off parallel execution and run in sequence
         :param is_tims: if True then publish results to TIMS
     """
+    from datetime import datetime
     from lab.with_config import WithConfig
     from lab.logger import lab_logger
+    from lab import elk
 
     lab_name = lab_cfg_path.rsplit('/', 1)[-1].replace('.yaml', '')
 
@@ -100,9 +102,10 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True)
         for i, test in enumerate(tests, start=1):
             f.write('runner{}:  {{lab.runners.runner_ha.RunnerHA: {{cloud: {}, task-yaml: "{}", is-debug: {}, is-parallel: {}, is-report-to-tims: {}}}}}\n'.format(10*i + 1,  lab_name, test, is_debug, is_parallel, is_tims))
 
+    start_time = datetime.now()
     run_results = run(config_path='artifacts/' + run_config_yaml, version=None)
-
-    lab_logger.info('Results: {}'.format(run_results))
+    elk.filter_error_warning_date_range(start=start_time)
+    lab_logger.info('Status: {}'.format(run_results.get('STATUS', 'Failed')))
 
 
 @task
@@ -230,3 +233,13 @@ def collect_info(lab_config_path, regex):
     except RuntimeError:
         pass  # it's ok if cloud is not yet deployed in the lab
     l.r_collect_information(regex=regex, comment='')
+
+
+@task
+def test(a):
+    """fab test:message like a=b'\tTest logging facility. Check file json.log afterwards."""
+    import sys
+    from lab.logger import lab_logger
+
+    lab_logger.info(a)
+    sys.exit(33)
