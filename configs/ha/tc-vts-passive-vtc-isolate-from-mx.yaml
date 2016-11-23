@@ -1,6 +1,6 @@
 ---
 - Folder: HIGH AVAILABILITY
-- Description: tc_vts_passive_vtc_isolate_from_mx: first create OS VM then set DOWN MX interface for a while
+- Description: tc_vts_passive_vtc_isolate_from_mx first create OS VM then set DOWN MX interface for a while
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2
