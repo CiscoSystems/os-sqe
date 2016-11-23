@@ -261,7 +261,7 @@ class Vtc(LabServer):
         cfg_body = cfg_tmpl.format(vtc_a_ip=a_ip, a_net_mask=a_net_mask, a_gw=a_gw, vtc_mx_ip=mx_ip, mx_net_mask=mx_net_mask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=ssh_username, password=ssh_password, hostname=hostname)
         net_part = net_part_tmpl.format(a_nic_name='a', mx_nic_name='mx', mx_vlan=mx_vlan)
 
-        with with_config.open_artifact(hostname, 'w') as f:
+        with with_config.WithConfig.open_artifact(hostname, 'w') as f:
             f.write(cfg_body)
         return cfg_body, net_part
 
@@ -280,7 +280,7 @@ class Vtc(LabServer):
             mx_ip.append(mx_nic.get_ip_and_mask()[0])
         cfg_tmpl = with_config.read_config_from_file(config_path='cluster.conf.template', directory='vts', is_as_string=True)
         cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_a=vip_a, vip_mx=vip_mx, vtc1_a_ip=a_ip[1], vtc2_a_ip=a_ip[2], vtc1_mx_ip=mx_ip[1], vtc2_mx_ip=mx_ip[2], special_ip=a_ip[0], mx_gw=mx_gw)
-        with with_config.open_artifact('cluster.conf', 'w') as f:
+        with with_config.WithConfig.open_artifact('cluster.conf', 'w') as f:
             f.write(cfg_body)
         return cfg_body
 

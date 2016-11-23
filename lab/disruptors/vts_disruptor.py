@@ -42,7 +42,7 @@ class VtsDisruptor(ParallelWorker):
     def loop_worker(self):
         import time
 
-        self._log.info('host={}; status=going-off {}'.format(self._node_to_disrupt, self._node_to_disrupt.disrupt(start_or_stop='start', method_to_disrupt=self._method_to_disrupt)))
+        self._log.info('host={} method={} status=going-off {}'.format(self._node_to_disrupt, self._method_to_disrupt, self._node_to_disrupt.disrupt(start_or_stop='start', method_to_disrupt=self._method_to_disrupt)))
         self._log.info('Sleeping for {} secs downtime'.format(self._downtime))
         time.sleep(self._downtime)
         self._log.info('host={}; status=going-on {}'.format(self._node_to_disrupt, self._node_to_disrupt.disrupt(start_or_stop='stop', method_to_disrupt=self._method_to_disrupt)))
