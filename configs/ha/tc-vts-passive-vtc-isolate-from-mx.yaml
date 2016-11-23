@@ -1,21 +1,21 @@
 ---
 - Folder: HIGH AVAILABILITY
-- Description: first create OS VM then start disruptor
+- Description: tc_vts_passive_vtc_isolate_from_mx: first create OS VM then set DOWN MX interface for a while
 - class: lab.monitors.vts_monitor.VtsMonitor
   duration: 200
   period: 2
 
 - class: lab.scenarios.vts_scenario.VtsScenario
-  delay: 20
+  delay: 5
   how-many-networks: 1
-  how-many-servers: 3
+  how-many-servers: 2
   n_repeats: 1
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
-  delay: 20
+  delay: 120
   node-to-disrupt: slave-vtc
   method-to-disrupt: isolate-from-mx
-  n_repeats: 2
+  n_repeats: 1
   downtime: 10
   uptime: 20
 
