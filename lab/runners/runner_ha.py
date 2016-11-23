@@ -81,4 +81,4 @@ class RunnerHA(LabWorker):
         elk = Elk(proxy=lab.get_director())
         elk.filter_date_range(start=start_time)
 
-        return len(exceptions) == 0
+        return exceptions

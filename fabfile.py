@@ -101,7 +101,7 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True)
             f.write('runner{}:  {{lab.runners.runner_ha.RunnerHA: {{cloud: {}, task-yaml: "{}", is-debug: {}, is-parallel: {}, is-report-to-tims: {}}}}}\n'.format(10*i + 1,  lab_name, tst, is_debug, is_parallel, is_tims))
 
     run_results = run(config_path='artifacts/' + run_config_yaml, version=None)
-    is_ok = all(map(lambda x: x.get('status', False), run_results))
+    is_ok = all(map(lambda x: len(x.get('exceptions', [])) == 0, run_results))
     lab_logger.info('Status: {}'.format(is_ok))
     if not is_ok:
         lab_logger.info('Possible reason {}'.format(run_results))
