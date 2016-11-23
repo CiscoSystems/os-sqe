@@ -54,9 +54,18 @@ class Elk(object):
             if date > start:
                 lab_logger.error(log['_source'])
 
+    @staticmethod
+    def _normalize_time(start):
+        from datetime import datetime
+        from dateutil.parser import parse
+
+        if type(start) is not datetime:
+            start = parse(start)
+        return start.strftime('%Y-%m-%d %H:%M:%S')
+
     def filter_date_range(self, start):
         import json
-    
+
         a = '''curl -XPOST 'localhost:9200/_search?pretty' -d '
             {
               "query": {  "filtered": {
@@ -66,7 +75,7 @@ class Elk(object):
               "size": 10000
             }'
             '''
-        a = a.replace('start_time', start.strftime('%Y-%m-%d %H:%M:%S'))
+        a = a.replace('start_time', self._normalize_time(start=start))
         r = self.exe(a)
         r = json.loads(r)
         return r

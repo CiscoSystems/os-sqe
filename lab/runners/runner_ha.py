@@ -24,7 +24,6 @@ class RunnerHA(LabWorker):
 
     def execute(self, servers_and_clouds):
         import importlib
-        from datetime import datetime
         import multiprocessing
         import fabric.network
         from lab.tims import Tims
@@ -39,7 +38,7 @@ class RunnerHA(LabWorker):
         type_of_run = ' {} {} debug in {}'.format(self._task_yaml_path, 'with' if self._is_debug else 'without', 'parallel' if self._is_parallel else 'sequence')
         self.log('Running ' + type_of_run)
 
-        start_time = datetime.now()
+        start_time = lab.get_director().exe('date')
 
         workers_to_run = []
         path_to_module = 'Before reading task body'
