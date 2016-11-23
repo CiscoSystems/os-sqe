@@ -33,49 +33,20 @@ class Elk(object):
     
         return json.loads(self.exe("curl --silent 'localhost:9200/_search?q=loglevel:ERROR&size=4&sort=logdate:asc&pretty'".format(field, what)))
 
-    def filter_error_warning_date_range(self, start):
+    def filter_error_warning_in_last_seconds(self, seconds):
         import json
-        from datetime import datetime
-        from lab.logger import lab_logger
-    
-        a = '''
-    curl -XPOST 'localhost:9200/_search?pretty' -d '
-    {
-      "query": {"bool": { "should": [{ "match": { "loglevel": "ERROR"}},{ "match": { "loglevel": "WARNING" }}]}},
-      "size": 10000
-    }'
-    '''
-        r = json.loads(self.exe(a))
-        for log in r['hits']['hits']:
-            if 'logdate' not in log['_source']:
-                continue
-            logdate = log['_source']['logdate']
-            date = datetime.strptime(logdate[:19], '%Y-%m-%d %H:%M:%S')  # [:19] truncates milliseconds or AM PM
-            if date > start:
-                lab_logger.error(log['_source'])
-
-    @staticmethod
-    def _normalize_time(start):
-        from datetime import datetime
-        from dateutil.parser import parse
-
-        if type(start) is not datetime:
-            start = parse(start)
-        return start.strftime('%Y-%m-%d %H:%M:%S')
-
-    def filter_date_range(self, start):
-        import json
+        import math
 
         a = '''curl -XPOST 'localhost:9200/_search?pretty' -d '
             {
               "query": {  "filtered": {
                   "query": {"bool": { "should": [{ "match": { "loglevel": "ERROR"}},{ "match": { "loglevel": "WARNING" }}]}},
-                  "filter": {"range": { "logdate": { "gte": "start_time", "lte": "now"}}}
+                  "filter": {"range": { "logdate": { "gte": "now-XXXXXs", "lte": "now"}}}
               }},
               "size": 10000
             }'
             '''
-        a = a.replace('start_time', self._normalize_time(start=start))
+        a = a.replace('XXXXX', str(int(math.ceil(seconds))))
         r = self.exe(a)
         r = json.loads(r)
         return r

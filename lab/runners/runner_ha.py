@@ -26,6 +26,7 @@ class RunnerHA(LabWorker):
         import importlib
         import multiprocessing
         import fabric.network
+        import time
         from lab.tims import Tims
         from lab.elk import Elk
 
@@ -38,7 +39,7 @@ class RunnerHA(LabWorker):
         type_of_run = ' {} {} debug in {}'.format(self._task_yaml_path, 'with' if self._is_debug else 'without', 'parallel' if self._is_parallel else 'sequence')
         self.log('Running ' + type_of_run)
 
-        start_time = lab.get_director().exe('date')
+        start_time = time.time()
 
         workers_to_run = []
         path_to_module = 'Before reading task body'
@@ -70,7 +71,7 @@ class RunnerHA(LabWorker):
             exceptions.extend(result.get('exceptions', []))
 
         elk = Elk(proxy=lab.get_director())
-        elk.filter_date_range(start=start_time)
+        elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
 
         tims_report = ''
         if self._is_report_to_tims:
