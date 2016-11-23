@@ -23,10 +23,12 @@ class RunnerHA(LabWorker):
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
 
     def execute(self, servers_and_clouds):
-        from lab.tims import Tims
         import importlib
+        from datetime import datetime
         import multiprocessing
         import fabric.network
+        from lab.tims import Tims
+        from lab.elk import Elk
 
         try:
             cloud = filter(lambda x: x.get_name() == self._cloud_name, servers_and_clouds['clouds'])[0]
@@ -36,6 +38,8 @@ class RunnerHA(LabWorker):
 
         type_of_run = ' {} {} debug in {}'.format(self._task_yaml_path, 'with' if self._is_debug else 'without', 'parallel' if self._is_parallel else 'sequence')
         self.log('Running ' + type_of_run)
+
+        start_time = datetime.now()
 
         workers_to_run = []
         path_to_module = 'Before reading task body'
@@ -73,5 +77,8 @@ class RunnerHA(LabWorker):
             report_url = t.publish_result_to_tims(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, lab=lab, results=results)
             tims_report = 'and reported to {}'.format(report_url)
         self.log_to_slack(message=' {} finished with # exceptions={} {}'.format(type_of_run, len(exceptions), tims_report))
+
+        elk = Elk(proxy=lab.get_director())
+        elk.filter_error_warning_date_range(start=start_time)
 
         return len(exceptions) == 0
