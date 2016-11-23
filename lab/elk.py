@@ -57,16 +57,15 @@ class Elk(object):
     def filter_date_range(self, start):
         import json
     
-        a = '''
-    curl -XPOST 'localhost:9200/_search?pretty' -d '
-    {
-      "query": {  "filtered": {
-          "query": { "match_all": {}},
-          "filter": {"range": { "recieved_at": { "gte": "2016-11-16T11:12:00", "lte": "now"}}}
-      }},
-      "size": 0
-    }'
-    '''
+        a = '''curl -XPOST 'localhost:9200/_search?pretty' -d '
+            {
+              "query": {  "filtered": {
+                  "query": {"bool": { "should": [{ "match": { "loglevel": "ERROR"}},{ "match": { "loglevel": "WARNING" }}]}},
+                  "filter": {"range": { "logdate": { "gte": "start_time", "lte": "now"}}}
+              }},
+              "size": 10000
+            }'
+            '''
         a = a.replace('start_time', start.strftime('%Y-%m-%d %H:%M:%S'))
         r = self.exe(a)
         r = json.loads(r)

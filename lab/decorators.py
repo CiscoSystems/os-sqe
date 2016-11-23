@@ -1,3 +1,19 @@
+def section(message):
+    """Print time spent by decorated function"""
+    import functools
+    from lab.logger import lab_logger
+
+    def decorator(function):
+        @functools.wraps(function)
+        def decorated_func(*args, **kwargs):
+            lab_logger.section_start(message=message)
+            result = function(*args, **kwargs)
+            lab_logger.section_end(message=message)
+            return result
+        return decorated_func
+    return decorator
+
+
 def print_time(function):
     """Print time spent by decorated function"""
     import functools

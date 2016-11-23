@@ -1,4 +1,5 @@
 from lab.with_log import WithLogMixIn
+from lab.decorators import section
 
 
 class Cloud(WithLogMixIn):
@@ -210,6 +211,7 @@ export OS_AUTH_URL={end_point}
         fips = map(lambda _: self.os_cmd('neutron floatingip-create {0}'.format(self._fip_network)), range(how_many))
         return fips
 
+    @section('Creating custom flavor')
     def os_flavor_create(self, name):
         name_with_prefix = self._add_name_prefix(name)
         self.os_cmd('openstack flavor create {} --vcpu 2 --ram 4096 --disk 40 --public'.format(name_with_prefix))
@@ -285,6 +287,7 @@ export OS_AUTH_URL={end_point}
     def os_host_list(self):
         return self.os_cmd('openstack host list -f json')
 
+    @section('Registering custom image')
     def os_image_create(self, image_name):
         if image_name not in self._images:
             raise ValueError('{}: Dont know image {}'.format(self, image_name))
@@ -325,6 +328,7 @@ export OS_AUTH_URL={end_point}
                 return image
             time.sleep(15)
 
+    @section('Creating key pair')
     def os_keypair_create(self):
         from lab import with_config
         with open(with_config.KEY_PUBLIC_PATH) as f:
@@ -407,6 +411,7 @@ export OS_AUTH_URL={end_point}
     def os_server_show(self, name):
         return self.os_cmd('openstack server show -f json {}'.format(name))
 
+    @section('Cleanup: deleting all cloud objects created by all previous test runs')
     def os_cleanup(self):
         servers = self.os_server_list()
         routers = self.os_router_list()

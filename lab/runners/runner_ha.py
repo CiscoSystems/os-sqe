@@ -79,6 +79,6 @@ class RunnerHA(LabWorker):
         self.log_to_slack(message=' {} finished with # exceptions={} {}'.format(type_of_run, len(exceptions), tims_report))
 
         elk = Elk(proxy=lab.get_director())
-        elk.filter_error_warning_date_range(start=start_time)
+        elk.filter_date_range(start=start_time)
 
         return len(exceptions) == 0

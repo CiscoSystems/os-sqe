@@ -101,5 +101,15 @@ class Logger(object):
         if self._logger:
             self._logger.error(*args)
 
+    def _for_section(self, message, is_start):
+        if self._logger:
+            self._logger.info('{} {} {}'.format('>>>>' if is_start else '<<<<', message, (200 - len(message)) * '-'))
+
+    def section_start(self, message):
+        self._for_section(message=message, is_start=True)
+
+    def section_end(self, message):
+        self._for_section(message=message, is_start=False)
+
 
 lab_logger = Logger('LAB-LOG')
