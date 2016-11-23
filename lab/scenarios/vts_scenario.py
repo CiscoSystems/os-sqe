@@ -81,8 +81,11 @@ class VtsScenario(ParallelWorker):
             self._computes[zone].append(server)
             all_servers.append(server)
 
+        self._ping_part(all_servers)
+
         if self._what_to_run_inside.startswith('iperf'):
             return self._iperf_part()
+
 
     @staticmethod
     def debug_output():
