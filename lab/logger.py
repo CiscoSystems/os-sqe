@@ -67,11 +67,11 @@ class Logger(object):
         console_handler.setFormatter(logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s: %(message)s'))
 
         file_handler = logging.FileHandler(text_log_name)
-        file_handler.setLevel(logging.DEBUG)
+        file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s [%(name)s] %(message)s'))
 
         json_handler = logging.FileHandler(json_log_name)
-        json_handler.setLevel(logging.DEBUG)
+        json_handler.setLevel(logging.INFO)
         json_handler.setFormatter(JsonFormatter())
         json_handler.addFilter(JsonFilter())
 
@@ -84,6 +84,10 @@ class Logger(object):
 
         logging.captureWarnings(True)
         self._logger = logger
+
+    def debug(self, *args):
+        if self._logger:
+            self._logger.debug(*args)
 
     def info(self, *args):
         if self._logger:
@@ -103,7 +107,7 @@ class Logger(object):
 
     def _for_section(self, message, is_start):
         if self._logger:
-            self._logger.info('{} {} {}'.format('BEGIN >>>>' if is_start else 'FINISH <<<<', message, (200 - len(message)) * '-'))
+            self._logger.info('{} {} {}'.format('BEGIN  vvvvv' if is_start else 'FINISH ^^^^^', message, (200 - len(message)) * '-'))
 
     def section_start(self, message):
         self._for_section(message=message, is_start=True)

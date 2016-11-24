@@ -80,7 +80,7 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
                 actual_path = try_this_path
         actual_path = actual_path or gitlab_config_repo + config_path
 
-    lab_logger.info('Taking config from {0}'.format(actual_path))
+    lab_logger.debug('Taking config from {0}'.format(actual_path))
     if validators.url(actual_path):
         resp = requests.get(actual_path)
         if resp.status_code != 200:

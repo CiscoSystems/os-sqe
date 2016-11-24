@@ -5,4 +5,4 @@ class WithStatusMixIn(object):
 
     def status(self):
         from logger import lab_logger
-        lab_logger.info('\n\nstatus of {0}:\n{1}'.format(type(self), self))
+        lab_logger.debug('\n\nstatus of {0}:\n{1}'.format(type(self), self))
