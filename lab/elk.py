@@ -41,7 +41,7 @@ class Elk(object):
             {
               "query": {  "filtered": {
                   "query": {"bool": { "should": [{ "match": { "loglevel": "ERROR"}},{ "match": { "loglevel": "WARNING" }}]}},
-                  "filter": {"range": { "logdate": { "gte": "now-XXXXXs", "lte": "now"}}}
+                  "filter": {"range": { "received_at": { "gte": "now-XXXXXs", "lte": "now"}}}
               }},
               "size": 10000
             }'

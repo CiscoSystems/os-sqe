@@ -4,6 +4,7 @@ from lab.decorators import section
 
 class VtsScenario(ParallelWorker):
     # noinspection PyAttributeOutsideInit
+    @section('Setup')
     def setup_worker(self):
         import collections
 
@@ -67,6 +68,7 @@ class VtsScenario(ParallelWorker):
             ip = self._computes[0]['servers'][i].get_ssh_ip()
             answers.append(server.exe('{} -c {} -p 1111'.format(self._what_to_run_inside, ip)))
 
+    @section('Running test')
     def loop_worker(self):
         from lab.server import Server
 
@@ -85,7 +87,6 @@ class VtsScenario(ParallelWorker):
 
         if self._what_to_run_inside.startswith('iperf'):
             return self._iperf_part()
-
 
     @staticmethod
     def debug_output():

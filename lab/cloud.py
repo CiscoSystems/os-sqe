@@ -262,11 +262,8 @@ export OS_AUTH_URL={end_point}
             n_of_attempts += 1
 
     def analyse_instance_problems(self, instance):
-        from lab.server import Server
-
         instance_details = self.os_server_show(instance['Name'])
-        compute_node = Server(ip=instance_details['os-ext-srv-attr:host'], username='root', password='cisco123')
-        compute_node.exe(command='grep {instance_id} | grep -i error'.format(instance_id=instance_details['id']))
+        raise RuntimeError(instance_details['fault']['message'])
 
     def exe(self, cmd):
         """

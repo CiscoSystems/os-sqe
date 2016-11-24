@@ -103,7 +103,7 @@ class Logger(object):
 
     def _for_section(self, message, is_start):
         if self._logger:
-            self._logger.info('{} {} {}'.format('>>>>' if is_start else '<<<<', message, (200 - len(message)) * '-'))
+            self._logger.info('{} {} {}'.format('BEGIN >>>>' if is_start else 'FINISH <<<<', message, (200 - len(message)) * '-'))
 
     def section_start(self, message):
         self._for_section(message=message, is_start=True)
