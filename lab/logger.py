@@ -58,29 +58,36 @@ class Logger(object):
 
     def _create_logger(self, name):
         import inspect
+        import os
         from lab.with_config import WithConfig
-
-        text_log_name, json_log_name = WithConfig.get_log_file_names()
-
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s: %(message)s'))
-
-        file_handler = logging.FileHandler(text_log_name)
-        file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s [%(name)s] %(message)s'))
-
-        json_handler = logging.FileHandler(json_log_name)
-        json_handler.setLevel(logging.INFO)
-        json_handler.setFormatter(JsonFormatter())
-        json_handler.addFilter(JsonFilter())
 
         stack = inspect.stack()
         logger = logging.getLogger(name or stack[1][3])
         logger.setLevel(level=logging.DEBUG)
-        logger.addHandler(file_handler)
-        logger.addHandler(console_handler)
-        logger.addHandler(json_handler)
+
+        console = logging.StreamHandler()
+        console.setLevel(logging.DEBUG)
+        console.setFormatter(logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s: %(message)s'))
+        logger.addHandler(console)
+
+        if 'vmtp' in os.listdir('/var/log'):
+            logstash = logging.FileHandler('/var/log/vmtp/sqe.log')
+            logstash.setLevel(logging.INFO)
+            logstash.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s [%(name)s] %(message)s'))
+            logger.addHandler(logstash)
+
+        sqe_log_name, json_log_name = WithConfig.get_log_file_names()
+
+        artifacts_sqe = logging.FileHandler(sqe_log_name)
+        artifacts_sqe.setLevel(logging.INFO)
+        artifacts_sqe.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s [%(name)s] %(message)s'))
+        logger.addHandler(artifacts_sqe)
+
+        artifacts_json = logging.FileHandler(json_log_name)
+        artifacts_json.setLevel(logging.INFO)
+        artifacts_json.setFormatter(JsonFormatter())
+        artifacts_json.addFilter(JsonFilter())
+        logger.addHandler(artifacts_json)
 
         logging.captureWarnings(True)
         self._logger = logger
