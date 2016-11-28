@@ -482,12 +482,16 @@ class Vtc(LabServer):
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/operational/ha-cluster/members
             return self._rest_api(resource='GET /api/operational/ha-cluster/members', headers={'Accept': 'application/vnd.yang.collection+json'})
 
-    def r_vtc_show_openstack_network(self, is_via_ncs=False):
+    def r_vtc_show_openstack_network(self, is_via_ncs=False, network_id=''):
         if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow openstack network\nexit\nEOF')
+            return self.exe('ncs_cli << EOF\nshow openstack network {}\nexit\nEOF'.format(network_id))
         else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/openstack/network
-            return self._rest_api(resource='GET /api/running/openstack/network', headers={'Accept': 'application/vnd.yang.collection+json'})
+            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/openstack/network
+            return self._rest_api(resource='GET /api/running/openstack/network/{}'.format(network_id), headers={'Accept': 'application/vnd.yang.{}+json'.format('data' if network_id else 'collection')})
+
+    def r_vtc_get_openstack_network_vlan(self, network_id):
+        a = self.r_vtc_show_openstack_network(network_id=network_id)
+        return a['cisco-vts-openstack:network']['provider-segmentation-id']
 
     def r_vtc_show_openstack_subnet(self, is_via_ncs=False):
         if is_via_ncs:
