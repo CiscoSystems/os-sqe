@@ -227,8 +227,9 @@ def collect_info(lab_config_path, regex):
     l = Laboratory(lab_config_path)
     d = DeployerExisting({'cloud': lab_config_path.strip('.yaml'), 'hardware-lab-config': lab_config_path}, version=None)
     try:
-        c = d.execute({'servers': [], 'clouds': []})
-        c.r_collect_information(regex=regex, comment='')
+        servers_and_clouds = {'servers': [], 'clouds': []}
+        d.execute(servers_and_clouds=servers_and_clouds)
+        servers_and_clouds['clouds'][0].r_collect_information(regex=regex, comment='')
     except RuntimeError:
         pass  # it's ok if cloud is not yet deployed in the lab
     l.r_collect_information(regex=regex, comment='')
