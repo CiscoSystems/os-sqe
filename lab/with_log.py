@@ -2,9 +2,9 @@ class WithLogMixIn(object):
 
     @staticmethod
     def log_to_artifact(name, body):
-        from lab.with_config import open_artifact
+        from lab.with_config import WithConfig
 
-        with open_artifact(name, 'w') as f:
+        with WithConfig.open_artifact(name, 'w') as f:
             f.write(body)
 
     def _format_single_cmd_output(self, cmd, ans, node=None):
