@@ -15,6 +15,7 @@ class VtsScenario(ParallelWorker):
         self._n_nets = self._kwargs['how-many-networks']
         self._what_to_run_inside = self._kwargs.get('what-to-run-inside', 'Nothing')  # if nothing specified - do not run anything in addition to ping
         self._build_node = self._lab.get_director()
+        self._vtc = self._lab.get_vtc()[0]
         self._hosts = self._cloud.os_host_list()
         self._computes = collections.OrderedDict()
         for i, name in enumerate(sorted([x['Host Name'] for x in self._hosts if x['Service'] == 'compute'])):
@@ -32,10 +33,31 @@ class VtsScenario(ParallelWorker):
 
     @section('Creating networks sub-networks and ports')
     def _network_part(self):
-        internal_nets = self._cloud.os_network_create(common_part_of_name='internal', class_a=1, how_many=self._n_nets, is_dhcp=False)
 
-        self._even_port_pids = self._cloud.os_ports_create(server_numbers=self._even_server_numbers, on_nets=internal_nets, is_fixed_ip=True)
-        self._odd_port_pids = self._cloud.os_ports_create(server_numbers=self._odd_server_numbers, on_nets=internal_nets, is_fixed_ip=True)
+        vtc_nets = self._vtc.r_vtc_show_openstack_network()  # should be no sqe-XXX networks
+        if len(vtc_nets.keys()) != 1:
+            raise RuntimeError('VTC still has some strange networks: {}'.format(vtc_nets))
+
+        self._nets = self._cloud.os_network_create(common_part_of_name='internal', class_a=1, how_many=self._n_nets, is_dhcp=False)
+        self._wait_for_vtc_networks()
+        self._even_port_pids = self._cloud.os_ports_create(server_numbers=self._even_server_numbers, on_nets=self._nets, is_fixed_ip=True)
+        self._odd_port_pids = self._cloud.os_ports_create(server_numbers=self._odd_server_numbers, on_nets=self._nets, is_fixed_ip=True)
+
+    @section('Waiting till VTC registers networks')
+    def _wait_for_vtc_networks(self):
+        import time
+
+        required = {x['network']['id']: x['network']['provider:segmentation_id'] for x in self._nets.values()}
+        max_retries = 10
+        while True:
+            vtc_nets = self._vtc.r_vtc_show_openstack_network()
+            actual = {x['id']: x['provider-segmentation-id'] for x in vtc_nets['collection']['cisco-vts-openstack:network']} if 'collection' in vtc_nets else {}
+            if required == actual:
+                return
+            if max_retries == 0:
+                raise RuntimeError('VTC failed to register networks')
+            time.sleep(5)
+            max_retries -= 1
 
     @section('Creating instances')
     def _instances_part(self):
@@ -48,6 +70,13 @@ class VtsScenario(ParallelWorker):
             server_info += self._cloud.os_servers_create(server_numbers=self._odd_server_numbers, flavor=self._flavor, image=self._image, zone=self._computes.keys()[1], on_ports=self._odd_port_pids)
             self._log.info('instances={} status=running'.format(self._odd_server_numbers))
         return server_info
+
+    @section('Creating access point on mgmt node')
+    def _access_point(self):
+        for net_name, net_info in self._nets.items():
+            self._build_node.exe('ip link add link br_mgmt name br_mgmt.3500 type vlan id 3500')
+            self._build_node.exe('ip link set dev br_mgmt.3500 up')
+            self._build_node.exe('ip address add 1.1.255.254/24 dev br_mgmt.3500')
 
     @section('Pinging instances')
     def _ping_part(self, servers):
@@ -74,7 +103,7 @@ class VtsScenario(ParallelWorker):
 
         self._network_part()
         server_info = self._instances_part()
-
+        self._access_point()
         all_servers = []
         for info in server_info:
             ip = info['addresses'].split('=')[-1]
