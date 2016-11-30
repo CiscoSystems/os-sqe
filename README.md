@@ -3,9 +3,9 @@ openstack-sqe is a repo for deployment and QA related tasks automation
 
 To get this repo prepared for operation, the recommended way is:
 
-    virtualenv .venv > artifacts/venv-pip-log.txt 2>&1
-    . .venv/bin/activate >> artifacts/venv-pip-log.txt 2>&1
-    pip install -r requirements.txt >> artifacts/venv-pip-log.txt 2>&1
+    virtualenv .venv
+    . .venv/bin/activate
+    pip install -r requirements.txt
 
 The main part of the code is decorated as fabric tasks and might be executed by:
 
@@ -19,6 +19,5 @@ The list of tasks is produced by:
 Making Changes
 ---------------
 
-We are using [GerritHub](https://review.gerrithub.io/#/admin/projects/CiscoSystems/openstack-sqe) 
-for all code changes, if you do NOT have access to this project on GerritHub, contact @bdemers
-
+We are using normal GitHub process. Fork this repo, create a branch and suggest new pull request.
+See details here: https://guides.github.com/activities/contributing-to-open-source/#contributing
