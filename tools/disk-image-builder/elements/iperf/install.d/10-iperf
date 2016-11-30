@@ -1,4 +1,0 @@
-#!/bin/bash
-home=$(dirname $0)
-
-sudo dnf install -y iperf
