@@ -511,14 +511,14 @@ class Vtc(LabServer):
         if is_via_ncs:
             return self.exe('ncs_cli << EOF\nshow vni-allocator pool\nexit\nEOF')
         else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
+            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/resource-pools/vni-pool
             return self._rest_api(resource='GET /api/running/resource-pools/vni-pool', headers={'Accept': 'application/vnd.yang.collection+json'})
 
     def r_vtc_show_uuid_servers(self, is_via_ncs=False):
         if is_via_ncs:
             return self.exe('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
         else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/cisco-vts/uuid-servers
+            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/cisco-vts/uuid-servers
             return self._rest_api('GET /api/running/cisco-vts/uuid-servers', headers={'Accept': 'application/vnd.yang.data+json'})
 
     def r_vtc_show_devices_device(self, is_via_ncs=False):
@@ -527,6 +527,24 @@ class Vtc(LabServer):
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/devices/device
             return self._rest_api(resource='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.collection+json'})
+
+    def r_vtc_set_port_for_border_leaf(self):
+        import uuid
+        import json
+
+        mgmt_srv_name = 'g7-2-mgmt'
+        servers = self.r_vtc_show_uuid_servers()
+        server_conn_id = servers[0]
+        vlan = 3000
+        tenant = 'admin'
+        for network in self.r_vtc_show_openstack_network():
+            vlan += 1
+            port_id = str(uuid.uuid4())
+            mac = 'unknonwn-' + str(uuid.uuid4())
+            port_json = json.dumps({'port': {'connid': server_conn_id, 'id': port_id, 'network-id': network['id'], 'admin-state-up': True, 'status': 'active', 'binding-host-id': mgmt_srv_name, 'vlan-id': vlan, 'mac-address': mac}})
+            r = self._rest_api(resource='PUT /api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port/{1}'.format(tenant, port_id), data=port_json, headers={'Accept': 'application/vnd.yang.collection+json'})
+            pass
+        # return self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts tenants tenant admin ports port <port UUID> followed by body\nexit\nEOF')
 
     def r_vtc_validate(self):
         self.r_vtc_show_configuration_xrvr_groups()
