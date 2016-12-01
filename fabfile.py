@@ -75,7 +75,7 @@ def cmd(config_path):
 
 @task
 def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True):
-    """fab ha:g10,tc-vts\t\tRun all VTS tests on lab 'g10'
+    """fab ha:g10,str\t\t\t\tRun all tests with 'str' in name on g10
         :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
         :param is_debug: if True, do not run actual workers just test the infrastructure
@@ -110,7 +110,7 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True)
 @task
 @decorators.print_time
 def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openstack.org/openstack/rally.git', rally_patch=''):
-    """fab rally:g10,2,0,200\t\tRun rally with 2 threads for 0-200 vlans.
+    """fab rally:g10,2,0,200\t\tRun rally with 2 threads for 0-200 vlans
     :param lab: lab name - one of yaml in $REPO/configs
     :param concurrency: how many parallel threads
     :param max_vlans: right margin of vlan range
@@ -145,7 +145,7 @@ def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openst
 @task
 @decorators.print_time
 def run(config_path, version):
-    """fab run:bxb-run-rally\t\tGeneral: run any job specified by yaml.
+    """fab run:bxb-run-rally\t\tGeneral: run any job specified by yaml
         :param config_path: path to valid run specification, usually one of yaml from $REPO/configs/run
         :param version: specify a version of the product
     """
@@ -157,7 +157,7 @@ def run(config_path, version):
 
 @task
 def conf():
-    """fab conf\t\t\t\tTries to create lab configuration yaml
+    """fab conf\t\t\t\t\tTries to create lab configuration yaml
     """
     from lab.configurator import LabConfigurator
 
@@ -220,7 +220,9 @@ def ansible():
 
 @task
 @decorators.print_time
-def collect_info(lab_config_path, regex):
+def info(lab_config_path, regex):
+    """fab info:g10,regex\t\t\tExec grep regex
+    """
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
 
@@ -237,7 +239,7 @@ def collect_info(lab_config_path, regex):
 
 @task
 def test(a):
-    """fab test:message like a=b'\tTest logging facility. Check file json.log afterwards."""
+    """fab test:msg\t\t\t\tTest logger to artifacts"""
     import sys
     from lab.logger import lab_logger
 

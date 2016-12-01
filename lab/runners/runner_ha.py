@@ -73,12 +73,9 @@ class RunnerHA(LabWorker):
         elk = Elk(proxy=lab.get_director())
         elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
 
-        tims_report = ''
         if self._is_report_to_tims:
             t = Tims()
             mercury_version, vts_version = lab.r_get_version()
-            report_url = t.publish_result_to_tims(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, lab=lab, results=results)
-            tims_report = 'and reported to {}'.format(report_url)
-        self.log_to_slack(message=' {} finished with # exceptions={} {}'.format(type_of_run, len(exceptions), tims_report))
+            t.publish_result_to_tims(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, lab=lab, results=results)
 
         return exceptions

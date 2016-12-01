@@ -11,6 +11,9 @@ class Tims(WithLogMixIn):
     def __init__(self):
         self._username = 'kshileev'
 
+    def __repr__(self):
+        return u'TIMS'
+
     def _api_post(self, operation, body):
         import requests
 
@@ -104,25 +107,42 @@ class Tims(WithLogMixIn):
         </Result>
         '''
 
+        fixed_dima_template = '''
+        <Result>
+                <Title><![CDATA[Result for {test_cfg_path}]]></Title>
+                <Description><![CDATA[{description}]]></Description>
+                <Owner>
+                        <UserID>kshileev</UserID>
+                </Owner>
+                <ListFieldValue multi-value="true">
+                    <FieldName><![CDATA[ Software Version ]]></FieldName>
+                    <Value><![CDATA[ {mercury_version} ]]></Value>
+                </ListFieldValue>
+                <LogicalID><![CDATA[{test_cfg_path}:{mercury_version}]]></LogicalID>
+                <Status>{status}</Status>
+        </Result>
+        '''
+
         status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'
         description = json.dumps(results, indent=4)
         body = result_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
+        body_dima = fixed_dima_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
         report_id = ans.split('</ID>')[0].rsplit('>', 1)[-1]
-        report_url = 'http://tims/warp.cmd?ent={}'.format(report_id)
-        self.log('Published {} to {}'.format(test_cfg_path, report_url))
-        return report_url
+        self.log_to_slack(message='{}: {} {} http://tims/warp.cmd?ent={}'.format(mercury_version, test_cfg_path, status.upper(), report_id))
+        self._api_post(operation=self._OPERATION_UPDATE, body=body_dima)
 
-    def simulate(self, lab_cfg_path, regex_to_fail):
-        from lab import with_config
-        from lab.laboratory import Laboratory
+    def simulate(self):
+        from lab.with_config import WithConfig
 
-        lab = Laboratory(config_path=lab_cfg_path)
-        mercury_version, vts_version = lab.r_get_version()
+        mercury_version, vts_version = '0022', 'vts'
 
-        available_tc = with_config.ls_configs(directory='ha')
-        test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
+        available_tc = WithConfig.ls_configs(directory='ha')
 
-        for test_cfg_path in test_cfg_pathes:
-            results = [{'name': 'worker=ParallelWorker', 'input': 'generic input', 'exceptions': [RuntimeError('gernerc error') if regex_to_fail in test_cfg_path else []]}]
+        for test_cfg_path in sorted(filter(lambda x: 'tc-vts' in x, available_tc)):
+            results = [{'name': 'worker=ParallelWorker', 'input': 'generic input', 'exceptions': []}]
             self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, lab='FAKE', results=results)
+
+if __name__ == '__main__':
+    t = Tims()
+    t.simulate()
