@@ -39,6 +39,8 @@ class Vtc(LabServer):
                 ans = requests.get(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
             elif type_of_call in ['patch', 'PATCH']:
                 ans = requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
+            elif type_of_call in ['put', 'PUT']:
+                ans = requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
             else:
                 raise ValueError('Unsupported type of call: "{}"'.format(type_of_call))
             if ans.ok:
@@ -487,7 +489,8 @@ class Vtc(LabServer):
             return self.exe('ncs_cli << EOF\nshow openstack network {}\nexit\nEOF'.format(network_id))
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/openstack/network
-            return self._rest_api(resource='GET /api/running/openstack/network/{}'.format(network_id), headers={'Accept': 'application/vnd.yang.{}+json'.format('data' if network_id else 'collection')})
+            r = self._rest_api(resource='GET /api/running/openstack/network/{}'.format(network_id), headers={'Accept': 'application/vnd.yang.{}+json'.format('data' if network_id else 'collection')})
+            return r['collection']['cisco-vts-openstack:network']
 
     def r_vtc_get_openstack_network_vlan(self, network_id):
         a = self.r_vtc_show_openstack_network(network_id=network_id)
@@ -518,8 +521,9 @@ class Vtc(LabServer):
         if is_via_ncs:
             return self.exe('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
         else:
-            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/cisco-vts/uuid-servers
-            return self._rest_api('GET /api/running/cisco-vts/uuid-servers', headers={'Accept': 'application/vnd.yang.data+json'})
+            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/cisco-vts/uuid-servers/uuid-server
+            res = self._rest_api('GET /api/running/cisco-vts/uuid-servers/uuid-server', headers={'Accept': 'application/vnd.yang.collection+json'})
+            return res['collection']['cisco-vts:uuid-server']
 
     def r_vtc_show_devices_device(self, is_via_ncs=False):
         if is_via_ncs:
@@ -534,15 +538,17 @@ class Vtc(LabServer):
 
         mgmt_srv_name = 'g7-2-mgmt'
         servers = self.r_vtc_show_uuid_servers()
-        server_conn_id = servers[0]
+        mgmt_srv = [x for x in servers if x['server-id'] == 'g7-2-mgmt'][0]
         vlan = 3000
         tenant = 'admin'
         for network in self.r_vtc_show_openstack_network():
             vlan += 1
             port_id = str(uuid.uuid4())
             mac = 'unknonwn-' + str(uuid.uuid4())
-            port_json = json.dumps({'port': {'connid': server_conn_id, 'id': port_id, 'network-id': network['id'], 'admin-state-up': True, 'status': 'active', 'binding-host-id': mgmt_srv_name, 'vlan-id': vlan, 'mac-address': mac}})
-            r = self._rest_api(resource='PUT /api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port/{1}'.format(tenant, port_id), data=port_json, headers={'Accept': 'application/vnd.yang.collection+json'})
+            port_json = json.dumps({'port': {'connid': mgmt_srv['connid'], 'id': port_id, 'binding-host-id': mgmt_srv_name,
+                                             'network-id': network['id'], 'admin-state-up': True, 'status': 'active',  'vlan-id': vlan, 'mac-address': mac}})
+            r = self._rest_api(resource='PUT /api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port/{1}'.format(tenant, port_id), data=port_json,
+                               headers={'Content-type': 'application/vnd.yang.data+json', 'Accept': 'application/vnd.yang.collection+json'})
             pass
         # return self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts tenants tenant admin ports port <port UUID> followed by body\nexit\nEOF')
 
