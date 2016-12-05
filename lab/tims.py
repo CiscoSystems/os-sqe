@@ -7,6 +7,7 @@ class Tims(WithLogMixIn):
 
     _OPERATION_ENTITY = 'entity'
     _OPERATION_UPDATE = 'update'
+    _OPERATION_SEARCH = 'search'
 
     def __init__(self):
         self._username = 'kshileev'
@@ -108,28 +109,49 @@ class Tims(WithLogMixIn):
         '''
 
         fixed_dima_template = '''
-        <Result>
+            <Result>
                 <Title><![CDATA[Result for {test_cfg_path}]]></Title>
+                <ID xlink:href="http://tims.cisco.com/xml/{result_id}/entity.svc">{result_id}</ID>
                 <Description><![CDATA[{description}]]></Description>
+                <LogicalID><![CDATA[{test_cfg_path}:{mercury_version}]]></LogicalID>
                 <Owner>
                         <UserID>kshileev</UserID>
                 </Owner>
+                <WriteAccess>member</WriteAccess>
                 <ListFieldValue multi-value="true">
                     <FieldName><![CDATA[ Software Version ]]></FieldName>
                     <Value><![CDATA[ {mercury_version} ]]></Value>
                 </ListFieldValue>
-                <LogicalID><![CDATA[{test_cfg_path}:{mercury_version}]]></LogicalID>
                 <Status>{status}</Status>
-        </Result>
+            </Result>
         '''
+
+        search_by_logical_id = """
+            <Search scope="project" root="{project_id}" entity="result" casesensitive="true">
+               <TextCriterion operator="is">
+                    <FieldName><![CDATA[Logical ID]]></FieldName>
+                    <Value><![CDATA[{test_cfg_path}:{mercury_version}]]></Value>
+                </TextCriterion>
+            </Search>
+        """
 
         status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'
         description = json.dumps(results, indent=4)
         body = result_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
-        body_dima = fixed_dima_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
+
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
         report_id = ans.split('</ID>')[0].rsplit('>', 1)[-1]
         self.log_to_slack(message='{}: {} {} http://tims/warp.cmd?ent={}'.format(mercury_version, test_cfg_path, status.upper(), report_id))
+        search_result = self._api_post(operation=self._OPERATION_SEARCH, body=search_by_logical_id.format(project_id=self.TIMS_PROJECT_ID, test_cfg_path=test_cfg_path, mercury_version=mercury_version))
+        resutl_id = search_result.split('</SearchHit>')[0].rsplit('>', 1)[-1]
+        if not resutl_id.startswith('Tcbr'):
+            self.log('Result for test case {0} not found! '.format(test_cfg_path), level='warning')
+            return
+        body_dima = fixed_dima_template.format(test_cfg_path=test_cfg_path,
+                                               description=description,
+                                               mercury_version=mercury_version,
+                                               status=status, lab_id=lab,
+                                               result_id=resutl_id)
         self._api_post(operation=self._OPERATION_UPDATE, body=body_dima)
 
     def simulate(self):
