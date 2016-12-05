@@ -60,21 +60,19 @@ class Server(object):
                 return local(command=command, capture=True)
 
     def exe(self, command, in_directory='.', is_warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
-        from fabric.api import run, sudo, settings, cd
+        from fabric.api import run, settings, cd
         from fabric.exceptions import NetworkError
 
         if str(self._ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
 
-        run_or_sudo = run
-        if command.startswith('sudo '):
-            command = command.replace('sudo ', '')
-            run_or_sudo = sudo
+        if 'sudo' in command:
+            command = command.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self._password))
 
         with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
             with cd(in_directory):
                 try:
-                    return run_or_sudo(command)
+                    return run(command)
                 except NetworkError:
                     if is_warn_only:
                         return ''
