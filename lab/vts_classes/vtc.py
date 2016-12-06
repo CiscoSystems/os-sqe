@@ -39,6 +39,8 @@ class Vtc(LabServer):
                 ans = requests.get(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
             elif type_of_call in ['patch', 'PATCH']:
                 ans = requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
+            elif type_of_call in ['put', 'PUT']:
+                ans = requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
             else:
                 raise ValueError('Unsupported type of call: "{}"'.format(type_of_call))
             if ans.ok:
@@ -95,35 +97,6 @@ class Vtc(LabServer):
                 raise RuntimeError('{0} is not detected by {1}'.format(xrvr, self))
         return xrvr_nodes
 
-    def json_api_url(self, resource):
-        import os
-        url = 'https://{ip}:{port}/VTS'.format(ip=self._oob_ip, port=8443)
-        return os.path.join(url, resource)
-
-    def json_api_session(self):
-        import requests
-
-        s = requests.Session()
-        auth = s.post(self.json_api_url('j_spring_security_check'), data={'j_username': self._oob_username, 'j_password': self._oob_password, 'Submit': 'Login'}, verify=False)
-        if 'Invalid username or passphrase' in auth.text:
-            raise Exception('Invalid username or passphrase')
-
-        return s
-
-    def json_api_get(self, resource):
-        s = None
-        r = {'items': []}
-        try:
-            s = self.json_api_session()
-            response = s.get(self.json_api_url(resource))
-            if response.status_code == 200:
-                r = response.json()
-        except Exception as e:
-            raise e
-        finally:
-            s.close()
-        return r
-
     def xrvr_restart_dl(self):
         return map(lambda xrvr: xrvr.xrvr_restart_dl(), self.lab().get_nodes_by_class(Xrvr))
 
@@ -150,94 +123,6 @@ class Vtc(LabServer):
             vts_host.exe('ip l s dev {} {}'.format(if_name, 'down' if start_or_stop == 'start' else 'up'))
         elif method_to_disrupt == 'vm-reboot' and start_or_stop == 'start':
             self.exe('sudo shutdown -r now')
-
-    def get_overlay_networks(self, name='admin'):
-        return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + name)
-
-    def get_overlay_network(self, network_id):
-        networks = self.get_overlay_networks()
-        for network in networks['items']:
-            if network_id == network['id']:
-                return network
-
-    def get_overlay_network_subnets(self, network_id, topology_id='admin', name='admin'):
-        resource = 'rs/ncs/query/networkSubnetInfoPopover?' \
-                   'limit=2147483647&name={n}&network-id={net_id}&topologyId={t}'.format(net_id=network_id,
-                                                                                         t=topology_id,
-                                                                                         n=name)
-        return self.json_api_get(resource)
-
-    def get_overlay_network_ports(self, network_id):
-        resource = 'rs/vtsService/tenantTopology/admin/admin/ports?network-Id={0}'.format(network_id)
-        return self.json_api_get(resource)
-
-    def get_overlay_network_port(self, network_id, port_id):
-        ports = self.get_overlay_network_ports(network_id)
-        for port in ports['items']:
-            if port_id == port['id']:
-                return port
-
-    def get_overlay_routers(self, name='admin'):
-        return self.json_api_get('rs/ncs/query/topologiesRouterAll?limit=2147483647&name=' + name)
-
-    def get_verlay_virtual_machines(self, name='admin'):
-        return self.json_api_get('rs/ncs/query/topologiesRouterAll?limit=2147483647&name=' + name)
-
-    def get_overlay_devices(self):
-        return self.json_api_get('rs/ncs/query/devices?limit=2147483647')
-
-    def get_overlay_vms(self, name='admin'):
-        return self.json_api_get('rs/ncs/query/tenantPortsAll?limit=2147483647&name=' + name)
-
-    def get_overlay_device_vlan_vni_mapping(self, device_name):
-        resource = 'rs/ncs/operational/vlan-vni-mapping/{0}'.format(device_name)
-        return self.json_api_get(resource)
-
-    def verify_network(self, os_network):
-        overlay_network = self.get_overlay_network(os_network['id'])
-        net_flag = False
-        if overlay_network:
-            net_flag = True
-            net_flag &= overlay_network['name'] == os_network['name']
-            net_flag &= overlay_network['status'] == os_network['status'].lower()
-            net_flag &= overlay_network['admin-state-up'] == os_network['admin_state_up'].lower()
-            net_flag &= overlay_network['provider-network-type'] == os_network['provider:network_type']
-            net_flag &= overlay_network['provider-physical-network'] == os_network['provider:physical_network']
-            net_flag &= overlay_network['provider-segmentation-id'] == os_network['provider:segmentation_id']
-            net_flag &= overlay_network['provider-segmentation-id'] == os_network['provider:segmentation_id']
-        return net_flag
-
-    def verify_subnet(self, os_network_id, os_subnet):
-        overlay_subnet = self.get_overlay_network_subnets(os_network_id)['items']
-        subnet_synced = len(overlay_subnet) > 0
-        if subnet_synced:
-            overlay_subnet = overlay_subnet[0]
-            subnet_synced &= overlay_subnet['cidr'] == os_subnet['cidr']
-            subnet_synced &= overlay_subnet['enable-dhcp'] == os_subnet['enable_dhcp'].lower()
-            subnet_synced &= overlay_subnet['gateway-ip'] == os_subnet['gateway_ip']
-            subnet_synced &= overlay_subnet['id'] == os_subnet['id']
-            subnet_synced &= overlay_subnet['ip-version'] == os_subnet['ip_version']
-            subnet_synced &= overlay_subnet['name'] == os_subnet['name']
-            subnet_synced &= overlay_subnet['network-id'] == os_subnet['network_id']
-        return subnet_synced
-
-    def verify_ports(self, os_network_id, os_ports):
-        overlay_ports = self.get_overlay_network_ports(network_id=os_network_id)['items']
-        ports_synced = len(overlay_ports) == len(os_ports)
-        if ports_synced:
-            for port in os_ports:
-                try:
-                    overlay_port = next(p for p in overlay_ports if p['id'] == port['id'])
-                    ports_synced &= overlay_port['mac'] == port['mac_address']
-                except StopIteration:
-                    ports_synced = False
-                    break
-        return ports_synced
-
-    def verify_instances(self, os_instances):
-        vms = self.get_overlay_vms()['items']
-        instances_synced = len(vms) == len(os_instances)
-        return instances_synced
 
     def get_config_and_net_part_bodies(self):
         from lab import with_config
@@ -322,8 +207,6 @@ class Vtc(LabServer):
 
         java_script_servlet = session.get(api_java_servlet, verify=False)
         owasp_csrftoken = ''.join(re.findall(r'OWASP_CSRFTOKEN", "(.*?)", requestPageTokens', java_script_servlet.text))
-        if not owasp_csrftoken:
-            raise RuntimeError('OWASP_CSRFTOKEN token has not been found in: ' + java_script_servlet.text)
 
         response = session.put(api_update_password,
                                data=json.dumps({'resource': {'user': {'user_name': username, 'password': password, 'currentPassword': default_password}}}),
@@ -343,7 +226,6 @@ class Vtc(LabServer):
         import requests.exceptions
 
         nodes = self.lab().get_nodes_by_class(Vtc)
-        cluster = None
         while True:
             try:
                 cluster = self.r_vtc_show_ha_cluster_members()
@@ -487,7 +369,8 @@ class Vtc(LabServer):
             return self.exe('ncs_cli << EOF\nshow openstack network {}\nexit\nEOF'.format(network_id))
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/openstack/network
-            return self._rest_api(resource='GET /api/running/openstack/network/{}'.format(network_id), headers={'Accept': 'application/vnd.yang.{}+json'.format('data' if network_id else 'collection')})
+            r = self._rest_api(resource='GET /api/running/openstack/network/{}'.format(network_id), headers={'Accept': 'application/vnd.yang.{}+json'.format('data' if network_id else 'collection')})
+            return r['collection']['cisco-vts-openstack:network']
 
     def r_vtc_get_openstack_network_vlan(self, network_id):
         a = self.r_vtc_show_openstack_network(network_id=network_id)
@@ -511,15 +394,16 @@ class Vtc(LabServer):
         if is_via_ncs:
             return self.exe('ncs_cli << EOF\nshow vni-allocator pool\nexit\nEOF')
         else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
+            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/resource-pools/vni-pool
             return self._rest_api(resource='GET /api/running/resource-pools/vni-pool', headers={'Accept': 'application/vnd.yang.collection+json'})
 
     def r_vtc_show_uuid_servers(self, is_via_ncs=False):
         if is_via_ncs:
             return self.exe('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
         else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/cisco-vts/uuid-servers
-            return self._rest_api('GET /api/running/cisco-vts/uuid-servers', headers={'Accept': 'application/vnd.yang.data+json'})
+            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/cisco-vts/uuid-servers/uuid-server
+            res = self._rest_api('GET /api/running/cisco-vts/uuid-servers/uuid-server', headers={'Accept': 'application/vnd.yang.collection+json'})
+            return res['collection']['cisco-vts:uuid-server']
 
     def r_vtc_show_devices_device(self, is_via_ncs=False):
         if is_via_ncs:
@@ -527,6 +411,50 @@ class Vtc(LabServer):
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/devices/device
             return self._rest_api(resource='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.collection+json'})
+
+    def r_vtc_set_port_for_border_leaf(self):
+        import uuid
+        import json
+
+        mgmt_srv = [x for x in self.r_vtc_show_uuid_servers() if 'baremetal' in x['server-type']][0]
+        vlan = 3000
+        tenant = 'admin'
+        for network in self.r_vtc_show_openstack_network():
+            vlan += 1
+            port_id = str(uuid.uuid4())
+            mac = 'unknonwn-' + str(uuid.uuid4())
+            port_json = json.dumps({'port': {'connid': mgmt_srv['connid'], 'id': port_id, 'binding-host-id': mgmt_srv['server-id'],
+                                             'network-id': network['id'], 'admin-state-up': True, 'status': 'active',  'vlan-id': vlan, 'mac-address': mac}})
+            self._rest_api(resource='PUT /api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port/{1}'.format(tenant, port_id), data=port_json,
+                           headers={'Content-type': 'application/vnd.yang.data+json', 'Accept': 'application/vnd.yang.collection+json'})
+        # return self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts tenants tenant admin ports port <port UUID> followed by body\nexit\nEOF')
+
+    def r_vtc_set_port_for_border_leaf_old(self):
+        import json
+        import requests
+
+        s = requests.Session()
+        s.post('https://{}:{}/VTS/j_spring_security_check'.format(self._vip_a, 8443), data={'j_username': self._oob_username, 'j_password': self._oob_password, 'Submit': 'Login'}, verify=False)
+        resp = s.get('https://{}:{}/VTS/JavaScriptServlet'.format(self._vip_a, 8443), verify=False)
+        owasp_csrftoken = resp.text.rsplit('OWASP_CSRFTOKEN",', 1)[-1].split(',', 1)[0].replace('"', '').strip()
+
+        mgmt_srv = [x for x in self.r_vtc_show_uuid_servers() if 'baremetal' in x['server-type']][0]
+
+        for network in self.r_vtc_show_openstack_network():
+            port = {'resource': {'id': network['id'],
+                                 'network': {'network_name': network['name'], 'router-external': False},
+                                 # 'tenant_id': tenant['vmm-tenant-id'], 'tenant_name': 'admin',
+                                 'tor_port': [{'binding_host_id': mgmt_srv['server-id'], 'connid': [{'id': mgmt_srv['connid']}], 'device_id': mgmt_srv['torname'], 'mac': "", 'tagging': 'mandatory', 'type': "baremetal"}],
+                                 # 'ToRPortToDelete': []
+                                 }
+                    }
+
+            headers = {'Accept': 'application/json, text/plain, */*', 'Accept-Encoding': 'gzip, deflate, sdch, br', 'Content-Type': 'application/json;charset=UTF-8', 'OWASP_CSRFTOKEN': owasp_csrftoken, 'X-Requested-With': 'OWASP CSRFGuard Project'}
+            resp = s.put('https://{}:{}/VTS/rs/vtsService/tenantTopology/admin/admin/network/{}'.format(self._vip_a, 8443, network['id']), data=json.dumps(port), headers=headers, verify=False)
+            if resp.status_code != 200:
+                raise RuntimeError('Failed to add {} port to {} network, reason: {}'.format(mgmt_srv['server-id'], network['name'], resp.text))
+            self.log('Added {} port to {} network'.format(mgmt_srv['server-id'], network['name']))
+        s.close()
 
     def r_vtc_validate(self):
         self.r_vtc_show_configuration_xrvr_groups()
