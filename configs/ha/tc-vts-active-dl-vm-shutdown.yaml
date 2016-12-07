@@ -16,7 +16,7 @@
   node-to-disrupt: master-dl
   method-to-disrupt: vm-shutdown
   n_repeats: 2
-  downtime: 10
+  downtime: 90
   uptime: 20
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'
