@@ -3,6 +3,8 @@ from lab.with_log import WithLogMixIn
 
 class Tims(WithLogMixIn):
     FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'PERFOMANCE AND SCALE': 'Tcbr1840f'}
+    TOKENS = {'kshileev': '0000003933000000000D450000000000', 'nfedotov': '26520000006G00005F42000077044G47', 'dratushn': '000000525F7G007900000000006G4700', 'ymorkovn': '6B02004H0000005600003B0000000000'}
+
     TIMS_PROJECT_ID = 'Tcbr1p'
 
     _OPERATION_ENTITY = 'entity'
@@ -10,7 +12,26 @@ class Tims(WithLogMixIn):
     _OPERATION_SEARCH = 'search'
 
     def __init__(self):
-        self._username = 'kshileev'
+        import getpass
+        import os
+
+        user_token = os.getenv('TIMS_USER_TOKEN', None)  # some Jenkins jobs define this variable in form user-token
+        if user_token and user_token.count('-') == 1:
+            username, token = user_token.split('-')
+        else:
+            user1 = os.getenv('BUILD_USER_ID', 'user_not_defined')  # some Jenkins jobs define this variable
+            user2 = getpass.getuser()
+            username, token = None, None
+            for user in [user1, user2]:
+                if user in self.TOKENS.keys():
+                    username, token = user, self.TOKENS[user]
+                    break
+
+        self._xml_tims_wrapper = '''<Tims xmlns="http://tims.cisco.com/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://tims.cisco.com/namespace http://tims.cisco.com/xsd/Tims.xsd">
+                              <Credential user="{}" token="{}"/>
+                              {{body}}
+                              </Tims>
+                           '''.format(username, token) if username else None
 
     def __repr__(self):
         return u'TIMS'
@@ -18,23 +39,18 @@ class Tims(WithLogMixIn):
     def _api_post(self, operation, body):
         import requests
 
-        xml_tims_wrapper = '''
-<Tims xmlns="http://tims.cisco.com/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://tims.cisco.com/namespace http://tims.cisco.com/xsd/Tims.xsd">
-<Credential user="kshileev" token="0000003933000000000D450000000000"/>
-{body}
-</Tims>
-
-'''
-        data = xml_tims_wrapper.format(body=body)
+        if not self._xml_tims_wrapper:
+            self.log('No way to detect the user who is running the test, nothing will be published in TIMS', level='error')
+        data = self._xml_tims_wrapper.format(body=body)
         response = requests.post("http://tims.cisco.com/xml/{}/{}.svc".format(self.TIMS_PROJECT_ID, operation), data=data)
         if u"Error" in response.content.decode():
             raise RuntimeError(response.content)
         return response.content
 
     def publish_tests_to_tims(self):
-        from lab import with_config
+        from lab.with_config import WithConfig
 
-        available_tc = with_config.ls_configs(directory='ha')
+        available_tc = WithConfig.ls_configs(directory='ha')
         test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
 
         test_case_template = '''
@@ -42,10 +58,6 @@ class Tims(WithLogMixIn):
             <Title><![CDATA[ {test_name} ]]></Title>
             <Description><![CDATA[{description}]]></Description>
             <LogicalID>{logical_id}</LogicalID>
-            <Owner>
-                <UserID>{username}</UserID>
-                <Email>{username}@cisco.com</Email>
-            </Owner>
             <WriteAccess>member</WriteAccess>
             <ProjectID xlink:href="http://tims.cisco.com/xml/{project_id}/project.svc">{project_id}</ProjectID>
             <DatabaseID xlink:href="http://tims.cisco.com/xml/NFVICLOUDINFRA/database.svc">NFVICLOUDINFRA</DatabaseID>
@@ -55,12 +67,12 @@ class Tims(WithLogMixIn):
 
         body = ''
         for test_cfg_path in test_cfg_pathes:
-            cfg_body = with_config.read_config_from_file(config_path=test_cfg_path, directory='ha', is_as_string=True)
+            cfg_body = WithConfig.read_config_from_file(config_path=test_cfg_path, directory='ha', is_as_string=True)
 
             folder_name = None
             test_name = ' '.join(test_cfg_path.strip('.yaml').split('-')[2:])
 
-            for d in with_config.read_config_from_file(config_path=test_cfg_path, directory='ha'):
+            for d in WithConfig.read_config_from_file(config_path=test_cfg_path, directory='ha'):
                 folder_name = d.get('Folder', folder_name)
 
             if not folder_name:
@@ -72,7 +84,7 @@ class Tims(WithLogMixIn):
                 raise ValueError('test {} specifies wrong Folder {}, possible values {}'.format(test_cfg_path, folder_name, self.FOLDERS.keys()))
 
             description = 'This is the configuration actually used in testing:\n' + cfg_body + '\nuploaded from <a href="https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}">'.format(test_cfg_path)
-            body += test_case_template.format(username=self._username, test_name=test_name, logical_id=test_cfg_path, description=description, folder_id=folder_id, project_id=self.TIMS_PROJECT_ID)
+            body += test_case_template.format(test_name=test_name, logical_id=test_cfg_path, description=description, folder_id=folder_id, project_id=self.TIMS_PROJECT_ID)
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
 
