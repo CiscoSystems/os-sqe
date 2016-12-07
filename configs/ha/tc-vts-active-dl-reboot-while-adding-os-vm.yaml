@@ -17,8 +17,8 @@
   node-to-disrupt: master-dl
   method-to-disrupt: vm-shutdown
   n_repeats: 2
-  downtime: 10
-  uptime: 20
+  downtime: 90
+  uptime: 180
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'
 # Possible methods:  'isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop'

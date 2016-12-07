@@ -133,23 +133,32 @@ class Vtc(LabServer):
     def show_vxlan_tunnel(self):
         return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_nodes_by_class(Vtf))
 
-    def disrupt(self, start_or_stop, method_to_disrupt):
+    def disrupt(self, method_to_disrupt, downtime):
+        import time
+
         vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
 
         if method_to_disrupt == 'vm-shutdown':
             ans = vts_host.exe('virsh list | grep vtc')
             vm_name = ans.split()[1]
-            vts_host.exe(command='virsh {} {}'.format('suspend' if start_or_stop == 'start' else 'resume', vm_name))
+            vts_host.exe(command='virsh suspend {}'.format(vm_name))
+            time.sleep(downtime)
+            vts_host.exe(command='virsh resume {}'.format(vm_name))
         elif method_to_disrupt == 'isolate-from-mx':
             ans = vts_host.exe('ip l | grep mgmt | grep vtc')
             if_name = ans.split()[1][:-1]
-            vts_host.exe('ip l s dev {} {}'.format(if_name, 'down' if start_or_stop == 'start' else 'up'))
+            vts_host.exe('ip l s dev {} down'.format(if_name))
+            time.sleep(downtime)
+            vts_host.exe('ip l s dev {} up'.format(if_name))
         elif method_to_disrupt == 'isolate-from-api':
             ans = vts_host.exe('ip l | grep api | grep vtc')
             if_name = ans.split()[1][:-1]
-            vts_host.exe('ip l s dev {} {}'.format(if_name, 'down' if start_or_stop == 'start' else 'up'))
-        elif method_to_disrupt == 'vm-reboot' and start_or_stop == 'start':
-            self.exe('sudo shutdown -r now')
+            vts_host.exe('ip l s dev {} down'.format(if_name))
+            time.sleep(downtime)
+            vts_host.exe('ip l s dev {} up'.format(if_name))
+        elif method_to_disrupt == 'vm-reboot':
+            self.exe('sudo ip link set dev eth0 down && sudo ip link set dev eth1 down '
+                     '&& sleep {0} && sudo shutdown -r now'.format(downtime), is_warn_only=True)
 
     def get_overlay_networks(self, name='admin'):
         return self.json_api_get('rs/ncs/query/topologiesNetworkAll?limit=2147483647&name=' + name)

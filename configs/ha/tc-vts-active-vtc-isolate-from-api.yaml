@@ -16,7 +16,7 @@
   node-to-disrupt: master-vtc
   method-to-disrupt: isolate-from-api
   n_repeats: 1
-  downtime: 10
+  downtime: 90
   uptime: 20
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'

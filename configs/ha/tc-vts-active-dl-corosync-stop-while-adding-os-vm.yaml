@@ -16,8 +16,8 @@
   delay: 20
   node-to-disrupt: master-dl
   method-to-disrupt: corosync-stop
-  n_repeats: 10
-  downtime: 10
+  n_repeats: 5
+  downtime: 90
   uptime: 20
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'

@@ -12,6 +12,8 @@ class VtsDisruptor(ParallelWorker):
             self._downtime = self._kwargs['downtime']
             self._uptime = self._kwargs['uptime']
             self._node_to_disrupt = self._kwargs['node-to-disrupt']
+            self._node_object_to_disrupt = None
+            self._node_object_disrupted = None
             self._method_to_disrupt = self._kwargs['method-to-disrupt']
             if self._node_to_disrupt not in possible_nodes:
                 raise ValueError('node-to-disrupt must be  one of: {0}'.format(possible_nodes))
@@ -24,27 +26,33 @@ class VtsDisruptor(ParallelWorker):
         return u'worker=VtsDisruptor'
 
     def setup_worker(self):
+        pass
+
+    def loop_worker(self):
+        import time
         from lab.vts_classes.vtc import Vtc
 
         vtc0 = self._lab.get_nodes_by_class(Vtc)[0]
         if 'vtc' in self._node_to_disrupt:
             cluster = vtc0.r_vtc_show_ha_cluster_members()
             cluster = {x['role']: x['address'] for x in cluster['collection']['tcm:members']}
-            master_slave = self._node_to_disrupt.split('-')[0]
+            node_role = self._node_to_disrupt.split('-')[0]
             for vtc in self._lab.get_nodes_by_class(Vtc):
-                if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[master_slave]:
-                    self._node_to_disrupt = vtc
+                if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[node_role]:
+                    self._node_object_to_disrupt = vtc
                     break
+            if node_role == 'master' and self._node_object_disrupted:
+                # If it started two or more times.
+                # On the second+ run check if current master if a former slave. 
+                assert self._node_object_disrupted.get_id() != self._node_object_to_disrupt.get_id()
         elif 'dl' in self._node_to_disrupt:
             active_passive = self._node_to_disrupt.split('-')[0]
-            self._node_to_disrupt = vtc0.r_vtc_get_xrvrs()[0 if active_passive == 'active' else -1]
+            self._node_object_to_disrupt = vtc0.r_vtc_get_xrvrs()[0 if active_passive == 'active' else -1]
 
-    def loop_worker(self):
-        import time
-
-        self._log.info('host={} method={} status=going-off {}'.format(self._node_to_disrupt, self._method_to_disrupt, self._node_to_disrupt.disrupt(start_or_stop='start', method_to_disrupt=self._method_to_disrupt)))
-        self._log.info('Sleeping for {} secs downtime'.format(self._downtime))
-        time.sleep(self._downtime)
-        self._log.info('host={}; status=going-on {}'.format(self._node_to_disrupt, self._node_to_disrupt.disrupt(start_or_stop='stop', method_to_disrupt=self._method_to_disrupt)))
+        #self._log.info('host={} method={} status=going-off {}'.format(self._node_to_disrupt, self._method_to_disrupt, ''))
+        self._log.info('host={} method={} status=going-off {}'.format(self._node_to_disrupt, self._method_to_disrupt, self._node_object_to_disrupt.disrupt(method_to_disrupt=self._method_to_disrupt, downtime=self._downtime)))
         self._log.info('Sleeping for {} secs uptime'.format(self._uptime))
         time.sleep(self._uptime)
+
+        self._node_object_disrupted = self._node_object_to_disrupt
+

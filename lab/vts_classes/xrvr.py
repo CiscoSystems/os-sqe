@@ -17,15 +17,23 @@ class Xrvr(LabServer):
         _, xrnc_u, _ = self.get_xrnc_ip_user_pass()
         return u'{l} {n} | on mx: sshpass -p {p} ssh {xrvr}/{xrnc}@{ip} for XRVR/XRNC'.format(l=self.lab(), n=self.get_id(), ip=ip, p=p, xrvr=xrvr_u, xrnc=xrnc_u)
 
-    def disrupt(self, start_or_stop, method_to_disrupt):
+    def disrupt(self, method_to_disrupt, downtime):
+        import time
+
         vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
         if method_to_disrupt == 'vm-shutdown':
-            vts_host.exe(command='virsh {} vtc'.format('suspend' if start_or_stop == 'start' else 'resume'))
+            vts_host.exe(command='virsh suspend XRVR')
+            time.sleep(downtime)
+            vts_host.exe(command='virsh resume XRVR')
         elif method_to_disrupt == 'corosync-stop':
-            self.cmd('sudo service corosync {}'.format('stop' if start_or_stop == 'start' else 'start'), is_xrvr=False)
+            self.cmd('sudo service corosync stop', is_xrvr=False)
+            time.sleep(downtime)
+            self.cmd('sudo service corosync start', is_xrvr=False)
         elif method_to_disrupt == 'ncs-stop':
-            self.cmd('sudo service ncs {}'.format('stop' if start_or_stop == 'start' else 'start'), is_xrvr=False)
-        elif method_to_disrupt == 'vm-reboot' and start_or_stop == 'start':
+            self.cmd('sudo service ncs stop', is_xrvr=False)
+            time.sleep(downtime)
+            self.cmd('sudo service ncs start', is_xrvr=False)
+        elif method_to_disrupt == 'vm-reboot':
             self.cmd('sudo shutdown -r now', is_xrvr=False)
 
     def get_xrvr_ip_user_pass(self):
