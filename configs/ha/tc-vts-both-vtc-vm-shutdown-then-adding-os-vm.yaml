@@ -1,0 +1,31 @@
+---
+- Folder: HIGH AVAILABILITY
+- Description: first create OS VM then start disruptor
+- class: lab.monitors.vts_monitor.VtsMonitor
+  duration: 600
+  period: 2
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 3
+  node-to-disrupt: master-vtc
+  method-to-disrupt: vm-shutdown
+  n_repeats: 1
+  downtime: 90
+  uptime: 20
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 3
+  node-to-disrupt: slave-vtc
+  method-to-disrupt: vm-shutdown
+  n_repeats: 1
+  downtime: 90
+  uptime: 20
+
+# wait for long time. Check if VTC HA comes up by booting up VMs
+- class: lab.scenarios.vts_scenario.VtsScenario
+  delay: 180
+  how-many-networks: 1
+  how-many-servers: 3
+  n_repeats: 2
+
+# Validate VTC Ha comes up properly after both Active and Standby VTCs VMs are paused and then resumed
