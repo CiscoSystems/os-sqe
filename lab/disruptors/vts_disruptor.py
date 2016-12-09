@@ -41,10 +41,16 @@ class VtsDisruptor(ParallelWorker):
                 if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[node_role]:
                     self._node_object_to_disrupt = vtc
                     break
-            if node_role == 'master' and self._node_object_disrupted:
+            if self._node_object_disrupted:
                 # If it started two or more times.
-                # On the second+ run check if current master if a former slave. 
-                assert self._node_object_disrupted.get_id() != self._node_object_to_disrupt.get_id()
+                if node_role == 'master':
+                    # On the second+ run check if current master is a former slave.
+                    assert self._node_object_disrupted.get_id() != self._node_object_to_disrupt.get_id()
+                    self._log.debub("Current master node [{mid}] is a former slave [{sid}]".format(sid=self._node_object_disrupted.get_id(), mid=self._node_object_to_disrupt.get_id()))
+                if node_role == 'slave':
+                    # On the second+ run check if current slave was slave in previous run.
+                    assert self._node_object_disrupted.get_id() == self._node_object_to_disrupt.get_id()
+                    self._log.debub("Slave node [{mid}] was slave in previous run [{sid}]".format(sid=self._node_object_disrupted.get_id(), mid=self._node_object_to_disrupt.get_id()))
         elif 'dl' in self._node_to_disrupt:
             active_passive = self._node_to_disrupt.split('-')[0]
             self._node_object_to_disrupt = vtc0.r_vtc_get_xrvrs()[0 if active_passive == 'active' else -1]

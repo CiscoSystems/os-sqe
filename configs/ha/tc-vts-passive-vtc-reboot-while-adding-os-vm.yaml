@@ -1,0 +1,22 @@
+---
+- Folder: HIGH AVAILABILITY
+- Description: first create OS VM then start disruptor
+- class: lab.monitors.vts_monitor.VtsMonitor
+  duration: 600
+  period: 2
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  delay: 20
+  how-many-networks: 1
+  how-many-servers: 3
+  n_repeats: 30
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 3
+  node-to-disrupt: slave-vtc
+  method-to-disrupt: vm-reboot
+  n_repeats: 5
+  downtime: 90
+  uptime: 20
+
+# Validate Standby VTC is still running and in Standby mode when Standby  VTC is rebooted while tenant VMs are also being created
