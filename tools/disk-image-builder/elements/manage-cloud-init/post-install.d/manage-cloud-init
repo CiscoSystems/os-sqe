@@ -1,0 +1,14 @@
+#!/bin/bash
+for int in $(ip -o link | grep -P -o '\d+: eth\d+' | awk '{print $2}')
+do
+    mac=$(ip address show $int | grep -P -o 'link/ether .*? brd' | awk '{print $2}')
+    IFS=':' octets=($mac)
+
+    if [ ${octets[1]} != "00" ] && [ ${octets[1]} != "10" ]
+    then
+        sudo systemctl start cloud-config
+        sudo systemctl start cloud-final
+        sudo systemctl start cloud-init-local
+        sudo systemctl start cloud-init
+    fi
+done
