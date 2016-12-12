@@ -6,10 +6,10 @@
   period: 2
 
 - class: lab.scenarios.vts_scenario.VtsScenario
-  delay: 20
+  delay: 100
   how-many-networks: 1
   how-many-servers: 3
-  n_repeats: 30
+  n_repeats: 20
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 3

@@ -112,19 +112,17 @@ class Vtc(LabServer):
         vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
 
         if method_to_disrupt == 'vm-shutdown':
-            ans = vts_host.exe('virsh list | grep vtc')
-            vm_name = ans.split()[1]
-            vts_host.exe(command='virsh suspend {}'.format(vm_name))
+            vts_host.exe(command='virsh suspend {}'.format(self.get_id()))
             time.sleep(downtime)
-            vts_host.exe(command='virsh resume {}'.format(vm_name))
+            vts_host.exe(command='virsh resume {}'.format(self.get_id()))
         elif method_to_disrupt == 'isolate-from-mx':
-            ans = vts_host.exe('ip l | grep mgmt | grep vtc')
+            ans = vts_host.exe('ip l | grep mgmt | grep {0}'.format(self.get_id()))
             if_name = ans.split()[1][:-1]
             vts_host.exe('ip l s dev {} down'.format(if_name))
             time.sleep(downtime)
             vts_host.exe('ip l s dev {} up'.format(if_name))
         elif method_to_disrupt == 'isolate-from-api':
-            ans = vts_host.exe('ip l | grep api | grep vtc')
+            ans = vts_host.exe('ip l | grep api | grep {0}'.format(self.get_id()))
             if_name = ans.split()[1][:-1]
             vts_host.exe('ip l s dev {} down'.format(if_name))
             time.sleep(downtime)

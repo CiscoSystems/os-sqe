@@ -1,0 +1,30 @@
+---
+- Folder: HIGH AVAILABILITY
+- Description: first create OS VM then start disruptor
+- class: lab.monitors.vts_monitor.VtsMonitor
+  duration: 200
+  period: 2
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  delay: 110
+  how-many-networks: 1
+  how-many-servers: 3
+  n_repeats: 1
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 5
+  node-to-disrupt: master-vtc
+  method-to-disrupt: isolate-from-mx
+  n_repeats: 1
+  downtime: 90
+  uptime: 20
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 5
+  node-to-disrupt: master-dl
+  method-to-disrupt: isolate-from-mx
+  n_repeats: 1
+  downtime: 90
+  uptime: 20
+
+# Verify VM Creation during UNDERLAY Link failure on Active VTC/XRNC Controller
