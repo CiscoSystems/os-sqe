@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from fabric.api import task
 
 from lab import decorators
@@ -21,7 +20,9 @@ def cmd(config_path):
         device_name = prompt(text='{lab} has: {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=['lab', 'cloud'] + nodes))
         if device_name == 'cloud':
             d = DeployerExisting({'cloud': config_path.strip('.yaml'), 'hardware-lab-config': config_path}, version=None)
-            device = d.execute({'servers': [], 'clouds': []})
+            servers_and_clouds = {'servers': [], 'clouds': []}
+            d.execute(servers_and_clouds)
+            device = servers_and_clouds['clouds'][0]
         elif device_name == 'lab':
             device = l
         elif device_name in ['quit', 'q', 'exit']:
