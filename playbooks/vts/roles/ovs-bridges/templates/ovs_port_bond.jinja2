@@ -1,8 +1,0 @@
-NAME={{ item.key }}
-DEVICE={{ item.key }}
-ONBOOT=yes
-BONDING_OPTS="mode=balance-xor miimon=50 xmit_hash_policy=1 updelay=0 downdelay=0"
-DEVICETYPE=ovs
-TYPE=OVSPort
-BOOTPROTO=none
-OVS_BRIDGE={{ item.value.ovs_bridge }}
