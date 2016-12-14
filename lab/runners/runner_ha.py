@@ -30,6 +30,9 @@ class RunnerHA(LabWorker):
         from lab.tims import Tims
         from lab.elk import Elk
 
+        manager = multiprocessing.Manager()
+        shared_dict = manager.dict()
+
         try:
             cloud = filter(lambda x: x.get_name() == self._cloud_name, servers_and_clouds['clouds'])[0]
             lab = servers_and_clouds['servers'][0].lab()
@@ -50,6 +53,8 @@ class RunnerHA(LabWorker):
                 path_to_module, class_name = block['class'].rsplit('.', 1)
                 module = importlib.import_module(path_to_module)
                 klass = getattr(module, class_name)
+                shared_dict.update({s: False for s in block.get('set', [])})
+                block['_shared_dict'] = shared_dict
                 worker = klass(cloud=cloud, lab=lab, **block)
                 worker.set_is_debug(self._is_debug)
                 workers_to_run.append(worker)
