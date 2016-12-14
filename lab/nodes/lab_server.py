@@ -117,6 +117,13 @@ class LabServer(LabNode):
             self.log('{} finished and actually took {} secs'.format(command, time.time() - started_at))
         return ans
 
+    def file_append(self, file_path, data, in_directory='.', is_warn_only=False, connection_attempts=100):
+        if self._proxy_server:
+            raise NotImplemented
+        else:
+            ans = self._server.file_append(file_path=file_path, data=data, in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+        return ans
+
     def r_register_rhel(self, rhel_subscription_creds_url):
         import requests
         import json

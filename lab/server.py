@@ -79,6 +79,21 @@ class Server(object):
                     else:
                         raise
 
+    def file_append(self, file_path, data, in_directory='.', is_warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
+        from fabric.api import settings, cd
+        from fabric.contrib import files
+        from fabric.exceptions import NetworkError
+
+        with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
+            with cd(in_directory):
+                try:
+                    return files.append(file_path, data)
+                except NetworkError:
+                    if is_warn_only:
+                        return ''
+                    else:
+                        raise
+
     def as_proxy(self, host, command, is_warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
         return self.exe("ssh -o StrictHostKeyChecking=no {} '{}'".format(host, command), is_warn_only=is_warn_only, connection_attempts=connection_attempts)
 

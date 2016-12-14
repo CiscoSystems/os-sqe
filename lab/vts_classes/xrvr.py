@@ -22,9 +22,10 @@ class Xrvr(LabServer):
 
         vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
         if method_to_disrupt == 'vm-shutdown':
-            vts_host.exe(command='virsh suspend XRVR')
+            # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
+            vts_host.exe(command='virsh suspend xrnc{}'.format(self.get_id()[-1]))
             time.sleep(downtime)
-            vts_host.exe(command='virsh resume XRVR')
+            vts_host.exe(command='virsh resume xrnc{}'.format(self.get_id()[-1]))
         elif method_to_disrupt == 'corosync-stop':
             self.cmd('sudo service corosync stop', is_xrvr=False)
             time.sleep(downtime)
@@ -35,6 +36,20 @@ class Xrvr(LabServer):
             self.cmd('sudo service ncs start', is_xrvr=False)
         elif method_to_disrupt == 'vm-reboot':
             self.cmd('sudo shutdown -r now', is_xrvr=False)
+        elif method_to_disrupt == 'isolate-from-mx':
+            # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
+            ans = vts_host.exe('ip l | grep mgmt | grep xrnc{}'.format(self.get_id()[-1]))
+            if_name = ans.split()[1][:-1]
+            vts_host.exe('ip l s dev {} down'.format(if_name))
+            time.sleep(downtime)
+            vts_host.exe('ip l s dev {} up'.format(if_name))
+        elif method_to_disrupt == 'isolate-from-tenant':
+            # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
+            ans = vts_host.exe('ip l | grep tenant | xrnc{}'.format(self.get_id()[-1]))
+            if_name = ans.split()[1][:-1]
+            vts_host.exe('ip l s dev {} down'.format(if_name))
+            time.sleep(downtime)
+            vts_host.exe('ip l s dev {} up'.format(if_name))
 
     def get_xrvr_ip_user_pass(self):
         _, u, p = self.get_oob()
