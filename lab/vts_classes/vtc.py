@@ -33,7 +33,6 @@ class Vtc(LabServer):
         url = 'https://{ip}:{port}/{resource}'.format(ip=vip, port=8888, resource=url_path)
         auth = (username, password)
 
-        # noinspection PyBroadException
         try:
             if type_of_call in ['get', 'GET']:
                 ans = requests.get(url, auth=auth, headers=headers, params=params, timeout=100, verify=False)
@@ -50,11 +49,13 @@ class Vtc(LabServer):
                 return d
             else:
                 raise RuntimeError('for {}: {}'.format(resource, ans.text or ans.reason))
-        except AttributeError:
+        except AttributeError as e:
             self.log(message='Possible methods get, post, patch', level='exception')
-        except requests.ConnectTimeout:
+        except requests.ConnectTimeout as e:
             self.log(message='Url={url} auth={auth}, headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params), level='exception')
             raise
+        except Exception as e:
+            raise e
 
     def set_vip(self, vip):
         self._vip_a, self._vip_mx = vip, '11.11.11.150'

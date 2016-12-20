@@ -41,6 +41,7 @@ class Server(object):
         from lab import with_config
 
         kwargs = {'host_string': '{user}@{ip}'.format(user=self._username, ip=self._ip),
+                  'disable_known_hosts': True,
                   'connection_attempts': connection_attempts,
                   'warn_only': is_warn_only}
         if self._password == 'ssh_key':
@@ -73,7 +74,7 @@ class Server(object):
             with cd(in_directory):
                 try:
                     return run(command)
-                except NetworkError:
+                except NetworkError as e:
                     if is_warn_only:
                         return ''
                     else:
@@ -88,7 +89,7 @@ class Server(object):
             with cd(in_directory):
                 try:
                     return files.append(file_path, data)
-                except NetworkError:
+                except NetworkError as e:
                     if is_warn_only:
                         return ''
                     else:

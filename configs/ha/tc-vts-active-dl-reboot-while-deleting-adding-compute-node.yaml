@@ -1,0 +1,30 @@
+---
+- Folder: HIGH AVAILABILITY
+- Description: Validate Standby XRNC becomes "Active' when Active XRNC is rebooted while adding a compute node
+- class: lab.monitors.vts_monitor.VtsMonitor
+  run_while:
+    - vts_scenario
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  delay: 3
+  downtime: 120
+  node-to-disrupt: master-dl
+  method-to-disrupt: vm-shutdown
+  run_while:
+    - deleting_node
+    - adding_node
+  set:
+    - vts_scenario
+
+- class: lab.scenarios.vts_delete_compute.VtsDeleteCompute
+  set:
+    - deleting_node
+
+- class: lab.scenarios.vts_add_compute.VtsAddCompute
+  run_once_when:
+    deleting_node: False
+  set:
+    - adding_node
+
+
+# Validate Standby XRNC becomes "Active' when Active XRNC is rebooted while adding a compute node

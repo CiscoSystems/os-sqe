@@ -9,7 +9,7 @@ class VtsDeleteScenario(ParallelWorker):
         import collections
 
         self._n_instances = int(self._kwargs['how-many-servers'])
-        self._uptime = int(self._kwargs['uptime'])
+        self._uptime = int(self._kwargs.get('uptime', 0))
         self._even_server_numbers = [10 + x for x in range(self._n_instances) if x % 2 == 0]
         self._odd_server_numbers = [10 + x for x in range(self._n_instances) if x % 2 != 0]
 
@@ -102,7 +102,6 @@ class VtsDeleteScenario(ParallelWorker):
     def loop_worker(self):
         import datetime
         import time
-        from lab.server import Server
 
         start_time = datetime.datetime.now()
 
@@ -112,14 +111,18 @@ class VtsDeleteScenario(ParallelWorker):
         self._log.debug('Instances created in [{seconds}] seconds'.format(seconds=elapsed_time))
         if elapsed_time > self._uptime:
             raise Exception('Could not create instances in [{seconds}] seconds. Increase "uptime" parameter or reduce instance/network/etc parameters'.format(seconds=self._uptime))
-        sleep_time = self._uptime - elapsed_time
-        self._log.debug('Wait for [{seconds}] seconds'.format(seconds=sleep_time))
-        time.sleep(sleep_time)
+
+        if self._uptime > 0:
+            sleep_time = self._uptime - elapsed_time
+            self._log.debug('Wait for [{seconds}] seconds'.format(seconds=sleep_time))
+            time.sleep(sleep_time)
 
         start_delete_time = datetime.datetime.now()
         for info in server_info:
             self._cloud.os_server_delete(name=info['Name'])
         self._log.debug('Instances deleted in [{seconds}] seconds'.format(seconds=(datetime.datetime.now() - start_delete_time).seconds))
+
+        self._cloud.os_cleanup()
 
         # self._access_point()
         # all_servers = []

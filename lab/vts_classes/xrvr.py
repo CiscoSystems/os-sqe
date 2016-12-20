@@ -69,13 +69,13 @@ class Xrvr(LabServer):
             _, username, password = self.get_oob()
             if cmd not in self._expect_commands:
                 self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=True)
-            ans = self._proxy_server.exe(command='expect {0}'.format(self._expect_commands[cmd]))
+            ans = self._proxy_server.exe(command='expect {0}'.format(self._expect_commands[cmd]), is_warn_only=is_warn_only)
         else:
             ip, username, password = self._server.get_ssh()
             if 'sudo' in cmd:
                 if cmd not in self._expect_commands:
                     self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=False)
-                ans = self._proxy_server.exe(command='expect {0}'.format(self._expect_commands[cmd]))
+                ans = self._proxy_server.exe(command='expect {0}'.format(self._expect_commands[cmd]), is_warn_only=is_warn_only)
             else:
                 ans = self.exe(command=cmd, is_warn_only=is_warn_only)
         return ans

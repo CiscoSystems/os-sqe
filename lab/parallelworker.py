@@ -22,6 +22,7 @@ class ParallelWorker(object):
         self._shared_dict = self._kwargs.get('_shared_dict')
         self._set = self._kwargs.get('set', [])
         self._run_while = self._kwargs.get('run_while', [])
+        self._run_once_when = self._kwargs.get('run_once_when', [])
         if not self._n_repeats and not self._run_while:
             raise ValueError('Defined either run_while or n_repeats')
         if self._run_while and not self._n_repeats:
@@ -74,7 +75,16 @@ class ParallelWorker(object):
                 # Sleep for 1 second to let other workers to set flags.
                 time.sleep(1)
                 # Now all flags are set and we can check their values
-                while self.is_any_flag():
+                while not self.is_any_flag(flags=self._run_while) and not self.is_any_flag(flags=self._run_once_when):
+                    # No one flag is True yet. Wait until at least one flag is true. Then start execution.
+                    time.sleep(1)
+                if self.is_any_flag(flags=self._run_once_when):
+                    # Run once if any "run_once_when" flag meets expectations
+                    loop_output = self.loop_worker()
+                    if loop_output:
+                        self._results['output'].append(loop_output)
+                while self.is_any_flag(flags=self._run_while):
+                    # Run while any "run_while" flag meets expectations
                     loop_output = self.loop_worker()
                     if loop_output:
                         self._results['output'].append(loop_output)
@@ -118,5 +128,10 @@ class ParallelWorker(object):
         for flag in self._set:
             self._shared_dict[flag] = False
 
-    def is_any_flag(self, value=True):
-        return any([self._shared_dict[flag] == value for flag in self._run_while])
+    def is_any_flag(self, flags):
+        true_strings = ('true', 'yes', 'on', 'buzz', 'working')
+        if type(flags) == list:
+            return any([self._shared_dict[flag] for flag in flags])
+        elif type(flags) == dict:
+            return any([self._shared_dict[flag] == (value in true_strings) for flag, value in flags.items()])
+        return False
