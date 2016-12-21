@@ -1,4 +1,5 @@
 import abc
+import copy
 
 
 class ParallelWorker(object):
@@ -8,9 +9,11 @@ class ParallelWorker(object):
     def __init__(self,  cloud, lab, **kwargs):
         import validators
 
+        self._results = {'name': str(self), 'exceptions': [], 'output': [], 'input': copy.deepcopy(kwargs)}
+        del self._results['input']['_shared_dict']
+
         self._is_debug = False
         self._kwargs = kwargs
-        self._results = {'name': str(self), 'exceptions': [], 'output': [], 'input': kwargs}
         self._cloud = cloud
         self._lab = lab
         self._log = None
