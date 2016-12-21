@@ -53,7 +53,9 @@ class Spirent(LabNode):
         return stc
 
     def run_test(self):
-        conf_file_name = 'test.tcc'
+        from lab.with_config import WithConfig
+
+        conf_file_name = WithConfig.get_artifact_file_path('test.tcc')
         r = self._stc.perform("LoadFromDatabaseCommand", DatabaseConnectionString=conf_file_name)
         self.log('{} loaded: {}'.format(conf_file_name, r))
         project = self._stc.get("system1", "children-project")

@@ -25,26 +25,28 @@ class WithConfig(object):
 
     @staticmethod
     def get_log_file_names():
-        import os
-
         if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
             os.makedirs(WithConfig.ARTIFACTS_DIR)
         return os.path.join(WithConfig.ARTIFACTS_DIR, 'sqe.log'), os.path.join(WithConfig.ARTIFACTS_DIR, 'json.log')
 
     @staticmethod
     def ls_configs(directory=''):
-        import os
-
         folder = os.path.abspath(os.path.join(WithConfig.CONFIG_DIR, directory))
         return sorted(filter(lambda name: name.endswith('.yaml'), os.listdir(folder)))
 
     @staticmethod
     def open_artifact(name, mode):
-        import os
-
         if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
             os.makedirs(WithConfig.ARTIFACTS_DIR)
         return open(os.path.join(WithConfig.ARTIFACTS_DIR, name), mode)
+
+    @staticmethod
+    def get_artifact_file_path(short_name):
+        path = os.path.join(WithConfig.ARTIFACTS_DIR, short_name)
+        if os.path.isfile(path):
+            return path
+        else:
+            raise RuntimeError('No file {}'.format(path))
 
 
 KEY_PUBLIC_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'public'))
