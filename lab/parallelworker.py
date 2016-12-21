@@ -23,8 +23,8 @@ class ParallelWorker(object):
         self._set = self._kwargs.get('set', [])
         self._run_while = self._kwargs.get('run_while', [])
         self._run_once_when = self._kwargs.get('run_once_when', [])
-        if not self._n_repeats and not self._run_while:
-            raise ValueError('Defined either run_while or n_repeats')
+        if not self._n_repeats and not self._run_while and not self._duration:
+            raise ValueError('Defined either run_while or n_repeats or duration')
         if self._run_while and not self._n_repeats:
             self._n_repeats = 1
         if self._run_while and self._n_repeats > 1:
