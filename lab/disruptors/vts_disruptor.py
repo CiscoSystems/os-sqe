@@ -65,12 +65,12 @@ class VtsDisruptor(ParallelWorker):
             if node_role == 'master':
                 # On the second+ run check if current master is a former slave.
                 assert self._node_object_disrupted.get_id() != self._node_object_to_disrupt.get_id()
-                self._log.debub("Current master node [{mid}] is a former slave [{sid}]".format(
+                self._log.debug("Current master node [{mid}] is a former slave [{sid}]".format(
                     sid=self._node_object_disrupted.get_id(), mid=self._node_object_to_disrupt.get_id()))
             if node_role == 'slave':
                 # On the second+ run check if current slave was slave in previous run.
                 assert self._node_object_disrupted.get_id() == self._node_object_to_disrupt.get_id()
-                self._log.debub("Slave node [{mid}] was slave in previous run [{sid}]".format(
+                self._log.debug("Slave node [{mid}] was slave in previous run [{sid}]".format(
                     sid=self._node_object_disrupted.get_id(), mid=self._node_object_to_disrupt.get_id()))
 
         #self._log.info('host={} method={} status=going-off {}'.format(self._node_to_disrupt, self._method_to_disrupt, ''))

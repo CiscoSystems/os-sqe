@@ -147,6 +147,7 @@ class Tims(WithLogMixIn):
             </Search>
         """
 
+        print("Results: {0}".format(results))
         status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'
         description = json.dumps(results, indent=4)
         body = result_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
