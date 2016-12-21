@@ -378,7 +378,7 @@ class Vtc(LabServer):
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/openstack/network
             r = self._rest_api(resource='GET /api/running/openstack/network/{}'.format(network_id), headers={'Accept': 'application/vnd.yang.{}+json'.format('data' if network_id else 'collection')})
-            return r['collection']['cisco-vts-openstack:network'] if 'collection' in r else []
+            return r['collection']['cisco-vts-openstack:network'] if 'collection' in r else {}
 
     def r_vtc_get_openstack_network_vlan(self, network_id):
         a = self.r_vtc_show_openstack_network(network_id=network_id)
