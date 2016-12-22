@@ -42,6 +42,8 @@ class WithLogMixIn(object):
             lab_logger.warning(message)
         elif level == 'exception':
             lab_logger.exception(message)
+        elif level == 'error':
+            lab_logger.error(message)
         else:
             raise RuntimeError('Specified "{}" logger level is not known'.format(level))
 

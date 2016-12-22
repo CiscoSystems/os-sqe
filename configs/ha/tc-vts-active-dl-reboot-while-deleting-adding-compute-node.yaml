@@ -8,6 +8,7 @@
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 3
   downtime: 120
+  uptime: 60
   node-to-disrupt: master-dl
   method-to-disrupt: vm-shutdown
   run_while:
@@ -17,6 +18,7 @@
     - vts_scenario
 
 - class: lab.scenarios.vts_delete_compute.VtsDeleteCompute
+  n_repeats: 1
   set:
     - deleting_node
 

@@ -41,11 +41,13 @@ class Tims(WithLogMixIn):
 
         if not self._xml_tims_wrapper:
             self.log('No way to detect the user who is running the test, nothing will be published in TIMS', level='error')
-        data = self._xml_tims_wrapper.format(body=body)
-        response = requests.post("http://tims.cisco.com/xml/{}/{}.svc".format(self.TIMS_PROJECT_ID, operation), data=data)
-        if u"Error" in response.content.decode():
-            raise RuntimeError(response.content)
-        return response.content
+            return None
+        else:
+            data = self._xml_tims_wrapper.format(body=body)
+            response = requests.post("http://tims.cisco.com/xml/{}/{}.svc".format(self.TIMS_PROJECT_ID, operation), data=data)
+            if u"Error" in response.content.decode():
+                raise RuntimeError(response.content)
+            return response.content
 
     def publish_tests_to_tims(self):
         from lab.with_config import WithConfig
@@ -153,19 +155,24 @@ class Tims(WithLogMixIn):
         body = result_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
 
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
-        report_id = ans.split('</ID>')[0].rsplit('>', 1)[-1]
-        self.log_to_slack(message='{}: {} {} http://tims/warp.cmd?ent={}'.format(mercury_version, test_cfg_path, status.upper(), report_id))
-        search_result = self._api_post(operation=self._OPERATION_SEARCH, body=search_by_logical_id.format(project_id=self.TIMS_PROJECT_ID, test_cfg_path=test_cfg_path, mercury_version=mercury_version))
-        resutl_id = search_result.split('</SearchHit>')[0].rsplit('>', 1)[-1]
-        if not resutl_id.startswith('Tcbr'):
-            self.log('Result for test case {0} not found! '.format(test_cfg_path), level='warning')
-            return
-        body_dima = fixed_dima_template.format(test_cfg_path=test_cfg_path,
-                                               description=description,
-                                               mercury_version=mercury_version,
-                                               status=status, lab_id=lab,
-                                               result_id=resutl_id)
-        self._api_post(operation=self._OPERATION_UPDATE, body=body_dima)
+        if ans:
+            tims_report_url = 'http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
+
+            search_result = self._api_post(operation=self._OPERATION_SEARCH, body=search_by_logical_id.format(project_id=self.TIMS_PROJECT_ID, test_cfg_path=test_cfg_path, mercury_version=mercury_version))
+            resutl_id = search_result.split('</SearchHit>')[0].rsplit('>', 1)[-1]
+            if not resutl_id.startswith('Tcbr'):
+                self.log('Result for test case {0} not found! '.format(test_cfg_path), level='warning')
+                return
+            body_dima = fixed_dima_template.format(test_cfg_path=test_cfg_path,
+                                                   description=description,
+                                                   mercury_version=mercury_version,
+                                                   status=status, lab_id=lab,
+                                                   result_id=resutl_id)
+            self._api_post(operation=self._OPERATION_UPDATE, body=body_dima)
+        else:
+            tims_report_url = 'and not reported to tims since user not known'
+
+        self.log_to_slack(message='{}: {} {} {}'.format(mercury_version, test_cfg_path, status.upper(), tims_report_url))
 
     def simulate(self):
         from lab.with_config import WithConfig
