@@ -26,16 +26,14 @@ class ParallelWorker(object):
         self._set = self._kwargs.get('set', [])
         self._run_while = self._kwargs.get('run_while', [])
         self._run_once_when = self._kwargs.get('run_once_when', [])
-        if not self._n_repeats and not self._run_while and not self._duration:
-            raise ValueError('Defined either run_while or n_repeats or duration')
-        if self._run_while and not self._n_repeats:
+        if not self._n_repeats and not self._run_while and not self._run_once_when and not self._duration:
+            raise ValueError('Defined either run_while or n_repeats or run_once_when or duration')
+        if (self._run_while or self._run_once_when) and not self._n_repeats:
             self._n_repeats = 1
         if self._run_while and self._n_repeats > 1:
             raise ValueError('n_repeats > 1 and run_while is defined! Either undefine run_while or set n_repeats=1 or even remove n_repeats')
         if self._duration and self._n_repeats:
             raise ValueError('{}: specifies both duration and n_repeats. Decide which one you want to use.'.format(self._kwargs))
-        if self._duration is None and self._n_repeats is None:
-            raise ValueError('{}: specifies neither duration no n_repeats. Decide which one you want to use.'.format(self._kwargs))
         if self._n_repeats and self._n_repeats < 1:
             raise ValueError('{}: n_repeats should >=1'.format(self._kwargs))
 
@@ -63,16 +61,17 @@ class ParallelWorker(object):
             self._log = Logger(name=str(self))
             self._log.info(80 * '-')
             self._log.info('status=started arguments={}'.format(self._kwargs))
-            if self._is_debug:  # don't actually run anything to check that infrastructure works
-                self._results['output'].append(self.debug_output())
-                return self._results
 
             self.set_flags()
             self.setup_worker()
             if self._delay:
                 self._log.info('delay by {0} secs...'.format(self._delay))
-            if not self._is_debug:
-                time.sleep(self._delay)
+                if not self._is_debug:
+                    time.sleep(self._delay)
+
+            if self._is_debug:  # don't actually run anything to check that infrastructure works
+                self._results['output'].append(self.debug_output())
+                return self._results
 
             if self._run_while:
                 # Sleep for 1 second to let other workers to set flags.
