@@ -187,7 +187,7 @@ export OS_AUTH_URL={end_point}
         for i in range(len(net_names)):
             phys_net_addon = '--provider:physical_network={phys_net} --provider:network_type=vlan --provider:segmentation_id={vlan}'.format(phys_net=self._provider_physical_network, vlan=vlan+i) if vlan else ''
 
-            net_line = 'openstack network create {} {} -f shell'.format(net_names[i], phys_net_addon)
+            net_line = 'neutron net-create {} {} -f shell'.format(net_names[i], phys_net_addon)
             cidr, gw, start, stop = networks[i], networks[i][-2], networks[i][1], networks[i][5000]
             sub_line = 'neutron subnet-create {} {} --name {} --gateway {} --dns-nameserver {} {} --allocation-pool start={},end={} -f shell'.format(net_names[i], cidr, subnet_names[i], gw, self._dns, '' if is_dhcp else '--disable-dhcp', start, stop)
             net_vs_subnet[net_line] = sub_line
@@ -214,9 +214,10 @@ export OS_AUTH_URL={end_point}
     @section('Creating custom flavor')
     def os_flavor_create(self, name):
         name_with_prefix = self._add_name_prefix(name)
-        self.os_cmd('openstack flavor create {} --vcpu 2 --ram 4096 --disk 40 --public'.format(name_with_prefix))
+        res = self.os_cmd('openstack flavor create {} --vcpu 2 --ram 4096 --disk 40 --public -f shell'.format(name_with_prefix))
         self.os_cmd('openstack flavor set {} --property hw:numa_nodes=1'.format(name_with_prefix))
-        return self.os_cmd('openstack flavor set {} --property hw:mem_page_size=large -f json'.format(name_with_prefix))
+        self.os_cmd('openstack flavor set {} --property hw:mem_page_size=large'.format(name_with_prefix))
+        return res
 
     def os_flavor_delete(self, name):
         self.os_cmd('openstack flavor delete {}'.format(name))

@@ -3,7 +3,7 @@
 - Description: test it statically - run VM create - ping - delete cycle parametrized number of steps, in paralell do the same with disruptor, then make sure from log timestemps that disrupting while VM was provisioning
               indeed happend at least once.
 - class: lab.monitors.vts_monitor.VtsMonitor
-  duration: 600
+  duration: 400
   period: 2
 
 - class: lab.scenarios.vts_scenario.VtsScenario
@@ -18,7 +18,7 @@
   method-to-disrupt: vm-shutdown
   n_repeats: 2
   downtime: 90
-  uptime: 20
+  uptime: 90
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'
 # Possible methods:  'isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop'
