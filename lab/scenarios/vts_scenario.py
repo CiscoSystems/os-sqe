@@ -47,12 +47,12 @@ class VtsScenario(ParallelWorker):
     def _wait_for_vtc_networks(self):
         import time
 
-        required = {x['network']['id']: x['network']['provider:segmentation_id'] for x in self._nets.values()}
+        required = [(x['network']['id'], x['network']['provider:segmentation_id']) for x in self._nets.values()]
         max_retries = 10
         while True:
             vtc_nets = self._vtc.r_vtc_show_openstack_network()
-            actual = {x['id']: x['provider-segmentation-id'] for x in vtc_nets['collection']['cisco-vts-openstack:network']} if 'collection' in vtc_nets else {}
-            if required == actual:
+            actual = [(x['id'], x['provider-segmentation-id']) for x in vtc_nets['collection']['cisco-vts-openstack:network']] if 'collection' in vtc_nets else []
+            if set(required).issubset(set(actual)):
                 return
             if max_retries == 0:
                 raise RuntimeError('VTC failed to register networks')
