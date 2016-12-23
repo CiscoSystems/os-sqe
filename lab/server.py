@@ -70,15 +70,21 @@ class Server(object):
         if 'sudo' in command:
             command = command.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self._password))
 
-        with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
+        # with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
+        res = None
+        with settings(**self.construct_settings(is_warn_only=True, connection_attempts=connection_attempts)):
             with cd(in_directory):
                 try:
-                    return run(command)
+                    res = run(command)
                 except NetworkError as e:
                     if is_warn_only:
                         return ''
                     else:
                         raise
+        if not is_warn_only:
+            if res and res.return_code != 0:
+                raise Exception(res.stderr)
+        return res
 
     def file_append(self, file_path, data, in_directory='.', is_warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
         from fabric.api import settings, cd

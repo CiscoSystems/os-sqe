@@ -12,6 +12,7 @@ class VtsDisruptor(ParallelWorker):
             self._downtime = self._kwargs['downtime']
             self._uptime = self._kwargs['uptime']
             self._node_to_disrupt = self._kwargs['node-to-disrupt']
+            self._check_master_node_failover = self._kwargs.get('check_master_node_failover', False)
             self._node_object_to_disrupt = None
             self._node_object_disrupted = None
             self._method_to_disrupt = self._kwargs['method-to-disrupt']
@@ -60,7 +61,7 @@ class VtsDisruptor(ParallelWorker):
                     self._node_object_to_disrupt = xrvr
                     break
 
-        if self._node_object_disrupted:
+        if self._check_master_node_failover and self._node_object_disrupted:
             # If it started two or more times check if master node becomes slave
             if node_role == 'master':
                 # On the second+ run check if current master is a former slave.
