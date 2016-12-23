@@ -53,6 +53,7 @@ class ParallelWorker(object):
         self._is_debug = is_debug
 
     def start_worker(self):
+        import os
         import time
         from lab.logger import Logger
 
@@ -60,7 +61,7 @@ class ParallelWorker(object):
         try:
             self._log = Logger(name=str(self))
             self._log.info(80 * '-')
-            self._log.info('status=started arguments={}'.format(self._kwargs))
+            self._log.info('status=started parent_process={ppid} process_id={pid} arguments={args}'.format(args=self._kwargs, ppid=os.getppid(), pid=os.getpid()))
 
             self.set_flags()
             self.setup_worker()
