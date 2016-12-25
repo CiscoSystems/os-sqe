@@ -51,7 +51,7 @@ class VtsScenario(ParallelWorker):
         max_retries = 10
         while True:
             vtc_nets = self._vtc.r_vtc_show_openstack_network()
-            actual = [(x['id'], x['provider-segmentation-id']) for x in vtc_nets['collection']['cisco-vts-openstack:network']]
+            actual = [(x['id'], x['provider-segmentation-id']) for x in vtc_nets]
             if set(required).issubset(set(actual)):
                 return
             if max_retries == 0:
