@@ -35,7 +35,7 @@ class VtsScenario(ParallelWorker):
     def _network_part(self):
 
         vtc_nets = self._vtc.r_vtc_show_openstack_network()  # should be no sqe-XXX networks
-        if len(vtc_nets.keys()) != 0:
+        if len(vtc_nets) != 0:
             raise RuntimeError('VTC still has some strange networks: {}'.format(vtc_nets))
 
         self._nets = self._cloud.os_network_create(common_part_of_name='internal', class_a=1, how_many=self._n_nets, is_dhcp=False)
@@ -55,6 +55,7 @@ class VtsScenario(ParallelWorker):
             if set(required).issubset(set(actual)):
                 return
             if max_retries == 0:
+                self._log.debug('required [{0}]. actual [{1}]'.format(required, actual))
                 raise RuntimeError('VTC failed to register networks')
             time.sleep(5)
             max_retries -= 1
