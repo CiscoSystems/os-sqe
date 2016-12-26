@@ -106,7 +106,7 @@ class ParallelWorker(object):
                         self._results['output'].append(loop_output)
                     time.sleep(self._period)
 
-            elif self._duration:
+            if self._duration:
                 self._log.debug("Entering duration. [{0}]".format(self._kwargs))
                 start_time = datetime.datetime.now()
                 while (datetime.datetime.now() - start_time).seconds < self._duration:
@@ -115,7 +115,7 @@ class ParallelWorker(object):
                         self._results['output'].append(loop_output)
                     time.sleep(self._period)
 
-            elif self._n_repeats:
+            if self._n_repeats:
                 self._log.debug("Entering n_repeats. [{0}]".format(self._kwargs))
                 for _ in range(self._n_repeats):
                     loop_output = self.loop_worker()
