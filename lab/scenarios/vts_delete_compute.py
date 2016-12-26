@@ -28,7 +28,7 @@ class VtsDeleteCompute(ParallelWorker):
 
         computes_amount = len(setup_data['ROLES']['compute'])
         if computes_amount < 2:
-            raise Exception('There are no anough computes. Could not delete compute')
+            raise Exception('There are no enough computes. Could not delete compute')
 
         if not setup_data_orig:
             # create backup setup_data

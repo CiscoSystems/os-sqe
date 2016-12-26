@@ -31,7 +31,7 @@ class VtsAddCompute(ParallelWorker):
 
         computes_amount = len(setup_data['ROLES']['compute'])
         if computes_amount == len(setup_data_orig['ROLES']['compute']):
-            raise Exception('All computes are already in use. Could not delete compute')
+            raise Exception('All computes are already in use. Could not add compute')
 
         compute_name = random.choice(list(set(setup_data_orig['ROLES']['compute']) - set(setup_data['ROLES']['compute'])))
         setup_data['ROLES']['compute'].append(compute_name)
