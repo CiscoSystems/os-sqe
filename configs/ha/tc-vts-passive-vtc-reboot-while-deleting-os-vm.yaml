@@ -1,17 +1,18 @@
 ---
 - Folder: HIGH AVAILABILITY
 - Description: Validate Standby VTC is still running and in Standby mode when Standby  VTC is rebooted while existing tenant VMs are also being deleted
+
 - class: lab.monitors.vts_monitor.VtsMonitor
-  duration: 600
   period: 2
+  run_while:
+    - vts-disruptor
 
 - class: lab.scenarios.vts_delete_scenario.VtsDeleteScenario
   how-many-networks: 2
   how-many-servers: 10
   uptime: 120
-  n_repeats: 1
   when:
-    - adding-node: True
+    - vts-disruptor
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
@@ -21,6 +22,6 @@
   downtime: 460
   uptime: 120
   set:
-    - adding-node
+    - vts-disruptor
 
 # Validate Standby VTC is still running and in Standby mode when Standby  VTC is rebooted whileexisting tenant VMs are also being deleted

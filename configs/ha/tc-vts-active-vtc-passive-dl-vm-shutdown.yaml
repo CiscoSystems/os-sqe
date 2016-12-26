@@ -1,14 +1,20 @@
 ---
 - Folder: HIGH AVAILABILITY
 - Description: first create OS VM then start disruptor
-  duration: 600
+
+- class: lab.monitors.vts_monitor.VtsMonitor
   period: 2
+  run_while:
+    - vts-disruptor-master-vtc
+    - vts-disruptor-slave-dl
 
 - class: lab.scenarios.vts_scenario.VtsScenario
   delay: 20
   how-many-networks: 1
   how-many-servers: 3
-  n_repeats: 1
+  run_while:
+    - vts-disruptor-master-vtc
+    - vts-disruptor-slave-dl
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
@@ -17,6 +23,8 @@
   n_repeats: 2
   downtime: 100
   uptime: 20
+  set:
+    - vts-disruptor-master-vtc
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 30
@@ -25,6 +33,8 @@
   n_repeats: 2
   downtime: 100
   uptime: 20
+  set:
+    - vts-disruptor-slave-dl
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'
 # Possible methods:  'isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop'
