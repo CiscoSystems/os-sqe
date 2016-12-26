@@ -41,4 +41,4 @@ class VtsDeleteCompute(ParallelWorker):
 
         self._build_node.file_append(setup_data_path, yaml.dump(setup_data, default_flow_style=False))
 
-        self._build_node.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --remove-computes {name} '.format(tag=tag, name=compute_name))
+        self._build_node.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --force --remove-computes {name} '.format(tag=tag, name=compute_name))
