@@ -95,7 +95,7 @@ class Spirent(LabNode):
 if __name__ == '__main__':
     s = Spirent(node_id='sp1', role=Spirent.role, lab='fake_lab')
     s.set_oob_creds(ip='172.29.74.4', username='admin', password='spt_admin')
-    s.set_hardware_ports('172.29.68.53', [7, 8])
+    s.set_hardware_ports('172.29.68.53', [5, 6])
     s.run_test()
 
 '''
