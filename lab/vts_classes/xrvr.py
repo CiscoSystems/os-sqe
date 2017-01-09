@@ -35,7 +35,10 @@ class Xrvr(LabServer):
             time.sleep(downtime)
             self.cmd('sudo service ncs start', is_xrvr=False)
         elif method_to_disrupt == 'vm-reboot':
-            self.cmd('sudo shutdown -r now', is_xrvr=False)
+            ans = self.exe('set -m; sudo bash -c "ip link set dev eth0 down && ip link set dev eth1 down '
+                           '&& sleep {0} && shutdown -r now" 2>/dev/null >/dev/null &'.format(downtime),
+                           is_warn_only=True)
+            time.sleep(downtime)
         elif method_to_disrupt == 'isolate-from-mx':
             # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
             ans = vts_host.exe('ip l | grep mgmt | grep xrnc{}'.format(self.get_id()[-1]))
@@ -71,13 +74,7 @@ class Xrvr(LabServer):
                 self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=True)
             ans = self._proxy_server.exe(command='expect {0}'.format(self._expect_commands[cmd]), is_warn_only=is_warn_only)
         else:
-            ip, username, password = self._server.get_ssh()
-            if 'sudo' in cmd:
-                if cmd not in self._expect_commands:
-                    self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=False)
-                ans = self._proxy_server.exe(command='expect {0}'.format(self._expect_commands[cmd]), is_warn_only=is_warn_only)
-            else:
-                ans = self.exe(command=cmd, is_warn_only=is_warn_only)
+            ans = self.exe(command=cmd, is_warn_only=is_warn_only)
         return ans
 
     def create_expect_command_file(self, cmd, ip, username, password, is_xrvr):

@@ -67,9 +67,6 @@ class Server(object):
         if str(self._ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
 
-        if 'sudo' in command:
-            command = command.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self._password))
-
         # with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
         res = None
         with settings(**self.construct_settings(is_warn_only=True, connection_attempts=connection_attempts)):

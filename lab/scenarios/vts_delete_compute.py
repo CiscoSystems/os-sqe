@@ -28,7 +28,7 @@ class VtsDeleteCompute(ParallelWorker):
 
         computes_amount = len(setup_data['ROLES']['compute'])
         if computes_amount < 2:
-            raise Exception('There are no anough computes. Could not delete compute')
+            raise Exception('There are no enough computes. Could not delete compute')
 
         if not setup_data_orig:
             # create backup setup_data
@@ -41,4 +41,4 @@ class VtsDeleteCompute(ParallelWorker):
 
         self._build_node.file_append(setup_data_path, yaml.dump(setup_data, default_flow_style=False))
 
-        self._build_node.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --remove-computes {name} '.format(tag=tag, name=compute_name))
+        self._build_node.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --force --remove-computes {name} '.format(tag=tag, name=compute_name))

@@ -4,14 +4,16 @@
               indeed happend at least once.
 
 - class: lab.monitors.vts_monitor.VtsMonitor
-  duration: 600
   period: 2
+  run_while:
+    - vts-disruptor
 
 - class: lab.scenarios.vts_delete_scenario.VtsDeleteScenario
   how-many-networks: 2
   how-many-servers: 10
   uptime: 120
-  n_repeats: 1
+  run_while:
+    - vts-disruptor
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
@@ -20,5 +22,7 @@
   n_repeats: 1
   downtime: 460
   uptime: 120
+  set:
+    - vts-disruptor
 
 # Validate Standby XRNC becomes "Active' when Active XRNC¿s eth0 is shut while new tenant VMs are being deleted

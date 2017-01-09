@@ -28,10 +28,8 @@ class ParallelWorker(object):
         self._run_once_when = self._kwargs.get('run_once_when', [])
         if not self._n_repeats and not self._run_while and not self._run_once_when and not self._duration:
             raise ValueError('Defined either run_while or n_repeats or run_once_when or duration')
-        if (self._run_while or self._run_once_when) and not self._n_repeats:
-            self._n_repeats = 1
-        if self._run_while and self._n_repeats > 1:
-            raise ValueError('n_repeats > 1 and run_while is defined! Either undefine run_while or set n_repeats=1 or even remove n_repeats')
+        if self._run_while and self._n_repeats > 0:
+            raise ValueError('n_repeats > 0 and run_while is defined! Either undefine run_while or set n_repeats=1 or even remove n_repeats')
         if self._duration and self._n_repeats:
             raise ValueError('{}: specified both duration and n_repeats. Decide which one you want to use.'.format(self._kwargs))
         if self._n_repeats and self._n_repeats < 1:
@@ -108,7 +106,7 @@ class ParallelWorker(object):
                         self._results['output'].append(loop_output)
                     time.sleep(self._period)
 
-            elif self._duration:
+            if self._duration:
                 self._log.debug("Entering duration. [{0}]".format(self._kwargs))
                 start_time = datetime.datetime.now()
                 while (datetime.datetime.now() - start_time).seconds < self._duration:
@@ -117,7 +115,7 @@ class ParallelWorker(object):
                         self._results['output'].append(loop_output)
                     time.sleep(self._period)
 
-            elif self._n_repeats:
+            if self._n_repeats:
                 self._log.debug("Entering n_repeats. [{0}]".format(self._kwargs))
                 for _ in range(self._n_repeats):
                     loop_output = self.loop_worker()

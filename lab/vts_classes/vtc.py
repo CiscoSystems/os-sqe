@@ -129,8 +129,10 @@ class Vtc(LabServer):
             time.sleep(downtime)
             vts_host.exe('ip l s dev {} up'.format(if_name))
         elif method_to_disrupt == 'vm-reboot':
-            self.exe('sudo ip link set dev eth0 down && sudo ip link set dev eth1 down '
-                     '&& sleep {0} && sudo shutdown -r now'.format(downtime), is_warn_only=True)
+            # 'set -m' because of http://stackoverflow.com/questions/8775598/start-a-background-process-with-nohup-using-fabric
+            ans = self.exe('set -m; sudo bash -c "ip link set dev eth0 down && ip link set dev eth1 down '
+                           '&& sleep {0} && shutdown -r now" 2>/dev/null >/dev/null &'.format(downtime), is_warn_only=True)
+            time.sleep(downtime)
 
     def get_config_and_net_part_bodies(self):
         from lab import with_config

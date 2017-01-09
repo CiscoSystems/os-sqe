@@ -23,6 +23,7 @@
     - deleting_node
 
 - class: lab.scenarios.vts_add_compute.VtsAddCompute
+  delay: 10
   run_once_when:
     deleting_node: False
   set:
