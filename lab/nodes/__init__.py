@@ -36,6 +36,9 @@ class LabNode(WithLogMixIn):
     def get_id(self):
         return self._id
 
+    def get_lab_id(self):
+        return str(self.lab())
+
     def get_role(self):
         return self._role
 

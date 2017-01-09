@@ -10,11 +10,12 @@ class Spirent(LabNode):
     role = 'SPIRENT'
 
     def __init__(self,  node_id, role, lab):
-
+        from lab.with_config import WithConfig
         super(Spirent, self).__init__(node_id=node_id, role=role, lab=lab)
 
         self.__stc = None
         self._hardware_ports = None
+        self._test_config_file_name = WithConfig.get_remote_store_file_to_artifacts('spirent/{}.tcc'.format(self.get_lab_id()))
 
     def __repr__(self):
         return u'SPIRENT'
@@ -53,11 +54,8 @@ class Spirent(LabNode):
         return stc
 
     def run_test(self):
-        from lab.with_config import WithConfig
-
-        conf_file_name = WithConfig.get_artifact_file_path('test.tcc')
-        r = self._stc.perform("LoadFromDatabaseCommand", DatabaseConnectionString=conf_file_name)
-        self.log('{} loaded: {}'.format(conf_file_name, r))
+        r = self._stc.perform("LoadFromDatabaseCommand", DatabaseConnectionString=self._test_config_file_name)
+        self.log('{} loaded: {}'.format(self._test_config_file_name, r))
         project = self._stc.get("system1", "children-project")
         vports_string = self._stc.get("system1.project", "children-port")
         self.log('project: {} has {}'.format(project, vports_string))
@@ -93,7 +91,7 @@ class Spirent(LabNode):
         self._stc.perform("SaveResult", CollectResult="TRUE", SaveDetailedResults="TRUE", DatabaseConnectionString=sqe_spirent_db, OverwriteIfExist="TRUE")
 
 if __name__ == '__main__':
-    s = Spirent(node_id='sp1', role=Spirent.role, lab='fake_lab')
+    s = Spirent(node_id='sp1', role=Spirent.role, lab='g7-2')
     s.set_oob_creds(ip='172.29.74.4', username='admin', password='spt_admin')
     s.set_hardware_ports('172.29.68.53', [5, 6])
     s.run_test()

@@ -6,6 +6,7 @@ class WithConfig(object):
     REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
     CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
+    REMOTE_FILE_STORE_IP = '172.29.173.233'
 
     def __init__(self, config):
         self.verify_config(sample_config=self.sample_config(), config=config)
@@ -48,6 +49,14 @@ class WithConfig(object):
         else:
             raise RuntimeError('No file {}'.format(path))
 
+    @staticmethod
+    def get_remote_store_file_to_artifacts(path):
+        from fabric.api import local
+        import os
+
+        loc = path.split('/')[-1]
+        local('test -e {a}/{l} || curl -s -R http://{ip}/{p} -o {a}/{l}'.format(a=WithConfig.ARTIFACTS_DIR, l=loc, ip=WithConfig.REMOTE_FILE_STORE_IP, p=path))
+        return os.path.join(WithConfig.ARTIFACTS_DIR, loc)
 
 KEY_PUBLIC_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'public'))
 KEY_PRIVATE_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'private'))
