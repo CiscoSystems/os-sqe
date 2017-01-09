@@ -96,11 +96,14 @@ class LabServer(LabNode):
     def exe(self, command, in_directory='.', is_warn_only=False, connection_attempts=100, estimated_time=None):
         import time
 
+        ip, username, password = self._server.get_ssh()
+        if 'sudo' in command and 'sudo -p "" -S ' not in command:
+            command = command.replace('sudo ', 'echo {} | sudo -p "" -S '.format(password))
+
         if estimated_time:
             self.log('Running {}... (usually it takes {} secs)'.format(command, estimated_time))
         started_at = time.time()
         if self._proxy_server:
-            ip, username, password = self._server.get_ssh()
             while True:
                 ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # {}".format(password, username, ip, command, self.get_id()), in_directory=in_directory, is_warn_only=True)
                 if 'No route to host' in ans:

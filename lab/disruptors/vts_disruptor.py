@@ -40,7 +40,7 @@ class VtsDisruptor(ParallelWorker):
         vtc0 = self._lab.get_nodes_by_class(Vtc)[0]
         if 'vtc' in self._node_to_disrupt:
             cluster = vtc0.r_vtc_show_ha_cluster_members()
-            cluster = {x['role']: x['address'] for x in cluster['collection']['tcm:members']}
+            cluster = {x['status']: x['address'] for x in cluster['collection']['tcm:members']}
             for vtc in self._lab.get_nodes_by_class(Vtc):
                 if vtc.get_nic('a').get_ip_and_mask()[0] == cluster[node_role]:
                     self._node_object_to_disrupt = vtc
