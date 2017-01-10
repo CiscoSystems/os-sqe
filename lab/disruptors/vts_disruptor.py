@@ -53,7 +53,10 @@ class VtsDisruptor(ParallelWorker):
                 r = xrvr.cmd('sudo crm_mon -1', is_xrvr=False, is_warn_only=True)
                 if 'No route to host' in r:
                     continue
-                master_id = 'xrvr' + re.search(r'Started xrnc(?P<num>\d)', r).group('num')
+                started_xrnc = re.search(r'Started xrnc(?P<num>\d)', r)
+                if not started_xrnc:
+                    raise Exception('It looks like dl_server is not started')
+                master_id = 'xrvr' + started_xrnc.group('num')
                 break
             # Looking for node to disrupt
             for xrvr in xrvrs:

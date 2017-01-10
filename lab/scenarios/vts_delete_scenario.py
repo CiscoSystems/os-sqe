@@ -76,9 +76,9 @@ class VtsDeleteScenario(ParallelWorker):
     def _access_point(self):
         for net_name, net_info in self._nets.items():
             self._build_node.exe('ip link show br_mgmt.3500 || '
-                                 'ip link add link br_mgmt name br_mgmt.3500 type vlan id 3500 && '
+                                 '( ip link add link br_mgmt name br_mgmt.3500 type vlan id 3500 && '
                                  'ip link set dev br_mgmt.3500 up && '
-                                 'ip address add 1.1.255.254/24 dev br_mgmt.3500')
+                                 'ip address add 1.1.255.254/24 dev br_mgmt.3500 )')
 
     @section('Pinging instances')
     def _ping_part(self, servers):
