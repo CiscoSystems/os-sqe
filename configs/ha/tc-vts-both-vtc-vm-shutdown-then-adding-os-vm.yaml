@@ -7,15 +7,16 @@
   run_while:
     - vts-disruptor-master-vtc
     - vts-disruptor-slave-vtc
+    - vts-scenario
 
 # wait for long time. Check if VTC HA comes up by booting up VMs
 - class: lab.scenarios.vts_scenario.VtsScenario
   delay: 180
   how-many-networks: 1
   how-many-servers: 3
-  run_while:
-    - vts-disruptor-master-vtc
-    - vts-disruptor-slave-vtc
+  n_repeats: 2
+  set:
+    - vts-scenario
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 3
