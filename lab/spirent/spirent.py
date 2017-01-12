@@ -49,14 +49,37 @@ class Spirent(LabNode):
 
     @section(message='Connecting to session manager', estimated_time=40)
     def connect_to_manager(self):
-
         self._stc.perform("CSTestSessionConnect", host=self.get_oob()[0], TestSessionName="sqe_auto", CreateNewTestSession="true")
         self._stc.perform("TerminateBll", TerminateType="ON_LAST_DISCONNECT")
 
-    def run_test(self):
-        self.connect_to_manager()
+    @section(message='Loading test configuration', estimated_time=5)
+    def load_test_configuration(self):
         r = self._stc.perform("LoadFromDatabaseCommand", DatabaseConnectionString=self._test_config_file_name)
         self.log('{} loaded: {}'.format(self._test_config_file_name, r))
+
+    @section(message='Creating test configuration from scratch', estimated_time=5)
+    def create_test_configuration(self, n_devices=1):
+        project = self._stc.get("system1", "children-project")
+
+        for n in [1, 2]:  # first tx then rx
+            port = self._stc.create("port", under=project)
+
+            for dev_n in range(n_devices):
+                device = self._stc.create("EmulatedDevice", under=project, AffiliatedPort=port)
+                eth = self._stc.create("EthIIIf", under=device)
+
+                kwargs = {"StackedOnEndpoint-targets": eth, 'Address': '{}.1.1.2'.format(n), 'Gateway': '{}.1.1.1'.format(n)}
+                ip = self._stc.create("Ipv4If", under=device, **kwargs)
+                streamblock1 = self._stc.create("StreamBlock", under=port, srcbinding=stc.get(ed_traffic1, "children-ipv4if"), dstbinding=stc.get(ed_traffic2, "children-ipv4if"))
+
+                self._stc.config(device, TopLevelIf=ip, primaryif=ip)
+
+    def run_test(self, is_create=True):
+        self.connect_to_manager()
+        if is_create:
+            self.create_test_configuration()
+        else:
+            self.load_test_configuration()
         project = self._stc.get("system1", "children-project")
         vports_string = self._stc.get("system1.project", "children-port")
         self.log('project: {} has {}'.format(project, vports_string))
