@@ -382,10 +382,6 @@ class Vtc(LabServer):
             r = self._rest_api(resource='GET /api/running/openstack/network/{}'.format(network_id), headers={'Accept': 'application/vnd.yang.{}+json'.format('data' if network_id else 'collection')})
             return r['collection']['cisco-vts-openstack:network'] if 'collection' in r else []
 
-    def r_vtc_get_openstack_network_vlan(self, network_id):
-        a = self.r_vtc_show_openstack_network(network_id=network_id)
-        return a['cisco-vts-openstack:network']['provider-segmentation-id']
-
     def r_vtc_show_openstack_subnet(self, is_via_ncs=False):
         if is_via_ncs:
             return self.exe('ncs_cli << EOF\nshow openstack subnet\nexit\nEOF')
@@ -407,6 +403,13 @@ class Vtc(LabServer):
             # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/resource-pools/vni-pool
             return self._rest_api(resource='GET /api/running/resource-pools/vni-pool', headers={'Accept': 'application/vnd.yang.collection+json'})
 
+    def r_vtc_show_vlan_pool(self, is_via_ncs=False):
+        if is_via_ncs:
+            return self.exe('ncs_cli << EOF\nshow vlan-allocator pool\nexit\nEOF')
+        else:
+            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/resource-pools/vni-pool
+            return self._rest_api(resource='GET /api/running/resource-pools/vlan-pool', headers={'Accept': 'application/vnd.yang.collection+json'})
+
     def r_vtc_show_uuid_servers(self, is_via_ncs=False):
         if is_via_ncs:
             return self.exe('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
@@ -427,19 +430,20 @@ class Vtc(LabServer):
         import json
 
         mgmt_srv = [x for x in self.r_vtc_show_uuid_servers() if 'baremetal' in x['server-type']][0]
-        vlan = 3000
         tenant = 'admin'
+
         for network in self.r_vtc_show_openstack_network():
-            vlan += 1
             port_id = str(uuid.uuid4())
-            mac = 'unknonwn-' + str(uuid.uuid4())
-            port_json = json.dumps({'port': {'connid': mgmt_srv['connid'], 'id': port_id, 'binding-host-id': mgmt_srv['server-id'],
-                                             'network-id': network['id'], 'admin-state-up': True, 'status': 'active',  'vlan-id': vlan, 'mac-address': mac}})
-            self._rest_api(resource='PUT /api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port/{1}'.format(tenant, port_id), data=port_json,
-                           headers={'Content-type': 'application/vnd.yang.data+json', 'Accept': 'application/vnd.yang.collection+json'})
+            mac = 'unknown-' + str(uuid.uuid4())
+            body = {"port": {"id": port_id, "status": "cisco-vts-identities:active", "tagging": "mandatory", "network-id": network['id'], "binding-host-id": mgmt_srv['server-id'],
+                    "device-id": 'null', "connid": [{"id": mgmt_srv['connid']}], "admin-state-up": "true", "type": "cisco-vts-identities:baremetal", "mac-address": mac, "vlan-id": 'null'}}
+
+            r = self._rest_api(resource='PATCH /api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port'.format(tenant), data=json.dumps(body),
+                               headers={'Content-type': 'application/vnd.yang.data+json', 'Accept': 'application/vnd.yang.collection+json'})
+
         # return self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts tenants tenant admin ports port <port UUID> followed by body\nexit\nEOF')
 
-    def r_vtc_set_port_for_border_leaf_old(self):
+    def r_vtc_old_set_port_for_border_leaf(self):
         import json
         import requests
 

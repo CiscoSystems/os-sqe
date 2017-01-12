@@ -320,6 +320,17 @@ class CimcDirector(CimcServer):
         self.exe('ip a a {} dev br_mgmt'.format(mx_gw_ip))
         self.exe('iptables -t nat -A POSTROUTING -o br_api -j MASQUERADE')  # this NAT is only used to access to centralized ceph
 
+    @decorators.section('creating access points on mgmt node')
+    def r_create_access_points(self, networks):
+        from netaddr import IPNetwork
+
+        for i, net in enumerate(networks):
+            vlan = 3500 + i
+            net = IPNetwork(net['subnet']['cidr'])
+            ip = '{}/{}'.format(net[-5], net.prefixlen)
+            cmd = 'ip link show br_mgmt.{0} || ( ip link add link br_mgmt name br_mgmt.{0} type vlan id {0} && ip link set dev br_mgmt.{0} up && ip address add {1} dev br_mgmt.{0} )'.format(vlan, ip)
+            self.exe(cmd)
+
 
 class CimcController(CimcServer):
     ROLE = 'control-n9'

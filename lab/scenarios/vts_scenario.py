@@ -72,14 +72,6 @@ class VtsScenario(ParallelWorker):
             self._log.info('instances={} status=running'.format(self._odd_server_numbers))
         return server_info
 
-    @section('Creating access point on mgmt node')
-    def _access_point(self):
-        for net_name, net_info in self._nets.items():
-            self._build_node.exe('ip link show br_mgmt.3500 || '
-                                 '( ip link add link br_mgmt name br_mgmt.3500 type vlan id 3500 && '
-                                 'ip link set dev br_mgmt.3500 up && '
-                                 'ip address add 1.1.255.254/24 dev br_mgmt.3500 )')
-
     @section('Pinging instances')
     def _ping_part(self, servers):
         for server in servers:
@@ -104,8 +96,10 @@ class VtsScenario(ParallelWorker):
         from lab.server import Server
 
         self._network_part()
+        self._vtc.r_vtc_set_port_for_border_leaf()
+        self._build_node.r_create_access_points(self._nets)
+
         server_info = self._instances_part()
-        self._access_point()
         all_servers = []
         for info in server_info:
             ip = info['addresses'].split('=')[-1]
