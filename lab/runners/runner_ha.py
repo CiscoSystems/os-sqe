@@ -1,4 +1,5 @@
 from lab.base_lab import LabWorker
+from lab import decorators
 
 
 def starter(worker):
@@ -27,7 +28,6 @@ class RunnerHA(LabWorker):
         import multiprocessing
         import fabric.network
         import time
-        from lab.tims import Tims
         from lab.elk import Elk
 
         manager = multiprocessing.Manager()
@@ -79,8 +79,14 @@ class RunnerHA(LabWorker):
         elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
 
         if self._is_report_to_tims:
-            t = Tims()
-            mercury_version, vts_version = lab.r_get_version()
-            t.publish_result_to_tims(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, lab=lab, results=results)
+            self.publish_to_tims(lab=lab, results=results)
 
         return exceptions
+
+    @decorators.section('reporting to TIMS and SLACK')
+    def publish_to_tims(self, lab, results):
+        from lab.tims import Tims
+
+        t = Tims()
+        mercury_version, vts_version = lab.r_get_version()
+        t.publish_result_to_tims(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, lab=lab, results=results)

@@ -2,6 +2,7 @@ from lab.cimc import CimcServer
 from lab.nodes.lab_server import LabServer
 from lab.vts_classes.vtf import Vtf
 from lab.vts_classes.xrvr import Xrvr
+from lab import decorators
 
 
 class Vtc(LabServer):
@@ -39,7 +40,7 @@ class Vtc(LabServer):
             elif type_of_call in ['patch', 'PATCH']:
                 ans = requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
             elif type_of_call in ['put', 'PUT']:
-                ans = requests.patch(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
+                ans = requests.put(url, auth=auth, headers=headers, data=data, timeout=100, verify=False)
             else:
                 raise ValueError('Unsupported type of call: "{}"'.format(type_of_call))
             if ans.ok:
@@ -49,8 +50,6 @@ class Vtc(LabServer):
                 return d
             else:
                 raise RuntimeError('for {}: {}'.format(resource, ans.text or ans.reason))
-        except AttributeError as e:
-            self.log(message='Possible methods get, post, patch', level='exception')
         except requests.ConnectTimeout as e:
             self.log(message='Url={url} auth={auth}, headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params), level='exception')
             raise
@@ -324,6 +323,7 @@ class Vtc(LabServer):
     def r_vtc_ncs_cli(self, command):
         self.exe('ncs_cli << EOF\nconfigure\n{}\ncommit\nexit\nexit\nEOF'.format(command))
 
+    @decorators.section('Getting VTS version')
     def r_vtc_get_version(self):
         return self.exe('version_info')
 

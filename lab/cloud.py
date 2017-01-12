@@ -326,7 +326,7 @@ export OS_AUTH_URL={end_point}
                 return image
             time.sleep(15)
 
-    @section('Creating key pair')
+    @section('Creating key pair', estimated_time=5)
     def os_keypair_create(self):
         from lab import with_config
         with open(with_config.KEY_PUBLIC_PATH) as f:

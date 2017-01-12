@@ -1,4 +1,5 @@
 from lab.nodes.lab_server import LabServer
+from lab import decorators
 
 
 class CimcServer(LabServer):
@@ -301,6 +302,7 @@ class CimcServer(LabServer):
 class CimcDirector(CimcServer):
     ROLE = 'director-n9'
 
+    @decorators.section('Getting VIM version tag')
     def r_get_version(self):
         return self.exe('cat /etc/cisco-mercury-release')
 

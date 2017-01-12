@@ -160,15 +160,9 @@ class Tims(WithLogMixIn):
 
             search_result = self._api_post(operation=self._OPERATION_SEARCH, body=search_by_logical_id.format(project_id=self.TIMS_PROJECT_ID, test_cfg_path=test_cfg_path, mercury_version=mercury_version))
             resutl_id = search_result.split('</SearchHit>')[0].rsplit('>', 1)[-1]
-            if not resutl_id.startswith('Tcbr'):
-                self.log('Result for test case {0} not found! '.format(test_cfg_path), level='warning')
-                return
-            body_dima = fixed_dima_template.format(test_cfg_path=test_cfg_path,
-                                                   description=description,
-                                                   mercury_version=mercury_version,
-                                                   status=status, lab_id=lab,
-                                                   result_id=resutl_id)
-            self._api_post(operation=self._OPERATION_UPDATE, body=body_dima)
+            if resutl_id.startswith('Tcbr'):
+                body_dima = fixed_dima_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab, result_id=resutl_id)
+                self._api_post(operation=self._OPERATION_UPDATE, body=body_dima)
         else:
             tims_report_url = 'and not reported to tims since user not known'
 
