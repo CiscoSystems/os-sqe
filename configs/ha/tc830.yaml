@@ -1,8 +1,0 @@
-# Test Case TC830: Shutdown N9K nodes and verify connectivity between created instances
-
-- method: lab.disruptors.n9k_shutdown_ports
-  timout: 20
-  delay: 100
-
-- method: lab.scenarios.two_instances
-  time_to_ping: 200
