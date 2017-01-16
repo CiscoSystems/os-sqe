@@ -1,5 +1,0 @@
-[gerrit]
-host=review.gerrithub.io
-port=29418
-project=CiscoSystems/openstack-sqe.git
-defaultbranch=master
