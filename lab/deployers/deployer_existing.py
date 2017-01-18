@@ -3,24 +3,18 @@ from lab.base_lab import LabWorker
 
 class DeployerExisting(LabWorker):
 
-    def sample_config(self):
-        return {'cloud': 'arbitrary name', 'hardware-lab-config': 'yaml which describes the lab'}
+    @staticmethod
+    def sample_config():
+        return {'lab-cfg-yaml-path': 'path to yaml which describes the lab'}
 
-    def __init__(self, config, version):
-        super(DeployerExisting, self).__init__(config=config)
-        self._lab_cfg = config['hardware-lab-config']
-        self._cloud_name = config['cloud']
-        self._version = version
+    def __init__(self, config):
+        self._lab_cfg = config['lab-cfg-yaml-path']
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):
-        import json
         import re
-        from lab import logger
 
         director = lab.get_director()
-        body = director.r_get_file_from_dir(file_name='osp_install_run.json', in_directory='/etc')
-        logger.OSP7_INFO = json.loads(body)
 
         net = lab.get_ssh_net()
         ssh_ip_pattern = '({0}.*)/{1}'.format(str(net).rsplit('.', 1)[0], net.prefixlen)
@@ -56,9 +50,8 @@ class DeployerExisting(LabWorker):
         if not openrc_body:
             raise RuntimeError('Provided lab does not contain any valid cloud')
 
-        return Cloud.from_openrc(name=self._cloud_name, mediator=director, openrc_as_string=openrc_body)
+        return Cloud.from_openrc(name=self._lab_cfg.replace('.yaml', ''), mediator=director, openrc_as_string=openrc_body)
 
-    def execute(self, servers_and_clouds):
-        cloud = self.deploy_cloud(servers_and_clouds['servers'])
-        servers_and_clouds['clouds'].append(cloud)
-        return []  # list of exceptions
+    def execute(self, servers):
+        cloud = self.deploy_cloud(servers)
+        return cloud

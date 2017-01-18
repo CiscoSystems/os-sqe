@@ -1,11 +1,11 @@
 class WithMercuryMixIn(object):
 
     def create_mercury_setup_data_yaml(self, is_add_vts_role):
-        from lab import with_config
+        from lab.with_config import WithConfig
 
         build_node = getattr(self, 'get_director')()
 
-        installer_config_template = with_config.read_config_from_file(config_path='mercury.template', directory='mercury', is_as_string=True)
+        installer_config_template = WithConfig.read_config_from_file(config_path='mercury.template', directory='mercury', is_as_string=True)
 
         lab = build_node.lab()
         bld_ip_oob, bld_username_oob, bld_password_oob = build_node.get_oob()
@@ -63,7 +63,7 @@ class WithMercuryMixIn(object):
                                                                  bld_ip_oob=bld_ip_oob, bld_username_oob=bld_username_oob, bld_password_oob=bld_password_oob,
                                                                  bld_ip_a_with_prefix=build_node.get_ip_api_with_prefix(), bld_ip_m_with_prefix=build_node.get_ip_mx_with_prefix())
 
-        with with_config.open_artifact('setup_data.yaml', 'w') as f:
+        with WithConfig.open_artifact('setup_data.yaml', 'w') as f:
             f.write(installer_config_body)
 
         return installer_config_body

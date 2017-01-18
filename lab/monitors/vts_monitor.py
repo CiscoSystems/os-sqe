@@ -2,8 +2,9 @@ from lab.parallelworker import ParallelWorker
 
 
 class VtsMonitor(ParallelWorker):
-    def __repr__(self):
-        return u'worker=VtsMonitor'
+    @staticmethod
+    def check_arguments(**kwargs):
+        pass
 
     # noinspection PyAttributeOutsideInit
     def setup_worker(self):
@@ -16,7 +17,7 @@ class VtsMonitor(ParallelWorker):
         self._xrvrs = self._vtc.r_vtc_get_xrvrs()
 
     def loop_worker(self):
-        self._log.info('cluster={}'.format(self._vtc.r_vtc_show_ha_cluster_members()))
-        self._log.info('networks={}'.format(self._vtc.r_vtc_show_openstack_network()))
-        self._log.info('subnetworks={}'.format(self._vtc.r_vtc_show_openstack_subnet()))
-        self._log.info('ports={}'.format(self._vtc.r_vtc_show_openstack_port()))
+        self.log('cluster={}'.format(self._vtc.r_vtc_show_ha_cluster_members()))
+        self.log('networks={}'.format(self._vtc.r_vtc_show_openstack_network()))
+        self.log('subnetworks={}'.format(self._vtc.r_vtc_show_openstack_subnet()))
+        self.log('ports={}'.format(self._vtc.r_vtc_show_openstack_port()))

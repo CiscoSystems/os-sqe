@@ -13,10 +13,6 @@ class Vtc(LabServer):
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
         self._is_api_via_vip = True
 
-    def __repr__(self):
-        oob_ip, oob_u, oob_p = self.get_oob()
-        return u'{l} {n} | {s} https://{ip} with {u}/{p}'.format(l=self.lab(), n=self.get_id(), s=self._server, ip=self.get_vtc_vips()[0], p=oob_p, u=oob_u)
-
     def disable_vip(self):
         self._is_api_via_vip = False
 
@@ -50,7 +46,7 @@ class Vtc(LabServer):
                 return d
             else:
                 raise RuntimeError('for {}: {}'.format(resource, ans.text or ans.reason))
-        except requests.ConnectTimeout as e:
+        except requests.ConnectTimeout:
             self.log(message='Url={url} auth={auth}, headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params), level='exception')
             raise
         except Exception as e:
@@ -112,25 +108,24 @@ class Vtc(LabServer):
         vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
 
         if method_to_disrupt == 'vm-shutdown':
-            vts_host.exe(command='virsh suspend {}'.format(self.get_id()))
+            vts_host.exe(command='virsh suspend {}'.format(self.get_node_id()))
             time.sleep(downtime)
-            vts_host.exe(command='virsh resume {}'.format(self.get_id()))
+            vts_host.exe(command='virsh resume {}'.format(self.get_node_id()))
         elif method_to_disrupt == 'isolate-from-mx':
-            ans = vts_host.exe('ip l | grep mgmt | grep {0}'.format(self.get_id()))
+            ans = vts_host.exe('ip l | grep mgmt | grep {0}'.format(self.get_node_id()))
             if_name = ans.split()[1][:-1]
             vts_host.exe('ip l s dev {} down'.format(if_name))
             time.sleep(downtime)
             vts_host.exe('ip l s dev {} up'.format(if_name))
         elif method_to_disrupt == 'isolate-from-api':
-            ans = vts_host.exe('ip l | grep api | grep {0}'.format(self.get_id()))
+            ans = vts_host.exe('ip l | grep api | grep {0}'.format(self.get_node_id()))
             if_name = ans.split()[1][:-1]
             vts_host.exe('ip l s dev {} down'.format(if_name))
             time.sleep(downtime)
             vts_host.exe('ip l s dev {} up'.format(if_name))
         elif method_to_disrupt == 'vm-reboot':
             # 'set -m' because of http://stackoverflow.com/questions/8775598/start-a-background-process-with-nohup-using-fabric
-            ans = self.exe('set -m; sudo bash -c "ip link set dev eth0 down && ip link set dev eth1 down '
-                           '&& sleep {0} && shutdown -r now" 2>/dev/null >/dev/null &'.format(downtime), is_warn_only=True)
+            self.exe('set -m; sudo bash -c "ip link set dev eth0 down && ip link set dev eth1 down && sleep {0} && shutdown -r now" 2>/dev/null >/dev/null &'.format(downtime), is_warn_only=True)
             time.sleep(downtime)
 
     def get_config_and_net_part_bodies(self):
@@ -140,7 +135,7 @@ class Vtc(LabServer):
         net_part_tmpl = with_config.read_config_from_file(config_path='vtc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
         dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
-        hostname = '{id}-{lab}'.format(lab=self.lab(), id=self.get_id())
+        hostname = '{id}-{lab}'.format(lab=self.lab(), id=self.get_node_id())
 
         _, ssh_username, ssh_password = self._server.get_ssh()
 
@@ -438,8 +433,8 @@ class Vtc(LabServer):
             body = {"port": {"id": port_id, "status": "cisco-vts-identities:active", "tagging": "mandatory", "network-id": network['id'], "binding-host-id": mgmt_srv['server-id'],
                     "device-id": 'null', "connid": [{"id": mgmt_srv['connid']}], "admin-state-up": "true", "type": "cisco-vts-identities:baremetal", "mac-address": mac, "vlan-id": 'null'}}
 
-            r = self._rest_api(resource='PATCH /api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port'.format(tenant), data=json.dumps(body),
-                               headers={'Content-type': 'application/vnd.yang.data+json', 'Accept': 'application/vnd.yang.collection+json'})
+            self._rest_api(resource='PATCH /api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port'.format(tenant), data=json.dumps(body),
+                           headers={'Content-type': 'application/vnd.yang.data+json', 'Accept': 'application/vnd.yang.collection+json'})
 
         # return self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts tenants tenant admin ports port <port UUID> followed by body\nexit\nEOF')
 
@@ -463,7 +458,8 @@ class Vtc(LabServer):
                                  }
                     }
 
-            headers = {'Accept': 'application/json, text/plain, */*', 'Accept-Encoding': 'gzip, deflate, sdch, br', 'Content-Type': 'application/json;charset=UTF-8', 'OWASP_CSRFTOKEN': owasp_csrftoken, 'X-Requested-With': 'OWASP CSRFGuard Project'}
+            headers = {'Accept': 'application/json, text/plain, */*', 'Accept-Encoding': 'gzip, deflate, sdch, br', 'Content-Type': 'application/json;charset=UTF-8', 'OWASP_CSRFTOKEN': owasp_csrftoken,
+                       'X-Requested-With': 'OWASP CSRFGuard Project'}
             resp = s.put('https://{}:{}/VTS/rs/vtsService/tenantTopology/admin/admin/network/{}'.format(self._vip_a, 8443, network['id']), data=json.dumps(port), headers=headers, verify=False)
             if resp.status_code != 200:
                 raise RuntimeError('Failed to add {} port to {} network, reason: {}'.format(mgmt_srv['server-id'], network['name'], resp.text))

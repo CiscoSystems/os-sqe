@@ -12,9 +12,6 @@ class LabServer(LabNode):
 
         super(LabServer, self).__init__(node_id=node_id, role=role, lab=lab)
 
-    def __repr__(self):
-        return u'{} {} {} '.format(self.lab(), self.get_id(), self._server)
-
     def cmd(self, cmd):
         raise NotImplementedError
 
@@ -44,19 +41,19 @@ class LabServer(LabNode):
         try:
             index = int(ip_or_index)  # this is shift in the network
             if index in [0, 1, 2, 3, -1]:
-                raise IndexError('{}:  index={} is not possible since 0 =>  network address [1,2,3] => GW addresses -1 => broadcast address'.format(self.get_id(), index))
+                raise IndexError('{}:  index={} is not possible since 0 =>  network address [1,2,3] => GW addresses -1 => broadcast address'.format(self.get_node_id(), index))
             try:
                 net.get_ip_for_index(index)
             except (IndexError, ValueError):
-                raise IndexError('{}: index {} is out of bound of {}'.format(self.get_id(), index, net))
+                raise IndexError('{}: index {} is out of bound of {}'.format(self.get_node_id(), index, net))
         except ValueError:
             if validators.ipv4(str(ip_or_index)):
                 try:
                     index, ip = {x: str(net.get_ip_for_index(x)) for x in range(net.get_size()) if str(ip_or_index) in str(net.get_ip_for_index(x))}.items()[0]
                 except IndexError:
-                    raise ValueError('{}: ip {} is out of bound of {}'.format(self.get_id(), ip_or_index, net))
+                    raise ValueError('{}: ip {} is out of bound of {}'.format(self.get_node_id(), ip_or_index, net))
             else:
-                raise ValueError('{}: specified value "{}" is neither ip nor index in network'.format(self.get_id(), ip_or_index))
+                raise ValueError('{}: specified value "{}" is neither ip nor index in network'.format(self.get_node_id(), ip_or_index))
 
         nic = Nic(name=nic_name, node=self, net=net, net_index=index, on_wires=on_wires, is_ssh=is_ssh)
         self._nics[nic_name] = nic
@@ -105,7 +102,7 @@ class LabServer(LabNode):
         started_at = time.time()
         if self._proxy_server:
             while True:
-                ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # {}".format(password, username, ip, command, self.get_id()), in_directory=in_directory, is_warn_only=True)
+                ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # run on {}".format(password, username, ip, command, self.get_node_id()), in_directory=in_directory, is_warn_only=True)
                 if 'No route to host' in ans:
                     if connection_attempts == 0:
                         raise RuntimeError('Can not execute {} since {}'.format(command, ans))

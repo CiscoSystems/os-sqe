@@ -52,16 +52,9 @@ class BaseLab(WithStatusMixIn):
 
     def run(self):
         import time
-        from lab.logger import lab_logger
 
-        self.status()
-
-        separator = 100 * '-'
         for obj in self.providers + self.deployers + self.runners:
             start_time = time.time()
-            lab_logger.debug(separator)
-            lab_logger.debug('Call {}.execute()...'.format(obj))
-            lab_logger.debug(separator)
             exceptions = obj.execute(self._servers_and_clouds)
             self._results.append({'class': str(obj), 'spent_time': time.time() - start_time, 'exceptions': exceptions})
         return self._results

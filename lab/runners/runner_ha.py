@@ -7,23 +7,22 @@ def starter(worker):
 
 
 class RunnerHA(LabWorker):
-    def sample_config(self):
-        return {'cloud': 'name', 'task-yaml': 'task-ha.yaml', 'is-debug': False, 'is-parallel': True, 'is-report-to-tims': True}
 
-    def __init__(self, config, version):
-        super(RunnerHA, self).__init__(config=config)
+    @staticmethod
+    def sample_config():
+        return {'cloud-name': 'name', 'task-yaml': 'task-ha.yaml', 'is-debug': False, 'is-parallel': True}
+
+    def __init__(self, config):
         self._cloud_name = config['cloud']
         self._task_yaml_path = config['task-yaml']
         self._task_body = self.read_config_from_file(config_path=self._task_yaml_path, directory='ha')
         self._is_debug = config['is-debug']
         self._is_parallel = config['is-parallel']
-        self._is_report_to_tims = config['is-report-to-tims']
-        self._version = version
 
         if not self._task_body:
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
 
-    def execute(self, servers_and_clouds):
+    def execute(self, cloud):
         import importlib
         import multiprocessing
         import fabric.network
@@ -33,35 +32,32 @@ class RunnerHA(LabWorker):
         manager = multiprocessing.Manager()
         shared_dict = manager.dict()
 
-        try:
-            cloud = filter(lambda x: x.get_name() == self._cloud_name, servers_and_clouds['clouds'])[0]
-            lab = servers_and_clouds['servers'][0].lab()
-        except IndexError:
-            raise RuntimeError('Cloud <{0}> is not provided by deployment phase'.format(self._cloud_name))
+        lab = cloud.get_lab()
 
         type_of_run = ' {} {} debug in {}'.format(self._task_yaml_path, 'with' if self._is_debug else 'without', 'parallel' if self._is_parallel else 'sequence')
         self.log('Running ' + type_of_run)
 
         start_time = time.time()
 
-        workers_to_run = []
-        path_to_module = 'Before reading task body'
-        for block in self._task_body:
+        klass_kwargs = []
+        for single_worker_description in self._task_body:
+            if 'class' not in single_worker_description:
+                continue
+            path_to_module, class_name = single_worker_description['class'].rsplit('.', 1)
             try:
-                if 'class' not in block:
-                    continue
-                path_to_module, class_name = block['class'].rsplit('.', 1)
                 module = importlib.import_module(path_to_module)
-                klass = getattr(module, class_name)
-                shared_dict.update({s: False for s in block.get('set', [])})
-                block['_shared_dict'] = shared_dict
-                worker = klass(cloud=cloud, lab=lab, **block)
-                worker.set_is_debug(self._is_debug)
-                workers_to_run.append(worker)
-            except KeyError:
-                raise ValueError('There is no "class" specifying the worker class path in {0}'.format(self._task_yaml_path))
             except ImportError:
-                raise ValueError('{0} failed to import'.format(path_to_module))
+                raise ValueError('Please create {}.py'.format(path_to_module))
+            try:
+                klass = getattr(module, class_name)
+            except AttributeError:
+                raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
+
+            shared_dict[class_name] = False
+
+            klass_kwargs.append((klass, single_worker_description))
+
+        workers_to_run = [klass(cloud=cloud, lab=lab, shared_dict=shared_dict, is_debug=self._is_debug, **kwargs) for klass, kwargs in klass_kwargs]
 
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
 
@@ -78,8 +74,7 @@ class RunnerHA(LabWorker):
         elk = Elk(proxy=lab.get_director())
         elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
 
-        if self._is_report_to_tims:
-            self.publish_to_tims(lab=lab, results=results)
+        self.publish_to_tims(lab=lab, results=results)
 
         return exceptions
 

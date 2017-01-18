@@ -1,7 +1,5 @@
 from fabric.api import task
 
-from lab import decorators
-
 
 @task
 def cmd(config_path):
@@ -12,10 +10,10 @@ def cmd(config_path):
     from six import print_
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
-    from lab.logger import lab_logger
+    from lab.with_log import lab_logger
 
     l = Laboratory(config_path=config_path)
-    nodes = sorted(map(lambda node: node.get_id(), l.get_nodes_by_class()))
+    nodes = sorted(map(lambda node: node.get_node_id(), l.get_nodes_by_class()))
     while True:
         device_name = prompt(text='{lab} has: {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=['lab', 'cloud'] + nodes))
         if device_name == 'cloud':
@@ -75,41 +73,38 @@ def cmd(config_path):
 
 
 @task
-def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True, is_tims=True):
+def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
     """fab ha:g10,str\t\t\t\tRun all tests with 'str' in name on g10
         :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
         :param is_debug: if True, do not run actual workers just test the infrastructure
         :param is_parallel: if False, switch off parallel execution and run in sequence
-        :param is_tims: if True then publish results to TIMS
     """
     from lab.with_config import WithConfig
-    from lab.logger import lab_logger
-
-    lab_name = lab_cfg_path.rsplit('/', 1)[-1].replace('.yaml', '')
+    from lab.deployers.deployer_existing import DeployerExisting
+    from lab.runners.runner_ha import RunnerHA
 
     available_tc = WithConfig.ls_configs(directory='ha')
     tests = sorted(filter(lambda x: test_regex in x, available_tc))
 
     if not tests:
-        lab_logger.info('STATUS: STATUS_FAILED')
         raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
-    run_config_yaml = '{lab}-ha-{regex}.yaml'.format(lab=lab_name, regex=test_regex)
-    with WithConfig.open_artifact(run_config_yaml, 'w') as f:
-        f.write('deployer:  {lab.deployers.deployer_existing.DeployerExisting: {cloud: %s, hardware-lab-config: %s}}\n' % (lab_name, lab_cfg_path))
-        for i, tst in enumerate(tests, start=1):
-            f.write('runner{}:  {{lab.runners.runner_ha.RunnerHA: {{cloud: {}, task-yaml: "{}", is-debug: {}, is-parallel: {}, is-report-to-tims: {}}}}}\n'.format(10*i + 1,  lab_name, tst, is_debug, is_parallel, is_tims))
+    deployer = DeployerExisting(config={'lab-cfg-yaml-path': lab_cfg_path})
+    cloud = deployer.execute([])
 
-    run_results = run(config_path='artifacts/' + run_config_yaml, version=None)
-    is_ok = all(map(lambda x: len(x.get('exceptions', [])) == 0, run_results))
-    lab_logger.info('Status: {}'.format(is_ok))
-    if not is_ok:
-        lab_logger.info('Possible reason {}'.format(run_results))
+    exceptions = []
+    for tst in tests:
+        runner = RunnerHA(config={'cloud': cloud, 'task-yaml': tst, 'is-debug': is_debug, 'is-parallel': is_parallel})
+        run_result = runner.execute(cloud)
+        if run_result['expections']:
+            exceptions.append(run_result['exceptions'])
+
+    if exceptions:
+        raise RuntimeError('Possible reason: {}'.format(exceptions))
 
 
 @task
-@decorators.print_time
 def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openstack.org/openstack/rally.git', rally_patch=''):
     """fab rally:g10,2,0,200\t\tRun rally with 2 threads for 0-200 vlans
     :param lab: lab name - one of yaml in $REPO/configs
@@ -144,7 +139,6 @@ def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openst
 
 
 @task
-@decorators.print_time
 def run(config_path, version):
     """fab run:bxb-run-rally\t\tGeneral: run any job specified by yaml
         :param config_path: path to valid run specification, usually one of yaml from $REPO/configs/run
@@ -167,7 +161,6 @@ def conf():
 
 
 @task
-@decorators.print_time
 def ansible():
     from collections import namedtuple
     from ansible.parsing.dataloader import DataLoader
@@ -176,7 +169,7 @@ def ansible():
     from ansible.playbook.play import Play
     from ansible.executor.task_queue_manager import TaskQueueManager
     from ansible.plugins.callback import CallbackBase
-    from lab.logger import lab_logger
+    from lab.with_log import lab_logger
 
     class ResultCallback(CallbackBase):
         def __init__(self):
@@ -220,7 +213,6 @@ def ansible():
 
 
 @task
-@decorators.print_time
 def info(lab_config_path, regex):
     """fab info:g10,regex\t\t\tExec grep regex
     """
@@ -242,7 +234,7 @@ def info(lab_config_path, regex):
 def test(a):
     """fab test:msg\t\t\t\tTest logger to artifacts"""
     import sys
-    from lab.logger import lab_logger
+    from lab.with_log import lab_logger
 
     lab_logger.info(a)
     sys.exit(33)

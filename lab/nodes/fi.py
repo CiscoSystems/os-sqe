@@ -15,7 +15,7 @@ class FiServer(LabServer):
             raise ValueError('server_port should ends with /a or /b, while provided: {0}'.format(server_port))
         server_id = server_port[:-2]
         self._server_id = str(server_id)
-        self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i='-'.join(self._server_id.split('/')), n=self.name(), bc='B' if '/' in self._server_id else 'C')
+        self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i='-'.join(self._server_id.split('/')), n=self.get_node_id(), bc='B' if '/' in self._server_id else 'C')
 
     def get_ucsm_info(self):
         return self._server_id, self._service_profile_name
@@ -44,12 +44,11 @@ class FiCeph(FiServer):
 class FI(LabNode):
     ROLE = 'ucsm'
 
-    def __init__(self, name, ip, username, password, lab, hostname):
+    def __init__(self, node_id, lab):
         # https://communities.cisco.com/docs/DOC-51816
-        self._version = None
         self._vip = 'Not set in FI ctor'
         self._is_sriov = False
-        super(FI, self).__init__(name=name, role='fi', ip=ip, username=username, password=password, lab=lab, hostname=hostname)
+        super(FI, self).__init__(node_id=node_id, role=self.ROLE, lab=lab)
 
     def set_vip(self, vip):
         self._vip = vip
@@ -65,8 +64,9 @@ class FI(LabNode):
 
     def cmd(self, command):
         from fabric.api import settings, run
-    
-        with settings(host_string='{user}@{ip}'.format(user=self._username, ip=self._vip), password=self._password, connection_attempts=50, warn_only=False):
+
+        _, username, password = self.get_oob()
+        with settings(host_string='{user}@{ip}'.format(user=username, ip=self._vip), password=password, connection_attempts=50, warn_only=False):
             return run(command, shell=False)
 
     def service_profiles(self):
@@ -178,15 +178,14 @@ class FI(LabNode):
         import tempfile
         import platform
         from fabric.api import local
-        from lab.logger import lab_logger
 
         if self.list_users(flt=username):
             self.delete_users([username])
 
         if platform.system() == 'Windows':
-            lab_logger.warning('expect does not work on Windows!')
-            return
+            raise RuntimeError('expect does not work on Windows!')
 
+        ip, oob_username, oob_password = self.get_oob()
         create_user_script = """#!/usr/bin/expect
 set admin_user {admin_user}
 set admin_password {admin_password}
@@ -208,8 +207,7 @@ expect "/security/local-user* #" {{send "commit-buffer\r"}}
 expect "/security/local-user #"
 sleep 5
 exit
-        """.format(admin_user=self._username, admin_password=self._password, ucsm_ip=self._ip,
-                   username=username, password=password)
+        """.format(admin_user=oob_username, admin_password=oob_password, ucsm_ip=ip, username=username, password=password)
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(create_user_script)
         local('expect {0}'.format(f.name))
@@ -221,9 +219,8 @@ exit
 
     def configure_for_osp7(self):
         import time
-        from lab.logger import lab_logger
 
-        lab_logger.info('Configuring {}'.format(self))
+        self.log('Configuring {}'.format(self))
 
         server_pool_name = 'QA-SERVERS'
         uuid_pool_name = 'QA'
@@ -234,7 +231,7 @@ exit
         n_servers = len(self.lab().get_nodes_by_class(FiServer))  # how many servers UCSM currently sees
 
         neutron_username, neutron_password = self.lab().get_neutron_creds()
-        self.create_user(username=neutron_username, password=self._password)  # special user to be used by neutron services
+        self.create_user(username=neutron_username, password=neutron_password)  # special user to be used by neutron services
         self.create_uplink(wires=self._upstream_wires)
         self.create_uuid_pool(pool_name=uuid_pool_name, n_uuids=n_servers)
         self.create_boot_policies(vnics=self._lab.get_ucsm_nets_with_pxe())
@@ -279,7 +276,7 @@ exit
         while count_attempts < 100:
             lines = self.list_service_profiles(flt='Associated')
             if len(lines) == n_servers:
-                lab_logger.info('finished {0}'.format(self))
+                self.log('finished {0}'.format(self))
                 return
             time.sleep(10)
             count_attempts += 1
@@ -302,9 +299,9 @@ exit
             for line in self.cmd('scope org; scope service-profile {0}; sh vnic | i {1}:'.format(profile_name, self.lab().id)).split('\n'):
                 split = line.split()
                 if_mac[split[0]] = split[3]
-            server = FiServer(lab=self.lab(), name=profile_name, ip='NotKnownByUCSM', username='NotKnownByUCSM', password='NotKnownByUCSM', hostname='XXX')
+            server = FiController(lab=self.lab(), node_id=if_mac, role=FiController.ROLE)
             server.set_ucsm_id(server_port=server_id + '/a')
-            server.set_ipmi(ip=ipmi_ip, username='cobbler', password='cobbler')
+            server.set_oob_creds(ip=ipmi_ip, username='cobbler', password='cobbler')
             servers[profile_name] = server
         return servers
 
@@ -325,8 +322,6 @@ exit
                 self.cmd('scope server {0}; scope cimc; delete ext-static-ip; commit-buffer'.format(server_id))
 
     def cleanup(self):
-        from lab.logger import lab_logger
-
         self.delete_service_profiles()
         self.delete_mac_pools()
         for server_pool in self.cmd('scope org; sh server-pool | no-more | egrep -V "Name|----|MAC" | cut -f 5 -d " "').split():
@@ -351,7 +346,7 @@ exit
             for port_channel_id in self.cmd('scope eth-uplink; scope fabric {0}; show port-channel detail | egrep "Port Channel Id:" | cut -f 8 -d " "'.format(fabric)).split():
                 if port_channel_id.strip():
                     self.cmd('scope eth-uplink; scope fabric {0}; delete port-channel {1}; commit-buffer'.format(fabric, port_channel_id.strip()))
-        lab_logger.info('finished')
+        self.log('finished')
 
 
 # @task

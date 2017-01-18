@@ -12,20 +12,15 @@ class Xrvr(LabServer):
         super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab)
         self._expect_commands = {}
 
-    def __repr__(self):
-        ip, xrvr_u, p = self.get_xrvr_ip_user_pass()
-        _, xrnc_u, _ = self.get_xrnc_ip_user_pass()
-        return u'{l} {n} | on mx: sshpass -p {p} ssh {xrvr}/{xrnc}@{ip} for XRVR/XRNC'.format(l=self.lab(), n=self.get_id(), ip=ip, p=p, xrvr=xrvr_u, xrnc=xrnc_u)
-
     def disrupt(self, method_to_disrupt, downtime):
         import time
 
         vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
         if method_to_disrupt == 'vm-shutdown':
             # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
-            vts_host.exe(command='virsh suspend xrnc{}'.format(self.get_id()[-1]))
+            vts_host.exe(command='virsh suspend xrnc{}'.format(self.get_node_id()[-1]))
             time.sleep(downtime)
-            vts_host.exe(command='virsh resume xrnc{}'.format(self.get_id()[-1]))
+            vts_host.exe(command='virsh resume xrnc{}'.format(self.get_node_id()[-1]))
         elif method_to_disrupt == 'corosync-stop':
             self.cmd('sudo service corosync stop', is_xrvr=False)
             time.sleep(downtime)
@@ -35,20 +30,18 @@ class Xrvr(LabServer):
             time.sleep(downtime)
             self.cmd('sudo service ncs start', is_xrvr=False)
         elif method_to_disrupt == 'vm-reboot':
-            ans = self.exe('set -m; sudo bash -c "ip link set dev eth0 down && ip link set dev eth1 down '
-                           '&& sleep {0} && shutdown -r now" 2>/dev/null >/dev/null &'.format(downtime),
-                           is_warn_only=True)
+            self.exe('set -m; sudo bash -c "ip link set dev eth0 down && ip link set dev eth1 down && sleep {0} && shutdown -r now" 2>/dev/null >/dev/null &'.format(downtime), is_warn_only=True)
             time.sleep(downtime)
         elif method_to_disrupt == 'isolate-from-mx':
             # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
-            ans = vts_host.exe('ip l | grep mgmt | grep xrnc{}'.format(self.get_id()[-1]))
+            ans = vts_host.exe('ip l | grep mgmt | grep xrnc{}'.format(self.get_node_id()[-1]))
             if_name = ans.split()[1][:-1]
             vts_host.exe('ip l s dev {} down'.format(if_name))
             time.sleep(downtime)
             vts_host.exe('ip l s dev {} up'.format(if_name))
         elif method_to_disrupt == 'isolate-from-tenant':
             # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
-            ans = vts_host.exe('ip l | grep tenant | xrnc{}'.format(self.get_id()[-1]))
+            ans = vts_host.exe('ip l | grep tenant | xrnc{}'.format(self.get_node_id()[-1]))
             if_name = ans.split()[1][:-1]
             vts_host.exe('ip l s dev {} down'.format(if_name))
             time.sleep(downtime)
@@ -82,7 +75,7 @@ class Xrvr(LabServer):
 
         stack = inspect.stack()
         cmd_name = stack[2][3]
-        file_name = 'expect-{}-{}'.format(self.get_id(), cmd_name)
+        file_name = 'expect-{}-{}'.format(self.get_node_id(), cmd_name)
 
         sudo_tmpl = '''spawn sshpass -p {p} ssh -o StrictHostKeyChecking=no {u}@{ip}
 set timeout 20
@@ -206,13 +199,17 @@ router bgp {{ bgp_asn }}
         return self.exe('netstat -ant |grep 21345')
 
     def get_config_and_net_part_bodies(self):
-        from lab import with_config
+        """ Deduce XRVR VM iso file configuration and net part for the libvirt domain
 
-        cfg_tmpl = with_config.read_config_from_file(config_path='xrnc-vm-config.txt', directory='vts', is_as_string=True)
-        net_part_tmpl = with_config.read_config_from_file(config_path='xrnc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
+        :return: tuple with (config body, net part body)
+
+        """
+
+        cfg_tmpl = self.read_config_from_file(config_path='xrnc-vm-config.txt', directory='vts', is_as_string=True)
+        net_part_tmpl = self.read_config_from_file(config_path='xrnc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
         dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
-        xrvr_name = self.get_id()
+        xrvr_name = self.get_node_id()
         xrnc_name = xrvr_name.replace('xrvr', 'xrnc')
 
         _, vtc_username, vtc_password = self.lab().get_node_by_id('vtc1').get_oob()
@@ -226,12 +223,12 @@ router bgp {{ bgp_asn }}
 
         dl_mx_ip, mx_net_mask = mx_nic.get_ip_and_mask()
         mx_gw, mx_net_len = mx_nic.get_net().get_gw(), mx_nic.get_net().get_prefix_len()
-        xrvr_mx_ip = mx_nic.get_net().get_ip_for_index(200 + int(self.get_id()[-1]))
+        xrvr_mx_ip = mx_nic.get_net().get_ip_for_index(200 + int(self.get_node_id()[-1]))
 
         dl_te_ip, te_net_mask = te_nic.get_ip_and_mask()
         te_vlan = te_nic.get_net().get_vlan()
         te_gw, te_net_len = te_nic.get_net().get_gw(), te_nic.get_net().get_prefix_len()
-        xrvr_te_ip = te_nic.get_net().get_ip_for_index(200 + int(self.get_id()[-1]))
+        xrvr_te_ip = te_nic.get_net().get_ip_for_index(200 + int(self.get_node_id()[-1]))
 
         # XRVR is a VM sitting in a VM which runs on vts-host. outer VM called DL inner VM called XRVR , so 2 IPs on ssh and vts networks needed
         cfg_body = cfg_tmpl.format(dl_mx_ip=dl_mx_ip, xrvr_mx_ip=xrvr_mx_ip, mx_net_mask=mx_net_mask, mx_net_len=mx_net_len, mx_gw=mx_gw,
@@ -239,7 +236,7 @@ router bgp {{ bgp_asn }}
                                    dns_ip=dns_ip, ntp_ip=ntp_ip, vtc_mx_ip=vtc_mx_vip,
                                    xrnc_username=ssh_username, xrvr_username=oob_username, xrvr_password=oob_password, vtc_username=vtc_username, vtc_password=vtc_password,
                                    xrnc_name=xrnc_name, xrvr_name=xrvr_name)
-        with with_config.open_artifact(xrnc_name, 'w') as f:
+        with self.open_artifact(xrnc_name, 'w') as f:
             f.write(cfg_body)
         net_part = net_part_tmpl.format(mx_nic_name='mx', t_nic_name='t', t_vlan=te_vlan)
 
@@ -286,7 +283,7 @@ router bgp {{ bgp_asn }}
         return config
 
     def r_edit_etc_hosts(self):
-        self.exe('grep {n} /etc/hosts || echo {n}\t{ip}\n >> /etc/hosts'.format(n=self.get_id(), ip=self.get_ip_mx()))
+        self.exe('grep {n} /etc/hosts || echo {n}\t{ip}\n >> /etc/hosts'.format(n=self.get_node_id(), ip=self.get_ip_mx()))
 
     def r_border_leaf(self):
         self.cmd(cmd='conf t interface Loopback0', is_xrvr=True)

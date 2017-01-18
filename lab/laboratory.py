@@ -22,7 +22,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         if config_path is None:
             return
 
-        super(Laboratory, self).__init__(config_path)
         self._cfg = with_config.read_config_from_file(config_path=config_path)
         self._id = self._cfg['lab-id']
         self._lab_name = self._cfg['lab-name']
@@ -51,13 +50,13 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         for node in self._nodes:
             for nic in node.get_nics().values():
-                self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_id())
+                self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
                 for mac in nic.get_macs():
-                    self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_id())  # check that all MAC are unique
+                    self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_node_id())  # check that all MAC are unique
             for wire in node.get_all_wires():
                 peer_node = wire.get_peer_node(node)
                 peer_port_id = wire.get_peer_port(node)
-                self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_id(), peer_port_id), node_id=node.get_id())  # check that this peer_node-peer_port is unique
+                self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), node_id=node.get_node_id())  # check that this peer_node-peer_port is unique
 
     def add_network(self, net_name, cidr, vlan_id, mac_pattern, is_via_tor, is_via_pxe):
         from lab.network import Network
@@ -83,7 +82,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         return self._nets
 
     def _connect_node(self, node):
-        node_description = filter(lambda n: n['id'] == node.get_id(), self._cfg['nodes'])[0]
+        node_description = filter(lambda n: n['id'] == node.get_node_id(), self._cfg['nodes'])[0]
         all_wires_of_node = node_description.get('wires', {})
 
         proxy_id = node_description.get('proxy', None)
@@ -264,7 +263,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             return self._nodes
 
     def get_node_by_id(self, node_id):
-        nodes = list(filter(lambda x: x.get_id() == node_id, self._nodes))
+        nodes = list(filter(lambda x: x.get_node_id() == node_id, self._nodes))
         if len(nodes) == 1:
             return nodes[0]
         else:
@@ -405,6 +404,9 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         addon = '-' + '-'.join(comment.split()) if comment else ''
         self.log_to_artifact(name='lab-{}{}.txt'.format(self, addon), body=logs + configs)
         self.log_to_artifact(name='configs-{}{}.txt'.format(self, addon), body=configs)
+
+    def r_verify_oob(self):
+        map(lambda x: x.r_verify_oob(), self.get_nodes_by_class())
 
     def r_get_version(self):
         cloud_version = self.get_director().r_get_version()

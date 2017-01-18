@@ -4,7 +4,6 @@ def start(lab, log, args):
     import random
     from fabric.context_managers import shell_env
 
-    duration = args['duration']
     public_net = args.get('public_net', 'nova')
     flavor_name = args.get('flavor_name', 'm1.nano')
     image_name = args.get('image_name', 'cirros')

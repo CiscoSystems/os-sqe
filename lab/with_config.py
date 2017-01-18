@@ -1,4 +1,3 @@
-import abc
 import os
 
 
@@ -7,13 +6,6 @@ class WithConfig(object):
     ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
     CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
     REMOTE_FILE_STORE_IP = '172.29.173.233'
-
-    def __init__(self, config):
-        self.verify_config(sample_config=self.sample_config(), config=config)
-
-    @abc.abstractmethod
-    def sample_config(self):
-        raise NotImplementedError('class {0} do not implement method sample_config()'.format(type(self)))
 
     def verify_config(self, sample_config, config):
         from lab.config_verificator import verify_config
@@ -75,7 +67,7 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
     import yaml
     import requests
     import validators
-    from lab.logger import lab_logger
+    from lab.with_log import lab_logger
     import os
 
     git_reference = os.getenv('SQE_GIT_REF', 'master').split('/')[-1]

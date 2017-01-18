@@ -39,6 +39,9 @@ class Cloud(WithLogMixIn):
     def get_name(self):
         return self._name
 
+    def get_lab(self):
+        return self._mediator.lab()
+
     def create_open_rc(self):
         """ Creates open_rc for the given cloud"""
         open_rc = """
@@ -189,7 +192,8 @@ export OS_AUTH_URL={end_point}
 
             net_line = 'neutron net-create {} {} -f shell'.format(net_names[i], phys_net_addon)
             cidr, gw, start, stop = networks[i], networks[i][-2], networks[i][1], networks[i][5000]
-            sub_line = 'neutron subnet-create {} {} --name {} --gateway {} --dns-nameserver {} {} --allocation-pool start={},end={} -f shell'.format(net_names[i], cidr, subnet_names[i], gw, self._dns, '' if is_dhcp else '--disable-dhcp', start, stop)
+            sub_line = 'neutron subnet-create {} {} --name {} --gateway {} --dns-nameserver {} {} --allocation-pool start={},end={} -f shell'.format(net_names[i], cidr, subnet_names[i], gw, self._dns,
+                                                                                                                                                     '' if is_dhcp else '--disable-dhcp', start, stop)
             net_vs_subnet[net_line] = sub_line
         return net_vs_subnet
 
@@ -395,7 +399,8 @@ export OS_AUTH_URL={end_point}
             server_name = '{}-{}'.format(self._unique_pattern_in_name, server_number)
             server_names.append(server_name)
             self.os_cmd('openstack server create {name} --flavor {flavor} --image "{image}" --availability-zone nova:{zone} --security-group default --key-name sqe-test-key1 {ports_part}'.format(name=server_name,
-                                                                                                                                                                                                   flavor=flavor['name'], image=image['name'],
+                                                                                                                                                                                                   flavor=flavor['name'],
+                                                                                                                                                                                                   image=image['name'],
                                                                                                                                                                                                    zone=zone, ports_part=ports_part))
         self.wait_instances_ready(names=server_names)
         return map(lambda x: self.os_server_show(x), server_names)
@@ -434,7 +439,8 @@ export OS_AUTH_URL={end_point}
 
     def r_collect_information(self, regex, comment):
         body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex=regex), 'neutronserver grep ^mechanism_driver /etc/neutron/plugins/ml2/ml2_conf.ini', 'neutronserver grep -A 5 "\[ml2_cc\]" /etc/neutron/plugins/ml2/ml2_conf.ini']:
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex=regex), 'neutronserver grep ^mechanism_driver /etc/neutron/plugins/ml2/ml2_conf.ini',
+                    'neutronserver grep -A 5 "\[ml2_cc\]" /etc/neutron/plugins/ml2/ml2_conf.ini']:
             for host, text in self.exe(cmd).items():
                 body += self._format_single_cmd_output(cmd=cmd, ans=text, node=host)
 

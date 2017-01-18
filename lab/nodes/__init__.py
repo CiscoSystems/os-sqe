@@ -1,9 +1,10 @@
 import abc
 
 from lab.with_log import WithLogMixIn
+from lab.with_config import WithConfig
 
 
-class LabNode(WithLogMixIn):
+class LabNode(WithLogMixIn, WithConfig):
     __metaclass__ = abc.ABCMeta
 
     _ROLE_VS_COUNT = {}
@@ -24,6 +25,9 @@ class LabNode(WithLogMixIn):
         self._downstream_wires = []
         self._peer_link_wires = []
 
+    def __repr__(self):
+        return u'{} {}'.format(self.get_lab_id(), self.get_node_id())
+
     def wire_upstream(self, wire):
         self._upstream_wires.append(wire)
 
@@ -33,7 +37,7 @@ class LabNode(WithLogMixIn):
     def wire_peer_link(self, wire):
         self._peer_link_wires.append(wire)
 
-    def get_id(self):
+    def get_node_id(self):
         return self._id
 
     def get_lab_id(self):
@@ -92,7 +96,7 @@ class LabNode(WithLogMixIn):
         try:
             return self._nics[nic]
         except KeyError:
-            return RuntimeError('{}: is not on {} network'.format(self.get_id(), nic))
+            return RuntimeError('{}: is not on {} network'.format(self.get_node_id(), nic))
 
     def get_nics(self):
         return self._nics
@@ -233,3 +237,21 @@ class LabNode(WithLogMixIn):
                 return None
             mac = '{}0:{:02}:{}:{}:{:02}:CA'.format('1' if port_id == 'MLOM/1' else '0', self.lab().get_id(), o2, o3, self._n)
         return mac
+
+    def r_verify_oob(self):
+        import socket
+
+        ip, _, _ = self.get_oob()
+        if ip == 'MatchSSH':  # it's a virtual node no OOB
+            return
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ok = None
+        s.settimeout(2)
+        try:
+            s.connect((ip, 22))
+            ok = 'ok'
+        except (socket.timeout, socket.error):
+            ok = 'FAILED'
+        finally:
+            self.log('OOB ({}) is {}'.format(ip, ok))
+            s.close()

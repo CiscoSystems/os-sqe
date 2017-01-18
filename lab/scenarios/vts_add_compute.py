@@ -3,27 +3,31 @@ from lab.decorators import section
 
 
 class VtsAddCompute(ParallelWorker):
+    @staticmethod
+    def check_arguments(**kwargs):
+        pass
+    
     @section('Setup')
     def setup_worker(self):
-        self._build_node = self._lab.get_director()
-
-        # self._cloud.os_cleanup()
-
+        pass
+    
     @section('Running test')
     def loop_worker(self):
         import os
         import random
         import yaml
 
-        tag = self._build_node.exe('cat /etc/cisco-mercury-release')
+        mgmt = self.get_lab().get_director()
+
+        tag = mgmt.exe('cat /etc/cisco-mercury-release')
         setup_data_folder = "/root/installer-{tag}/openstack-configs".format(tag=tag)
         setup_data_path = os.path.join(setup_data_folder, 'setup_data.yaml')
         setup_data_orig_path = os.path.join(setup_data_folder, 'setup_data.yaml.orig')
 
-        setup_data_orig = self._build_node.exe('cat {0}'.format(setup_data_orig_path), is_warn_only=True)
-        setup_data = self._build_node.exe('cat {0}'.format(setup_data_path))
+        setup_data_orig = mgmt.exe('cat {0}'.format(setup_data_orig_path), is_warn_only=True)
+        setup_data = mgmt.exe('cat {0}'.format(setup_data_path))
 
-        if 'No such file' in setup_data_orig :
+        if 'No such file' in setup_data_orig:
             raise Exception('There is no {0}. Could not add compute node'.format(setup_data_orig_path))
 
         setup_data_orig = yaml.load(setup_data_orig)
@@ -37,7 +41,7 @@ class VtsAddCompute(ParallelWorker):
         setup_data['ROLES']['compute'].append(compute_name)
         setup_data['SERVERS'][compute_name] = setup_data_orig['SERVERS'][compute_name]
 
-        self._build_node.exe('rm -rf {0}'.format(setup_data_path))
-        self._build_node.file_append(setup_data_path, yaml.dump(setup_data, default_flow_style=False))
+        mgmt.exe('rm -rf {0}'.format(setup_data_path))
+        mgmt.file_append(setup_data_path, yaml.dump(setup_data, default_flow_style=False))
 
-        self._build_node.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --add-computes {name} '.format(tag=tag, name=compute_name))
+        mgmt.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --add-computes {name} '.format(tag=tag, name=compute_name))

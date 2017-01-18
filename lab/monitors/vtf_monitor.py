@@ -1,17 +1,13 @@
 from lab.parallelworker import ParallelWorker
 
 
-class VtfNotSynced(Exception):
-    pass
-
-
 class VtfMonitor(ParallelWorker):
 
     def setup_worker(self):
         from lab.vts_classes.vtc import Vtc
 
         if self._ip:
-            self._vtc = Vtc(node_id='vtc-x', role='vtc', lab=self._lab, hostname='NoDefined')
+            self._vtc = Vtc(node_id='vtc-x', role='vtc', lab=self._lab)
             self._vtc.set_ssh_creds(username=self._username, password=self._password)
         else:
             self._vtc = self._lab.get_nodes_by_class(Vtc)[0]
@@ -47,8 +43,8 @@ class VtfMonitor(ParallelWorker):
                     vtf_sync[str(vtf._ip)] &= any([tunnel_str in tunnel_raw for tunnel_raw in tunnels_raw])
 
         for vtf_ip, sync in vtf_sync.items():
-            self._log.info('vtf={0}; sync={1}'.format(vtf_ip, sync))
+            self.log('vtf={0}; sync={1}'.format(vtf_ip, sync))
             if not sync:
-                raise VtfNotSynced("VTF {0} is not synced".format(vtf_ip))
+                raise RuntimeError("VTF {0} is not synced".format(vtf_ip))
 
         return vtf_sync

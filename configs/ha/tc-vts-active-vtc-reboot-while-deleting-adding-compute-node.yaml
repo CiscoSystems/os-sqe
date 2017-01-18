@@ -3,8 +3,7 @@
 - Description: Validate Standby VTC becomes "Active' when Active VTC is rebooted while a compute node is added and deleted
 
 - class: lab.monitors.vts_monitor.VtsMonitor
-  run_while:
-    - vts_scenario
+  run_while: disruptor-running
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 3
@@ -13,21 +12,16 @@
   node-to-disrupt: master-vtc
   method-to-disrupt: vm-reboot
   run_while:
-    - deleting_node
-    - adding_node
+    - deleting-compute
+    - adding-compute
   set:
-    - vts_scenario
+    - disruptor-running
 
 - class: lab.scenarios.vts_delete_compute.VtsDeleteCompute
   n_repeats: 1
-  set:
-    - deleting_node
+  set: deleting-compute
 
 - class: lab.scenarios.vts_add_compute.VtsAddCompute
-  run_once_when:
-    deleting_node: False
-  set:
-    - adding_node
-
-
-# Validate Standby VTC becomes "Active' when Active VTC is rebooted while a compute node is added and deleted
+  run_after: deleting-compute
+  n_repeats: 1
+  set: adding-compute

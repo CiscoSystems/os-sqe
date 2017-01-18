@@ -14,10 +14,6 @@ class Nexus(LabNode):
             self.__requested_topology = self.prepare_topology()
         return self.__requested_topology
 
-    def __repr__(self):
-        ip, username, password = self.get_oob()
-        return u'{l} {id} NX-API: http://{ip} {u}/{p}'.format(l=self.lab(), id=self.get_id(), p=password, u=username, ip=ip)
-
     def get_pcs_to_fi(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""
         return set([str(x.get_pc_id()) for x in self._downstream_wires if x.is_n9_fi()])
@@ -33,8 +29,6 @@ class Nexus(LabNode):
     def _rest_api(self, commands, timeout=2, method='cli'):
         import requests
         import json
-        from lab.logger import lab_logger
-        lab_logger.info('{0} commands: {1}'.format(self, ", ".join(commands)))
 
         oob_ip, oob_u, oob_p = self.get_oob()
         body = [{"jsonrpc": "2.0", "method": method, "params": {"cmd": x, "version": 1}, "id": i} for i, x in enumerate(commands, start=1)]
@@ -115,7 +109,6 @@ class Nexus(LabNode):
         for pc_id, requested in self._requested_topology['vpc'].items():
             if pc_id not in a['ports']:
                 raise RuntimeError('{} is not configured, should be {}'.format(pc_id, requested))
-            actual = a['ports'][pc_id]
 
     def n9_configure_port(self, pc_id, port_id, vlans_string, desc, mode):
         actual_state = self.n9_show_all()
@@ -180,7 +173,7 @@ class Nexus(LabNode):
     def n9_configure_vxlan(self, asr_port):
         import re
 
-        number_in_node_id = map(int, re.findall(r'\d+', self.get_id()))[0]
+        number_in_node_id = map(int, re.findall(r'\d+', self.get_node_id()))[0]
         lo1_ip = '1.1.1.{0}'.format(number_in_node_id)
         lo2_ip = '2.2.2.{0}'.format(number_in_node_id)
         router_ospf = '111'
@@ -230,9 +223,6 @@ class Nexus(LabNode):
         return vlans
 
     def n9_configure_for_lab(self):
-        from lab.logger import lab_logger
-
-        lab_logger.info('Configuring {0}'.format(self))
         self.cmd(['conf t', 'feature lacp', 'feature vpc'])
 
         self.n9_configure_vlans()

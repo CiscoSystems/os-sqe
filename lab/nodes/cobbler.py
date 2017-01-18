@@ -7,16 +7,11 @@ class CobblerServer(LabServer):
     def cmd(self, cmd):
         return self.exe(command=cmd, is_warn_only=True)
 
-    def __repr__(self):
-        ip, oob_u, oob_p = self.get_oob()
-        return u'{l} {n} http://{ip}/cobbler_api with {u}/{p}'.format(l=self.lab(), n=self.get_id(), ip=ip, p=oob_p, u=oob_u)
-
     def cobbler_configure_for(self, node):
         import validators
         from lab.time_func import time_as_string
-        from lab.logger import lab_logger
 
-        lab_logger.info('{}: (Re)creating cobbler profile for {}'.format(self, node))
+        self.log('{}: (Re)creating cobbler profile for {}'.format(self, node))
 
         system_name = '{}-{}'.format(self.lab(), node.get_id())
         comment = 'This system is created by {0} for LAB {1} at {2}'.format(__file__, self.lab(), time_as_string())
