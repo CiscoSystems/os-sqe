@@ -15,6 +15,13 @@ class LabServer(LabNode):
     def cmd(self, cmd):
         raise NotImplementedError
 
+    def get_ssh_for_bash(self):
+        ip, u, p = self.get_ssh()
+        command = 'sshpass -p {} ssh {}@{}'.format(p, u, ip)
+        if self._proxy_server:
+            command = self._proxy_server.get_ssh_for_bash().replace('ssh ', 'ssh -t ') + ' ' + command
+        return command
+
     def set_proxy_server(self, proxy):
         self._proxy_server = proxy
 

@@ -1,57 +1,43 @@
 from fabric.api import task
+import sys
+
+if '.' not in sys.path:
+    sys.path.append('.')
+
+
+KNOWN_LABS = ['g7-2.yaml', 'marahaika.yaml', 'c42top.yaml', 'i13tb3.yaml']
 
 
 @task
-def cmd(config_path):
-    """fab cmd:g10\t\t\t\tRun single command on lab device.
-        :param config_path: path to valid hardware lab configuration, usually one of yaml in $REPO/configs
+def cmd():
+    """fab cmd\t\t\t\tRun single command on lab device
     """
     from fabric.operations import prompt
-    from six import print_
     import time
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.with_log import lab_logger
 
-    l = Laboratory(config_path=config_path)
+    lab_cfg_path = get_user_input(owner='lab', options_lst=KNOWN_LABS)
+    l = Laboratory(config_path=lab_cfg_path)
     nodes = sorted(map(lambda node: node.get_node_id(), l.get_nodes_by_class()))
     while True:
-        device_name = prompt(text='{lab} has: {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=['lab', 'cloud'] + nodes))
+        device_name = get_user_input(owner=l, options_lst=['lab', 'cloud'] + nodes)
         if device_name == 'cloud':
-            d = DeployerExisting({'cloud': config_path.strip('.yaml'), 'hardware-lab-config': config_path})
-            servers_and_clouds = {'servers': [], 'clouds': []}
-            d.execute(servers_and_clouds)
-            device = servers_and_clouds['clouds'][0]
+            d = DeployerExisting({'hardware-lab-config': lab_cfg_path})
+            device = d.execute([])
         elif device_name == 'lab':
             device = l
-        elif device_name in ['quit', 'q', 'exit']:
-            return
-        elif device_name not in nodes:
-            print_(device_name, 'is not available')
-            continue
         else:
             device = l.get_node_by_id(device_name)
         method_names = [x for x in dir(device) if not x.startswith('_')]
-        print_(device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)')
         while True:
-            input_method_name = prompt(text='>>{0}<< operation?: '.format(device))
-            if input_method_name in ['quit', 'q', 'exit']:
-                return
-            elif input_method_name == 'node':
+            input_method_name = get_user_input(owner=device, options_lst=method_names + ['node', 'rpt'])
+            if input_method_name == 'node':
                 break
-            elif input_method_name in ['r', 'rpt']:
-                print_(device, ' has: \n', '\n'.join(method_names), '\n(use "node" to get back to node selection)')
+            elif input_method_name == 'rpt':
                 continue
-            else:
-                methods_in_filter = filter(lambda mth: input_method_name in mth, method_names)
-                if len(methods_in_filter) == 0:
-                    lab_logger.info('{} is not available'.format(input_method_name))
-                    continue
-                elif len(methods_in_filter) == 1:
-                    input_method_name = methods_in_filter[0]
-                elif len(methods_in_filter) > 1:
-                    lab_logger.info('input  "{}" matches:\n{}'.format(input_method_name, '\n'.join(methods_in_filter)))
-                    continue
+
             lab_logger.info('executing {}'.format(input_method_name))
             method_to_execute = getattr(device, input_method_name)
             parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
@@ -76,7 +62,7 @@ def cmd(config_path):
 
 @task
 def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
-    """fab ha:g10,str\t\t\t\tRun all tests with 'str' in name on g10
+    """fab ha:g10,str\t\t\tRun all tests with 'str' in name on g10
         :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
         :param is_debug: if True, do not run actual workers just test the infrastructure
@@ -154,7 +140,7 @@ def run(config_path, version):
 
 @task
 def conf():
-    """fab conf\t\t\t\t\tTries to create lab configuration yaml
+    """fab conf\t\t\t\tTries to create lab configuration yaml
     """
     from lab.configurator import LabConfigurator
 
@@ -232,11 +218,36 @@ def info(lab_config_path, regex):
     l.r_collect_information(regex=regex, comment='')
 
 
-@task
-def test(a):
-    """fab test:msg\t\t\t\tTest logger to artifacts"""
+def get_user_input(owner, options_lst):
+    from fabric.operations import prompt
     import sys
-    from lab.with_log import lab_logger
 
-    lab_logger.info(a)
-    sys.exit(33)
+    sub_list = options_lst
+    while True:
+        choice = prompt('{}: choose one of {}, q to cancel>'.format(owner, sub_list))
+        if choice == 'q':
+            sys.exit(2)
+        sub_list = filter(lambda x: choice in x, sub_list)
+        if len(sub_list) == 1:
+            return sub_list[0]  # unique match , return it
+        elif len(sub_list) == 0:
+            sub_list = options_lst
+            continue  # wrong input ask again with full list of options
+        else:
+            continue  # ask again with restricted list of options
+
+
+@task
+def bash():
+    """fab bash\t\t\t\tDefine bash aliases for lab"""
+    from lab.laboratory import Laboratory
+    from fabric.api import local
+
+    lab_cfg_path = get_user_input(owner='lab', options_lst=['g7-2.yaml', 'marahaika.yaml', 'c42top.yaml'])
+    l = Laboratory(lab_cfg_path)
+    file_name = 'tmp.aliases'
+    local('rm -f ' + file_name)
+    for node in l.get_nodes_by_class():
+        node.is_cimc_server()
+        local('echo \'alias {}="{}"\' >> {}'.format(node.get_node_id(), node.get_ssh_for_bash(), file_name))
+    local('echo \'PS1="({}) $PS1 "\' >> {}'.format(l, file_name))
