@@ -3,14 +3,14 @@ from lab.base_lab import LabWorker
 
 class DeployerMercury(LabWorker):
 
-    def sample_config(self):
+    @staticmethod
+    def sample_config():
         return {'mercury_installer_location': 'http://path-to-mercury-release-server-folder', 'type_of_install': 'iso or tarball', 'hardware_lab_config': 'valid lab configuration',
-                'vts_images_location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json', 'is_force_redeploy': True, 'is_add_vts_role': False}
+                'vts_images_location': 'http://172.29.173.233/vts/nightly-2016-03-14/', 'rhel_creds_location': 'http://172.29.173.233/redhat/subscriptions/rhel-subscription-chandra.json',
+                'is_force_redeploy': True, 'is_add_vts_role': False}
 
     def __init__(self, config, version):
         from lab.deployers.deployer_vts import DeployerVts
-
-        super(DeployerMercury, self).__init__(config=config)
 
         self._mercury_installer_location = config['mercury_installer_location'].format(version=version)
         self._lab_path = config['hardware_lab_config']
