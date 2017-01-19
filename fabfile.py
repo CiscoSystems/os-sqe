@@ -8,6 +8,7 @@ def cmd(config_path):
     """
     from fabric.operations import prompt
     from six import print_
+    import time
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.with_log import lab_logger
@@ -17,7 +18,7 @@ def cmd(config_path):
     while True:
         device_name = prompt(text='{lab} has: {nodes}\n(use "quit" to quit)\n node? '.format(lab=l, nodes=['lab', 'cloud'] + nodes))
         if device_name == 'cloud':
-            d = DeployerExisting({'cloud': config_path.strip('.yaml'), 'hardware-lab-config': config_path}, version=None)
+            d = DeployerExisting({'cloud': config_path.strip('.yaml'), 'hardware-lab-config': config_path})
             servers_and_clouds = {'servers': [], 'clouds': []}
             d.execute(servers_and_clouds)
             device = servers_and_clouds['clouds'][0]
@@ -68,6 +69,7 @@ def cmd(config_path):
             try:
                 results = method_to_execute(*arguments)
                 device.log('RESULTS of {}():\n\n {}\n'.format(input_method_name, results))
+                time.sleep(1)  # sleep to prevent fabric prompt clashing with
             except Exception as ex:
                 lab_logger.exception('\n Exception: {0}'.format(ex))
 
@@ -220,7 +222,7 @@ def info(lab_config_path, regex):
     from lab.deployers.deployer_existing import DeployerExisting
 
     l = Laboratory(lab_config_path)
-    d = DeployerExisting({'cloud': lab_config_path.strip('.yaml'), 'hardware-lab-config': lab_config_path}, version=None)
+    d = DeployerExisting({'cloud': lab_config_path.strip('.yaml'), 'hardware-lab-config': lab_config_path})
     try:
         servers_and_clouds = {'servers': [], 'clouds': []}
         d.execute(servers_and_clouds=servers_and_clouds)
