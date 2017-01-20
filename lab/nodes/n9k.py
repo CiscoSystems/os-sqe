@@ -26,7 +26,7 @@ class Nexus(LabNode):
             if 'disabled'in run('sh feature | i nxapi', shell=False):
                 run('conf t ; feature nxapi', shell=False)
 
-    def _rest_api(self, commands, timeout=2, method='cli'):
+    def _rest_api(self, commands, timeout=5, method='cli'):
         import requests
         import json
 
@@ -39,11 +39,14 @@ class Nexus(LabNode):
         except requests.exceptions.ConnectionError:
             self._allow_feature_nxapi()
             return self._rest_api(commands=commands, timeout=timeout)
+        except requests.exceptions.ReadTimeout:
+            raise RuntimeError('{}: timed out after {} secs'.format(self, timeout))
 
-    def n9_cmd(self, commands, timeout=2):
+    def n9_cmd(self, commands, timeout=5):
         d = {}
+        self.log('executing ' + ' '.join(commands))
         for c, r in zip(commands, self._rest_api(commands=commands, timeout=timeout)):
-            if 'result' not in r:
+            if 'result' not in r or r['result'] is None:
                 d[c] = []
             else:
                 r = r['result']['body']
@@ -77,7 +80,10 @@ class Nexus(LabNode):
 
     def n9_show_all(self):
         a = self.n9_cmd(['sh port-channel summary', 'sh int st', 'sh int br', 'sh vpc', 'sh vlan', 'sh cdp nei det', 'sh lldp nei det'])
-        r = {'ports': {}, 'vlans': {}, 'cdp': a['sh cdp nei det'], 'lldp': a['sh lldp nei det']}
+        r = {'ports': {},
+             'vlans': {x['vlanshowbr-vlanid']: x for x in a['sh vlan']['TABLE_vlanbrief']['ROW_vlanbrief']},
+             'cdp': a['sh cdp nei det'],
+             'lldp': a['sh lldp nei det']}
 
         pcs = a['sh port-channel summary']
         pcs = [pcs] if isinstance(pcs, dict) else pcs  # if there is only one port-channel the API returns dict but not a list. Convert to list
@@ -89,13 +95,14 @@ class Nexus(LabNode):
         vpc_lst = vpcs.get('TABLE_vpc', {'ROW_vpc': []})['ROW_vpc']
         vpc_lst = [pcs] if isinstance(vpc_lst, dict) else vpc_lst  # if there is only one vpc the API returns dict but not a list. Convert to list
         vpc_dic = {x['vpc-ifindex']: x for x in vpc_lst}
-        vpc_dic[peer_link['peerlink-ifindex']] = peer_link
+        if peer_link:
+            vpc_dic[peer_link['peerlink-ifindex']] = peer_link
         for st, br in zip(a['sh int st'], a['sh int br']):
             st.update(br)  # combine both since br contains pc info
             port_id = st['interface']
             if port_id in pcs_dic:  # combine with port-channel summary
                 pc = pcs_dic.pop(port_id)
-                ports = pc.pop('TABLE_member')['TABLE_row'] if 'TABLE_member' in pc else []  # pc does not contain ports - no TABLE_member inside
+                ports = pc.pop('TABLE_member')['ROW_member'] if 'TABLE_member' in pc else []  # pc does not contain ports - no TABLE_member inside
                 ports = [ports] if type(ports) == dict else ports  # if pc has only one port - it's a dict, otherwise - list
                 st.update(pc)
                 st['ports'] = ports
@@ -104,11 +111,60 @@ class Nexus(LabNode):
 
         return r
 
-    def n9_verify_topo(self):
+    def n9_verify(self):
+        from fabric.operations import prompt
+        import time
+
+        def is_fix():
+            time.sleep(1)  # prevent promt message interlacing with log output
+            return prompt('say y if you want to fix it: ') == 'y'
+
         a = self.n9_show_all()
-        for pc_id, requested in self._requested_topology['vpc'].items():
-            if pc_id not in a['ports']:
-                raise RuntimeError('{} is not configured, should be {}'.format(pc_id, requested))
+        for requested_vlan_id, requested_vlan_name in self._requested_topology['vlans'].items():
+            cmd = ['conf t', 'vlan ' + str(requested_vlan_id), 'name ' + requested_vlan_name, 'no shut']
+            if requested_vlan_id not in a['vlans']:
+                self.log('no vlan {}, do: {}'.format(requested_vlan_id, ' '.join(cmd)))
+            else:
+                actual_vlan_name = a['vlans'][requested_vlan_id]['vlanshowbr-vlanname']
+                if actual_vlan_name != requested_vlan_name:
+                    self.log('vlan {} has actual name {} while requested name is {}, do: {}'.format(requested_vlan_id, actual_vlan_name, requested_vlan_name, ' '.join(cmd)))
+                    if is_fix():
+                        self.n9_cmd(cmd)
+
+        for requested_vpc_id, requested_vpc in self._requested_topology['vpc'].items():
+
+            for requested_port_id in requested_vpc['ports']:
+                cmd = ['conf t', 'int ' + requested_port_id, 'desc ' + requested_vpc['description']]
+                if requested_port_id not in a['ports']:
+                    raise ValueError('{}: {} requests a port "{}" which does not exists, check your configuration'.format(self, requested_vpc_id, requested_port_id))
+                actual_port = a['ports'][requested_port_id]
+                if actual_port['name'] != requested_vpc['description']:
+                    self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(requested_port_id, actual_port['name'], requested_vpc['description'], ' '.join(cmd)))
+                    if is_fix():
+                        self.n9_cmd(cmd)
+
+            if requested_vpc_id not in a['ports']:
+                self.log('{} is not configured, should be {}'.format(requested_vpc_id, requested_vpc))
+            else:
+                actual_vpc = a['ports'][requested_vpc_id]
+
+                cmd = ['conf t', 'int ' + requested_vpc_id, 'desc ' + requested_vpc['description']]
+                self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(requested_vpc_id, actual_vpc['name'], requested_vpc['description'], ' '.join(cmd)))
+                if is_fix():
+                    self.n9_cmd(cmd)
+
+                if actual_vpc['name'] != requested_vpc['description']:
+                    cmd = ['conf t', 'int ' + requested_vpc_id, 'desc ' + requested_vpc['description']]
+                    self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(requested_vpc_id, actual_vpc['name'], requested_vpc['description'], ' '.join(cmd)))
+                    if is_fix():
+                        self.n9_cmd(cmd)
+                if actual_vpc['portmode'] != requested_vpc['mode']:
+                    cmd = ['conf t', 'int ' + requested_vpc_id, 'mode ' + requested_vpc['mode']]
+                    self.log('{} has actual mode "{}" while requested is "{}", do: {}'.format(requested_vpc_id, actual_vpc['portmode'], requested_vpc['mode'], ' '.join(cmd)))
+                    if is_fix():
+                        self.n9_cmd(cmd)
+
+        self.log(60 * '-')
 
     def n9_configure_port(self, pc_id, port_id, vlans_string, desc, mode):
         actual_state = self.n9_show_all()
@@ -206,30 +262,6 @@ class Nexus(LabNode):
         commands = ['conf t', 'vlan {0}'.format(vlan_range), 'no shut', 'exit', 'int e{0}'.format(',e'.join(interfaces)), 'switchport trunk allowed vlan add {0}'.format(vlan_range), 'end']
         self.cmd(commands)
 
-    def n9_configure_vlans(self):
-        vlans = self._requested_topology['vlans']
-        actual_vlans = self.n9_show_vlans()
-        for vlan_id, vlan_name in vlans.items():
-            vlan_name = str(vlan_name)
-            if vlan_id == '1':
-                continue
-            if str(vlan_id) in actual_vlans:
-                actual_vlan_name = actual_vlans[str(vlan_id)]['name']
-                if actual_vlan_name.lower() != vlan_name.lower():
-                    raise RuntimeError('{}: vlan id {} already active with name "{}" while trying to assign name "{}". Handle it manually!'.format(self, vlan_id, actual_vlan_name, vlan_name))
-                self.log(message='VLAN id={} already active'.format(vlan_id))
-            else:
-                self.cmd(['conf t', 'vlan {}'.format(vlan_id), 'name ' + vlan_name, 'no shut'])
-        return vlans
-
-    def n9_configure_for_lab(self):
-        self.cmd(['conf t', 'feature lacp', 'feature vpc'])
-
-        self.n9_configure_vlans()
-        self.n9_configure_peer_link()
-        self.n9_configure_ports()
-        self.n9_configure_vpc()
-
     def n9_configure_peer_link(self):
         peer_link = self._requested_topology['peer-link']
         ip = peer_link['ip']
@@ -304,7 +336,7 @@ class Nexus(LabNode):
             vlans_string = ','.join(vlans_on_wire)
             pc_id = 'Ethernet' + str(own_port_id) if pc_id is None else 'port-channel' + str(pc_id)  # if pc_id not specified - it's a single interface wire
             requested_vpc.setdefault(pc_id, {'description': description, 'vlans': vlans_string, 'ports': [], 'mode': mode})
-            requested_vpc[pc_id]['ports'].append(own_port_id)
+            requested_vpc[pc_id]['ports'].append('Ethernet' + str(own_port_id))
         return {'vpc': requested_vpc, 'vlans': requested_vlans, 'peer-link': requested_peer_link}
 
     def n9_configure_asr1k(self):

@@ -375,13 +375,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         return inventory
 
-    def r_n9_configure(self, is_clean_before=False):
+    def n9_verify(self):
         from lab.nodes.n9k import Nexus
 
-        list_of_n9k = self.get_nodes_by_class(Nexus)
-        if is_clean_before:
-            map(lambda x: x.n9_cleanup(), list_of_n9k)
-        map(lambda x: x.n9_configure_for_lab(), list_of_n9k)
+        map(lambda x: x.n9_verify(), self.get_nodes_by_class(Nexus))
 
     def r_deploy_ssh_public(self):
         for node in self.get_director() + self.get_vts_hosts():
