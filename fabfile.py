@@ -243,11 +243,15 @@ def bash():
     from lab.laboratory import Laboratory
     from fabric.api import local
 
-    lab_cfg_path = get_user_input(owner='lab', options_lst=['g7-2.yaml', 'marahaika.yaml', 'c42top.yaml'])
+    lab_cfg_path = get_user_input(owner='lab', options_lst=['g7-2.yaml', 'marahaika.yaml', 'c42top.yaml', 'i13tb3.yaml'])
     l = Laboratory(lab_cfg_path)
     file_name = 'tmp.aliases'
     local('rm -f ' + file_name)
     for node in l.get_nodes_by_class():
-        node.is_cimc_server()
-        local('echo \'alias {}="{}"\' >> {}'.format(node.get_node_id(), node.get_ssh_for_bash(), file_name))
+        cmds = node.get_ssh_for_bash()
+        if type(cmds) is tuple:
+            local('echo \'alias {}="{}"\' >> {}'.format(node.get_node_id(), cmds[0], file_name))
+            local('echo \'alias cimc_{}="{}"\' >> {}'.format(node.get_node_id(), cmds[1], file_name))
+        else:
+            local('echo \'alias {}="{}"\' >> {}'.format(node.get_node_id(), cmds, file_name))
     local('echo \'PS1="({}) $PS1 "\' >> {}'.format(l, file_name))

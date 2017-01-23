@@ -19,8 +19,8 @@ class LabServer(LabNode):
         ip, u, p = self.get_ssh()
         command = 'sshpass -p {} ssh {}@{}'.format(p, u, ip)
         if self._proxy_server:
-            command = self._proxy_server.get_ssh_for_bash().replace('ssh ', 'ssh -t ') + ' ' + command
-        return command
+            command = self._proxy_server.get_ssh_for_bash()[0].replace('ssh ', 'ssh -t ') + ' ' + command
+        return command, super(LabServer, self).get_ssh_for_bash()
 
     def set_proxy_server(self, proxy):
         self._proxy_server = proxy

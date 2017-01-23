@@ -29,7 +29,7 @@ class LabNode(WithLogMixIn, WithConfig):
         return u'{} {}'.format(self.get_lab_id(), self.get_node_id())
 
     def get_ssh_for_bash(self):
-        return 'sshpass -p {} ssh {}@{}'.format(self.get_node_id(), self._oob_password, self._oob_username, self._oob_ip)
+        return 'sshpass -p {} ssh {}@{}'.format(self._oob_password, self._oob_username, self._oob_ip)
 
     def wire_upstream(self, wire):
         self._upstream_wires.append(wire)
