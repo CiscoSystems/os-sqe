@@ -11,8 +11,8 @@ class Oob(Nexus):
     ROLE = 'oob'
     ROLE_OCTET = 'XX'
 
-    def correct_port_id(self, port_id):
-        err_msg = '{}: port id "{}" is wrong, it has to be <number>/<number>/<number>'.format(self, port_id)
+    def correct_port_id(self, port_id, from_node=None):
+        err_msg = '{} {}: port id "{}" is wrong, it has to be <number>/<number>/<number>'.format('{} -> '.format(from_node) if from_node else '', self, port_id)
         i = 0
         for i, value in enumerate(port_id.split('/'), start=1):
             try:

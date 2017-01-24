@@ -330,7 +330,7 @@ class Nexus(LabNode):
             else:
                 raise ValueError('{}:  strange wire which should not go to N9K: {}'.format(self, wire))
             vlans_string = ','.join(vlans_on_wire)
-            pc_id = 'Ethernet' + str(own_port_id) if pc_id is None else 'port-channel' + str(pc_id)  # if pc_id not specified - it's a single interface wire
+            pc_id = own_port_id if pc_id is None else pc_id  # if pc_id not specified - it's a single interface wire
             requested_vpc.setdefault(pc_id, {'description': description, 'vlans': vlans_string, 'ports': [], 'mode': mode})
             requested_vpc[pc_id]['ports'].append('Ethernet' + str(own_port_id))
         return {'vpc': requested_vpc, 'vlans': requested_vlans, 'peer-link': requested_peer_link}
@@ -429,10 +429,10 @@ class Nexus(LabNode):
     def r_collect_config(self):
         return self._format_single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())
 
-    def correct_port_id(self, port_id):
+    def correct_port_id(self, port_id, from_node=None):
         if port_id == 'MGMT':
             return port_id
-        err_msg = '{}: port id "{}" is wrong, it has to be <number>/<number> or MGMT'.format(self, port_id)
+        err_msg = '{} {}: port id "{}" is wrong, it has to be <number>/<number>'.format('{} -> '.format(from_node) if from_node else '', self, port_id)
         i = 0
         for i, value in enumerate(port_id.split('/'), start=1):
             try:

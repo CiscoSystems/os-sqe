@@ -18,7 +18,7 @@ def cmd():
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.with_log import lab_logger
 
-    lab_cfg_path = get_user_input(owner='lab', options_lst=KNOWN_LABS)
+    lab_cfg_path = get_user_input(owner='lab yaml', options_lst=KNOWN_LABS)
     l = Laboratory(config_path=lab_cfg_path)
     nodes = sorted(map(lambda node: node.get_node_id(), l.get_nodes_by_class()))
     while True:
@@ -144,7 +144,7 @@ def conf():
     """
     from lab.configurator import LabConfigurator
 
-    c = LabConfigurator()
+    LabConfigurator()
 
 
 @task
@@ -223,7 +223,7 @@ def get_user_input(owner, options_lst):
 
     sub_list = options_lst
     while True:
-        choice = prompt('{}: choose one of {}, q to cancel>'.format(owner, sub_list))
+        choice = prompt('choose one of {}, q to cancel\nfor {}>'.format(sorted(sub_list), owner))
         if choice == 'q':
             sys.exit(2)
         sub_list = filter(lambda x: choice in x, sub_list)

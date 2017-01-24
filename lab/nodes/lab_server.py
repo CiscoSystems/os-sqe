@@ -19,6 +19,7 @@ class LabServer(LabNode):
         """This method overrides method in LabNode class and adds specific operations with NICs"""
         from lab.network import Nic
 
+        super(LabServer, self).connect_node()  # call super to get all wires connected
         proxy_id = self._cfg.get('proxy', None)
         if proxy_id:
             self.set_proxy_server(self._lab.get_node_by_id(proxy_id))

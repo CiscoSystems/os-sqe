@@ -108,11 +108,14 @@ class Nic(object):
         """Fabric to create a class Nic instance
         :param node: class LabServer instance
         :param nic_id: short string id of this NIC, must be the same as corresponding net_id of class Network
-        :param nic_desc: dictionary e.g. {'ip': '10.23.221.142', 'port': 'pc37', 'is_ssh': True}
+        :param nic_desc: dictionary e.g. {'ip': '10.23.221.142', 'port': '37', 'is_ssh': True}
         :returns class Nic instance
         """
         try:
-            on_wires = [x for x in node.get_all_wires() if x.get_pc_id() == nic_desc['port']]  # filter all wires of the node which has the same port as this NIC
+            ports = nic_desc['ports']
+            on_wires = [x for x in node.get_all_wires() if x.get_own_port(node) in ports]  # filter all wires of the node which has the same port as this NIC
+            if not on_wires and not node.is_virtual():
+                raise ValueError('{}: NIC "{}" tries to sit on non existing ports: {}'.format(node, nic_id, ports))
             return Nic(nic_id=nic_id, node=node, ip=nic_desc['ip'], on_wires=on_wires, is_ssh=nic_desc.get('is_ssh', False))
         except KeyError as ex:
             raise ValueError('{}: nic "{}" does not specify {}'.format(node, nic_id, ex))

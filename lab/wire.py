@@ -1,24 +1,19 @@
 class Wire(object):
     def __repr__(self):
-        return u'{}-{}({}) -> {}:{} pc{}'.format(self._node_S.get_id(), self._port_S, self._mac,  self._node_N.get_id(), self._port_N, self.get_pc_id())
+        return u'{}:{}({}) -> {}:{} {}'.format(self._node_S.get_node_id(), self._port_S, self._mac or '',  self._node_N.get_node_id(), self._port_N, self._pc_id or '')
 
     def __init__(self, node_n, port_n, node_s, port_s, pc_id, mac):
         self._node_N = node_n
         self._port_N = port_n
         self._node_S = node_s
         self._port_S = port_s
-        self._pc_id = self._correct_pc_id(pc_id=pc_id)
-        self._is_peer_link = self.is_n9_n9()
+        self._pc_id = pc_id
         self._mac = mac
-
         self._is_intentionally_down = False
 
-        if self._is_peer_link:
-            self._node_N.wire_peer_link(self)
-            self._node_S.wire_peer_link(self)
-        else:
-            self._node_N.wire_downstream(self)
-            self._node_S.wire_upstream(self)
+        self._pc_id = self._correct_pc_id(pc_id=pc_id)
+        node_n.attach_wire(self)
+        node_s.attach_wire(self)
 
     @staticmethod
     def add_wire(local_node, local_port_id, peer_desc):
@@ -31,6 +26,8 @@ class Wire(object):
         local_pid = local_node.correct_port_id(port_id=local_port_id)
         try:
             peer_node_id = peer_desc['peer-id']
+            if peer_node_id.upper() == 'NONE':  # this port is not connected
+                return None
             peer_port_id = peer_desc['peer-port']
         except KeyError as ex:
             raise ValueError('Node "{}": port "{}" has no "{}"'.format(local_node, local_pid, ex.message))
@@ -38,35 +35,36 @@ class Wire(object):
             peer_node = local_node.lab().get_node_by_id(peer_node_id)
         except ValueError:
             raise ValueError('Node "{}": specified wrong peer node id: "{}"'.format(local_node, peer_node_id))
-        peer_port_id = peer_node.correct_port_id(port_id=peer_port_id)
+        peer_port_id = peer_node.correct_port_id(port_id=peer_port_id, from_node=local_node)
 
         mac = local_node.calculate_mac(port_id=local_pid, mac=peer_desc.get('own-mac'))
         return Wire(node_n=peer_node, port_n=peer_port_id, node_s=local_node, port_s=local_pid, pc_id=peer_desc.get('port-channel'), mac=mac)
 
     def _correct_pc_id(self, pc_id):
         """This method is to make sure that port id gets a proper int value
-        :param pc_id: correct values are pcXXX where XXX is a number
+        :param pc_id: correct values are port-channelXXX where XXX is a number or one of uplink and peerlink
         """
-        import re
 
         if pc_id is None:  # this means that this wire does not participate in port channel
             return None
-
-        try:
-            pc_id = int(re.findall('(\d+)', str(pc_id))[0])  # tries to find int - if ok then use it
-            if self.is_n9_fi() and pc_id >= 256:
-                raise ValueError('Node {}: has port-channel id {} is not suitable for FI (v)PC- more then 256'.format(self._node_S, pc_id))
-            return pc_id
-        except IndexError:
+        elif pc_id == 'peerlink':
+            if self.is_n9_n9():
+                return 'port-channel100'
+            else:
+                raise ValueError('{}: peerlink should be between 2 N9'.format(self))
+        elif pc_id == 'uplink':
             if self.is_n9_tor():
-                pc_id = 300
-            elif self.is_n9_n9():
-                pc_id = 100
-            elif self.is_n9_fi():
-                pc_id = 250
-            elif self.is_n9_ucs():  # we assign port id as port-channel id
-                pc_id = self._port_N.split('/')[1]
-            return pc_id
+                return 'port-channel300'
+            else:
+                raise ValueError('{}: uplink should be between N9 and tor'.format(self))
+        else:
+            try:
+                pc_id_int = int(str(pc_id).replace('port-channel', ''))  # tries to check int part
+                if self.is_n9_fi() and pc_id_int >= 256:
+                    raise ValueError('{}: pc id "{}" is not suitable for FI: int part must be less then 256'.format(self, pc_id))
+                return pc_id
+            except ValueError:
+                raise ValueError('{}: port-channel must be port-channelXXX where XXX is int'.format(self))
 
     def down_port(self):
         """Delegate actual operation to north bound networking device"""

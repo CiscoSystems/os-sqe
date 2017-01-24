@@ -298,6 +298,12 @@ class CimcServer(LabServer):
         else:
             self.logger(message='hostname is already {}'.format(new_cimc_hostname))
 
+    def correct_port_id(self, port_id):
+        possible_pids = ['MLOM/0', 'MLOM/1', 'LOM-1', 'LOM-2', 'MGMT']
+        if port_id not in possible_pids:
+            raise ValueError('{}: port id "{}" is wrong, whould be one of {}'.format(self, port_id, possible_pids))
+        return port_id
+
 
 class CimcDirector(CimcServer):
     ROLE = 'director-n9'
@@ -330,12 +336,6 @@ class CimcDirector(CimcServer):
             ip = '{}/{}'.format(net[-5], net.prefixlen)
             cmd = 'ip link show br_mgmt.{0} || ( ip link add link br_mgmt name br_mgmt.{0} type vlan id {0} && ip link set dev br_mgmt.{0} up && ip address add {1} dev br_mgmt.{0} )'.format(vlan, ip)
             self.exe(cmd)
-
-    def correct_port_id(self, port_id):
-        possible_pids = ['MLOM/0', 'MLOM/1', 'LOM-1', 'LOM-2', 'MGMT']
-        if port_id not in possible_pids:
-            raise ValueError('{}: port id "{}" is wrong, whould be one of {}'.format(self, port_id, possible_pids))
-        return port_id
 
 
 class CimcController(CimcServer):

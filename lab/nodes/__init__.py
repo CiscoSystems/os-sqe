@@ -22,9 +22,7 @@ class LabNode(WithLogMixIn, WithConfig):
         self._ru, self._model = 'RU_XXX', 'MODEL_XXX'
         self._cfg = cfg  # initial configuration dictionary as provided in lab config file
 
-        self._upstream_wires = []
-        self._downstream_wires = []
-        self._peer_link_wires = []
+        self._wires = []
 
     def __repr__(self):
         return u'{} {}'.format(self.get_lab_id(), self.get_node_id())
@@ -62,20 +60,15 @@ class LabNode(WithLogMixIn, WithConfig):
     def connect_node(self):
         """This is not server so process just wires information for upstream links. LabServer has this method overridden"""
         from lab.wire import Wire
+
         for local_port_id, peer_desc in self._cfg.get('wires', {}).items():  # node might have no wires
             Wire.add_wire(local_node=self, local_port_id=local_port_id, peer_desc=peer_desc)
 
     def get_ssh_for_bash(self):
         return 'sshpass -p {} ssh {}@{}'.format(self._oob_password, self._oob_username, self._oob_ip)
 
-    def wire_upstream(self, wire):
-        self._upstream_wires.append(wire)
-
-    def wire_downstream(self, wire):
-        self._downstream_wires.append(wire)
-
-    def wire_peer_link(self, wire):
-        self._peer_link_wires.append(wire)
+    def attach_wire(self, wire):
+        self._wires.append(wire)
 
     def get_node_id(self):
         return self._id
@@ -87,7 +80,7 @@ class LabNode(WithLogMixIn, WithConfig):
         return self._role
 
     def get_peer_link_wires(self):
-        return self._peer_link_wires
+        return [x for x in self._wires if x.is_n9_n9()]
 
     def get_n_in_role(self):
         return self._n
@@ -103,7 +96,7 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def get_all_wires(self):
         """Returns all wires"""
-        return self._downstream_wires + self._upstream_wires + self._peer_link_wires
+        return self._wires
 
     def get_wires_to(self, node):
         """Returns wires to given node"""
@@ -203,13 +196,16 @@ class LabNode(WithLogMixIn, WithConfig):
 
         return type(self) == Vtf
 
+    def is_virtual(self):
+        return any([self.is_vtc(), self.is_xrvr(), self.is_vtf()])
+
     def get_yaml_body(self):
 
         a = ' {{id: "{}", role: {}, oob-ip: {}, ssh-username: None, ssh-password: None, oob-username: "{}", oob-password: "{}", '.format(self._id, self._role, self._oob_ip, self._oob_username, self._oob_password)
         a += 'hostname: "{}", model: "{}", ru: "{}"'.format('1', self._model, self._ru)
 
-        if self._upstream_wires:
-            wires = ',\n              '.join(map(lambda x: x.get_yaml_body(), self._upstream_wires))
+        if self._wires:
+            wires = ',\n              '.join(map(lambda x: x.get_yaml_body(), self._wires))
             a += ',\n      wires: {{{}\n      }}'.format(wires)
         else:
             a += '\n'
