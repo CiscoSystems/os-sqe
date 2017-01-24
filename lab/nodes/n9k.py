@@ -4,10 +4,6 @@ from lab.nodes import LabNode
 class Nexus(LabNode):
     ROLE = 'n9'
 
-    def __init__(self, node_id, role, lab):
-        super(Nexus, self).__init__(node_id=node_id, role=role, lab=lab)
-        self.__requested_topology = None
-
     @property
     def _requested_topology(self):
         if self.__requested_topology is None:
@@ -432,3 +428,17 @@ class Nexus(LabNode):
 
     def r_collect_config(self):
         return self._format_single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())
+
+    def correct_port_id(self, port_id):
+        if port_id == 'MGMT':
+            return port_id
+        err_msg = '{}: port id "{}" is wrong, it has to be <number>/<number> or MGMT'.format(self, port_id)
+        i = 0
+        for i, value in enumerate(port_id.split('/'), start=1):
+            try:
+                int(value)
+            except ValueError:
+                raise ValueError()
+        if i != 2:
+            raise ValueError(err_msg)
+        return 'Ethernet' + port_id

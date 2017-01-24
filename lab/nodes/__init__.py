@@ -9,7 +9,7 @@ class LabNode(WithLogMixIn, WithConfig):
 
     _ROLE_VS_COUNT = {}
 
-    def __init__(self, node_id, role, lab):
+    def __init__(self, node_id, role, lab, cfg=None):
         self._lab = lab     # link to parent Laboratory object
         self._id = node_id  # some id which unique in the given role, usually role + some small integer
         self._role = role   # which role this node play, possible roles are defined in Laboratory
@@ -17,9 +17,10 @@ class LabNode(WithLogMixIn, WithConfig):
         self._ROLE_VS_COUNT.setdefault(role, 0)
         self._ROLE_VS_COUNT[role] += 1
         self._n = self._ROLE_VS_COUNT[role]  # number of this node in a list of nodes for this role
-        self._oob_ip, self._oob_username, self._oob_password = '?? in LabNode.__init__()', '?? in LabNode.__init__()', '?? in LabNode.__init__()'
+        self._oob_ip, self._oob_username, self._oob_password = 'ip_XXX', 'us_XXX', 'pass_XXX'
         self._nics = dict()  # list of NICs
-        self._ru, self._model = '?? in LabNod.__init()', '?? in LabNod.__init()'
+        self._ru, self._model = 'RU_XXX', 'MODEL_XXX'
+        self._cfg = cfg  # initial configuration dictionary as provided in lab config file
 
         self._upstream_wires = []
         self._downstream_wires = []
@@ -27,6 +28,42 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def __repr__(self):
         return u'{} {}'.format(self.get_lab_id(), self.get_node_id())
+
+    @staticmethod
+    def add_node(lab, node_desc):
+        try:
+            node_id = node_desc['id']
+            role = node_desc['role']
+
+            klass = lab.get_role_class(role)
+            node = klass(lab=lab, node_id=node_id, role=role, cfg=node_desc)
+
+            try:
+                node.set_oob_creds(ip=node_desc['oob-ip'], username=node_desc['oob-username'], password=node_desc['oob-password'])
+                node.set_hardware_info(ru=node_desc.get('ru', 'RU-XXX'), model=node_desc.get('model', 'MODEL-XXX'))
+                if hasattr(node, 'set_ssh_creds'):
+                    node.set_ssh_creds(username=node_desc['ssh-username'], password=node_desc['ssh-password'])
+                if hasattr(node, 'set_hostname'):
+                    node.set_hostname(node_desc.get('hostname', '{}.ctocllab.cisco.com'.format(node_id)))
+                if hasattr(node, 'set_ucsm_id'):
+                    node.set_ucsm_id(node_desc['ucsm-id'])
+                if hasattr(node, 'set_vip'):
+                    node.set_vip(node_desc['vip'])
+                if hasattr(node, 'set_sriov'):
+                    node.set_sriov(node_desc['sriov'])
+                return node
+            except KeyError as ex:
+                raise ValueError('Node "{}": has no "{}"'.format(node_id, ex.message))
+        except KeyError as ex:
+            ValueError('"{}" for node "{}" is not provided'.format(ex.message, node_desc))
+        except TypeError as ex:
+            raise TypeError('{} for the node {} of role {}'.format(ex, node_desc.get('id'), node_desc.get('role')))
+
+    def connect_node(self):
+        """This is not server so process just wires information for upstream links. LabServer has this method overridden"""
+        from lab.wire import Wire
+        for local_port_id, peer_desc in self._cfg.get('wires', {}).items():  # node might have no wires
+            Wire.add_wire(local_node=self, local_port_id=local_port_id, peer_desc=peer_desc)
 
     def get_ssh_for_bash(self):
         return 'sshpass -p {} ssh {}@{}'.format(self._oob_password, self._oob_username, self._oob_ip)
@@ -71,29 +108,6 @@ class LabNode(WithLogMixIn, WithConfig):
     def get_wires_to(self, node):
         """Returns wires to given node"""
         return filter(lambda x: x.get_peer_node(self) == node, self.get_all_wires())
-
-    def _assign_default_ip_index(self, net):
-        chunk_size = (net.get_size() - 5) / 6  # bld/director, controls, computes, vts_hosts, vtc, xrvr, vtf
-
-        if self.is_director():
-            return 4
-        elif self.is_controller():
-            chunk = 0
-        elif self.is_compute():
-            chunk = 1
-        elif self.is_ceph():
-            chunk = 2
-        elif self.is_vts_host():
-            chunk = 3
-        elif self.is_vtc():
-            chunk = 4
-        elif self.is_xrvr():
-            chunk = 5
-        elif self.is_vtf():
-            chunk = 6
-        else:
-            raise ValueError('{} Can not detect the role of server'.format(self))
-        return 4 + chunk * chunk_size + self._n
 
     def get_nic(self, nic):
         try:

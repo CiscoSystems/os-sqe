@@ -20,6 +20,18 @@ class FiServer(LabServer):
     def get_ucsm_info(self):
         return self._server_id, self._service_profile_name
 
+    def correct_port_id(self, port_id):
+        left, right = port_id.rsplit('/', 1)
+        if right not in ['a', 'b']:
+            raise ValueError('{}: port id "{}" is wrong, it has to be ending as "/a" or "/b"'.format(self, port_id))
+
+        for value in left.split('/'):
+            try:
+                int(value)
+            except ValueError:
+                raise ValueError('{}: port id "{}" is wrong, has to be "<number>" or "<number>/<number>" before "/a" or "/b"'.format(self, port_id))
+        return port_id
+
 
 class FiDirector(FiServer):
     ROLE = 'director-fi'

@@ -3,17 +3,26 @@ from lab.nodes import LabNode
 
 class LabServer(LabNode):
 
-    def __init__(self, node_id, role, lab):
+    def __init__(self, node_id, role, lab, cfg=None):
         self._tmp_dir_exists = False
         self._package_manager = None
         self._mac_server_part = None
         self._proxy_server = None
         self._server = None
 
-        super(LabServer, self).__init__(node_id=node_id, role=role, lab=lab)
+        super(LabServer, self).__init__(node_id=node_id, role=role, lab=lab, cfg=cfg)
 
     def cmd(self, cmd):
         raise NotImplementedError
+
+    def connect_node(self):
+        """This method overrides method in LabNode class and adds specific operations with NICs"""
+        from lab.network import Nic
+
+        proxy_id = self._cfg.get('proxy', None)
+        if proxy_id:
+            self.set_proxy_server(self._lab.get_node_by_id(proxy_id))
+        self._nics = {nic_id: Nic.add_nic(node=self, nic_id=nic_id, nic_desc=nic_desc) for nic_id, nic_desc in self._cfg.get('nics', {}).items()}  # some servers might be without NICs like cobbler
 
     def get_ssh_for_bash(self):
         ip, u, p = self.get_ssh()
@@ -38,35 +47,6 @@ class LabServer(LabNode):
 
     def get_ssh(self):
         return self._server.get_ssh()
-
-    def add_nic(self, nic_name, ip_or_index, net, on_wires, is_ssh):
-        import validators
-        from lab.network import Nic
-
-        ip_or_index = ip_or_index or self._assign_default_ip_index(net)
-
-        try:
-            index = int(ip_or_index)  # this is shift in the network
-            if index in [0, 1, 2, 3, -1]:
-                raise IndexError('{}:  index={} is not possible since 0 =>  network address [1,2,3] => GW addresses -1 => broadcast address'.format(self.get_node_id(), index))
-            try:
-                net.get_ip_for_index(index)
-            except (IndexError, ValueError):
-                raise IndexError('{}: index {} is out of bound of {}'.format(self.get_node_id(), index, net))
-        except ValueError:
-            if validators.ipv4(str(ip_or_index)):
-                try:
-                    index, ip = {x: str(net.get_ip_for_index(x)) for x in range(net.get_size()) if str(ip_or_index) in str(net.get_ip_for_index(x))}.items()[0]
-                except IndexError:
-                    raise ValueError('{}: ip {} is out of bound of {}'.format(self.get_node_id(), ip_or_index, net))
-            else:
-                raise ValueError('{}: specified value "{}" is neither ip nor index in network'.format(self.get_node_id(), ip_or_index))
-
-        nic = Nic(name=nic_name, node=self, net=net, net_index=index, on_wires=on_wires, is_ssh=is_ssh)
-        self._nics[nic_name] = nic
-        if is_ssh:
-            self._server.set_ssh_ip(ip=nic.get_ip_and_mask()[0])
-        return nic
 
     def r_is_nics_correct(self):
         actual_nics = self._server.r_list_ip_info(connection_attempts=1)

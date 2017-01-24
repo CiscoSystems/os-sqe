@@ -5,8 +5,8 @@ from lab import decorators
 class CimcServer(LabServer):
     RAID_0, RAID_1, RAID_10 = '0', '1', '10'
 
-    def __init__(self, node_id, lab, role):
-        super(CimcServer, self).__init__(node_id=node_id, lab=lab, role=role)
+    def __init__(self, node_id, lab, role, cfg=None):
+        super(CimcServer, self).__init__(node_id=node_id, lab=lab, role=role, cfg=cfg)
         self._handle = None
         self._dump_xml = False
         self._logout_on_each_command = False
@@ -330,6 +330,12 @@ class CimcDirector(CimcServer):
             ip = '{}/{}'.format(net[-5], net.prefixlen)
             cmd = 'ip link show br_mgmt.{0} || ( ip link add link br_mgmt name br_mgmt.{0} type vlan id {0} && ip link set dev br_mgmt.{0} up && ip address add {1} dev br_mgmt.{0} )'.format(vlan, ip)
             self.exe(cmd)
+
+    def correct_port_id(self, port_id):
+        possible_pids = ['MLOM/0', 'MLOM/1', 'LOM-1', 'LOM-2', 'MGMT']
+        if port_id not in possible_pids:
+            raise ValueError('{}: port id "{}" is wrong, whould be one of {}'.format(self, port_id, possible_pids))
+        return port_id
 
 
 class CimcController(CimcServer):

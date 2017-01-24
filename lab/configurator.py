@@ -1,12 +1,17 @@
 from lab.with_config import WithConfig
+from lab.with_log import WithLogMixIn
 
 
-class LabConfigurator(WithConfig):
+class LabConfigurator(WithConfig, WithLogMixIn):
     def sample_config(self):
         pass
 
     def __init__(self):
-        super(LabConfigurator, self).__init__(None)
+        super(LabConfigurator, self).__init__()
+        self.execute()
+
+    def __repr__(self):
+        return u'LAB CONFIGURATOR'
 
     @staticmethod
     def get_ip(msg, ip):
@@ -34,12 +39,10 @@ class LabConfigurator(WithConfig):
         bld = Server(ip=bld_ip, username=bld_username, password=bld_password)
 
         # bld.exe('cat /etc/hosts')
-
         self._mac_host = {x: 'bld' for x in bld.r_list_ip_info().keys() if validators.mac_address(x)}
 
     def process_n9(self, n9_ip):
         from fabric.operations import prompt
-        from lab.logger import lab_logger
         from lab.nodes.n9k import Nexus
         from lab.nodes.tor import Oob, Tor
         from lab.wire import Wire
@@ -55,7 +58,7 @@ class LabConfigurator(WithConfig):
         n91 = Nexus(node_id='n91', role=Nexus.ROLE, lab='fake-lab')
         n91.set_oob_creds(ip=n91_ip, username=n9k_username, password=n9k_password)
 
-        lab_logger.info('Step 1: we try to find peer info:')
+        self.log('Step 1: we try to find peer info:')
         #    nodes = OrderedDict()
         nodes = {'tor': None, 'oob': None, 'n9k': [n91], 'cimc': [], 'fi': []}
         # for node in self.get_nodes_by_class(CimcServer):
@@ -119,16 +122,23 @@ class LabConfigurator(WithConfig):
 
     def execute(self):
         from fabric.operations import prompt
-        from lab.laboratory import Laboratory
-        from lab.cimc import CimcDirector, CimcController, CimcCompute
-        from lab.vts_classes.vtc import VtsHost
 
-        yaml_path = 'cfg.yaml'
-        yaml_path = prompt(text='Enter the path of initial yaml config (default is cfg.yaml)> ') or yaml_path
+        # yaml_path = prompt(text='If mercury setup_data.yaml exists, enter the path to it, press Enter if you do not have it > ')
+        yaml_path = '~/repo/mercury/testbeds/i11tb3/setup_data.vts.yaml'
+        if yaml_path:
+            self.process_mercury_setup_data(yaml_path=yaml_path)
+        else:
+            self.log('not yet implemented way to configure')
+
+    def process_mercury_setup_data(self, yaml_path):
+        from lab.laboratory import Laboratory
 
         cfg = self.read_config_from_file(yaml_path)
 
         lab = Laboratory(config_path=None)
+        lab._lab_name = yaml_path.split('/')[-2]
+        lab._lab_type = 'MERCURY'
+        lab._id = 909
 
         for net_info in cfg['NETWORKING']['networks']:
             cidr = net_info.get('subnet')
@@ -151,8 +161,6 @@ class LabConfigurator(WithConfig):
                 raise ValueError('unxepected network segment found: {}'.format(segment))
             vlan_id = net_info['vlan_id']
             is_via_tor = net_name in ['a', 'e']
-            gateway = net_info['gateway']
-            build_node_ip = net_info.get('build_node')
             lab.add_network(net_name=net_name, cidr=cidr, vlan_id=vlan_id, mac_pattern=mac_pattern, is_via_tor=is_via_tor, is_via_pxe=False)
 
         server_vs_role = {}
@@ -160,13 +168,27 @@ class LabConfigurator(WithConfig):
             for server in list_of_servers:
                 server_vs_role[server] = role
 
-        cimc_username = cfg['CIMC-COMMON']['cimc_username']
-        cimc_password = cfg['CIMC-COMMON']['cimc_password']
+        common_cimc_username = cfg['CIMC-COMMON']['cimc_username']
+        common_cimc_password = cfg['CIMC-COMMON']['cimc_password']
+        common_ssh_username = cfg['COBBLER']['admin_username']
+        common_ssh_password = 'cisco123'
 
-        ssh_username = cfg['SERVER_COMMON']['server_username']
-        for server_name, server_info in cfg['SERVERS'].items():
-            if server_vs_role[server_name] == 'vts':
-                pass
-            cimc_ip = server['cimc_info']['cimc_ip']
-            mx_ip = server['cimc_info']['managment_ip']
-            t_ip = server['cimc_info']['tenant_ip']
+        for server_id, srv_mercury in cfg['SERVERS'].items():
+            try:
+                oob_ip = srv_mercury['cimc_info']['cimc_ip']
+                oob_username = srv_mercury['cimc_info'].get('cimc_username', common_cimc_username)
+                oob_password = srv_mercury['cimc_info'].get('cimc_password', common_cimc_password)
+                role_mercury = server_vs_role[server_id]
+
+                role_sqe = '{}{}-n9'.format(role_mercury, '-host' if role_mercury == 'vts' else '')
+                srv_sqe = {'id': server_id, 'role': role_sqe,
+                           'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password,
+                           'ssh-username': common_ssh_username, 'ssh-password': common_ssh_password}
+                mx_ip = srv_mercury['management_ip']
+                t_ip = srv_mercury['tenant_ip']
+
+                node = lab.add_node(srv_sqe)
+                node.add_nic(nic_name='mx', ip=mx_ip)
+            except KeyError as ex:
+                raise KeyError('{}: no {}'.format(server_id, ex))
+        lab.save_lab_config()

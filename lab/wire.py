@@ -1,15 +1,14 @@
 class Wire(object):
     def __repr__(self):
-        return u'{}-{}({}) -> {}:{} pc{} vlans: {}'.format(self._node_S.get_id(), self._port_S, self._mac,  self._node_N.get_id(), self._port_N, self.get_pc_id(), self._vlans)
+        return u'{}-{}({}) -> {}:{} pc{}'.format(self._node_S.get_id(), self._port_S, self._mac,  self._node_N.get_id(), self._port_N, self.get_pc_id())
 
-    def __init__(self, node_n, port_n, node_s, port_s, port_channel, vlans, mac):
+    def __init__(self, node_n, port_n, node_s, port_s, pc_id, mac):
         self._node_N = node_n
-        self._port_N = str(port_n).upper()
+        self._port_N = port_n
         self._node_S = node_s
-        self._port_S = str(port_s).upper()
-        self._pc_id = self._calculate_pc_id(port_channel)
+        self._port_S = port_s
+        self._pc_id = self._correct_pc_id(pc_id=pc_id)
         self._is_peer_link = self.is_n9_n9()
-        self._vlans = vlans  # single wire may have many vlans
         self._mac = mac
 
         self._is_intentionally_down = False
@@ -21,9 +20,32 @@ class Wire(object):
             self._node_N.wire_downstream(self)
             self._node_S.wire_upstream(self)
 
-    def _calculate_pc_id(self, pc_id):
-        """This method is to make sure that port is gets a proper int value
-        :param pc_id:
+    @staticmethod
+    def add_wire(local_node, local_port_id, peer_desc):
+        """Fabric to create a class Wire instance
+        :param local_node: class LabNode instance
+        :param local_port_id: string port id
+        :param peer_desc: dictionary e.g. {peer-id: pxe,  peer-port: 1/20, own-mac: '70:e4:22:83:e6:52'}
+        :returns class Wire instance
+        """
+        local_pid = local_node.correct_port_id(port_id=local_port_id)
+        try:
+            peer_node_id = peer_desc['peer-id']
+            peer_port_id = peer_desc['peer-port']
+        except KeyError as ex:
+            raise ValueError('Node "{}": port "{}" has no "{}"'.format(local_node, local_pid, ex.message))
+        try:
+            peer_node = local_node.lab().get_node_by_id(peer_node_id)
+        except ValueError:
+            raise ValueError('Node "{}": specified wrong peer node id: "{}"'.format(local_node, peer_node_id))
+        peer_port_id = peer_node.correct_port_id(port_id=peer_port_id)
+
+        mac = local_node.calculate_mac(port_id=local_pid, mac=peer_desc.get('own-mac'))
+        return Wire(node_n=peer_node, port_n=peer_port_id, node_s=local_node, port_s=local_pid, pc_id=peer_desc.get('port-channel'), mac=mac)
+
+    def _correct_pc_id(self, pc_id):
+        """This method is to make sure that port id gets a proper int value
+        :param pc_id: correct values are pcXXX where XXX is a number
         """
         import re
 
@@ -124,12 +146,12 @@ class Wire(object):
         return self._vlans
 
     def get_yaml_body(self):
-        return '{:6}: {{peer-id: {:6}, peer-port: {:8} {:18} {:28}}}'.format(self._port_S, self._node_N.get_id(), self._port_N,
+        return '{:6}: {{peer-id: {:6}, peer-port: {:8} {:18} {:28}}}'.format(self._port_S, self._node_N.get_node_id(), self._port_N,
                                                                              '' if self._port_S == 'MGMT' else ', port-channel: pc{}'.format(self._pc_id),
                                                                              ', own-mac: {}'.format(self._mac.lower()) if self._port_S in ['LOM-1', 'LOM-2', 'MGMT'] and self._node_S.is_cimc_server() else '')
 
     def get_peer_link_yaml_body(self):
-        return '{{own-id: {:8}, own-port: {:8}, peer-id: {:8}, peer-port: {:8}, port-channel: {:4}}}'.format(self._node_S.get_id(), self._port_S, self._node_N.get_id(), self._port_N, self._pc_id)
+        return '{{own-id: {:8}, own-port: {:8}, peer-id: {:8}, peer-port: {:8}, port-channel: {:4}}}'.format(self._node_S.get_node_id(), self._port_S, self._node_N.get_node_id(), self._port_N, self._pc_id)
 
     def get_mac(self):
         return self._mac

@@ -8,8 +8,8 @@ from lab.nodes.lab_server import LabServer
 class Xrvr(LabServer):
     ROLE = 'xrvr'
 
-    def __init__(self, node_id, role, lab):
-        super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab)
+    def __init__(self, node_id, role, lab, cfg=None):
+        super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab, cfg=cfg)
         self._expect_commands = {}
 
     def disrupt(self, method_to_disrupt, downtime):

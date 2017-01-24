@@ -29,9 +29,14 @@ class WithConfig(object):
 
     @staticmethod
     def open_artifact(name, mode):
+        from lab.with_log import lab_logger
+
         if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
             os.makedirs(WithConfig.ARTIFACTS_DIR)
-        return open(os.path.join(WithConfig.ARTIFACTS_DIR, name), mode)
+        file_path = os.path.join(WithConfig.ARTIFACTS_DIR, name)
+
+        lab_logger.info('{} created'.format(file_path))
+        return open(file_path, mode)
 
     @staticmethod
     def get_artifact_file_path(short_name):
@@ -73,12 +78,12 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
     git_reference = os.getenv('SQE_GIT_REF', 'master').split('/')[-1]
     gitlab_config_repo = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/{0}/lab_configs/'.format(git_reference)
 
-    if os.path.isfile(config_path):
-        actual_path = config_path  # it's a full path to the local file
+    if os.path.isfile(os.path.expanduser(config_path)):
+        actual_path = os.path.abspath(os.path.expanduser(config_path))  # path to existing local file
     else:
         actual_path = None
-        for conf_dir in [WithConfig.CONFIG_DIR, os.path.expanduser('~/osqe-configs/lab_configs')]:
-            try_this_path = os.path.join(conf_dir, directory, config_path)
+        for conf_dir in [WithConfig.CONFIG_DIR, os.path.expanduser('~/repo/osqe-configs/lab_configs')]:
+            try_this_path = os.path.abspath(os.path.join(conf_dir, directory, config_path))
             if os.path.isfile(try_this_path):
                 actual_path = try_this_path
         actual_path = actual_path or gitlab_config_repo + config_path

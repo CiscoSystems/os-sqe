@@ -145,7 +145,6 @@ def conf():
     from lab.configurator import LabConfigurator
 
     c = LabConfigurator()
-    c.execute()
 
 
 @task

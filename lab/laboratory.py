@@ -8,17 +8,20 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def __repr__(self):
         return self._lab_name
 
-    def sample_config(self):
+    @staticmethod
+    def sample_config():
         return 'path to lab config'
 
     def __init__(self, config_path):
         from lab import with_config
+        from lab.network import Network
+        from lab.nodes import LabNode
+        from lab.wire import Wire
 
         self._supported_lab_types = ['MERCURY', 'OSPD']
         self._unique_dict = dict()  # to make sure that all needed objects are unique
         self._nodes = list()
         self._director = None
-        self._nets = {}
         if config_path is None:
             return
 
@@ -34,20 +37,17 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         self._dns, self._ntp = self._cfg['dns'], self._cfg['ntp']
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
-        self._is_via_pxe_already_seen = False
-        for net_name, net_desc in self._cfg['nets'].items():
-            try:
-                self.add_network(net_name=net_name, cidr=net_desc['cidr'], mac_pattern=net_desc['mac-pattern'], vlan_id=str(net_desc['vlan']), is_via_tor=net_desc.get('is-via-tor', False), is_via_pxe=net_desc.get('is-pxe', False))
-            except KeyError as ex:
-                raise ValueError('Network "{}" has no {}'.format(net_name, ex.message))
+        self._nets = {net_id: Network.add_network(lab=self, net_id=net_id, net_desc=net_desc) for net_id, net_desc in self._cfg['nets'].items()}
 
-        map(lambda node_description: self._create_node(node_description), self._cfg['nodes'])  # first pass - just create nodes
-        map(lambda n: self._connect_node(n), self._nodes)  # second pass - process wires and nics section to connect node to peers
+        self._nodes = [LabNode.add_node(lab=self, node_desc=node_desc) for node_desc in self._cfg['nodes']]  # first pass - just create nodes
+        map(lambda n: n.connect_node(), self._nodes)  # second pass - process wires and nics section to connect node to peers
 
         for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
-            own_node = self.get_node_by_id(peer_link['own-id'])
-            self._process_single_wire(own_node=own_node, wire_info=(peer_link['own-port'], {'peer-id': peer_link['peer-id'], 'peer-port': peer_link['peer-port'], 'port-channel': peer_link['port-channel']}))
+            from_node = self.get_node_by_id(peer_link['own-id'])
+            Wire.add_wire(local_node=from_node, local_port_id=peer_link['own-port'], peer_desc={'peer-id': peer_link['peer-id'], 'peer-port': peer_link['peer-port'], 'port-channel': peer_link['port-channel']})
+        self.check_uniqueness()
 
+    def check_uniqueness(self):
         for node in self._nodes:
             for nic in node.get_nics().values():
                 self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
@@ -58,146 +58,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 peer_port_id = wire.get_peer_port(node)
                 self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), node_id=node.get_node_id())  # check that this peer_node-peer_port is unique
 
-    def add_network(self, net_name, cidr, vlan_id, mac_pattern, is_via_tor, is_via_pxe):
-        from lab.network import Network
-
-        if is_via_pxe:
-            if self._is_via_pxe_already_seen:
-                raise ValueError('Check net section- more then one network is marked as is-pxe')
-            else:
-                self._is_via_pxe_already_seen = True
-
-        net = Network(name=net_name, cidr=cidr, vlan=vlan_id, mac_pattern=mac_pattern)
-        self._nets[net_name] = net
-        if is_via_tor:
-            net.set_is_via_tor()
-        if is_via_pxe:
-            net.set_is_pxe()
-        return net
-
     def is_sriov(self):
         return self._is_sriov
 
-    def get_all_nets(self):
-        return self._nets
-
-    def _connect_node(self, node):
-        node_description = filter(lambda n: n['id'] == node.get_node_id(), self._cfg['nodes'])[0]
-        all_wires_of_node = node_description.get('wires', {})
-
-        proxy_id = node_description.get('proxy', None)
-        if proxy_id:
-            node.set_proxy_server(self.get_node_by_id(proxy_id))
-
-        all_nics_of_node = []  # We need to collect all vlans (1 per NIC) to assign them to wires on which this NIC sits
-        for nic_name, ip_port_is_ssh in node_description.get('nics', {}).items():  # {api: {ip: 10.23.221.184, port: pc26}, mx: {...}, ...}
-            nic_on_net = self._nets[nic_name]  # NIC name coincides with network name on which it sits
-            nic_ip_or_index = ip_port_is_ssh.get('ip')
-            nic_on_port_or_port_channel = ip_port_is_ssh['port']
-            is_ssh = ip_port_is_ssh.get('is_ssh', False)
-            # nic port might be physical port like LOM0 or port channel like pc40, wires contains a list of physical ports, some with port-channel attribute
-            if nic_on_port_or_port_channel in all_wires_of_node:  # it's  a physical port
-                nic_on_phys_port = nic_on_port_or_port_channel
-                nic_mac_or_pattern = all_wires_of_node[nic_on_phys_port].get('own-mac', nic_on_net.get_mac_pattern())  # id mac specified in wires section - use it, else construct mac for this network
-                nic_on_these_phys_port_ids = [nic_on_phys_port]  # this NIC sits on a single physical wire
-            else:  # this nic sits on port channel, find all wires which form this port channel
-                nic_on_port_channel = nic_on_port_or_port_channel
-                nic_on_these_phys_port_ids = [x[0] for x in all_wires_of_node.items() if x[1].get('port-channel') == nic_on_port_channel]
-                if len(nic_on_these_phys_port_ids) == 0:
-                    raise ValueError('{}: NIC "{}" tries to sit on port channel "{}" which does not exist'.format(node, nic_name, nic_on_port_channel))
-                nic_mac_or_pattern = nic_on_net.get_mac_pattern()  # always use MAC pattern for port channels
-
-            for port_id in nic_on_these_phys_port_ids:  # add vlan of this NIC to all wires concerned
-                all_wires_of_node[port_id].setdefault('vlans', [])
-                all_wires_of_node[port_id]['vlans'].append(nic_on_net.get_vlan())
-
-            all_nics_of_node.append({'name': nic_name, 'mac-or-pattern': nic_mac_or_pattern, 'ip-or-index': nic_ip_or_index, 'net': nic_on_net, 'own-ports': nic_on_these_phys_port_ids, 'is_ssh': is_ssh})
-
-        for wire_info in all_wires_of_node.items():  # now all vlans for wires collected, create wires and interconnect nodes by them
-            self._process_single_wire(own_node=node, wire_info=wire_info)
-
-        # now all wires are created and all peers of this node are connected
-        n_is_ssh = 0
-        for nic_info in all_nics_of_node:  # {'name': name, 'mac-or_pattern': mac, 'ip-or-index': ip, 'net': obj_of_Network, own-ports: [phys_port1, phys_port2]}
-            nic_on_these_wires = filter(lambda y: y.get_own_port(node) in nic_info.get('own-ports'), node.get_all_wires())  # find all wires, this NIC sits on
-            is_ssh = nic_info.get('is_ssh')
-            node.add_nic(nic_name=nic_info.get('name'), ip_or_index=nic_info.get('ip-or-index'), net=nic_info.get('net'), on_wires=nic_on_these_wires, is_ssh=is_ssh)
-            if is_ssh:
-                n_is_ssh += 1
-        if len(node.get_nics()) > 0 and n_is_ssh != 1:
-            raise ValueError('{}: has {} NICs marked as "is_ssh". Fix configuration.'.format(node, n_is_ssh))
-
     @staticmethod
-    def _check_port_id_correctness(node, port_id):  # correct values MGMT, LOM-1 LOM-2 MLOM-1/0 MLOM-1/1 1/25
-        from lab.cimc import CimcServer
-        from lab.nodes.n9k import Nexus
-        from lab.nodes.fi import FI, FiServer
-
-        possible_mlom = ['MLOM-0/0', 'MLOM-0/1']
-        possible_lom = ['LOM-1', 'LOM-2']
-
-        if 'MGMT' in port_id:
-            if port_id != 'MGMT':
-                raise ValueError('Port id "{}" is wrong, the only possible value is MGMT'.format(port_id))
-            return
-
-        klass = type(node)
-        if klass is CimcServer:
-            if 'MLOM' in port_id:
-                if port_id not in possible_mlom:
-                    raise ValueError('{}: connected to N9K port id "{}" is wrong, possible MLOM port ids are "{}"'.format(node, port_id, possible_mlom))
-                return
-            if 'LOM' in port_id:
-                if port_id not in possible_lom:
-                    raise ValueError('{}: Ucs connected to N9K port id "{}" is wrong, possible LOM port ids are "{}"'.format(node, port_id, possible_lom))
-                return
-        if klass in [Nexus, FI]:
-            if port_id.count('/') != 1:
-                raise ValueError('{}: port id "{}" is wrong, it should contain single "/"'.format(node, port_id))
-            for value in port_id.split('/'):
-                try:
-                    int(value)
-                except ValueError:
-                    raise ValueError('{}: port id "{}" is wrong, it has to be <number>/<number>'.format(node, port_id))
-        if klass is FiServer:
-            left, right = port_id.rsplit('/', 1)
-            if right not in ['a', 'b']:
-                raise ValueError('{}: port id "{}" is wrong, it has to be end as "/a" or "/b"'.format(node, port_id))
-
-            for value in left.split('/'):
-                try:
-                    int(value)
-                except ValueError:
-                    raise ValueError('{}: port id "{}" is wrong, has to be "<number>" or "<number>/<number>" before "/a" or "/b"'.format(node, port_id))
-
-    def _process_single_wire(self, own_node, wire_info):  # Example {MLOMl/0: {peer-id: n98,  peer-port: 1/30, own-mac: '00:FE:C8:E4:B4:CE', port-channel: pc20, vlans: [3, 4]}
-        from lab.wire import Wire
-
-        own_port_id, peer_info = wire_info
-        own_port_id = own_port_id.upper()
-        self._check_port_id_correctness(node=own_node, port_id=own_port_id)
-        try:
-            peer_node_id = peer_info['peer-id']
-            peer_port_id = peer_info['peer-port']
-        except KeyError as ex:
-            raise ValueError('Node "{}": port "{}" has no "{}"'.format(own_node.get_id(), own_port_id, ex.message))
-
-        try:
-            peer_node = self.get_node_by_id(peer_node_id)
-        except ValueError:
-            if peer_node_id in ['None', 'none']:  # this port is not connected
-                return
-            raise ValueError('Node "{}": specified wrong peer node id: "{}"'.format(own_node.get_id(), peer_node_id))
-
-        self._check_port_id_correctness(node=peer_node, port_id=peer_port_id)
-        port_channel = peer_info.get('port-channel')
-
-        vlans = peer_info.get('vlans', [])
-        mac = own_node.calculate_mac(port_id=own_port_id, mac=peer_info.get('own-mac'))
-        Wire(node_n=peer_node, port_n=peer_port_id, node_s=own_node, port_s=own_port_id, port_channel=port_channel, vlans=vlans, mac=mac)
-
-    @staticmethod
-    def _get_role_class(role):
+    def get_role_class(role):
         from lab.nodes.fi import FI, FiDirector, FiController, FiCompute, FiCeph
         from lab.nodes.n9k import Nexus
         from lab.nodes.asr import Asr
@@ -221,36 +86,14 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         except KeyError:
             raise ValueError('role "{0}" is not known,  should be one of: {1}'.format(role, roles.keys()))
 
-    def _create_node(self, node_description):
-        try:
-            node_id = node_description['id']
-            role = node_description['role']
-
-            klass = self._get_role_class(role)
-            node = klass(lab=self, node_id=node_id, role=role)
-
-            try:
-                node.set_oob_creds(ip=node_description['oob-ip'], username=node_description['oob-username'], password=node_description['oob-password'])
-                node.set_hardware_info(ru=node_description.get('ru', 'Default in Laboratory._create_node()'), model=node_description.get('model', 'Default in Laboratory._create_node()'))
-                if hasattr(node, 'set_ssh_creds'):
-                    node.set_ssh_creds(username=node_description['ssh-username'], password=node_description['ssh-password'])
-                if hasattr(node, 'set_hostname'):
-                    node.set_hostname(node_description.get('hostname', '{}.ctocllab.cisco.com'.format(node_id)))
-                if hasattr(node, 'set_ucsm_id'):
-                    node.set_ucsm_id(node_description['ucsm-id'])
-                if hasattr(node, 'set_vip'):
-                    node.set_vip(node_description['vip'])
-                if hasattr(node, 'set_sriov'):
-                    node.set_sriov(self._is_sriov)
-                self._nodes.append(node)
-                return node
-            except KeyError as ex:
-                raise ValueError('Node "{}": has no "{}"'.format(node_id, ex.message))
-        except KeyError as ex:
-            ValueError('"{}" for node "{}" is not provided'.format(ex.message, node_description))
-
     def get_id(self):
         return self._id
+
+    def get_all_nets(self):
+        return self._nets
+
+    def get_net(self, net_id):
+        return self._nets[net_id]
 
     def get_nodes_by_class(self, klass=None):
         if klass:
@@ -423,9 +266,12 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             f.write('ntp: [171.68.38.66]\n')
             f.write('\n')
 
+            f.write('networks: [\n')
+            f.write('\n]\n\n')
+
             f.write('nodes: [\n')
-            node_bodys = [node.get_yaml_body() for node in self.get_nodes_by_class()]
-            f.write(',\n\n'.join(node_bodys))
+            node_bodies = [node.get_yaml_body() for node in self.get_nodes_by_class()]
+            f.write(',\n\n'.join(node_bodies))
             f.write('\n]\n\n')
 
             f.write('peer-links: [ # Section which describes peer-links in the form {own-id: n92, own-port:  1/46, peer-id: n91, peer-port: 1/46, port-channel: pc100}\n   ')
