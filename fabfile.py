@@ -32,11 +32,9 @@ def cmd():
             device = l.get_node_by_id(device_name)
         method_names = [x for x in dir(device) if not x.startswith('_')]
         while True:
-            input_method_name = get_user_input(owner=device, options_lst=method_names + ['node', 'rpt'])
-            if input_method_name == 'node':
+            input_method_name = get_user_input(owner=device, options_lst=method_names + ['levup'])
+            if input_method_name == 'levup':
                 break
-            elif input_method_name == 'rpt':
-                continue
 
             lab_logger.info('executing {}'.format(input_method_name))
             method_to_execute = getattr(device, input_method_name)

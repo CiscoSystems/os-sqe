@@ -256,7 +256,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def save_lab_config(self):
         import functools
 
-        with self.open_artifact(name='{}.yaml'.format(self._lab_name), mode='w') as f:
+        with self.open_artifact(name='saved_{}.yaml'.format(self._lab_name), mode='w') as f:
             f.write('lab-id: {} # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n'.format(self.get_id()))
             f.write('lab-name: {} # any string to be used on logging\n'.format(self._lab_name))
             f.write('lab-type: {} # supported types: MERCURY, OSPD\n'.format(self._lab_type))

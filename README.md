@@ -1,8 +1,9 @@
-openstack-sqe is a repo for deployment and QA related tasks automation
+os-sqe is a repo for deployment and QA automation
 =============
 
 To get this repo prepared for operation, the recommended way is:
 
+    cd <REPO_CLONED_LOCATION>
     virtualenv .venv
     . .venv/bin/activate
     pip install -r requirements.txt
