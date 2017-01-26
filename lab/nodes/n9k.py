@@ -140,36 +140,36 @@ class Nexus(LabNode):
                     if is_fix():
                         self.n9_cmd(cmd)
 
-        for requested_vpc_id, requested_vpc in self._requested_topology['vpc'].items():
-
-            for requested_port_id in requested_vpc['ports']:
-                cmd = ['conf t', 'int ' + requested_port_id, 'desc ' + requested_vpc['description']]
-                if requested_port_id not in a['ports']:
-                    raise ValueError('{}: {} requests a port "{}" which does not exists, check your configuration'.format(self, requested_vpc_id, requested_port_id))
-                actual_port = a['ports'][requested_port_id]
-                if actual_port['name'] != requested_vpc['description']:
-                    self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(requested_port_id, actual_port['name'], requested_vpc['description'], ' '.join(cmd)))
+        for req_vpc_desc, req_vpc in self._requested_topology['vpc'].items():
+            req_vpc_id = req_vpc['pc_id']
+            for req_port_id in req_vpc['ports']:
+                cmd = ['conf t', 'int ' + req_port_id, 'desc ' + req_vpc_desc]
+                if req_port_id not in a['ports']:
+                    raise ValueError('{}: {} requests a port "{}" which does not exists, check your configuration'.format(self, req_vpc_id, req_port_id))
+                actual_port = a['ports'][req_port_id]
+                if actual_port['name'] != req_vpc_desc:
+                    self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(req_port_id, actual_port['name'], req_vpc_desc, ' '.join(cmd)))
                     if is_fix():
                         self.n9_cmd(cmd)
 
-            if requested_vpc_id not in a['ports']:
-                self.log('{} is not configured, should be {}'.format(requested_vpc_id, requested_vpc))
+            if req_vpc_id not in a['ports']:
+                self.log('{} is not configured, should be {}'.format(req_vpc_id, req_vpc))
             else:
-                actual_vpc = a['ports'][requested_vpc_id]
+                actual_vpc = a['ports'][req_vpc_id]
 
-                cmd = ['conf t', 'int ' + requested_vpc_id, 'desc ' + requested_vpc['description']]
-                self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(requested_vpc_id, actual_vpc['name'], requested_vpc['description'], ' '.join(cmd)))
+                cmd = ['conf t', 'int ' + req_vpc_id, 'desc ' + req_vpc_desc]
+                self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(req_vpc_id, actual_vpc['name'], req_vpc_desc, ' '.join(cmd)))
                 if is_fix():
                     self.n9_cmd(cmd)
 
-                if actual_vpc['name'] != requested_vpc['description']:
-                    cmd = ['conf t', 'int ' + requested_vpc_id, 'desc ' + requested_vpc['description']]
-                    self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(requested_vpc_id, actual_vpc['name'], requested_vpc['description'], ' '.join(cmd)))
+                if actual_vpc['name'] != req_vpc_desc:
+                    cmd = ['conf t', 'int ' + req_vpc_id, 'desc ' + req_vpc_desc]
+                    self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(req_vpc_id, actual_vpc['name'], req_vpc_desc, ' '.join(cmd)))
                     if is_fix():
                         self.n9_cmd(cmd)
-                if actual_vpc['portmode'] != requested_vpc['mode']:
-                    cmd = ['conf t', 'int ' + requested_vpc_id, 'mode ' + requested_vpc['mode']]
-                    self.log('{} has actual mode "{}" while requested is "{}", do: {}'.format(requested_vpc_id, actual_vpc['portmode'], requested_vpc['mode'], ' '.join(cmd)))
+                if actual_vpc['portmode'] != req_vpc['mode']:
+                    cmd = ['conf t', 'int ' + req_vpc_id, 'mode ' + req_vpc['mode']]
+                    self.log('{} has actual mode "{}" while requested is "{}", do: {}'.format(req_vpc_id, actual_vpc['portmode'], req_vpc['mode'], ' '.join(cmd)))
                     if is_fix():
                         self.n9_cmd(cmd)
 
@@ -289,11 +289,7 @@ class Nexus(LabNode):
             self.n9_configure_port(pc_id=None, port_id=port_id, vlans_string=info['vlans'], desc=info['description'], mode=info['mode'])
 
     def prepare_topology(self):
-        nets = self.lab().get_all_nets().values()
-
-        topo = {'vpc': {},
-                'vlans': {},
-                'peer-link': {'description': 'peerlink', 'ip': None, 'vlans': sorted([net.get_vlan_id() for net in nets]), 'ports': []}}
+        topo = {'vpc': {}, 'vlans': {}, 'peer-link': {'description': 'peerlink', 'ip': None, 'vlans': [], 'ports': []}}
 
         for wire in self.get_all_wires():
             own_port_id = wire.get_own_port(self)
@@ -317,7 +313,7 @@ class Nexus(LabNode):
                 vlan_ids = []
             elif wire.is_n9_ucs():
                 description = str(wire.get_peer_node(self))
-                vlan_ids = [x.get_vlan_id() for x in wire.get_nics()]
+                vlan_ids = sorted(set([x.get_vlan_id() for x in wire.get_nics()]))
                 mode = 'trunk' if 'MLOM' in peer_port_id else 'access'
             elif wire.is_n9_oob():
                 description = 'MGMT to OOB'
@@ -325,12 +321,16 @@ class Nexus(LabNode):
                 mode = None
             else:
                 raise ValueError('{}:  strange wire which should not go to N9K: {}'.format(self, wire))
-            topo['vpc'].setdefault(pc_id, {'description': description, 'vlans': vlan_ids, 'ports': [], 'peer-ports': [], 'mode': mode})
-            topo['vpc'][pc_id]['ports'].append(own_port_id)
-            topo['vpc'][pc_id]['peer-ports'].append(peer_port_id)
-        vlans = sorted(set(reduce(lambda lst, a: lst + a['vlans'], topo['vpc'].values(), [])))
-        topo['vlans'] = {net.get_vlan_id(): str(self.lab()) + '-' + net.get_net_id() for net in nets if net.get_vlan_id() in vlans}
-
+            topo['vpc'].setdefault(description, {'description': description, 'port-channel': pc_id, 'vlans': vlan_ids, 'ports': [], 'peer-ports': [], 'mode': mode})
+            topo['vpc'][description]['ports'].append(own_port_id)
+            topo['vpc'][description]['peer-ports'].append(peer_port_id)
+        vlan_id_vs_net = {net.get_vlan_id(): net for net in self.lab().get_all_nets().values()}
+        for vlan_id in sorted(set(reduce(lambda lst, a: lst + a['vlans'], topo['vpc'].values(), []))):  # all vlans seen on all wires
+            topo['vlans'][vlan_id] = str(self.lab()) + '-' + vlan_id_vs_net[vlan_id].get_net_id()  # fill vlan_id vs vlan name section
+            if 'peerlink' in topo['vpc']:
+                topo['vpc']['peerlink']['vlans'].append(vlan_id)
+            if 'uplink' in topo['vpc'] and vlan_id_vs_net[vlan_id].is_via_tor():
+                topo['vpc']['uplink']['vlans'].append(vlan_id)
         return topo
 
     def n9_configure_asr1k(self):

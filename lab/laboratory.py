@@ -232,10 +232,9 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         return inventory
 
-    def n9_verify(self):
-        from lab.nodes.n9k import Nexus
-
-        map(lambda x: x.n9_verify(), self.get_nodes_by_class(Nexus))
+    def lab_validate(self):
+        map(lambda x: x.r_verify_oob(), self.get_nodes_by_class())
+        map(lambda x: x.n9_verify(), self.get_n9k())
 
     def r_deploy_ssh_public(self):
         for node in self.get_director() + self.get_vts_hosts():
@@ -258,9 +257,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         addon = '-' + '-'.join(comment.split()) if comment else ''
         self.log_to_artifact(name='lab-{}{}.txt'.format(self, addon), body=logs + configs)
         self.log_to_artifact(name='configs-{}{}.txt'.format(self, addon), body=configs)
-
-    def r_verify_oob(self):
-        map(lambda x: x.r_verify_oob(), self.get_nodes_by_class())
 
     def r_get_version(self):
         cloud_version = self.get_director().r_get_version()
