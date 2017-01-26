@@ -20,7 +20,7 @@ class WithOspd7(object):
         import os
         from lab.logger import lab_logger
         from lab.with_config import read_config_from_file
-        from lab.cimc import CimcServer
+        from lab.nodes.cimc_server import CimcServer
         from lab.nodes.fi import FI
         from lab.nodes.n9k import Nexus
 

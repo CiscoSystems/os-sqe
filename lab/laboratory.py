@@ -74,7 +74,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.nodes.asr import Asr
         from lab.nodes.tor import Tor, Oob, Pxe, Terminal
         from lab.nodes.cobbler import CobblerServer
-        from lab.cimc import CimcDirector, CimcController, CimcCompute, CimcCeph
+        from lab.nodes.cimc_server import CimcDirector, CimcController, CimcCompute, CimcCeph
         from lab.nodes.xrvr import Xrvr
         from lab.nodes.vtf import Vtf
         from lab.nodes.vtc import VtsHost
@@ -119,7 +119,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             raise ValueError('Something strange with node_id={0}, list of nodes with this id: {1}'.format(node_id, nodes))
 
     def get_director(self):
-        from lab.cimc import CimcDirector
+        from lab.nodes.cimc_server import CimcDirector
         from lab.nodes.fi import FiDirector
 
         return filter(lambda x: type(x) in [CimcDirector, FiDirector], self._nodes)[0] or self.get_controllers()[0]
@@ -155,19 +155,19 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         return filter(lambda x: type(x) is Nexus, self._nodes)
 
     def get_controllers(self):
-        from lab.cimc import CimcController
+        from lab.nodes.cimc_server import CimcController
         from lab.nodes.fi import FiController
 
         return filter(lambda x: type(x) in [CimcController, FiController], self._nodes)
 
     def get_computes(self):
-        from lab.cimc import CimcCompute
+        from lab.nodes.cimc_server import CimcCompute
         from lab.nodes.fi import FiCompute
 
         return filter(lambda x: type(x) in [CimcCompute, FiCompute], self._nodes)
 
     def get_cimc_servers(self):
-        from lab.cimc import CimcServer
+        from lab.nodes.cimc_server import CimcServer
 
         return self.get_nodes_by_class(klass=CimcServer)
 

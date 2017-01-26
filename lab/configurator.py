@@ -46,7 +46,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         from lab.nodes.n9k import Nexus
         from lab.nodes.tor import Oob, Tor
         from lab.wire import Wire
-        from lab.cimc import CimcServer
+        from lab.nodes.cimc_server import CimcServer
 
         n91_ip = self.get_ip('Specify one of your N9K IP', n9_ip)
         n9k_username = 'admin'
@@ -121,7 +121,6 @@ class LabConfigurator(WithConfig, WithLogMixIn):
             nodes[1] = cimc
 
     def execute(self):
-        from fabric.operations import prompt
 
         # yaml_path = prompt(text='If mercury setup_data.yaml exists, enter the path to it, press Enter if you do not have it > ')
         yaml_path = '~/repo/mercury/testbeds/i11tb3/setup_data.vts.yaml'

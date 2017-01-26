@@ -1,6 +1,6 @@
 from lab import decorators
+from lab.nodes.cimc_server import CimcServer
 from lab.nodes.virtual_server import VirtualServer
-from lab.cimc import CimcServer
 
 
 class Vtc(VirtualServer):

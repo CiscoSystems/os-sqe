@@ -21,7 +21,7 @@ class DeployerVts(LabWorker):
     def deploy_vts(self, list_of_servers):
         from lab.nodes.vtf import Vtf
         from lab.nodes.vtc import VtsHost
-        from lab.cimc import CimcController
+        from lab.nodes.cimc_server import CimcController
 
         vts_hosts = filter(lambda host: type(host) in [VtsHost, CimcController], list_of_servers)
         if not vts_hosts:  # use controllers as VTS hosts if no special servers for VTS provided

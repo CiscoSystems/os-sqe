@@ -140,7 +140,7 @@ class Wire(object):
 
     def is_n9_ucs(self):
         from lab.nodes.n9k import Nexus
-        from lab.cimc import CimcServer
+        from lab.nodes.cimc_server import CimcServer
 
         return type(self._node_N) is Nexus and isinstance(self._node_S, CimcServer)
 
