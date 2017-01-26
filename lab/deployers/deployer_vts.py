@@ -138,10 +138,10 @@ class DeployerVts(LabWorker):
                 net_bits = nic.get_net().get_prefix_len()
                 default_route_part = '&& ip r a default via {}'.format(nic.get_net().get_gw()) if nic.is_ssh() else ''
                 vts_host.exe('ip a flush dev {n} && ip a a {ip}/{nb} dev br-{n} && ovs-vsctl add-port br-{n} {n} {rp}'.format(n=nic_name, ip=ip_nic, nb=net_bits, rp=default_route_part))
-                vts_host.exe('ip l a dev vlan{} type dummy'.format(nic.get_vlan()))
-                vts_host.exe('ovs-vsctl add-port br-{} vlan{}'.format(nic_name, nic.get_vlan()))
-                vts_host.exe('ovs-vsctl set interface vlan{} type=internal'.format(nic.get_vlan()))
-                vts_host.exe('ip l s dev vlan{} up'.format(nic.get_vlan()))
+                vts_host.exe('ip l a dev vlan{} type dummy'.format(nic.get_vlan_id()))
+                vts_host.exe('ovs-vsctl add-port br-{} vlan{}'.format(nic_name, nic.get_vlan_id()))
+                vts_host.exe('ovs-vsctl set interface vlan{} type=internal'.format(nic.get_vlan_id()))
+                vts_host.exe('ip l s dev vlan{} up'.format(nic.get_vlan_id()))
             else:
                 self.log('Bridge br-{} is already created in the previous run'.format(nic_name))
 

@@ -5,7 +5,7 @@ if '.' not in sys.path:
     sys.path.append('.')
 
 
-KNOWN_LABS = ['g7-2.yaml', 'marahaika.yaml', 'c42top.yaml', 'i13tb3.yaml']
+KNOWN_LABS = ['g7-2.yaml', 'marahaika.yaml', 'c42top.yaml', 'i11tb3.yaml']
 
 
 @task
@@ -18,44 +18,53 @@ def cmd():
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.with_log import lab_logger
 
-    lab_cfg_path = get_user_input(owner='lab yaml', options_lst=KNOWN_LABS)
-    l = Laboratory(config_path=lab_cfg_path)
-    nodes = sorted(map(lambda node: node.get_node_id(), l.get_nodes_by_class()))
-    while True:
-        device_name = get_user_input(owner=l, options_lst=['lab', 'cloud'] + nodes)
-        if device_name == 'cloud':
-            d = DeployerExisting({'hardware-lab-config': lab_cfg_path})
-            device = d.execute([])
-        elif device_name == 'lab':
-            device = l
-        else:
-            device = l.get_node_by_id(device_name)
-        method_names = [x for x in dir(device) if not x.startswith('_')]
-        while True:
-            input_method_name = get_user_input(owner=device, options_lst=method_names + ['levup'])
-            if input_method_name == 'levup':
-                break
+    def get_lab_nodes(cfg_path):
+        l = Laboratory(config_path=cfg_path)
+        return l, sorted(map(lambda node: node.get_node_id(), l.get_nodes_by_class()))
 
-            lab_logger.info('executing {}'.format(input_method_name))
-            method_to_execute = getattr(device, input_method_name)
-            parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
-            arguments = []
-            for parameter in parameters:
-                argument = prompt(text='{p}=? '.format(p=parameter))
-                if argument.startswith('['):
-                    argument = argument.strip('[]').split(',')
-                elif argument in ['True', 'true', 'yes']:
-                    argument = True
-                elif argument in ['False', 'false', 'no']:
-                    argument = False
-                arguments.append(argument)
-            # noinspection PyBroadException
-            try:
-                results = method_to_execute(*arguments)
-                device.log('RESULTS of {}():\n\n {}\n'.format(input_method_name, results))
+    def get_node_methodes(l, name):
+        if name == 'cloud':
+            d = DeployerExisting({'hardware-lab-config': lab_cfg_path}).execute([])
+        elif device_name == 'lab':
+            d = l
+        else:
+            d = l.get_node_by_id(name)
+        return d, [x for x in dir(d) if not (x.startswith('_') or x[0].isupper())]
+
+    def execute(d, name):
+        method_to_execute = getattr(d, name)
+        parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
+        arguments = []
+        for parameter in parameters:
+            argument = prompt(text='{p}=? '.format(p=parameter))
+            if argument.startswith('['):
+                argument = argument.strip('[]').split(',')
+            elif argument in ['True', 'true', 'yes']:
+                argument = True
+            elif argument in ['False', 'false', 'no']:
+                argument = False
+            arguments.append(argument)
+        try:
+            results = method_to_execute(*arguments)
+            d.log('RESULTS of {}():\n\n {}\n'.format(name, results))
+        except Exception as ex:
+            lab_logger.exception('\n Exception: {0}'.format(ex))
+
+    while True:
+        lab_cfg_path = get_user_input(options_lst=KNOWN_LABS)
+        lab, nodes = get_lab_nodes(lab_cfg_path)
+        while True:
+            device_name = get_user_input(owner=lab, options_lst=['lab', 'cloud'] + nodes)
+            if device_name == 'level_up':
+                break
+            device, method_names = get_node_methodes(l=lab, name=device_name)
+            while True:
+                method_name = get_user_input(owner=device, options_lst=method_names)
+                if method_name == 'level_up':
+                    break
+                execute(d=device, name=method_name)
                 time.sleep(1)  # sleep to prevent fabric prompt clashing with
-            except Exception as ex:
-                lab_logger.exception('\n Exception: {0}'.format(ex))
+                prompt('continue? >')
 
 
 @task
@@ -215,15 +224,17 @@ def info(lab_config_path, regex):
     l.r_collect_information(regex=regex, comment='')
 
 
-def get_user_input(owner, options_lst):
+def get_user_input(options_lst, owner=None):
     from fabric.operations import prompt
     import sys
 
     sub_list = options_lst
     while True:
-        choice = prompt('choose one of {}, q to cancel\nfor {}>'.format(sorted(sub_list), owner))
+        choice = prompt('choose one of:\n{}\nq to quit{}>'.format('\n'.join(sorted(sub_list)), '\nu to level up\nfor {}'.format(owner) if owner else ''))
         if choice == 'q':
             sys.exit(2)
+        if owner and choice == 'u':
+            return 'level_up'
         sub_list = filter(lambda x: choice in x, sub_list)
         if len(sub_list) == 1:
             return sub_list[0]  # unique match , return it
@@ -240,7 +251,7 @@ def bash():
     from lab.laboratory import Laboratory
     from fabric.api import local
 
-    lab_cfg_path = get_user_input(owner='lab', options_lst=['g7-2.yaml', 'marahaika.yaml', 'c42top.yaml', 'i13tb3.yaml'])
+    lab_cfg_path = get_user_input(options_lst=['g7-2.yaml', 'marahaika.yaml', 'c42top.yaml', 'i13tb3.yaml'])
     l = Laboratory(lab_cfg_path)
     file_name = 'tmp.aliases'
     local('rm -f ' + file_name)

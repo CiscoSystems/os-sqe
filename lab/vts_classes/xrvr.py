@@ -1,15 +1,15 @@
-from lab.nodes.lab_server import LabServer
+from lab.nodes.virtual_server import VirtualServer
 
 # use telnet 0 5087 from xrnc to see the bootstrap process just after spinning up XRNC VM
 # configuration is kept in sudo cat /etc/vpe/vsocsr/dl_server.ini on cisco@xrnc
 # error loging in /var/log/sr/dl_registration_errors.log
 
 
-class Xrvr(LabServer):
+class Xrvr(VirtualServer):
     ROLE = 'xrvr'
 
-    def __init__(self, node_id, role, lab, cfg=None):
-        super(Xrvr, self).__init__(node_id=node_id, role=role, lab=lab, cfg=cfg)
+    def __init__(self, **kwargs):
+        super(Xrvr, self).__init__(**kwargs)
         self._expect_commands = {}
 
     def disrupt(self, method_to_disrupt, downtime):
@@ -226,7 +226,7 @@ router bgp {{ bgp_asn }}
         xrvr_mx_ip = mx_nic.get_net().get_ip_for_index(200 + int(self.get_node_id()[-1]))
 
         dl_te_ip, te_net_mask = te_nic.get_ip_and_mask()
-        te_vlan = te_nic.get_net().get_vlan()
+        te_vlan = te_nic.get_net().get_vlan_id()
         te_gw, te_net_len = te_nic.get_net().get_gw(), te_nic.get_net().get_prefix_len()
         xrvr_te_ip = te_nic.get_net().get_ip_for_index(200 + int(self.get_node_id()[-1]))
 

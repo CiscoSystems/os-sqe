@@ -148,7 +148,7 @@ class FI(LabNode):
         return self.cmd('scope org; create dynamic-vnic-conn-policy {name}; set dynamic-eth 20; set adapter-policy Linux; commit-buffer'.format(name=policy_name))
 
     def set_dynamic_vnic_connection_policy(self, profile, vnic, policy_name):
-        self.cmd('scope org; scope service-profile {p}; scope vnic {v}; set adapter-policy Linux; enter dynamic-conn-policy-ref {n}; commit-buffer'.format(p=profile, v=vnic.get_name(), n=policy_name))
+        self.cmd('scope org; scope service-profile {p}; scope vnic {v}; set adapter-policy Linux; enter dynamic-conn-policy-ref {n}; commit-buffer'.format(p=profile, v=vnic.get_net_id(), n=policy_name))
 
     def list_dynamic_vnic_policy(self, profile):
         return self.cmd('scope org; scope service-profile {0}; sh dynamic-vnic-conn-policy'.format(profile))
@@ -274,10 +274,10 @@ exit
             self.create_service_profile(service_profile_name, is_sriov)
 
             for order, vnic in enumerate(server.get_nics(), start=1):
-                vlans = self.lab().get_net_vlans(vnic.get_name())
-                self.create_vnic_with_vlans(profile=service_profile_name, vnic=vnic.get_name(), mac=vnic.get_mac(), order=order, vlans=vlans)
+                vlans = self.lab().get_net_vlans(vnic.get_net_id())
+                self.create_vnic_with_vlans(profile=service_profile_name, vnic=vnic.get_net_id(), mac=vnic.get_mac(), order=order, vlans=vlans)
 
-                if is_sriov and 'compute' in service_profile_name and vnic.get_name() in ['eth1']:
+                if is_sriov and 'compute' in service_profile_name and vnic.get_net_id() in ['eth1']:
                     self.set_dynamic_vnic_connection_policy(profile=service_profile_name, vnic=vnic, policy_name=dynamic_vnic_policy_name)
 
             self.set_boot_policy_to_service_profile(profile=service_profile_name, policy_name='pxe-ext' if 'director' in server.name() else 'pxe-int')

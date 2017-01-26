@@ -1,15 +1,15 @@
 from lab.cimc import CimcServer
-from lab.nodes.lab_server import LabServer
+from lab.nodes.virtual_server import VirtualServer
 from lab.vts_classes.vtf import Vtf
 from lab.vts_classes.xrvr import Xrvr
 from lab import decorators
 
 
-class Vtc(LabServer):
+class Vtc(VirtualServer):
     ROLE = 'vtc'
 
-    def __init__(self, node_id, role, lab, cfg=None):
-        super(Vtc, self).__init__(node_id=node_id, role=role, lab=lab, cfg=cfg)
+    def __init__(self, **kwargs):
+        super(Vtc, self).__init__(**kwargs)
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
         self._is_api_via_vip = True
 
@@ -145,7 +145,7 @@ class Vtc(LabServer):
 
         mx_nic = self.get_nic('mx')  # also sits on mx network
         mx_ip, mx_net_mask = mx_nic.get_ip_and_mask()
-        mx_vlan = mx_nic.get_net().get_vlan()
+        mx_vlan = mx_nic.get_net().get_vlan_id()
 
         cfg_body = cfg_tmpl.format(vtc_a_ip=a_ip, a_net_mask=a_net_mask, a_gw=a_gw, vtc_mx_ip=mx_ip, mx_net_mask=mx_net_mask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=ssh_username, password=ssh_password, hostname=hostname)
         net_part = net_part_tmpl.format(a_nic_name='a', mx_nic_name='mx', mx_vlan=mx_vlan)

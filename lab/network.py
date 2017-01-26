@@ -1,17 +1,17 @@
 class Network(object):
-    def __init__(self, lab, name, cidr, vlan, mac_pattern, is_via_tor=False, is_pxe=False):
+    def __init__(self, lab, net_id, cidr, vlan, mac_pattern, is_via_tor=False, is_pxe=False):
         from netaddr import IPNetwork
 
         self._lab = lab
         self._net = IPNetwork(cidr)
-        self._name = name
+        self._net_id = net_id
         self._vlan = vlan  # single network needs to sit on single vlan
         self._mac_pattern = mac_pattern
         self._is_pxe = is_pxe  # NICs on this network will be configured as PXE enabled
         self._is_via_tor = is_via_tor  # this network if supposed to go out of lab's TOR
 
     def __repr__(self):
-        return u'net: {} {} {}'.format(self._name, self._net, self._vlan)
+        return u'net: {} {} {}'.format(self._net_id, self._net, self._vlan)
 
     @staticmethod
     def add_network(lab, net_id, net_desc):
@@ -23,14 +23,14 @@ class Network(object):
         """
 
         try:
-            return Network(lab=lab, name=net_id, cidr=net_desc['cidr'], vlan=net_desc['vlan'], mac_pattern=net_desc['mac-pattern'], is_via_tor=net_desc.get('is-via-tor', False), is_pxe=net_desc.get('is-pxe', False))
+            return Network(lab=lab, net_id=net_id, cidr=net_desc['cidr'], vlan=str(net_desc['vlan']), mac_pattern=net_desc['mac-pattern'], is_via_tor=net_desc.get('is-via-tor', False), is_pxe=net_desc.get('is-pxe', False))
         except KeyError as ex:
             raise ValueError('network {} does not specify {}'.format(net_id, ex))
 
-    def get_name(self):
-        return self._name
+    def get_net_id(self):
+        return self._net_id
 
-    def get_vlan(self):
+    def get_vlan_id(self):
         return self._vlan
 
     def get_mac_pattern(self):
@@ -89,6 +89,7 @@ class Nic(object):
         self._is_ssh = is_ssh
 
         for wire in self._on_wires:
+            wire.add_nic(self)
             own_port_id = wire.get_own_port(node)
             self._port_ids.append(own_port_id)
             self._is_on_lom = own_port_id in ['LOM-1', 'LOM-2']
@@ -150,8 +151,8 @@ class Nic(object):
     def get_gw_with_prefix(self):
         return '{}/{}'.format(self.get_gw(), self._net.get_prefix_len())
 
-    def get_vlan(self):
-        return self._net.get_vlan()
+    def get_vlan_id(self):
+        return self._net.get_vlan_id()
 
     def get_macs(self):
         return self._macs

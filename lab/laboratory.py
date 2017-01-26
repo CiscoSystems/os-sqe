@@ -39,7 +39,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         self._nets = {net_id: Network.add_network(lab=self, net_id=net_id, net_desc=net_desc) for net_id, net_desc in self._cfg['nets'].items()}
 
-        self._nodes = [LabNode.add_node(lab=self, node_desc=node_desc) for node_desc in self._cfg['nodes']]  # first pass - just create nodes
+        map(lambda nd: LabNode.add_node(lab=self, node_desc=nd), self._cfg['nodes'])  # first pass - just create nodes
         map(lambda n: n.connect_node(), self._nodes)  # second pass - process wires and nics section to connect node to peers
 
         for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
@@ -48,11 +48,17 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         self.check_uniqueness()
 
     def check_uniqueness(self):
+        for net in self.get_all_nets().values():
+            self.make_sure_that_object_is_unique(obj=net.get_vlan_id(), node_id=net)
+            self.make_sure_that_object_is_unique(obj=net.get_cidr(), node_id=net)
+            self.make_sure_that_object_is_unique(obj=net.get_mac_pattern(), node_id=net)
+
         for node in self._nodes:
-            for nic in node.get_nics().values():
-                self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
-                for mac in nic.get_macs():
-                    self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_node_id())  # check that all MAC are unique
+            if hasattr(node, 'get_nics'):
+                for nic in node.get_nics().values():
+                    self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
+                    for mac in nic.get_macs():
+                        self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_node_id())  # check that all MAC are unique
             for wire in node.get_all_wires():
                 peer_node = wire.get_peer_node(node)
                 peer_port_id = wire.get_peer_port(node)

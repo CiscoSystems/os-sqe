@@ -9,20 +9,22 @@ class LabNode(WithLogMixIn, WithConfig):
 
     _ROLE_VS_COUNT = {}
 
-    def __init__(self, node_id, role, lab, cfg=None):
-        self._lab = lab     # link to parent Laboratory object
-        self._id = node_id  # some id which unique in the given role, usually role + some small integer
-        self._role = role   # which role this node play, possible roles are defined in Laboratory
-        role = role.split('-')[0]  # e.g. control-fi and control-cimc are the same for counting
+    def __init__(self, **kwargs):
+        self._lab = kwargs.pop('lab')        # link to parent Laboratory object
+        self._id = kwargs['id']              # some id which unique in the given role, usually role + some small integer
+        self._role = kwargs['role']          # which role this node play, possible roles are defined in Laboratory
+        self._oob_ip, self._oob_username, self._oob_password = kwargs['oob-ip'], kwargs['oob-username'], kwargs['oob-password']
+
+        self._nics = dict()                  # list of NICs, will be filled in connect_node via class Wire
+        self._ru, self._model = kwargs.get('ru', 'RU_XXX'), kwargs.get('model', 'MODEL_XXX')
+
+        role = self._role.split('-')[0]      # e.g. control-fi and control-cimc are the same for counting
         self._ROLE_VS_COUNT.setdefault(role, 0)
         self._ROLE_VS_COUNT[role] += 1
         self._n = self._ROLE_VS_COUNT[role]  # number of this node in a list of nodes for this role
-        self._oob_ip, self._oob_username, self._oob_password = 'ip_XXX', 'us_XXX', 'pass_XXX'
-        self._nics = dict()  # list of NICs
-        self._ru, self._model = 'RU_XXX', 'MODEL_XXX'
-        self._cfg = cfg  # initial configuration dictionary as provided in lab config file
-
+        self._cfg = kwargs                   # initial configuration dictionary as provided in lab config file
         self._wires = []
+        self._lab.get_nodes_by_class().append(self)
 
     def __repr__(self):
         return u'{} {}'.format(self.get_lab_id(), self.get_node_id())
@@ -30,30 +32,12 @@ class LabNode(WithLogMixIn, WithConfig):
     @staticmethod
     def add_node(lab, node_desc):
         try:
-            node_id = node_desc['id']
             role = node_desc['role']
-
             klass = lab.get_role_class(role)
-            node = klass(lab=lab, node_id=node_id, role=role, cfg=node_desc)
-
-            try:
-                node.set_oob_creds(ip=node_desc['oob-ip'], username=node_desc['oob-username'], password=node_desc['oob-password'])
-                node.set_hardware_info(ru=node_desc.get('ru', 'RU-XXX'), model=node_desc.get('model', 'MODEL-XXX'))
-                if hasattr(node, 'set_ssh_creds'):
-                    node.set_ssh_creds(username=node_desc['ssh-username'], password=node_desc['ssh-password'])
-                if hasattr(node, 'set_hostname'):
-                    node.set_hostname(node_desc.get('hostname', '{}.ctocllab.cisco.com'.format(node_id)))
-                if hasattr(node, 'set_ucsm_id'):
-                    node.set_ucsm_id(node_desc['ucsm-id'])
-                if hasattr(node, 'set_vip'):
-                    node.set_vip(node_desc['vip'])
-                if hasattr(node, 'set_sriov'):
-                    node.set_sriov(node_desc['sriov'])
-                return node
-            except KeyError as ex:
-                raise ValueError('Node "{}": has no "{}"'.format(node_id, ex.message))
+            node_desc['lab'] = lab
+            return klass(**node_desc)
         except KeyError as ex:
-            ValueError('"{}" for node "{}" is not provided'.format(ex.message, node_desc))
+            raise ValueError('"{}"\nmust have parameter "{}"'.format(node_desc, ex))
         except TypeError as ex:
             raise TypeError('{} for the node {} of role {}'.format(ex, node_desc.get('id'), node_desc.get('role')))
 
@@ -79,9 +63,6 @@ class LabNode(WithLogMixIn, WithConfig):
     def get_role(self):
         return self._role
 
-    def get_peer_link_wires(self):
-        return [x for x in self._wires if x.is_n9_n9()]
-
     def get_n_in_role(self):
         return self._n
 
@@ -101,36 +82,6 @@ class LabNode(WithLogMixIn, WithConfig):
     def get_wires_to(self, node):
         """Returns wires to given node"""
         return filter(lambda x: x.get_peer_node(self) == node, self.get_all_wires())
-
-    def get_nic(self, nic):
-        try:
-            return self._nics[nic]
-        except KeyError:
-            return RuntimeError('{}: is not on {} network'.format(self.get_node_id(), nic))
-
-    def get_nics(self):
-        return self._nics
-
-    def get_ip_api(self):
-        return self.get_nic('a').get_ip_and_mask()[0]
-
-    def get_ip_api_with_prefix(self):
-        return self.get_nic('a').get_ip_with_prefix()
-
-    def get_ip_mx(self):
-        return self.get_nic('mx').get_ip_and_mask()[0]
-
-    def get_ip_mx_with_prefix(self):
-        return self.get_nic('mx').get_ip_with_prefix()
-
-    def get_gw_mx_with_prefix(self):
-        return self.get_nic('mx').get_gw_with_prefix()
-
-    def get_ip_t(self):
-        return self.get_nic('t').get_ip_and_mask()[0]
-
-    def get_ip_t_with_prefix(self):
-        return self.get_nic('t').get_ip_with_prefix()
 
     @abc.abstractmethod
     def cmd(self, cmd):

@@ -19,10 +19,10 @@ class WithMercuryMixIn(object):
         lab.make_sure_that_object_is_unique(str(lb_ip_a), 'MERCURY')
         lab.make_sure_that_object_is_unique(str(lb_ip_m), 'MERCURY')
 
-        a_cidr, a_vlan, a_gw = a_net.get_cidr(), a_net.get_vlan(), a_net.get_gw()
-        t_cidr, t_vlan, t_gw = t_net.get_cidr(), t_net.get_vlan(), t_net.get_gw()
-        m_cidr, m_vlan, m_gw = m_net.get_cidr(), m_net.get_vlan(), m_net.get_gw()
-        e_vlan = e_net.get_vlan()
+        a_cidr, a_vlan, a_gw = a_net.get_cidr(), a_net.get_vlan_id(), a_net.get_gw()
+        t_cidr, t_vlan, t_gw = t_net.get_cidr(), t_net.get_vlan_id(), t_net.get_gw()
+        m_cidr, m_vlan, m_gw = m_net.get_cidr(), m_net.get_vlan_id(), m_net.get_gw()
+        e_vlan = e_net.get_vlan_id()
 
         m_pool = '{} to {}'.format(m_net.get_ip_for_index(10), m_net.get_ip_for_index(50))
         t_pool = '{} to {}'.format(t_net.get_ip_for_index(10), t_net.get_ip_for_index(50))

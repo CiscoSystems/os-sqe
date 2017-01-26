@@ -5,8 +5,8 @@ from lab import decorators
 class CimcServer(LabServer):
     RAID_0, RAID_1, RAID_10 = '0', '1', '10'
 
-    def __init__(self, node_id, lab, role, cfg=None):
-        super(CimcServer, self).__init__(node_id=node_id, lab=lab, role=role, cfg=cfg)
+    def __init__(self, **kwargs):
+        super(CimcServer, self).__init__(**kwargs)
         self._handle = None
         self._dump_xml = False
         self._logout_on_each_command = False
@@ -245,7 +245,7 @@ class CimcServer(LabServer):
                             self.cimc_delete_vnic(vnic_name=name)
                         name = 'eth' + name[-1]
                     if name in actual_vnics:
-                        if mac == actual_vnics[name]['mac'] and str(nic.get_vlan()) == str(actual_vnics[name]['vlan']):  # this nic is already in CIMC
+                        if mac == actual_vnics[name]['mac'] and str(nic.get_vlan_id()) == str(actual_vnics[name]['vlan']):  # this nic is already in CIMC
                             self.logger(message='vNIC {} is already configured'.format(name))
                             if name in actual_vnics:
                                 actual_vnics.pop(name)
@@ -254,7 +254,7 @@ class CimcServer(LabServer):
                             self.logger('deleting {} since mac or vlan is not correct: {}'.format(name, actual_vnics[name]))
                             self.cimc_delete_vnic(vnic_name=name)
                     pci_slot_id, uplink_port = port_id.split('/')
-                    self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order='ANY', name=name, mac=mac, vlan=nic.get_vlan(), is_pxe_enabled=nic.is_pxe())
+                    self.cimc_create_vnic(pci_slot_id=pci_slot_id, uplink_port=uplink_port, order='ANY', name=name, mac=mac, vlan=nic.get_vlan_id(), is_pxe_enabled=nic.is_pxe())
                     if name in actual_vnics:
                         actual_vnics.pop(name)
         for vnic_name in actual_vnics.keys():  # delete all actual which are not requested

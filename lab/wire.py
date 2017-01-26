@@ -10,6 +10,7 @@ class Wire(object):
         self._pc_id = pc_id
         self._mac = mac
         self._is_intentionally_down = False
+        self._nics = set()  # list of NICs sitting on this wire, many to many relations
 
         self._pc_id = self._correct_pc_id(pc_id=pc_id)
         node_n.attach_wire(self)
@@ -40,6 +41,12 @@ class Wire(object):
         mac = local_node.calculate_mac(port_id=local_pid, mac=peer_desc.get('own-mac'))
         return Wire(node_n=peer_node, port_n=peer_port_id, node_s=local_node, port_s=local_pid, pc_id=peer_desc.get('port-channel'), mac=mac)
 
+    def add_nic(self, nic):
+        self._nics.add(nic)
+
+    def get_nics(self):
+        return self._nics
+
     def _correct_pc_id(self, pc_id):
         """This method is to make sure that port id gets a proper int value
         :param pc_id: correct values are port-channelXXX where XXX is a number or one of uplink and peerlink
@@ -59,7 +66,9 @@ class Wire(object):
                 raise ValueError('{}: uplink should be between N9 and tor'.format(self))
         else:
             try:
-                pc_id_int = int(str(pc_id).replace('port-channel', ''))  # tries to check int part
+                if not str(pc_id).startswith('port-channel'):
+                    raise ValueError
+                pc_id_int = int(pc_id.replace('port-channel', ''))  # tries to check int part
                 if self.is_n9_fi() and pc_id_int >= 256:
                     raise ValueError('{}: pc id "{}" is not suitable for FI: int part must be less then 256'.format(self, pc_id))
                 return pc_id
@@ -105,6 +114,12 @@ class Wire(object):
 
         return type(self._node_N) is Tor and type(self._node_S) is Nexus
 
+    def is_n9_oob(self):
+        from lab.nodes.n9k import Nexus
+        from lab.nodes.tor import Oob
+
+        return type(self._node_N) is Oob and type(self._node_S) is Nexus
+
     def is_n9_pxe(self):
         from lab.nodes.n9k import Nexus
         from lab.nodes.tor import Pxe
@@ -139,9 +154,6 @@ class Wire(object):
         from lab.nodes.cobbler import CobblerServer
 
         return isinstance(self._node_N, Nexus) and isinstance(self._node_S, CobblerServer)
-
-    def get_vlans(self):
-        return self._vlans
 
     def get_yaml_body(self):
         return '{:6}: {{peer-id: {:6}, peer-port: {:8} {:18} {:28}}}'.format(self._port_S, self._node_N.get_node_id(), self._port_N,

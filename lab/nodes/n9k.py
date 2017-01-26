@@ -4,6 +4,10 @@ from lab.nodes import LabNode
 class Nexus(LabNode):
     ROLE = 'n9'
 
+    def __init__(self, **kwargs):
+        super(Nexus, self).__init__(**kwargs)
+        self.__requested_topology = None
+
     @property
     def _requested_topology(self):
         if self.__requested_topology is None:
@@ -12,9 +16,18 @@ class Nexus(LabNode):
 
     def get_pcs_to_fi(self):
         """Returns a list of pcs used on connection to peer N9K and both FIs"""
-        return set([str(x.get_pc_id()) for x in self._downstream_wires if x.is_n9_fi()])
+        return set([str(x.get_pc_id()) for x in self._wires if x.is_n9_fi()])
 
-    def _allow_feature_nxapi(self):
+    def get_peer_link_wires(self):
+        return [x for x in self._wires if x.is_n9_n9()]
+
+    def get_peer_link_id(self):
+        return self.get_peer_link_wires()[0].get_pc_id()
+
+    def get_peer_linked_n9k(self):
+        return self.get_peer_link_wires()[0].get_peer_node(self)
+
+    def n9_allow_feature_nxapi(self):
         from fabric.api import settings, run
 
         oob_ip, oob_u, oob_p = self.get_oob()
@@ -33,7 +46,7 @@ class Nexus(LabNode):
             result = requests.post('http://{0}/ins'.format(oob_ip), auth=(oob_u, oob_p), headers={'content-type': 'application/json-rpc'}, data=data, timeout=timeout)
             return result.json()
         except requests.exceptions.ConnectionError:
-            self._allow_feature_nxapi()
+            self.n9_allow_feature_nxapi()
             return self._rest_api(commands=commands, timeout=timeout)
         except requests.exceptions.ReadTimeout:
             raise RuntimeError('{}: timed out after {} secs'.format(self, timeout))
@@ -247,12 +260,6 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'feature vpc'])
         self.cmd(['conf t', 'vpc domain {0}'.format(domain_id), 'peer-keepalive destination {0}'.format(peer_ip)], timeout=60)
 
-    def get_peer_link_id(self):
-        return self._peer_link_wires[0].get_pc_id()
-
-    def get_peer_linked_n9k(self):
-        return self._peer_link_wires[0].get_peer_node(self)
-
     def n9_add_vlan_range(self, interfaces):
         vlan_range = self.lab().get_vlan_range().replace(':', '-')
         commands = ['conf t', 'vlan {0}'.format(vlan_range), 'no shut', 'exit', 'int e{0}'.format(',e'.join(interfaces)), 'switchport trunk allowed vlan add {0}'.format(vlan_range), 'end']
@@ -273,7 +280,7 @@ class Nexus(LabNode):
         vpc = self._requested_topology['vpc']
         for pc_id, info in vpc.items():
             self.n9_create_port_channel(pc_id=pc_id, desc=info['description'], port_ids=info['ports'], mode=info['mode'], vlans_string=info['vlans'])
-            if self._peer_link_wires:
+            if self.get_peer_link_wires():
                 self.n9_create_vpc(pc_id)
 
     def n9_configure_ports(self):
@@ -282,62 +289,53 @@ class Nexus(LabNode):
             self.n9_configure_port(pc_id=None, port_id=port_id, vlans_string=info['vlans'], desc=info['description'], mode=info['mode'])
 
     def prepare_topology(self):
-        import functools
+        nets = self.lab().get_all_nets().values()
 
-        requested_vlans = {}
+        topo = {'vpc': {},
+                'vlans': {},
+                'peer-link': {'description': 'peerlink', 'ip': None, 'vlans': sorted([net.get_vlan_id() for net in nets]), 'ports': []}}
 
-        vlan_vs_net = {net.get_vlan(): net for net in self.lab().get_all_nets().values()}
-        vlans_via_tor = []
-        vlans_on_downstream = set(functools.reduce(lambda lst, w: lst + w.get_vlans(), self._downstream_wires, []))
-        for vlan_id in vlans_on_downstream:
-            net = vlan_vs_net[vlan_id]
-            if net.is_via_tor():
-                vlans_via_tor.append(vlan_id)
-            vlan_name = '{lab_name}-{net_name}'.format(lab_name=self._lab, net_name=net.get_name())
-            requested_vlans[str(vlan_id)] = vlan_name
-
-        requested_vpc = {}
-        requested_peer_link = {'description': 'peer link', 'ip': None, 'vlans': ','.join(requested_vlans.keys()), 'ports': []}
         for wire in self.get_all_wires():
             own_port_id = wire.get_own_port(self)
-            if own_port_id == 'MGMT':
-                continue
-            pc_id = wire.get_pc_id()
+            peer_port_id = wire.get_peer_port(self)
+            pc_id = wire.get_pc_id() or own_port_id
             if wire.is_n9_n9():
-                requested_peer_link['pc-id'] = pc_id
-                requested_peer_link['ports'].append(own_port_id)
-                requested_peer_link['ip'] = wire.get_peer_node(self).get_oob()[0]
-                continue
+                description = 'peerlink'
+                mode = 'trunk'
+                vlan_ids = []  # vlans for peerlink will be collected later in this method
             elif wire.is_n9_tor():
-                description = 'TOR uplink'
-                vlans_on_wire = vlans_via_tor
+                description = 'uplink'
+                vlan_ids = []  # vlans for uplink will be collected later in this method
                 mode = 'trunk'
             elif wire.is_n9_pxe():
-                description = 'PXE link'
-                vlans_on_wire = ['1']
+                description = 'PXE'
+                vlan_ids = ['1']
                 mode = 'access'
             elif wire.is_n9_fi():
-                description = '{} FI down link'.format(self.lab())
+                description = '{} FI'.format(self.lab())
                 mode = 'trunk'
-                vlans_on_wire = wire.get_vlans()
+                vlan_ids = []
             elif wire.is_n9_ucs():
                 description = str(wire.get_peer_node(self))
-                vlans_on_wire = wire.get_vlans()
-                peer_port_id = wire.get_peer_port(self)
-                if peer_port_id not in ['MLOM/0', 'MLOM/1', 'LOM-1', 'LOM-2']:
-                    raise ValueError('{}: has strange port {}'.format(wire.get_peer_node(self), peer_port_id))
+                vlan_ids = [x.get_vlan_id() for x in wire.get_nics()]
                 mode = 'trunk' if 'MLOM' in peer_port_id else 'access'
+            elif wire.is_n9_oob():
+                description = 'MGMT to OOB'
+                vlan_ids = []
+                mode = None
             else:
                 raise ValueError('{}:  strange wire which should not go to N9K: {}'.format(self, wire))
-            vlans_string = ','.join(vlans_on_wire)
-            pc_id = own_port_id if pc_id is None else pc_id  # if pc_id not specified - it's a single interface wire
-            requested_vpc.setdefault(pc_id, {'description': description, 'vlans': vlans_string, 'ports': [], 'mode': mode})
-            requested_vpc[pc_id]['ports'].append('Ethernet' + str(own_port_id))
-        return {'vpc': requested_vpc, 'vlans': requested_vlans, 'peer-link': requested_peer_link}
+            topo['vpc'].setdefault(pc_id, {'description': description, 'vlans': vlan_ids, 'ports': [], 'peer-ports': [], 'mode': mode})
+            topo['vpc'][pc_id]['ports'].append(own_port_id)
+            topo['vpc'][pc_id]['peer-ports'].append(peer_port_id)
+        vlans = sorted(set(reduce(lambda lst, a: lst + a['vlans'], topo['vpc'].values(), [])))
+        topo['vlans'] = {net.get_vlan_id(): str(self.lab()) + '-' + net.get_net_id() for net in nets if net.get_vlan_id() in vlans}
+
+        return topo
 
     def n9_configure_asr1k(self):
         self.cmd(['conf t', 'int po{0}'.format(self.get_peer_link_id()), 'shut'])
-        asr = filter(lambda x: x.is_n9_asr(), self._upstream_wires)
+        asr = filter(lambda x: x.is_n9_asr(), self._wires)
         self.n9_configure_vxlan(asr[0].get_own_port(self))
 
     def n9_cleanup(self):

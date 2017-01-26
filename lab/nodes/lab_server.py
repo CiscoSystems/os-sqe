@@ -3,14 +3,18 @@ from lab.nodes import LabNode
 
 class LabServer(LabNode):
 
-    def __init__(self, node_id, role, lab, cfg=None):
+    def __init__(self, **kwargs):
         self._tmp_dir_exists = False
         self._package_manager = None
         self._mac_server_part = None
         self._proxy_server = None
         self._server = None
+        self._virtual_servers = set()  # virtual servers running on this hardware server
 
-        super(LabServer, self).__init__(node_id=node_id, role=role, lab=lab, cfg=cfg)
+        super(LabServer, self).__init__(**kwargs)
+
+    def add_virtual_server(self, server):
+        self._virtual_servers.add(server)
 
     def cmd(self, cmd):
         raise NotImplementedError
@@ -24,6 +28,36 @@ class LabServer(LabNode):
         if proxy_id:
             self.set_proxy_server(self._lab.get_node_by_id(proxy_id))
         self._nics = {nic_id: Nic.add_nic(node=self, nic_id=nic_id, nic_desc=nic_desc) for nic_id, nic_desc in self._cfg.get('nics', {}).items()}  # some servers might be without NICs like cobbler
+
+    def get_nic(self, nic):
+        try:
+            return self._nics[nic]
+        except KeyError:
+            return RuntimeError('{}: is not on {} network'.format(self.get_node_id(), nic))
+
+    def get_nics(self):
+        return self._nics
+
+    def get_ip_api(self):
+        return self.get_nic('a').get_ip_and_mask()[0]
+
+    def get_ip_api_with_prefix(self):
+        return self.get_nic('a').get_ip_with_prefix()
+
+    def get_ip_mx(self):
+        return self.get_nic('mx').get_ip_and_mask()[0]
+
+    def get_ip_mx_with_prefix(self):
+        return self.get_nic('mx').get_ip_with_prefix()
+
+    def get_gw_mx_with_prefix(self):
+        return self.get_nic('mx').get_gw_with_prefix()
+
+    def get_ip_t(self):
+        return self.get_nic('t').get_ip_and_mask()[0]
+
+    def get_ip_t_with_prefix(self):
+        return self.get_nic('t').get_ip_with_prefix()
 
     def get_ssh_for_bash(self):
         ip, u, p = self.get_ssh()
