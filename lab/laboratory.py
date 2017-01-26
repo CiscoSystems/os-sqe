@@ -144,6 +144,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         return filter(lambda x: type(x) is Xrvr, self._nodes)
 
+    def get_vft(self):
+        from lab.nodes.vtf import Vtf
+
+        return filter(lambda x: type(x) is Vtf, self._nodes)
+
     def get_n9k(self):
         from lab.nodes.n9k import Nexus
 

@@ -1,9 +1,6 @@
-from lab.vts_classes.vtf import Vtf
-
 from lab import decorators
-from lab.cimc import CimcServer
 from lab.nodes.virtual_server import VirtualServer
-from lab.nodes.xrvr import Xrvr
+from lab.cimc import CimcServer
 
 
 class Vtc(VirtualServer):
@@ -63,28 +60,25 @@ class Vtc(VirtualServer):
         return self._rest_api(resource=cmd, headers={})
 
     def get_vtf(self, compute_hostname):
-        for vtf in self.lab().get_nodes_by_class(Vtf):
+        for vtf in self.lab().get_vtf():
             n = vtf.get_compute_node()
             if n.actuate_hostname(refresh=False) == compute_hostname:
                 return vtf
 
     def get_xrvr_names(self):
-        return map(lambda x: x.get_id(), self.get_xrvrs())
-
-    def get_xrvrs(self):
-        return self.lab().get_nodes_by_class(Xrvr)
+        return map(lambda x: x.get_id(), self.lab().get_xrvr())
 
     def r_vtc_get_vtfs(self):
         ans = self._rest_api(resource='GET /api/running/cisco-vts', headers={'Accept': 'application/vnd.yang.data+json'})
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
-        vtf_nodes = self.lab().get_nodes_by_class(Vtf)
+        vtf_nodes = self.lab().get_vtf()
         for vtf in vtf_nodes:
             _, username, password = vtf.get_oob()
             vtf.set_oob_creds(ip=vtf_ips_from_vtc.pop(0), username=username, password=password)
         return vtf_nodes
 
     def r_vtc_get_xrvrs(self):
-        xrvr_nodes = self.lab().get_nodes_by_class(Xrvr)
+        xrvr_nodes = self.lab().get_xrvr()
         devices = self.r_vtc_show_devices_device()
         if 'collection' not in devices:
             return []
@@ -95,13 +89,13 @@ class Vtc(VirtualServer):
         return xrvr_nodes
 
     def xrvr_restart_dl(self):
-        return map(lambda xrvr: xrvr.xrvr_restart_dl(), self.lab().get_nodes_by_class(Xrvr))
+        return map(lambda xrvr: xrvr.xrvr_restart_dl(), self.lab().get_xrvr())
 
     def show_connections_xrvr_vtf(self):
-        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Vtf)) + map(lambda xrvr: xrvr.xrvr_show_connections_xrvr_vtf(), self.lab().get_nodes_by_class(Xrvr))
+        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.lab().get_vtf()) + map(lambda xrvr: xrvr.xrvr_show_connections_xrvr_vtf(), self.lab().get_xrvr())
 
     def show_vxlan_tunnel(self):
-        return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_nodes_by_class(Vtf))
+        return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_vft())
 
     def disrupt(self, method_to_disrupt, downtime):
         import time
@@ -300,7 +294,7 @@ class Vtc(VirtualServer):
             request devices device {{ name }} sync-from
             {% endfor %}''')
 
-        map(lambda y: y.r_xrvr_day0_config(), self.get_xrvrs())
+        map(lambda y: y.r_xrvr_day0_config(), self.lab().get_xrvr())
         self.r_vtc_ncs_cli(command=domain.render(domain_group='D1'))
         self.r_vtc_ncs_cli(command=xrvr.render(xrvr_names=self.get_xrvr_names(), domain_group='D1', bgp_asn=23))
 
@@ -471,7 +465,7 @@ class Vtc(VirtualServer):
         self.r_vtc_show_configuration_xrvr_groups()
 
     def r_xrvr_show_evpn(self):
-        return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.lab().get_nodes_by_class(Xrvr))
+        return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.lab().get_xrvr())
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
