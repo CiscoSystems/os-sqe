@@ -8,13 +8,23 @@ class LabServer(LabNode):
         self._package_manager = None
         self._mac_server_part = None
         self._proxy_server = None
-        self._server = None
+        self.__server = None
+        self._ssh_username, self._ssh_password = kwargs['ssh-username'], kwargs['ssh-password']
+
         self._virtual_servers = set()  # virtual servers running on this hardware server
 
         super(LabServer, self).__init__(**kwargs)
 
     def add_virtual_server(self, server):
         self._virtual_servers.add(server)
+
+    @property
+    def _server(self):
+        from lab.server import Server
+
+        if self.__server is None:
+            self.__server = Server(ip=self.get_nic_ssh_ip(), username=self._ssh_username, password=self._ssh_password)
+        return self._server
 
     def cmd(self, cmd):
         raise NotImplementedError
@@ -34,6 +44,9 @@ class LabServer(LabNode):
             return self._nics[nic]
         except KeyError:
             return RuntimeError('{}: is not on {} network'.format(self.get_node_id(), nic))
+
+    def get_nic_ssh_ip(self):
+        return [x for x in self._nics.values() if x.is_ssh()][0].get_ip_and_mask()[0]
 
     def get_nics(self):
         return self._nics
@@ -68,11 +81,6 @@ class LabServer(LabNode):
 
     def set_proxy_server(self, proxy):
         self._proxy_server = proxy
-
-    def set_ssh_creds(self, username, password):
-        from lab.server import Server
-
-        self._server = Server(ip=self.get_oob()[0], username=username, password=password)
 
     def set_hostname(self, hostname):
         self._server.set_hostname(hostname=hostname)

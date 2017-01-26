@@ -6,3 +6,9 @@ class VirtualServer(LabServer):
         super(VirtualServer, self).__init__(**kwargs)
         self._hard_server = self.lab().get_node_by_id(kwargs['virtual-on'])
         self._hard_server.add_virtual_server(self)
+
+    def cmd(self, cmd):
+        raise NotImplementedError()
+
+    def get_hardware_server(self):
+        return self._hard_server

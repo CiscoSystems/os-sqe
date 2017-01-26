@@ -48,13 +48,16 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         self.check_uniqueness()
 
     def check_uniqueness(self):
+        from lab.nodes.lab_server import LabServer
+        from lab.nodes.virtual_server import VirtualServer
+
         for net in self.get_all_nets().values():
             self.make_sure_that_object_is_unique(obj=net.get_vlan_id(), node_id=net)
             self.make_sure_that_object_is_unique(obj=net.get_cidr(), node_id=net)
             self.make_sure_that_object_is_unique(obj=net.get_mac_pattern(), node_id=net)
 
         for node in self._nodes:
-            if hasattr(node, 'get_nics'):
+            if isinstance(node, LabServer) and not isinstance(node, VirtualServer):
                 for nic in node.get_nics().values():
                     self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
                     for mac in nic.get_macs():
