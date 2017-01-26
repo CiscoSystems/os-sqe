@@ -25,7 +25,7 @@ class VtsDisruptor(ParallelWorker):
     def loop_worker(self, **kwargs):
         import re
         import time
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.vtc import Vtc
 
         node_role = kwargs['node-to-disrupt'].split('-')[0]
         node_object_to_disrupt = None

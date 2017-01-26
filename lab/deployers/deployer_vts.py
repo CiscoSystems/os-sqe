@@ -19,8 +19,8 @@ class DeployerVts(LabWorker):
         self._vts_images_location = config['vts_images_location']
 
     def deploy_vts(self, list_of_servers):
-        from lab.vts_classes.vtf import Vtf
-        from lab.vts_classes.vtc import VtsHost
+        from lab.nodes.vtf import Vtf
+        from lab.nodes.vtc import VtsHost
         from lab.cimc import CimcController
 
         vts_hosts = filter(lambda host: type(host) in [VtsHost, CimcController], list_of_servers)
@@ -83,7 +83,7 @@ class DeployerVts(LabWorker):
         vts_host.exe('rm -rf {}'.format(self._vts_service_dir))
 
     def make_cluster(self, lab):
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.vtc import Vtc
 
         vtc_list = lab.get_nodes_by_class(Vtc)
         if vtc_list[0].r_vtc_wait_cluster_formed():
@@ -206,7 +206,7 @@ class DeployerVts(LabWorker):
     def is_valid_installation(vts_hosts):
         import requests
 
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.vtc import Vtc
 
         vtc = vts_hosts[0].lab().get_nodes_by_class(Vtc)[0]
         try:

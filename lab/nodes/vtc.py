@@ -1,8 +1,9 @@
+from lab.vts_classes.vtf import Vtf
+
+from lab import decorators
 from lab.cimc import CimcServer
 from lab.nodes.virtual_server import VirtualServer
-from lab.vts_classes.vtf import Vtf
-from lab.vts_classes.xrvr import Xrvr
-from lab import decorators
+from lab.nodes.xrvr import Xrvr
 
 
 class Vtc(VirtualServer):

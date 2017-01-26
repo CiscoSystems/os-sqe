@@ -21,7 +21,7 @@ class VtsOverlayMonitor(ParallelWorker):
 
     # noinspection PyAttributeOutsideInit
     def setup_worker(self):
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.vtc import Vtc
 
         self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes_by_class(Vtc)[0]
 

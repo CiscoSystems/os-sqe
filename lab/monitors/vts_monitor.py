@@ -8,7 +8,7 @@ class VtsMonitor(ParallelWorker):
 
     # noinspection PyAttributeOutsideInit
     def setup_worker(self):
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.vtc import Vtc
 
         self._vtc = Vtc(node_id='Vtc{}'.format(self._ip), role='vtc', lab=None) if self._ip else self._lab.get_nodes_by_class(Vtc)[0]
         if self._ip:

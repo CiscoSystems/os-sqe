@@ -1,7 +1,7 @@
-from lab.ospd.with_osdp7 import WithOspd7
 from lab.mercury.with_mercury import WithMercuryMixIn
-from lab.with_log import WithLogMixIn
+from lab.ospd.with_osdp7 import WithOspd7
 from lab.with_config import WithConfig
+from lab.with_log import WithLogMixIn
 
 
 class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
@@ -75,10 +75,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.nodes.tor import Tor, Oob, Pxe, Terminal
         from lab.nodes.cobbler import CobblerServer
         from lab.cimc import CimcDirector, CimcController, CimcCompute, CimcCeph
-        from lab.vts_classes.xrvr import Xrvr
-        from lab.vts_classes.vtf import Vtf
-        from lab.vts_classes.vtc import VtsHost
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.xrvr import Xrvr
+        from lab.nodes.vtf import Vtf
+        from lab.nodes.vtc import VtsHost
+        from lab.nodes.vtc import Vtc
 
         role = role.lower()
         roles = {Oob.ROLE: Oob, Pxe.ROLE: Pxe, Tor.ROLE: Tor, Terminal.ROLE: Terminal, CobblerServer.ROLE: CobblerServer,
@@ -130,17 +130,17 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         return filter(lambda x: type(x) in [CobblerServer], self._nodes)[0]
 
     def get_vts_hosts(self):
-        from lab.vts_classes.vtc import VtsHost
+        from lab.nodes.vtc import VtsHost
 
         return filter(lambda x: type(x) is VtsHost, self._nodes)
 
     def get_vtc(self):
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.vtc import Vtc
 
         return filter(lambda x: type(x) is Vtc, self._nodes)
 
     def get_xrvr(self):
-        from lab.vts_classes.xrvr import Xrvr
+        from lab.nodes.xrvr import Xrvr
 
         return filter(lambda x: type(x) is Xrvr, self._nodes)
 

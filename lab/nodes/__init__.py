@@ -1,7 +1,7 @@
 import abc
 
-from lab.with_log import WithLogMixIn
 from lab.with_config import WithConfig
+from lab.with_log import WithLogMixIn
 
 
 class LabNode(WithLogMixIn, WithConfig):
@@ -128,22 +128,22 @@ class LabNode(WithLogMixIn, WithConfig):
         return type(self) in [FiCeph, CimcCeph]
 
     def is_vts_host(self):
-        from lab.vts_classes.vtc import VtsHost
+        from lab.nodes.vtc import VtsHost
 
         return type(self) == VtsHost
 
     def is_vtc(self):
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.vtc import Vtc
 
         return type(self) == Vtc
 
     def is_xrvr(self):
-        from lab.vts_classes.xrvr import Xrvr
+        from lab.nodes.xrvr import Xrvr
 
         return type(self) == Xrvr
 
     def is_vtf(self):
-        from lab.vts_classes.vtf import Vtf
+        from lab.nodes.vtf import Vtf
 
         return type(self) == Vtf
 

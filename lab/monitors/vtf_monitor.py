@@ -4,7 +4,7 @@ from lab.parallelworker import ParallelWorker
 class VtfMonitor(ParallelWorker):
 
     def setup_worker(self):
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.vtc import Vtc
 
         if self._ip:
             self._vtc = Vtc(node_id='vtc-x', role='vtc', lab=self._lab)

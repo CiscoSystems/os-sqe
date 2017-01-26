@@ -16,7 +16,7 @@ class Vtf(LabServer):
 
     # noinspection PyMethodOverriding
     def cmd(self, cmd):
-        from lab.vts_classes.vtc import Vtc
+        from lab.nodes.vtc import Vtc
 
         if not self._proxy_to_run:
             self.lab().get_nodes_by_class(Vtc)[-1].r_vtc_get_vtfs()

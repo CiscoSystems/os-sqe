@@ -8,8 +8,8 @@ class XrvrNotSynced(Exception):
 class XrvrMonitor(ParallelWorker):
 
     def setup_worker(self):
-        from lab.vts_classes.vtc import Vtc
-        from lab.vts_classes.xrvr import Xrvr
+        from lab.nodes.vtc import Vtc
+        from lab.nodes.xrvr import Xrvr
 
         self._vtc = Vtc(name='NotDefined', role='vtc', ip=self._ip, username=self._username, password=self._password, lab=None, hostname='NoDefined') if self._ip else self._lab.get_nodes(Vtc)[0]
 
