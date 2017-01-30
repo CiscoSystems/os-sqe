@@ -4,16 +4,15 @@ from lab.nodes import LabNode
 class LabServer(LabNode):
 
     def __init__(self, **kwargs):
+        super(LabServer, self).__init__(**kwargs)
+
         self._tmp_dir_exists = False
         self._package_manager = None
         self._mac_server_part = None
         self._proxy_server = None
         self.__server = None
         self._ssh_username, self._ssh_password = kwargs['ssh-username'], kwargs['ssh-password']
-
         self._virtual_servers = set()  # virtual servers running on this hardware server
-
-        super(LabServer, self).__init__(**kwargs)
 
     def add_virtual_server(self, server):
         self._virtual_servers.add(server)
@@ -24,7 +23,7 @@ class LabServer(LabNode):
 
         if self.__server is None:
             self.__server = Server(ip=self.get_nic_ssh_ip(), username=self._ssh_username, password=self._ssh_password)
-        return self._server
+        return self.__server
 
     def cmd(self, cmd):
         raise NotImplementedError
