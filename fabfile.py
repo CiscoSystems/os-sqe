@@ -32,6 +32,7 @@ def cmd():
         return d, [x for x in dir(d) if not (x.startswith('_') or x[0].isupper())]
 
     def execute(d, name):
+        d.log('executing method {}'.format(name, 10*':'))
         method_to_execute = getattr(d, name)
         parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
         arguments = []
@@ -46,7 +47,7 @@ def cmd():
             arguments.append(argument)
         try:
             results = method_to_execute(*arguments)
-            d.log('RESULTS of {}():\n\n {}\n'.format(name, results))
+            d.log('{}() returns:\n\n {}\n'.format(name, results))
         except Exception as ex:
             lab_logger.exception('\n Exception: {0}'.format(ex))
 

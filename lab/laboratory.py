@@ -234,7 +234,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     def lab_validate(self):
         map(lambda x: x.r_verify_oob(), self.get_nodes_by_class())
-        map(lambda x: x.n9_verify(), self.get_n9k())
+        map(lambda x: x.n9_validate(), self.get_n9k())
 
     def r_deploy_ssh_public(self):
         for node in self.get_director() + self.get_vts_hosts():

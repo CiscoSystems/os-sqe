@@ -120,7 +120,7 @@ class Nexus(LabNode):
 
         return r
 
-    def n9_verify(self):
+    def n9_validate(self):
         from fabric.operations import prompt
         import time
 
@@ -133,6 +133,8 @@ class Nexus(LabNode):
             cmd = ['conf t', 'vlan ' + str(requested_vlan_id), 'name ' + requested_vlan_name, 'no shut']
             if requested_vlan_id not in a['vlans']:
                 self.log('no vlan {}, do: {}'.format(requested_vlan_id, ' '.join(cmd)))
+                if is_fix():
+                    self.n9_cmd(cmd)
             else:
                 actual_vlan_name = a['vlans'][requested_vlan_id]['vlanshowbr-vlanname']
                 if actual_vlan_name != requested_vlan_name:
@@ -141,8 +143,10 @@ class Nexus(LabNode):
                         self.n9_cmd(cmd)
 
         for req_vpc_desc, req_vpc in self._requested_topology['vpc'].items():
-            req_vpc_id = req_vpc['pc_id']
-            for req_port_id in req_vpc['ports']:
+            req_vpc_id = req_vpc['pc-id']
+            if req_vpc_id == 'mgmt0':  # it's a special mgmt port which is connected to OOB switch
+                continue
+            for req_port_id in req_vpc['ports']:  # first check physical ports participating in this (v)PC
                 cmd = ['conf t', 'int ' + req_port_id, 'desc ' + req_vpc_desc]
                 if req_port_id not in a['ports']:
                     raise ValueError('{}: {} requests a port "{}" which does not exists, check your configuration'.format(self, req_vpc_id, req_port_id))
@@ -156,12 +160,6 @@ class Nexus(LabNode):
                 self.log('{} is not configured, should be {}'.format(req_vpc_id, req_vpc))
             else:
                 actual_vpc = a['ports'][req_vpc_id]
-
-                cmd = ['conf t', 'int ' + req_vpc_id, 'desc ' + req_vpc_desc]
-                self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(req_vpc_id, actual_vpc['name'], req_vpc_desc, ' '.join(cmd)))
-                if is_fix():
-                    self.n9_cmd(cmd)
-
                 if actual_vpc['name'] != req_vpc_desc:
                     cmd = ['conf t', 'int ' + req_vpc_id, 'desc ' + req_vpc_desc]
                     self.log('{} has actual description "{}" while requested is "{}", do: {}'.format(req_vpc_id, actual_vpc['name'], req_vpc_desc, ' '.join(cmd)))
@@ -321,7 +319,7 @@ class Nexus(LabNode):
                 mode = None
             else:
                 raise ValueError('{}:  strange wire which should not go to N9K: {}'.format(self, wire))
-            topo['vpc'].setdefault(description, {'description': description, 'port-channel': pc_id, 'vlans': vlan_ids, 'ports': [], 'peer-ports': [], 'mode': mode})
+            topo['vpc'].setdefault(description, {'description': description, 'pc-id': pc_id, 'vlans': vlan_ids, 'ports': [], 'peer-ports': [], 'mode': mode})
             topo['vpc'][description]['ports'].append(own_port_id)
             topo['vpc'][description]['peer-ports'].append(peer_port_id)
         vlan_id_vs_net = {net.get_vlan_id(): net for net in self.lab().get_all_nets().values()}
@@ -428,15 +426,15 @@ class Nexus(LabNode):
         return self._format_single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())
 
     def correct_port_id(self, port_id, from_node=None):
-        if port_id == 'MGMT':
+        if port_id == 'mgmt0':
             return port_id
-        err_msg = '{} {}: port id "{}" is wrong, it has to be <number>/<number>'.format('{} -> '.format(from_node) if from_node else '', self, port_id)
+        err_msg = '{} {}: port id "{}" is wrong, it has to be <number>/<number> or mgmt0'.format('{} -> '.format(from_node) if from_node else '', self, port_id)
         i = 0
         for i, value in enumerate(port_id.split('/'), start=1):
             try:
                 int(value)
             except ValueError:
-                raise ValueError()
+                raise ValueError(err_msg)
         if i != 2:
             raise ValueError(err_msg)
         return 'Ethernet' + port_id
