@@ -208,18 +208,20 @@ def ansible():
 
 
 @task
-def info(lab_config_path, regex):
+def info(lab_config_path=None, regex=None):
     """fab info:g10,regex\t\t\tExec grep regex
     """
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
 
+    lab_config_path = lab_config_path or get_user_input(options_lst=KNOWN_LABS)
+    regex = regex or get_user_input(options_lst=['ERROR', 'error'])
+
     l = Laboratory(lab_config_path)
-    d = DeployerExisting({'cloud': lab_config_path.strip('.yaml'), 'hardware-lab-config': lab_config_path})
+    d = DeployerExisting({'hardware-lab-config': lab_config_path})
     try:
-        servers_and_clouds = {'servers': [], 'clouds': []}
-        d.execute(servers_and_clouds=servers_and_clouds)
-        servers_and_clouds['clouds'][0].r_collect_information(regex=regex, comment='')
+        cloud = d.execute([])
+        cloud.r_collect_information(regex=regex, comment='')
     except RuntimeError:
         pass  # it's ok if cloud is not yet deployed in the lab
     l.r_collect_information(regex=regex, comment='')
