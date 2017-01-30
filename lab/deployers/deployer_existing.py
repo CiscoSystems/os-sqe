@@ -5,10 +5,10 @@ class DeployerExisting(LabWorker):
 
     @staticmethod
     def sample_config():
-        return {'lab-cfg-yaml-path': 'path to yaml which describes the lab'}
+        return {'hardware-lab-config': 'path to yaml which describes the lab'}
 
     def __init__(self, config):
-        self._lab_cfg = config['lab-cfg-yaml-path']
+        self._lab_cfg = config['hardware-lab-config']
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):
