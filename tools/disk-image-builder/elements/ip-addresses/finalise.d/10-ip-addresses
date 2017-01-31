@@ -1,0 +1,21 @@
+#!/bin/bash
+home=$(dirname $0)
+
+exec_file=/opt/sqe-ip-addresses
+service_name=sqe-ip-addresses.service
+install -m 0755 -o root -g root $home/sqe-ip-addresses $exec_file
+
+cat >/etc/systemd/system/${service_name}<<EOF
+[Unit]
+Description=Assign ip addresses to ethX interfaces
+After=network.service
+
+[Service]
+Type=oneshot
+ExecStart=$exec_file
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable $service_name
