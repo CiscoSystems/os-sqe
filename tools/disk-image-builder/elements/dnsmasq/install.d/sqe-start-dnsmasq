@@ -1,0 +1,55 @@
+#!/bin/bash
+function generate_config() {
+    local name=$1
+    local net=$2
+
+    IFS='.' octets=($net)
+    local mac_pattern="00:00:${octets[0]}:${octets[1]}:${octets[2]}:%02x"
+
+    > /tmp/${name}
+    cat >>/tmp/${name}<<EOF
+dhcp-range=set:${name},${octets[0]}.${octets[1]}.${octets[2]}.1,${octets[0]}.${octets[1]}.${octets[2]}.254,infinite
+EOF
+    for x in {1..254};
+    do
+        printf "dhcp-host=${mac_pattern},${octets[0]}.${octets[1]}.${octets[2]}.%d,set:${name}\n" $x $x >>/tmp/${name}
+    done
+    cat >>/tmp/${name}<<EOF
+dhcp-option=tag:${name},3,${octets[0]}.${octets[1]}.${octets[2]}.1
+EOF
+    sudo mv /tmp/${name} /etc/dnsmasq.d/
+}
+
+start_dnsmasq=False
+
+# Go through all ethX interfaces
+for int in $(ip -o link | grep -P -o '\d+: eth\d+' | awk '{print $2}')
+do
+    mac=$(ip address show $int | grep -P -o 'link/ether .*? brd' | awk '{print $2}')
+    IFS=':' octets=($mac)
+
+    # If dnsmasq is enabled && IP address is statically assigned
+    if [ ${octets[0]} = "10" ] && [ ${octets[1]} = "10" ]
+    then
+        ip0=${octets[2]}
+        ip1=${octets[3]}
+        ip2=${octets[4]}
+
+        # IP address of the subnet
+        ip="${ip0}.${ip1}.${ip2}.0"
+
+        if [ $ip0 -gt 99 ] || [ $ip1 -gt 99 ] || [ $ip2 -gt 99 ]
+        then
+            echo "sqe: Invalid IP address ${ip}. dnsmasq config is not generated"
+            continue
+        fi
+
+        generate_config ${ip//\./_} $ip
+        start_dnsmasq=True
+    fi
+done
+
+if [ $start_dnsmasq = "True" ]
+then
+    systemctl start dnsmasq
+fi
