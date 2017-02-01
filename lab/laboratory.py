@@ -45,23 +45,41 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
             from_node = self.get_node_by_id(peer_link['own-id'])
             Wire.add_wire(local_node=from_node, local_port_id=peer_link['own-port'], peer_desc={'peer-id': peer_link['peer-id'], 'peer-port': peer_link['peer-port'], 'port-channel': peer_link['port-channel']})
-        self.check_uniqueness()
+        self.check_validity()
 
-    def check_uniqueness(self):
+    def check_validity(self):
+        """ Checks that all the information provided in the config file is self consistent: no double ips or macs, all nodes sit on correct networks
+        :return: None
+        """
         from lab.nodes.lab_server import LabServer
-        from lab.nodes.virtual_server import VirtualServer
 
         for net in self.get_all_nets().values():
             self.make_sure_that_object_is_unique(obj=net.get_vlan_id(), node_id=net)
             self.make_sure_that_object_is_unique(obj=net.get_cidr(), node_id=net)
             self.make_sure_that_object_is_unique(obj=net.get_mac_pattern(), node_id=net)
 
+        role_vs_nets = {}
+        for net_id, net_desc in self._cfg['nets'].items():
+            for role in net_desc['should-be']:
+                self.get_role_class(role=role)
+                role_vs_nets.setdefault(role, set())
+                role_vs_nets[role].add(net_id)
+
         for node in self._nodes:
-            if isinstance(node, LabServer) and not isinstance(node, VirtualServer):
-                for nic in node.get_nics().values():
-                    self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
-                    for mac in nic.get_macs():
-                        self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_node_id())  # check that all MAC are unique
+            if isinstance(node, LabServer):
+                if node.get_role() in role_vs_nets:
+                    actual_nets = set(node.get_nics().keys())
+                    req_nets = role_vs_nets[node.get_role()]
+                    if actual_nets != req_nets:
+                        raise ValueError('{}: should be on nets {} (parameter should-be in section nets )while actually on {} (section nics)'.format(node, req_nets, actual_nets))
+                # for nic in node.get_nics().values():
+                #     self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
+                #     for mac in nic.get_macs():
+                #         self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_node_id())  # check that all MAC are unique
+                try:
+                    node.get_ssh_ip()
+                except IndexError:
+                    raise ValueError('{}: no NIC is marked as is_ssh')
             for wire in node.get_all_wires():
                 peer_node = wire.get_peer_node(node)
                 peer_port_id = wire.get_peer_port(node)
@@ -76,7 +94,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.nodes.n9k import Nexus
         from lab.nodes.asr import Asr
         from lab.nodes.tor import Tor, Oob, Pxe, Terminal
-        from lab.nodes.cobbler import CobblerServer
         from lab.nodes.cimc_server import CimcDirector, CimcController, CimcCompute, CimcCeph
         from lab.nodes.xrvr import Xrvr
         from lab.nodes.vtf import Vtf
@@ -84,7 +101,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.nodes.vtc import Vtc
 
         role = role.lower()
-        roles = {Oob.ROLE: Oob, Pxe.ROLE: Pxe, Tor.ROLE: Tor, Terminal.ROLE: Terminal, CobblerServer.ROLE: CobblerServer,
+        roles = {Oob.ROLE: Oob, Pxe.ROLE: Pxe, Tor.ROLE: Tor, Terminal.ROLE: Terminal,
                  Asr.ROLE: Asr, Nexus.ROLE: Nexus, FI.ROLE: FI,
                  FiDirector.ROLE: FiDirector, FiController.ROLE: FiController, FiCompute.ROLE: FiCompute, FiCeph.ROLE: FiCeph,
                  CimcDirector.ROLE: CimcDirector, CimcController.ROLE: CimcController, CimcCompute.ROLE: CimcCompute, CimcCeph.ROLE: CimcCeph,

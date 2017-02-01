@@ -22,7 +22,7 @@ class LabServer(LabNode):
         from lab.server import Server
 
         if self.__server is None:
-            self.__server = Server(ip=self.get_nic_ssh_ip(), username=self._ssh_username, password=self._ssh_password)
+            self.__server = Server(ip=self.get_ssh_ip(), username=self._ssh_username, password=self._ssh_password)
         return self.__server
 
     def cmd(self, cmd):
@@ -44,7 +44,7 @@ class LabServer(LabNode):
         except KeyError:
             return RuntimeError('{}: is not on {} network'.format(self.get_node_id(), nic))
 
-    def get_nic_ssh_ip(self):
+    def get_ssh_ip(self):
         return [x for x in self._nics.values() if x.is_ssh()][0].get_ip_and_mask()[0]
 
     def get_nics(self):
