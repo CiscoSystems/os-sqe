@@ -18,7 +18,7 @@
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
   node-to-disrupt: master-dl
-  method-to-disrupt: isolate-from-tenant
+  method-to-disrupt: isolate-from-t
   n_repeats: 1
   downtime: 460
   uptime: 120

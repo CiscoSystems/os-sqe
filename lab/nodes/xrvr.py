@@ -39,7 +39,7 @@ class Xrvr(VirtualServer):
             vts_host.exe('ip l s dev {} down'.format(if_name))
             time.sleep(downtime)
             vts_host.exe('ip l s dev {} up'.format(if_name))
-        elif method_to_disrupt == 'isolate-from-tenant':
+        elif method_to_disrupt == 'isolate-from-t':
             # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
             ans = vts_host.exe('ip l | grep tenant | xrnc{}'.format(self.get_node_id()[-1]))
             if_name = ans.split()[1][:-1]

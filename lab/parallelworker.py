@@ -105,12 +105,12 @@ class ParallelWorker(WithLogMixIn):
         time_passed = 0
         if self._run_after:
             self.log('delay till {} are false'.format(self._run_after))
-            while not all(self._run_after):  # wait for all other workers set their flags to true
+            while not all([self._shared_dict[x] for x in self._run_while]):  # first wait for all run_after workers go True
                 time.sleep(1)
                 time_passed += 1
                 if time_passed == self._timeout:
                     raise RuntimeError('Waiting for {} to be all True exceeded {} secs'.format(self._run_after, self._timeout))
-            while all(self._run_after):
+            while not all([not self._shared_dict[x] for x in self._run_while]):  # now wait to all run_after workers go False
                 time.sleep(1)
                 time_passed += 1
                 if time_passed == self._timeout:
