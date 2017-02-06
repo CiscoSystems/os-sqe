@@ -3,5 +3,4 @@
 - Description: runs parametrised number of CSR images
 
 - class: lab.scenarios.ntt_scenario.NttScenario
-  pauses1: [5, 4, 3, 2, 1]
-  n_repeats: 5
+  pauses: [5, 4]

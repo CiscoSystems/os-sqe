@@ -6,10 +6,9 @@ class ParallelWorker(WithLogMixIn):
     def __repr__(self):
         return u'worker={}'.format(type(self).__name__)
 
-    def __init__(self,  cloud, lab, shared_dict, is_debug, **kwargs):
+    def __init__(self,  cloud, shared_dict, is_debug, **kwargs):
         """ Executed before subprocesses start in the context of RunnerHA.execute()
         :param cloud: instance of Cloud class
-        :param lab: instance of Laboratory class
         :param shared_dict: dictionary defined as multiprocessing.Manager().dict()
         :param is_debug: id true don't run actual cloud and lab operations, used as a way to debug parallel infrastructure
         :param kwargs: dictionary with parameters as defined in worker section of yaml file
@@ -18,7 +17,7 @@ class ParallelWorker(WithLogMixIn):
 
         self._kwargs = kwargs
         self._cloud = cloud
-        self._lab = lab
+        self._lab = cloud.get_lab()
         self._build_node = cloud.get_mediator()
 
         self._shared_dict = shared_dict
@@ -87,7 +86,7 @@ class ParallelWorker(WithLogMixIn):
             self._n_repeats -= 1
             return True
         else:
-            return True
+            return False
 
     def delay(self):
         import time
@@ -123,24 +122,23 @@ class ParallelWorker(WithLogMixIn):
         try:
             self.delay()
 
-            self.setup_worker()
+            if not self._is_debug:
+                self.setup_worker()
 
             while self.is_still_loop():
-                self.log('Loop...')
+                self.log('Loop number {}...'.format(self._loop_counter))
                 loop_output = self.loop_worker() if not self._is_debug else self.debug_output()
                 self._loop_counter += 1
                 self._results['output'].append(loop_output)
                 time.sleep(self._period)
 
+            if not self._is_debug:
+                self.teardown_worker()
+            self._shared_dict[self._this_worker_in_shared_dict] = False
+            return self._results
         except Exception as ex:
             self._results['exceptions'].append(str(ex))
             self.log(message='EXCEPTION', level='exception')
-
-        self.teardown_worker()
-
-        self._shared_dict[self._this_worker_in_shared_dict] = False
-
-        return self._results
 
     @staticmethod
     def debug_output():

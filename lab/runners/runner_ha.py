@@ -32,8 +32,6 @@ class RunnerHA(LabWorker):
         manager = multiprocessing.Manager()
         shared_dict = manager.dict()
 
-        lab = cloud.get_lab()
-
         type_of_run = ' {} {} debug in {}'.format(self._task_yaml_path, 'with' if self._is_debug else 'without', 'parallel' if self._is_parallel else 'sequence')
         self.log('Running ' + type_of_run)
 
@@ -57,7 +55,7 @@ class RunnerHA(LabWorker):
 
             klass_kwargs.append((klass, single_worker_description))
 
-        workers_to_run = [klass(cloud=cloud, lab=lab, shared_dict=shared_dict, is_debug=self._is_debug, **kwargs) for klass, kwargs in klass_kwargs]
+        workers_to_run = [klass(cloud=cloud, shared_dict=shared_dict, is_debug=self._is_debug, **kwargs) for klass, kwargs in klass_kwargs]
 
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
 
@@ -71,10 +69,10 @@ class RunnerHA(LabWorker):
         for result in results:
             exceptions.extend(result.get('exceptions', []))
 
-        elk = Elk(proxy=lab.get_director())
+        elk = Elk(proxy=cloud.get_mediator())
         elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
 
-        self.publish_to_tims(lab=lab, results=results)
+        self.publish_to_tims(lab=cloud.get_lab(), results=results)
 
         return exceptions
 

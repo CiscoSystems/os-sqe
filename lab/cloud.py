@@ -39,6 +39,9 @@ class Cloud(WithLogMixIn):
     def get_name(self):
         return self._name
 
+    def get_mediator(self):
+        return self._mediator
+
     def get_lab(self):
         return self._mediator.lab()
 

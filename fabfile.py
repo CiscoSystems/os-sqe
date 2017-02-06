@@ -92,9 +92,7 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
     exceptions = []
     for tst in tests:
         runner = RunnerHA(config={'cloud': cloud, 'task-yaml': tst, 'is-debug': is_debug, 'is-parallel': is_parallel})
-        run_result = runner.execute(cloud)
-        if run_result['expections']:
-            exceptions.append(run_result['exceptions'])
+        exceptions.extend(runner.execute(cloud))
 
     if exceptions:
         raise RuntimeError('Possible reason: {}'.format(exceptions))
