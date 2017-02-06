@@ -2,6 +2,9 @@ from lab.parallelworker import ParallelWorker
 
 
 class ServerRebuild(ParallelWorker):
+    def check_arguments(self, **kwargs):
+        pass
+
     # noinspection PyAttributeOutsideInit
     def setup_worker(self):
         self.name = self._kwargs.get('name', '')

@@ -86,7 +86,7 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
     if not tests:
         raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
-    deployer = DeployerExisting(config={'lab-cfg-yaml-path': lab_cfg_path})
+    deployer = DeployerExisting(config={'hardware-lab-config': lab_cfg_path})
     cloud = deployer.execute([])
 
     exceptions = []

@@ -2,12 +2,14 @@ from lab.parallelworker import ParallelWorker
 
 
 class NttScenario(ParallelWorker):
-    # noinspection PyAttributeOutsideInit
+    def check_arguments(self, **kwargs):
+        if 'pauses' not in kwargs or type(kwargs['pauses']) is not list:
+            raise ValueError('{}: specify pauses: [5, 4, 3, 2, 1]'.format(self))
+        self._n_repeats = len(kwargs['pauses'])
+
     def setup_worker(self):
         import os
 
-        self._n_instances = int(self._kwargs['how-many-servers'])
-        self._build_node = self._lab.get_director()
         for file_name in os.listdir('lab/scenarios/csr_bash'):
             with open('lab/scenarios/csr_bash/' + file_name, 'r') as f:
                 body = f.read()
@@ -17,13 +19,9 @@ class NttScenario(ParallelWorker):
         self._build_node.exe('mkdir -p ntt_scenario/cfg')
 
     def loop_worker(self):
-        answers = self._build_node.exe('source $HOME/openstack-configs/openrc && unalias cp && . csr_scenario.sh -l {} -d 4'.format(self._n_instances), in_directory='ntt_scenario', is_warn_only=True)
+        pause = self._kwargs['pauses'][self._loop_counter]
+        answers = self._build_node.exe('source $HOME/openstack-configs/openrc && unalias cp && . csr_scenario.sh -l {} -d {}'.format(10, pause), in_directory='ntt_scenario', is_warn_only=True)
         return answers
-
-    @staticmethod
-    def debug_output():
-        return ''
 
     def teardown_worker(self):
         self._build_node.exe('rm -rf ntt_scenario /tmp/tmp.*')
-

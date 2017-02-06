@@ -7,10 +7,19 @@ class ParallelWorker(WithLogMixIn):
         return u'worker={}'.format(type(self).__name__)
 
     def __init__(self,  cloud, lab, shared_dict, is_debug, **kwargs):
+        """ Executed before subprocesses start in the context of RunnerHA.execute()
+        :param cloud: instance of Cloud class
+        :param lab: instance of Laboratory class
+        :param shared_dict: dictionary defined as multiprocessing.Manager().dict()
+        :param is_debug: id true don't run actual cloud and lab operations, used as a way to debug parallel infrastructure
+        :param kwargs: dictionary with parameters as defined in worker section of yaml file
+        """
         import validators
 
+        self._kwargs = kwargs
         self._cloud = cloud
         self._lab = lab
+        self._build_node = cloud.get_mediator()
 
         self._shared_dict = shared_dict
         self._this_worker_in_shared_dict = type(self).__name__
@@ -21,9 +30,11 @@ class ParallelWorker(WithLogMixIn):
         self._period = kwargs.get('period', 2)  # worker loop will be repeated with this period
         self._timeout = kwargs.get('timeout', 3600)  # if flags don't be False in that time, the worker will be forced to quit with exception
 
-        self._n_repeats = kwargs.get('n_repeats')  # worker loop will be repeated n_repeats times
+        self._n_repeats = kwargs.get('n_repeats')      # worker loop will be repeated n_repeats times
+        self._loop_counter = 0                         # counts loops executed
         self._run_while = kwargs.get('run_while', [])  # worker will run till all these flags go False
         self._run_after = kwargs.get('run_after', [])  # worker will be delayed until all these flags will go False
+        self.check_arguments(**kwargs)  # this call might change n_repeats
 
         if type(self._run_while) is not list:
             self._run_while = [self._run_while]
@@ -47,7 +58,6 @@ class ParallelWorker(WithLogMixIn):
                     raise ValueError('"username" and/or "password"  are not provided'.format())
             else:
                 raise ValueError('Provided invalid ip address: "{0}"'.format(self._ip))
-        self.check_arguments(**kwargs)
 
     def get_lab(self):
         return self._lab
@@ -64,7 +74,7 @@ class ParallelWorker(WithLogMixIn):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def loop_worker(self):
+    def loop_worker(self, **kwargs):
         raise NotImplementedError
 
     def teardown_worker(self):
@@ -118,6 +128,7 @@ class ParallelWorker(WithLogMixIn):
             while self.is_still_loop():
                 self.log('Loop...')
                 loop_output = self.loop_worker() if not self._is_debug else self.debug_output()
+                self._loop_counter += 1
                 self._results['output'].append(loop_output)
                 time.sleep(self._period)
 

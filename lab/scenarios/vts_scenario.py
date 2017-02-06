@@ -3,6 +3,9 @@ from lab.decorators import section
 
 
 class VtsScenario(ParallelWorker):
+    def check_arguments(self, **kwargs):
+        pass
+
     # noinspection PyAttributeOutsideInit
     @section('Setup')
     def setup_worker(self):
