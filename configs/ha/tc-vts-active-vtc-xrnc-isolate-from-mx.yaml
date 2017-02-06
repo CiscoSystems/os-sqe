@@ -5,16 +5,16 @@
 - class: lab.monitors.vts_monitor.VtsMonitor
   period: 2
   run_while:
-    - vts-disruptor-master-vtc
-    - vts-disruptor-master-dl
+    - VtsDisruptor-master-vtc
+    - VtsDisruptor-master-dl
 
 - class: lab.scenarios.vts_scenario.VtsScenario
   delay: 110
   how-many-networks: 1
   how-many-servers: 3
   run_while:
-    - vts-disruptor-master-vtc
-    - vts-disruptor-master-dl
+    - VtsDisruptor-master-vtc
+    - VtsDisruptor-master-dl
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 5
@@ -24,7 +24,7 @@
   downtime: 90
   uptime: 20
   set:
-    - vts-disruptor-master-vtc
+    - VtsDisruptor-master-vtc
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 5
@@ -34,6 +34,6 @@
   downtime: 90
   uptime: 20
   set:
-    - vts-disruptor-master-dl
+    - VtsDisruptor-master-dl
 
 # Verify VM Creation during UNDERLAY Link failure on Active VTC/XRNC Controller

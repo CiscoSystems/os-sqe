@@ -37,9 +37,15 @@ class ParallelWorker(WithLogMixIn):
 
         if type(self._run_while) is not list:
             self._run_while = [self._run_while]
+        for x in self._run_while:
+            if x not in self._shared_dict.keys():
+                raise ValueError('{}: run_while has "{}" which is invalid. Valid are {}'.format(self._kwargs['yaml_path'], x, self._shared_dict.keys()))
 
         if type(self._run_after) is not list:
             self._run_after = [self._run_after]
+        for x in self._run_after:
+            if x not in self._shared_dict.keys():
+                raise ValueError('{}: run_after has "{}" which is invalid. Valid are {}'.format(self._kwargs['yaml_path'], x, self._shared_dict.keys()))
 
         if self._run_while:
             if any([self._run_after, self._n_repeats]):
@@ -81,7 +87,7 @@ class ParallelWorker(WithLogMixIn):
 
     def is_still_loop(self):
         if self._run_while:
-            return all(self._run_while)
+            return all([self._shared_dict[x] for x in self._run_while])
         elif self._n_repeats:
             self._n_repeats -= 1
             return True
@@ -135,6 +141,7 @@ class ParallelWorker(WithLogMixIn):
             if not self._is_debug:
                 self.teardown_worker()
             self._shared_dict[self._this_worker_in_shared_dict] = False
+            self.log('FINISHED')
             return self._results
         except Exception as ex:
             self._results['exceptions'].append(str(ex))

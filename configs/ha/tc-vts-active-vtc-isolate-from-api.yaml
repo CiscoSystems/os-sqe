@@ -4,14 +4,14 @@
 - class: lab.monitors.vts_monitor.VtsMonitor
   period: 2
   run_while:
-    - vts-disruptor
+    - VtsDisruptor
 
 - class: lab.scenarios.vts_scenario.VtsScenario
   delay: 20
   how-many-networks: 1
   how-many-servers: 3
   run_while:
-    - vts-disruptor
+    - VtsDisruptor
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 3
@@ -21,7 +21,7 @@
   downtime: 90
   uptime: 20
   set:
-    - vts-disruptor
+    - VtsDisruptor
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'
 # Possible methods:  'isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop'

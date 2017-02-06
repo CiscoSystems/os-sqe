@@ -5,14 +5,14 @@
 - class: lab.monitors.vts_monitor.VtsMonitor
   period: 2
   run_while:
-    - vts-disruptor
+    - VtsDisruptor
 
 - class: lab.scenarios.vts_delete_scenario.VtsDeleteScenario
   how-many-networks: 2
   how-many-servers: 10
   uptime: 120
   run_while:
-    - vts-disruptor
+    - VtsDisruptor
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
@@ -22,6 +22,6 @@
   downtime: 460
   uptime: 120
   set:
-    - vts-disruptor
+    - VtsDisruptor
 
 # Validate Standby VTC becomes "Active' when Active VTC is rebooted while existing tenant VMs are also being deleted

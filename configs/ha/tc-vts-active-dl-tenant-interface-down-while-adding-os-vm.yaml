@@ -6,13 +6,13 @@
 - class: lab.monitors.vts_monitor.VtsMonitor
   period: 2
   run_while:
-    - vts-disruptor
+    - VtsDisruptor
 
 - class: lab.scenarios.vts_scenario.VtsScenario
   how-many-networks: 1
   how-many-servers: 1
   run_while:
-    - vts-disruptor
+    - VtsDisruptor
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 20
@@ -22,6 +22,6 @@
   downtime: 580
   uptime: 20
   set:
-    - vts-disruptor
+    - VtsDisruptor
 
 # Validate Standby XRNC becomes "Active' when Active XRNC's eth0 is shut while new tenant VMs are being created

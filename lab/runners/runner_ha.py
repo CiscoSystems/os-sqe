@@ -50,7 +50,7 @@ class RunnerHA(LabWorker):
                 klass = getattr(module, class_name)
             except AttributeError:
                 raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
-
+            single_worker_description['yaml_path'] = self._task_yaml_path
             shared_dict[class_name] = False
 
             klass_kwargs.append((klass, single_worker_description))
