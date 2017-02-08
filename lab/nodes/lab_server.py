@@ -181,8 +181,8 @@ class LabServer(LabNode):
             self.exe(command='rm -f {}'.format(local_path))
         self.exe('yum install -q -y expect')
 
-    def r_get_remote_file(self, url, to_directory='.', checksum=None, method='md5sum'):
-        return self._server.wget_file(url, to_directory=to_directory, checksum=checksum, method=method)
+    def r_get_remote_file(self, url, checksum, to_directory='.'):
+        return self._server.wget_file(url, to_directory=to_directory, checksum=checksum)
 
     def r_put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
         return self._server.put_string_as_file_in_dir(string_to_put, file_name, in_directory=in_directory)

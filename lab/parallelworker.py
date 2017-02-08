@@ -19,6 +19,7 @@ class ParallelWorker(WithLogMixIn):
         self._cloud = cloud
         self._lab = cloud.get_lab()
         self._build_node = cloud.get_mediator()
+        self._run_params = {}
 
         self._shared_dict = shared_dict
         self._this_worker_in_shared_dict = type(self).__name__

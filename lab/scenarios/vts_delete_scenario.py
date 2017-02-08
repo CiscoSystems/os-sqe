@@ -3,6 +3,9 @@ from lab.decorators import section
 
 
 class VtsDeleteScenario(ParallelWorker):
+    def check_arguments(self, **kwargs):
+        pass
+
     # noinspection PyAttributeOutsideInit
     @section('Setup')
     def setup_worker(self):
@@ -62,14 +65,14 @@ class VtsDeleteScenario(ParallelWorker):
 
     @section('Creating instances')
     def _instances_part(self):
-        self._log.info('Creating instances={} status=requested ...'.format(self._even_server_numbers))
+        self.log('Creating instances={} status=requested ...'.format(self._even_server_numbers))
         server_info = self._cloud.os_servers_create(server_numbers=self._even_server_numbers, flavor=self._flavor, image=self._image, zone=self._computes.keys()[0], on_ports=self._even_port_pids)
-        self._log.info('instances={} status=created'.format(self._even_server_numbers))
+        self.log('instances={} status=created'.format(self._even_server_numbers))
 
         if self._odd_server_numbers:
-            self._log.info('instances={} status=requested'.format(self._odd_server_numbers))
+            self.log('instances={} status=requested'.format(self._odd_server_numbers))
             server_info += self._cloud.os_servers_create(server_numbers=self._odd_server_numbers, flavor=self._flavor, image=self._image, zone=self._computes.keys()[1], on_ports=self._odd_port_pids)
-            self._log.info('instances={} status=running'.format(self._odd_server_numbers))
+            self.log('instances={} status=running'.format(self._odd_server_numbers))
         return server_info
 
     @section('Creating access point on mgmt node')
@@ -109,19 +112,19 @@ class VtsDeleteScenario(ParallelWorker):
         self._network_part()
         server_info = self._instances_part()
         elapsed_time = (datetime.datetime.now() - start_time).seconds
-        self._log.debug('Instances created in [{seconds}] seconds'.format(seconds=elapsed_time))
+        self.log('Instances created in [{seconds}] seconds'.format(seconds=elapsed_time))
         if elapsed_time > self._uptime:
             raise Exception('Could not create instances in [{seconds}] seconds. Increase "uptime" parameter or reduce instance/network/etc parameters'.format(seconds=self._uptime))
 
         if self._uptime > 0:
             sleep_time = self._uptime - elapsed_time
-            self._log.debug('Wait for [{seconds}] seconds'.format(seconds=sleep_time))
+            self.log('Wait for [{seconds}] seconds'.format(seconds=sleep_time))
             time.sleep(sleep_time)
 
         start_delete_time = datetime.datetime.now()
         for info in server_info:
             self._cloud.os_server_delete(name=info['Name'])
-        self._log.debug('Instances deleted in [{seconds}] seconds'.format(seconds=(datetime.datetime.now() - start_delete_time).seconds))
+        self.log('Instances deleted in [{seconds}] seconds'.format(seconds=(datetime.datetime.now() - start_delete_time).seconds))
 
         self._cloud.os_cleanup()
 
