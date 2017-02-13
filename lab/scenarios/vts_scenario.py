@@ -4,10 +4,10 @@ from lab.decorators import section
 
 class VtsScenario(ParallelWorker):
     def check_arguments(self, **kwargs):
-        try:
-            self.log('n. of nets={} n. servers={} uptime={} run={}'.format(self._n_nets, self._n_servers, self._uptime, self._runner))
-        except KeyError as ex:
-            raise ValueError('{}: no required parameter "{}"'.format(self, ex))
+        # try:
+        #     self.log('n. of nets={} n. servers={} uptime={} run={}'.format(self._n_nets, self._n_servers, self._uptime, self._runner))
+        # except KeyError as ex:
+        #     raise ValueError('{}: no required parameter "{}"'.format(self, ex))
 
         if len(self._compute_servers) < 2:
             raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(self))
