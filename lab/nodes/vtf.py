@@ -4,12 +4,12 @@ from lab.nodes.lab_server import LabServer
 class Vtf(LabServer):
     ROLE = 'vtf'
 
-    def __init__(self, node_id, role, lab):
-        super(Vtf, self).__init__(node_id=node_id, role=role, lab=lab)
+    def __init__(self, **kwargs):
+        super(Vtf, self).__init__(**kwargs)
         self._expect_commands = {}
         self._proxy_to_run = None
         self._vtf_container_name = None
-        self._vtf_container_name = 'neutron_vtf_4388'  # TODO: parametrize build number
+        self._vtf_container_name = 'neutron_vtf_6594'  # TODO: parametrize build number
 
     def __repr__(self):
         return u'{id} ({ip}) proxy {p}'.format(id=self.get_id(), ip=self._oob_ip, p=self._proxy_to_run)
