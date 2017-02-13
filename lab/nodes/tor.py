@@ -19,7 +19,7 @@ class Oob(Nexus):
                 int(value)
             except ValueError:
                 raise ValueError(err_msg)
-        if i != 3:
+        if i != 2:
             raise ValueError(err_msg)
         return 'Gig' + port_id
 
