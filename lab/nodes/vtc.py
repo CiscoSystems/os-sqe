@@ -10,6 +10,7 @@ class Vtc(VirtualServer):
         super(Vtc, self).__init__(**kwargs)
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
         self._is_api_via_vip = True
+        self.set_vip(kwargs['vip'], kwargs['nics']['mx']['ip'])
 
     def disable_vip(self):
         self._is_api_via_vip = False
@@ -50,8 +51,8 @@ class Vtc(VirtualServer):
         except Exception as e:
             raise e
 
-    def set_vip(self, vip):
-        self._vip_a, self._vip_mx = vip, '11.11.11.150'
+    def set_vip(self, vip, vip_mx):
+        self._vip_a, self._vip_mx = vip, vip_mx
 
     def get_vtc_vips(self):
         return self._vip_a, self._vip_mx
