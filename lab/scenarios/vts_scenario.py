@@ -77,7 +77,7 @@ class VtsScenario(ParallelWorker):
     def _wait_for_vtc_networks(self, nets):
         import time
 
-        required = [(x.get_net_id(), x.get_segmentaion_id()) for x in nets]
+        required = [(x.get_net_id(), x.get_segmentation_id()) for x in nets]
         max_retries = 10
         while True:
             vtc_nets = self._vtc.r_vtc_show_openstack_network()
