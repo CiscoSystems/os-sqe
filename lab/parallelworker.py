@@ -142,12 +142,13 @@ class ParallelWorker(WithLogMixIn):
 
             if not self._is_debug:
                 self.teardown_worker()
-            self._shared_dict[self._this_worker_in_shared_dict] = False
             self.log('FINISHED')
             return self._results
         except Exception as ex:
             self._results['exceptions'].append(str(ex))
             self.log(message='EXCEPTION', level='exception')
+        finally:
+            self._shared_dict[self._this_worker_in_shared_dict] = False
 
     @staticmethod
     def debug_output():
