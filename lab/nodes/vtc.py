@@ -60,13 +60,10 @@ class Vtc(VirtualServer):
     def cmd(self, cmd, **kwargs):
         return self._rest_api(resource=cmd, headers={})
 
-    def get_vtf(self, compute_hostname):
+    def get_vtf(self):
         from lab.nodes.vtf import Vtf
 
-        for vtf in self.lab().get_nodes_by_class(Vtf):
-            n = vtf.get_compute_node()
-            if n.actuate_hostname(refresh=False) == compute_hostname:
-                return vtf
+        return self.lab().get_nodes_by_class(Vtf)
 
     def get_xrvr_names(self):
         return map(lambda x: x.get_id(), self.lab().get_xrvr())
