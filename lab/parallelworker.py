@@ -88,6 +88,7 @@ class ParallelWorker(WithLogMixIn):
 
     def is_still_loop(self):
         if self._run_while:
+            self.log('Shared dict [{0}], run_while [{1}]'.format(self._shared_dict, self._run_while))
             return all([self._shared_dict[x] for x in self._run_while])
         elif self._n_repeats:
             self._n_repeats -= 1
