@@ -100,4 +100,4 @@ class VtsDisruptor(ParallelWorker):
         self.log('Sleeping for {} secs uptime'.format(self._kwargs['uptime']))
         time.sleep(self._kwargs['uptime'])
 
-        self._kwargs['previously_disrupted'] = node_object_to_disrupt
+        self._kwargs['previously_disrupted'] = node_object_to_disrupt.get_node_id()
