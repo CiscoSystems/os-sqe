@@ -299,7 +299,9 @@ class CimcServer(LabServer):
             self.logger(message='hostname is already {}'.format(new_cimc_hostname))
 
     def correct_port_id(self, port_id, from_node=None):
-        possible_pids = ['MLOM/0', 'MLOM/1', 'LOM-1', 'LOM-2', 'MGMT', 'A', 'B', 'C']
+        virt_ports = lambda n: map(lambda i: n + str(i), range(10))
+
+        possible_pids = ['MLOM/0', 'MLOM/1', 'LOM-1', 'LOM-2', 'MGMT'] + virt_ports('A') + virt_ports('B') + virt_ports('C')
         if port_id not in possible_pids:
             raise ValueError('{}: port id "{}" is wrong, whould be one of {}'.format(self, port_id, possible_pids))
         return port_id
