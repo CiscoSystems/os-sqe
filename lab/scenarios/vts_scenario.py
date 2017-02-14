@@ -67,7 +67,7 @@ class VtsScenario(ParallelWorker):
         from lab.cloud import CloudNetwork
 
         vtc_nets = self._vtc.r_vtc_show_openstack_network()  # should be no sqe-XXX networks
-        if len(vtc_nets.keys()) != 1:
+        if len(vtc_nets) != 1:
             raise RuntimeError('VTC still has some strange networks: {}'.format(vtc_nets))
 
         nets = CloudNetwork.create(common_part_of_name='internal', class_a=1, how_many=self._n_nets, is_dhcp=False, cloud=self.get_cloud())

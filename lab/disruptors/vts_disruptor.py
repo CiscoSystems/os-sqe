@@ -53,7 +53,7 @@ class VtsDisruptor(ParallelWorker):
                 break
             # Looking for node to disrupt
             for xrvr in xrvrs:
-                if (node_role == 'master' and xrvr.get_id() == master_id) or (node_role == 'slave' and xrvr.get_id() != master_id):
+                if (node_role == 'master' and xrvr.get_node_id() == master_id) or (node_role == 'slave' and xrvr.get_node_id() != master_id):
                     node_object_to_disrupt = xrvr
                     break
 
@@ -63,14 +63,14 @@ class VtsDisruptor(ParallelWorker):
             # If it started two or more times check if master node becomes slave
             if node_role == 'master':
                 # On the second+ run check if current master is a former slave.
-                assert node_object_disrupted.get_id() != node_object_to_disrupt.get_id()
+                assert node_object_disrupted.get_node_id() != node_object_to_disrupt.get_node_id()
                 self.log("Current master node [{mid}] is a former slave [{sid}]".format(
-                    sid=node_object_disrupted.get_id(), mid=node_object_to_disrupt.get_id()))
+                    sid=node_object_disrupted.get_node_id(), mid=node_object_to_disrupt.get_node_id()))
             if node_role == 'slave':
                 # On the second+ run check if current slave was slave in previous run.
-                assert node_object_disrupted.get_id() == node_object_to_disrupt.get_id()
+                assert node_object_disrupted.get_node_id() == node_object_to_disrupt.get_node_id()
                 self.log("Slave node [{mid}] was slave in previous run [{sid}]".format(
-                    sid=node_object_disrupted.get_id(), mid=node_object_to_disrupt.get_id()))
+                    sid=node_object_disrupted.get_node_id(), mid=node_object_to_disrupt.get_node_id()))
 
         node_object_to_disrupt.disrupt(method_to_disrupt=self._kwargs['method-to-disrupt'], downtime=self._kwargs['downtime'])
         self.log('Sleeping for {} secs uptime'.format(self._kwargs['uptime']))
