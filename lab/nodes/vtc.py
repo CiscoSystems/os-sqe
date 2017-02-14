@@ -61,7 +61,9 @@ class Vtc(VirtualServer):
         return self._rest_api(resource=cmd, headers={})
 
     def get_vtf(self, compute_hostname):
-        for vtf in self.lab().get_vtf():
+        from lab.nodes.vtf import Vtf
+
+        for vtf in self.lab().get_nodes_by_class(Vtf):
             n = vtf.get_compute_node()
             if n.actuate_hostname(refresh=False) == compute_hostname:
                 return vtf
@@ -72,7 +74,7 @@ class Vtc(VirtualServer):
     def r_vtc_get_vtfs(self):
         ans = self._rest_api(resource='GET /api/running/cisco-vts', headers={'Accept': 'application/vnd.yang.data+json'})
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
-        vtf_nodes = self.lab().get_vtf()
+        vtf_nodes = self.get_vtf()
         for vtf in vtf_nodes:
             _, username, password = vtf.get_oob()
             vtf.set_oob_creds(ip=vtf_ips_from_vtc.pop(0), username=username, password=password)
@@ -93,7 +95,7 @@ class Vtc(VirtualServer):
         return map(lambda xrvr: xrvr.xrvr_restart_dl(), self.lab().get_xrvr())
 
     def show_connections_xrvr_vtf(self):
-        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.lab().get_vtf()) + map(lambda xrvr: xrvr.xrvr_show_connections_xrvr_vtf(), self.lab().get_xrvr())
+        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.get_vtf()) + map(lambda xrvr: xrvr.xrvr_show_connections_xrvr_vtf(), self.lab().get_xrvr())
 
     def show_vxlan_tunnel(self):
         return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_vft())
