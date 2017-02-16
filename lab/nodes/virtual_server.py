@@ -12,6 +12,3 @@ class VirtualServer(LabServer):
 
     def get_hardware_server(self):
         return self._hard_server
-
-    def correct_port_id(self, port_id, from_node=None):
-        return port_id
