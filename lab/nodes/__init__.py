@@ -24,7 +24,7 @@ class LabNode(WithLogMixIn, WithConfig):
         self._n = self._ROLE_VS_COUNT[role]  # number of this node in a list of nodes for this role
         self._cfg = kwargs                   # initial configuration dictionary as provided in lab config file
         self._wires = []
-        self._lab.get_nodes_by_class().append(self)
+        self._lab.get_nodes_by_class().append(self)  # add this node to the lab. this step is needed since virtual servers relay on hardware
 
     def __repr__(self):
         return u'{} {}'.format(self.get_lab_id(), self.get_node_id())
@@ -39,7 +39,7 @@ class LabNode(WithLogMixIn, WithConfig):
         except KeyError as ex:
             raise ValueError('"{}"\nmust have parameter "{}"'.format(node_desc, ex))
         except TypeError as ex:
-            raise TypeError('{} for the node {} of role {}'.format(ex, node_desc.get('id'), node_desc.get('role')))
+            raise TypeError('{} for the node "{}" of role "{}"'.format(ex, node_desc.get('id'), node_desc.get('role')))
 
     def connect_node(self):
         """This is not server so process just wires information for upstream links. LabServer has this method overridden"""

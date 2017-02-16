@@ -27,7 +27,8 @@ class Tims(WithLogMixIn):
                     username, token = user, self.TOKENS[user]
                     break
 
-        self._xml_tims_wrapper = '''<Tims xmlns="http://tims.cisco.com/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://tims.cisco.com/namespace http://tims.cisco.com/xsd/Tims.xsd">
+        self._xml_tims_wrapper = '''<Tims xmlns="http://tims.cisco.com/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink"
+                                    xsi:schemaLocation="http://tims.cisco.com/namespace http://tims.cisco.com/xsd/Tims.xsd">
                               <Credential user="{}" token="{}"/>
                               {{body}}
                               </Tims>
@@ -166,7 +167,7 @@ class Tims(WithLogMixIn):
         else:
             tims_report_url = 'and not reported to tims since user not known'
 
-        self.log_to_slack(message='{}: {} {} {}'.format(mercury_version, test_cfg_path, status.upper(), tims_report_url))
+        self.log_to_slack(message='{} {}: {} {} {}'.format(lab, mercury_version, test_cfg_path, status.upper(), tims_report_url))
 
     def simulate(self):
         from lab.with_config import WithConfig

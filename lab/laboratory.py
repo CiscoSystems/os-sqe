@@ -20,8 +20,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         self._supported_lab_types = ['MERCURY', 'OSPD']
         self._unique_dict = dict()  # to make sure that all needed objects are unique
-        self._nodes = list()
-        self._director = None
         if config_path is None:
             return
 
@@ -38,9 +36,13 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
         self._nets = {net_id: Network.add_network(lab=self, net_id=net_id, net_desc=net_desc) for net_id, net_desc in self._cfg['nets'].items()}
+        map(lambda net: self.make_sure_that_object_is_unique(obj=net.get_vlan_id(), owner=net), self._nets.values())  # make sure that all nets have unique VLAN ID
+        map(lambda net: self.make_sure_that_object_is_unique(obj=net.get_cidr(), owner=net), self._nets.values())  # make sure that all nets have unique CIDR
 
+        self._nodes = list()
         map(lambda nd: LabNode.add_node(lab=self, node_desc=nd), self._cfg['nodes'])  # first pass - just create nodes
-        map(lambda n: n.connect_node(), self._nodes)  # second pass - process wires and nics section to connect node to peers
+        map(lambda node: self.make_sure_that_object_is_unique(obj=node.get_node_id(), owner=self), self._nodes)  # make sure that all nodes have unique ids
+        map(lambda node: node.connect_node(), self._nodes)  # second pass - process wires and nics section to connect node to peers
 
         for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
             from_node = self.get_node_by_id(peer_link['own-id'])
@@ -52,11 +54,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         :return: None
         """
         from lab.nodes.lab_server import LabServer
-
-        for net in self.get_all_nets().values():
-            self.make_sure_that_object_is_unique(obj=net.get_vlan_id(), node_id=net)
-            self.make_sure_that_object_is_unique(obj=net.get_cidr(), node_id=net)
-            self.make_sure_that_object_is_unique(obj=net.get_mac_pattern(), node_id=net)
 
         role_vs_nets = {}
         for net_id, net_desc in self._cfg['nets'].items():
@@ -83,7 +80,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             for wire in node.get_all_wires():
                 peer_node = wire.get_peer_node(node)
                 peer_port_id = wire.get_peer_port(node)
-                self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), node_id=node.get_node_id())  # check that this peer_node-peer_port is unique
+                self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), owner=node.get_node_id())  # check that this peer_node-peer_port is unique
 
     def is_sriov(self):
         return self._is_sriov
@@ -206,17 +203,17 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def logstash_creds(self):
         return self._cfg['logstash']
 
-    def make_sure_that_object_is_unique(self, obj, node_id):
+    def make_sure_that_object_is_unique(self, obj, owner):
         """check that given object is unique
-        :param obj: object
-        :param node_id: node which tries to register the object
+        :param obj: object which is supposed to be unique
+        :param owner: other object which tries to own the object, usually node or lab
         """
 
         key = str(obj)
         if key in self._unique_dict.keys():
-            raise ValueError('{} node tries to own {} which is already in use by {}'.format(node_id, key, self._unique_dict[key]))
+            raise ValueError('{} node tries to own {} which is already in use by {}'.format(owner, key, self._unique_dict[key]))
         else:
-            self._unique_dict[key] = node_id
+            self._unique_dict[key] = owner
 
     def get_type(self):
         return self._lab_type
