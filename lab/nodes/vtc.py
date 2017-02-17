@@ -49,7 +49,7 @@ class Vtc(VirtualServer):
             self.log(message='Url={url} auth={auth}, headers={headers}, param={params}'.format(url=url, auth=auth, headers=headers, params=params), level='exception')
             raise
         except Exception as e:
-            raise RuntimeError('{} when doing {} {} with {}'.format(e, e.request.method, e.request.url, e.request.headers))
+            raise RuntimeError('{}({}) when doing {} {} with {}'.format(type(e), e, e.request.method, e.request.url, e.request.headers))
 
     def set_vip(self, vip, vip_mx):
         self._vip_a, self._vip_mx = vip, vip_mx
