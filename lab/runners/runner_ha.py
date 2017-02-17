@@ -13,7 +13,6 @@ class RunnerHA(LabWorker):
         return {'cloud-name': 'name', 'task-yaml': 'task-ha.yaml', 'is-debug': False, 'is-parallel': True}
 
     def __init__(self, config):
-        self._cloud_name = config['cloud']
         self._task_yaml_path = config['task-yaml']
         self._task_body = self.read_config_from_file(config_path=self._task_yaml_path, directory='ha')
         self._is_debug = config['is-debug']

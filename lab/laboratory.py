@@ -17,6 +17,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.network import Network
         from lab.nodes import LabNode
         from lab.wire import Wire
+        from lab.nodes.lab_server import LabServer
 
         self._supported_lab_types = ['MERCURY', 'OSPD']
         self._unique_dict = dict()  # to make sure that all needed objects are unique
@@ -41,19 +42,12 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         self._nodes = list()
         map(lambda nd: LabNode.add_node(lab=self, node_desc=nd), self._cfg['nodes'])  # first pass - just create nodes
-        map(lambda node: self.make_sure_that_object_is_unique(obj=node.get_node_id(), owner=self), self._nodes)  # make sure that all nodes have unique ids
-        map(lambda node: node.connect_node(), self._nodes)  # second pass - process wires and nics section to connect node to peers
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_node_id(), owner=self), self._nodes)  # make sure that all nodes have unique ids
+        map(lambda n: n.connect_node(), self._nodes)  # second pass - process wires and nics section to connect node to peers
 
         for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
             from_node = self.get_node_by_id(peer_link['own-id'])
             Wire.add_wire(local_node=from_node, local_port_id=peer_link['own-port'], peer_desc={'peer-id': peer_link['peer-id'], 'peer-port': peer_link['peer-port'], 'port-channel': peer_link['port-channel']})
-        self.check_validity()
-
-    def check_validity(self):
-        """ Checks that all the information provided in the config file is self consistent: no double ips or macs, all nodes sit on correct networks
-        :return: None
-        """
-        from lab.nodes.lab_server import LabServer
 
         role_vs_nets = {}
         for net_id, net_desc in self._cfg['nets'].items():

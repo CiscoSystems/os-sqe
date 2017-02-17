@@ -83,8 +83,14 @@ class CloudImage(object):
 
         r = requests.get(url + '.txt')
         checksum, _, self._username, self._password = r.text.split()
-        local_path = cloud.get_mediator().r_get_remote_file(url=url, to_directory='cloud_images', checksum=checksum)
-        self._status = cloud.os_image_create(image_name=UNIQUE_PATTERN_IN_NAME + '-' + name, local_path=local_path, checksum=checksum)
+        self._status = cloud.os_image_show(name)
+
+        if not self._status or self._status['checksum'] != checksum:
+            local_path = cloud.get_mediator().r_get_remote_file(url=url, to_directory='cloud_images', checksum=checksum)
+            cloud.os_cmd('openstack image create {} --public --protected --disk-format qcow2 --container-format bare --file {}'.format(name, local_path))
+            self._status = cloud.os_image_wait(name)
+        else:
+            cloud.log('image has a matched checksum: {}'.format(checksum))
 
     def get_username(self):
         return self._username
@@ -96,12 +102,13 @@ class CloudImage(object):
         return self._status['Name']
 
     @staticmethod
-    def create(image_name, cloud):
+    @section('Creating custom image')
+    def add_image(image_name, cloud):
         images = {'iperf': 'http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2',
                   'csr':   'http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2'}
         if image_name not in images.keys():
             raise ValueError('Image "{}" is not known'.format(image_name))
-        return CloudImage(name=image_name, url=images[image_name], cloud=cloud)
+        return CloudImage(name=UNIQUE_PATTERN_IN_NAME + '-' + image_name, url=images[image_name], cloud=cloud)
 
 
 class Cloud(WithLogMixIn):
@@ -122,10 +129,12 @@ class Cloud(WithLogMixIn):
         self._admin = admin
         self._tenant = tenant
         self._password = password
-        self.info = {'controller': [], 'ucsm': [], 'network': [], 'compute': []}
         self._end_point = end_point
         self._mediator = mediator  # special server to be used to execute CLI commands for this cloud
         self._instance_counter = 0  # this counter is used to count how many instances are created via this class
+        service_lst = self.os_host_list()
+        self._controls = sorted([x['Host Name'] for x in service_lst if x['Service'] == 'scheduler'])
+        self._computes = sorted([x['Host Name'] for x in service_lst if x['Service'] == 'compute'])
 
     def __repr__(self):
         return 'Cloud {n}: {a} {u} {p}'.format(u=self._user, n=self._name, p=self._password, a=self._end_point)
@@ -133,6 +142,9 @@ class Cloud(WithLogMixIn):
     @staticmethod
     def _add_name_prefix(name):
         return '{}-{}'.format(UNIQUE_PATTERN_IN_NAME, name)
+
+    def get_computes(self):
+        return self._computes
 
     def get_name(self):
         return self._name
@@ -174,16 +186,13 @@ export OS_AUTH_URL={end_point}
         import json
 
         try:
-            lst = json.loads(answer.split('\n')[-1])  # neutron returns Created a new port:\r\n[{"Field": "admin_state_up", "Value": true}.... while openstack returns just serialized array
+            ans = json.loads(answer)
         except ValueError:  # this may happen e.g. openstack image show non-existing -f json which gives "Could not find resource sqe-test-iperf"
             return {}
-        if not lst or 'Value' not in lst[0]:  # [{"ID": "foo", "Name": "bar"}, ...] for list operation
-            return lst
+        if type(ans) is list and len(ans) and 'Value' in ans[0]:
+            return {x['Field']: x['Value'] for x in ans}  # some old OS clients return [{"Field": "foo", "Value": "bar"}, ...]
         else:
-            d = {}
-            for x in lst:  # [{"Field": "foo", "Value": "bar"}, ...] for other operations
-                d[x['Field']] = x['Value']
-            return d
+            return ans
 
     @staticmethod
     def _process_csv_output(answer):
@@ -363,14 +372,8 @@ export OS_AUTH_URL={end_point}
     def os_host_list(self):
         return self.os_cmd('openstack host list -f json')
 
-    @section('Registering custom image')
-    def os_image_create(self, image_name, checksum, local_path):
-        image = self.os_image_show(image_name)
-        if not image or image['checksum'] != checksum:
-            self.os_cmd('openstack image create {} --public --protected --disk-format qcow2 --container-format bare --file {}'.format(image_name, local_path))
-            return self.os_image_wait(image_name)
-        else:
-            return image
+    def os_image_create(self, image_name):
+        return CloudImage.add_image(image_name=image_name, cloud=self)
 
     def os_image_analyse_problem(self, image):
         self.r_collect_information(regex=image['Name'], comment='image problem')

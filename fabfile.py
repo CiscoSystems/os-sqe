@@ -91,7 +91,7 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
 
     exceptions = []
     for tst in tests:
-        runner = RunnerHA(config={'cloud': cloud, 'task-yaml': tst, 'is-debug': is_debug, 'is-parallel': is_parallel})
+        runner = RunnerHA(config={'task-yaml': tst, 'is-debug': is_debug, 'is-parallel': is_parallel})
         exceptions.extend(runner.execute(cloud))
 
     if exceptions:

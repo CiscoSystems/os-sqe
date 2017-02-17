@@ -9,7 +9,7 @@ class VtsScenario(ParallelWorker):
         except KeyError as ex:
             raise ValueError('{}: no required parameter "{}"'.format(self, ex))
 
-        if len(self._compute_servers) < 2:
+        if len(self.get_cloud().get_computes()) < 2:
             raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(self))
 
     @property
@@ -19,18 +19,6 @@ class VtsScenario(ParallelWorker):
     @property
     def _n_servers(self):
         return self._kwargs['how-many-servers']
-
-    def _get_comp_hosts(self):
-        return sorted([x['Host Name'] for x in self._cloud.os_host_list() if x['Service'] == 'compute'])
-
-    @property
-    def _compute_servers(self):
-        from collections import OrderedDict
-
-        return self._run_params.setdefault('compute-servers', OrderedDict([(x, []) for x in self._get_comp_hosts()]))
-
-    def _servers_of_compute(self, n):
-        return self._compute_servers[n]
 
     @property
     def _uptime(self):
@@ -44,23 +32,12 @@ class VtsScenario(ParallelWorker):
     def _vtc(self):
         return self._lab.get_vtc()[0]
 
-    @property
-    def _even_server_numbers(self):
-        return [10 + x for x in range(self._n_servers) if x % 2 == 0]
-
     @section('Setup')
     def setup_worker(self):
-        self._cloud.os_cleanup()
-        self._cloud.os_keypair_create()
-
-    @property
-    def _get_flavor(self):
-        return self._run_params.setdefault('flavor', self._cloud.os_flavor_create('vts'))
-
-    @property
-    def _get_image(self):
-        from lab.cloud import CloudImage
-        return self._run_params.setdefault('image', CloudImage.create('iperf', self.get_cloud()))
+        self.get_cloud().os_cleanup()
+        self.get_cloud().os_keypair_create()
+        self.get_cloud().os_image_create('iperf')
+        self.get_cloud().os_flavor_create('vts')
 
     @section('Creating networks')
     def _network_part(self):
@@ -94,7 +71,7 @@ class VtsScenario(ParallelWorker):
     def _instances_part(self, on_nets, timeout):
         from lab.cloud import CloudServer
 
-        return CloudServer.create(how_many=self._n_servers, flavor_name=self._get_flavor, image=self._get_image, on_nets=on_nets, timeout=timeout, cloud=self.get_cloud())
+        return CloudServer.create(how_many=self._n_servers, flavor_name='vts', image='iperf', on_nets=on_nets, timeout=timeout, cloud=self.get_cloud())
 
     @section('Pinging instances')
     def _ping_part(self, servers):

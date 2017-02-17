@@ -177,7 +177,7 @@ class Server(object):
         self.exe('mkdir -p cache')
         self.exe(command='test -e {loc} || curl -s -R {url} -o {loc}'.format(loc=loc, url=url), in_directory='cache')  # download to $HOME directory and use as cache
         calc_checksum = self.exe(command='{} {}'.format('sha256sum' if len(checksum) == 64 else 'md5sum', loc), in_directory='cache')
-        if calc_checksum.split()[0] != checksum.strip('\n'):
+        if calc_checksum.split()[0] != str(checksum.strip('\n')):  # checksum arg might by unicode with spaces
             raise RuntimeError('image {} taken from {} has wrong checksum. Check it manually'.format(loc, url))
         self.exe('cp $HOME/cache/{} .'.format(loc), in_directory=to_directory)
         return self.exe(command='readlink -f {0}'.format(loc), in_directory=to_directory)
