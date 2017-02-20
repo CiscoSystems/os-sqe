@@ -8,8 +8,8 @@ class NttScenario(ParallelWorker):
     def setup_worker(self):
         self.get_cloud().os_image_create('csr')
         self._build_node.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs.git', local_repo_dir='os-sqe-tmp/osqe-configs')
-        # self._build_node.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.gi', local_repo_dir='os-sqe-tmp/nfvi-test')
-        # self._build_node.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed', local_repo_dir='os-sqe-tmp/testbed')
+        self._build_node.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir='os-sqe-tmp/nfvi-test')
+        self._build_node.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir='os-sqe-tmp/testbed')
 
         self._build_node.exe('docker pull cloud-docker.cisco.com/nfvbench')
         self._build_node.exe('yum install kernel-devel kernel-headers -y')
