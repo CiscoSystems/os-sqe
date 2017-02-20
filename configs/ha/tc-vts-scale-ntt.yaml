@@ -4,3 +4,4 @@
 
 - class: lab.scenarios.ntt_scenario.NttScenario
   pauses: [5, 4]
+  n_repeats: 1
