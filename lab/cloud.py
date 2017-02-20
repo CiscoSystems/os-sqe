@@ -82,7 +82,11 @@ class CloudImage(object):
         import requests
 
         r = requests.get(url + '.txt')
-        checksum, _, self._username, self._password = r.text.split()
+        try:
+            checksum, _, self._username, self._password = r.text.split()
+        except ValueError:
+            raise ValueError('File {} has wrong body: "{}"'.format(url + '.txt', r.text))
+
         self._status = cloud.os_image_show(name)
 
         if not self._status or self._status['checksum'] != checksum:

@@ -184,6 +184,9 @@ class LabServer(LabNode):
     def r_get_remote_file(self, url, checksum, to_directory='.'):
         return self._server.wget_file(url, to_directory=to_directory, checksum=checksum)
 
+    def r_clone_repo(self, repo_url, local_repo_dir=None, tags=None, patch=None):
+        self._server.clone_repo(repo_url, local_repo_dir, tags, patch)
+
     def r_put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
         return self._server.put_string_as_file_in_dir(string_to_put, file_name, in_directory=in_directory)
 
