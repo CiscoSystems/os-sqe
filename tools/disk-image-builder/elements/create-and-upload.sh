@@ -15,6 +15,6 @@ pip install -e ./diskimage-builder
 disk-image-create fedora vm selinux-permissive dnsmasq iperf users ip-addresses manage-cloud-init -a amd64 -o ${ELEMENTS_PATH}/${image_name}
 deactivate
 
-cat >${image_name}.txt<<EOF
+cat >${ELEMENTS_PATH}/${image_name}.txt<<EOF
 $(sha256sum ${ELEMENTS_PATH}/${image_name}) admin cisco123
 EOF
