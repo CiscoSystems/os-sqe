@@ -6,26 +6,21 @@ class NttScenario(ParallelWorker):
         pass
 
     def setup_worker(self):
-        self.get_cloud().os_image_create('csr')
+        self._build_node.exe('rm -rf os-sqe-tmp')
         self._build_node.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir='os-sqe-tmp/nfvi-test')
         self._build_node.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir='os-sqe-tmp/testbed')
-
-        self._build_node.exe('docker pull cloud-docker.cisco.com/nfvbench')
-        self._build_node.exe('yum install kernel-devel kernel-headers -y')
-        self._build_node.exe('docker run --rm --privileged -v /lib/modules/$(uname -r):/lib/modules/$(uname -r) -v /usr/src/kernels/$(uname -r):/usr/src/kernels/$(uname -r) cloud-docker.cisco.com/nfvbench nfvbench -h')
         self._build_node.exe('cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory='os-sqe-tmp')
 
+        with open('lab/scenarios/nfvbench.sh', 'r') as f:
+            tmpl = f.read()
+        body = tmpl.replace('{XXXXX}', '--rate 1500pps')
+        self._build_node.r_put_string_as_file_in_dir(string_to_put=body, file_name='execute', in_directory='os-sqe-tmp')
+        self._build_node.exe('docker pull cloud-docker.cisco.com/nfvbench')
+        self._build_node.exe('yum install kernel-devel kernel-headers -y')
+        # self.get_cloud().os_image_create('csr')
+
     def loop_worker(self):
-        answers = self._build_node.exe('sudo docker run --rm --privileged --net host --name nfvbench '
-                                       '-v $PWD:/tmp/nfvbench '
-                                       '-v /etc/hosts:/etc/hosts '
-                                       '-v ~/.ssh:/root/.ssh '
-                                       '-v /dev:/dev '
-                                       '-v ~/openstack-configs:/tmp/nfvbench/openstack '
-                                       '-v /lib/modules/$(uname -r):/lib/modules/$(uname -r) '
-                                       '-v /usr/src/kernels/$(uname -r):/usr/src/kernels/$(uname -r)  '
-                                       'cloud-docker.cisco.com/nfvbench:latest '
-                                       '-c nfvbench_config.yaml --rate 1500pps --json results.json', in_directory='os-sqe-tmp', is_warn_only=True)
+        answers = self._build_node.exe('. execute', in_directory='os-sqe-tmp', is_warn_only=True)
         return answers
 
     def teardown_worker(self):
