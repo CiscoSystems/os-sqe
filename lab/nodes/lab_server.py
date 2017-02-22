@@ -73,7 +73,7 @@ class LabServer(LabNode):
 
     def get_ssh_for_bash(self):
         ip, u, p = self.get_ssh()
-        command = 'sshpass -p {} ssh {}@{}'.format(p, u, ip)
+        command = 'sshpass -p {} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {}@{}'.format(p, u, ip)
         if self._proxy_server:
             command = self._proxy_server.get_ssh_for_bash()[0].replace('ssh ', 'ssh -t ') + ' ' + command
         return command, super(LabServer, self).get_ssh_for_bash()
