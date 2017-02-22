@@ -16,5 +16,5 @@ disk-image-create fedora vm selinux-permissive dnsmasq iperf users ip-addresses 
 deactivate
 
 cat >${ELEMENTS_PATH}/${image_name}.txt<<EOF
-$(sha256sum ${ELEMENTS_PATH}/${image_name}) admin cisco123
+$(md5sum ${ELEMENTS_PATH}/${image_name}) admin cisco123
 EOF
