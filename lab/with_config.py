@@ -29,22 +29,14 @@ class WithConfig(object):
 
     @staticmethod
     def open_artifact(name, mode):
-        from lab.with_log import lab_logger
-
-        if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
-            os.makedirs(WithConfig.ARTIFACTS_DIR)
-        file_path = os.path.join(WithConfig.ARTIFACTS_DIR, name)
-
-        lab_logger.info('{} created'.format(file_path))
-        return open(file_path, mode)
+        return open(WithConfig.get_artifact_file_path(short_name=name), mode)
 
     @staticmethod
     def get_artifact_file_path(short_name):
-        path = os.path.join(WithConfig.ARTIFACTS_DIR, short_name)
-        if os.path.isfile(path):
-            return path
-        else:
-            raise RuntimeError('No file {}'.format(path))
+        if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
+            os.makedirs(WithConfig.ARTIFACTS_DIR)
+
+        return os.path.join(WithConfig.ARTIFACTS_DIR, short_name)
 
     @staticmethod
     def get_remote_store_file_to_artifacts(path):
