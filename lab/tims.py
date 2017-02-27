@@ -3,7 +3,10 @@ from lab.with_log import WithLogMixIn
 
 class Tims(WithLogMixIn):
     FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'PERFOMANCE AND SCALE': 'Tcbr1840f'}
-    TOKENS = {'kshileev': '0000003933000000000D450000000000', 'nfedotov': '26520000006G00005F42000077044G47', 'dratushn': '000000525F7G007900000000006G4700', 'ymorkovn': '6B02004H0000005600003B0000000000'}
+    TOKENS = {'kshileev': '0000003933000000000D450000000000',
+              'nfedotov': '26520000006G00005F42000077044G47',
+              'dratushn': '000000525F7G007900000000006G4700',
+              'ymorkovn': '6B02004H0000005600003B0000000000'}
 
     TIMS_PROJECT_ID = 'Tcbr1p'
 
@@ -20,9 +23,10 @@ class Tims(WithLogMixIn):
             username, token = user_token.split('-')
         else:
             user1 = os.getenv('BUILD_USER_ID', 'user_not_defined')  # some Jenkins jobs define this variable
-            user2 = getpass.getuser()
+            user2 = os.getenv('BUILD_USER_EMAIL', 'user_not_defined').split('@')[0]  # finally all Jenkins jobs define this variable
+            user3 = getpass.getuser()
             username, token = None, None
-            for user in [user1, user2]:
+            for user in [user1, user2, user3]:
                 if user in self.TOKENS.keys():
                     username, token = user, self.TOKENS[user]
                     break
