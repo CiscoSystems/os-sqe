@@ -20,8 +20,10 @@ class NttScenario(ParallelWorker):
         # self.get_cloud().os_image_create('csr')
 
     def loop_worker(self):
-        answers = self._build_node.exe('. execute', in_directory='os-sqe-tmp', is_warn_only=True)
-        return answers
+        ans = self._build_node.exe('. execute', in_directory='os-sqe-tmp', is_warn_only=True)
+        if 'ERROR' in ans:
+            raise RuntimeError(ans)
+        return ans
 
     def teardown_worker(self):
         self._build_node.exe('echo rm -rf os-sqe-tmp')
