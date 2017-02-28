@@ -3,8 +3,12 @@ from lab.parallelworker import ParallelWorker
 
 class NttScenario(ParallelWorker):
     def check_arguments(self, **kwargs):
-        if 'no-cleanup' not in kwargs or type(kwargs['no-cleanup']) is not bool:
-            raise ValueError('{}: define no-cleanup True/False')
+        if type(self._is_no_cleanup) is not bool:
+            raise ValueError('{}: define no-cleanup: True/False')
+
+    @property
+    def _is_no_cleanup(self):
+        return self._kwargs['no-cleanup']
 
     def setup_worker(self):
         self._build_node.exe('rm -rf os-sqe-tmp')
@@ -14,7 +18,7 @@ class NttScenario(ParallelWorker):
 
         with open('lab/scenarios/nfvbench.sh', 'r') as f:
             tmpl = f.read()
-        body = tmpl.replace('{XXXXX}', '--rate 1500pps --debug {}'.format('--no-cleanup' if self._kwargs['no-cleanup'] else ''))
+        body = tmpl.replace('{XXXXX}', '--rate 1500pps --debug {}'.format('--no-cleanup' if self._is_no_cleanup else ''))
         self._build_node.r_put_string_as_file_in_dir(string_to_put=body, file_name='execute', in_directory='os-sqe-tmp')
         self._build_node.exe('docker pull cloud-docker.cisco.com/nfvbench')
         self._build_node.exe('yum install kernel-devel kernel-headers -y')
@@ -27,7 +31,8 @@ class NttScenario(ParallelWorker):
         return ans
 
     def teardown_worker(self):
-        self._build_node.exe('rm -rf os-sqe-tmp')
+        if not self._is_no_cleanup:
+            self._build_node.exe('rm -rf os-sqe-tmp')
 
 """
 #!/bin/bash
