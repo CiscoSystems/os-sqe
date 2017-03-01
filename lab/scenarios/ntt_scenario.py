@@ -11,24 +11,43 @@ class NttScenario(ParallelWorker):
         return self._kwargs['no-cleanup']
 
     def setup_worker(self):
-        self._build_node.exe('rm -rf os-sqe-tmp')
         self._build_node.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir='os-sqe-tmp/nfvi-test')
         self._build_node.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir='os-sqe-tmp/testbed')
-        self._build_node.exe('cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory='os-sqe-tmp')
+        self._build_node.exe('rm -f nfvbench_config.yaml && cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory='os-sqe-tmp')
 
         with open('lab/scenarios/nfvbench.sh', 'r') as f:
-            tmpl = f.read()
-        body = tmpl.replace('{XXXXX}', '--rate 1500pps --debug {}'.format('--no-cleanup' if self._is_no_cleanup else ''))
+            body = f.read()
         self._build_node.r_put_string_as_file_in_dir(string_to_put=body, file_name='execute', in_directory='os-sqe-tmp')
         self._build_node.exe('docker pull cloud-docker.cisco.com/nfvbench')
         self._build_node.exe('yum install kernel-devel kernel-headers -y')
         # self.get_cloud().os_image_create('csr')
 
     def loop_worker(self):
-        ans = self._build_node.exe('. execute', in_directory='os-sqe-tmp', is_warn_only=True)
+        ans = []
+        for parmaters in ['--rate 2500pps', '--rate 3000pps']:
+            ans.append(self.single_run(parameters=parmaters))
+        return ans
+
+    def single_run(self, parameters):
+        import json
+
+        #ans = self._build_node.exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
+        ans = 'ok'
         if 'ERROR' in ans:
             raise RuntimeError(ans)
-        return ans
+        else:
+            res_json_body = self._build_node.r_get_file_from_dir(file_name='results.json', in_directory='os-sqe-tmp')
+
+            suffix = parameters.replace(' ', '_')
+            with self.get_lab().open_artifact('nfvbench_results_{}.json'.format(suffix), 'w') as f:
+                f.write(res_json_body)
+            with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(suffix), 'w') as f:
+                f.write(ans)
+            res_json = json.loads(res_json_body)
+            res = []
+            for mtu, di in res_json['benchmarks']['network']['service_chain']['PVP']['result'][0]['result'].items():
+                res.append('MTU={} RT={}'.format(mtu, di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']))
+            return parameters + '-->' + '; '.join(res)
 
     def teardown_worker(self):
         if not self._is_no_cleanup:
