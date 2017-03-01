@@ -24,7 +24,7 @@ class NttScenario(ParallelWorker):
 
     def loop_worker(self):
         ans = []
-        for parmaters in ['--rate 2500pps', '--rate 3000pps']:
+        for parmaters in ['--rate ndr_pdr --flow-count 10000', '--rate 1.3Gbps']:
             ans.append(self.single_run(parameters=parmaters))
         return ans
 
