@@ -46,7 +46,7 @@ def cmd():
                 argument = False
             arguments.append(argument)
         try:
-            results = method_to_execute(*arguments)
+            results = method_to_execute(*arguments) if arguments else method_to_execute()
             d.log('{}() returns:\n\n {}\n'.format(name, results))
         except Exception as ex:
             lab_logger.exception('\n Exception: {0}'.format(ex))
@@ -79,6 +79,8 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
     from lab.with_config import WithConfig
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.runners.runner_ha import RunnerHA
+    from lab.tims import Tims
+    from lab.elk import Elk
 
     available_tc = WithConfig.ls_configs(directory='ha')
     tests = sorted(filter(lambda x: test_regex in x, available_tc))
@@ -88,11 +90,16 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
 
     deployer = DeployerExisting(config={'hardware-lab-config': lab_cfg_path})
     cloud = deployer.execute([])
+    mercury_version, vts_version = cloud.get_lab().r_get_version()
+    tims = Tims()
 
-    exceptions = []
+    results = []
     for tst in tests:
         runner = RunnerHA(config={'task-yaml': tst, 'is-debug': is_debug, 'is-parallel': is_parallel})
-        exceptions.extend(runner.execute(cloud))
+        results.extend(runner.execute(cloud))
+        elk = Elk(proxy=cloud.get_mediator())
+        elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
+        tims.publish_result_to_tims(test_cfg_path=tst, mercury_version=mercury_version, lab=cloud.get_lab(), results=results)
 
     if exceptions:
         raise RuntimeError('Possible reason: {}'.format(exceptions))

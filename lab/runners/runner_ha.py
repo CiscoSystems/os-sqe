@@ -25,16 +25,12 @@ class RunnerHA(LabWorker):
         import importlib
         import multiprocessing
         import fabric.network
-        import time
-        from lab.elk import Elk
 
         manager = multiprocessing.Manager()
         shared_dict = manager.dict()
 
         type_of_run = ' {} {} debug in {}'.format(self._task_yaml_path, 'with' if self._is_debug else 'without', 'parallel' if self._is_parallel else 'sequence')
         self.log('Running ' + type_of_run)
-
-        start_time = time.time()
 
         klass_kwargs = []
         for single_worker_description in self._task_body:
@@ -63,17 +59,7 @@ class RunnerHA(LabWorker):
             results = pool.map(starter, workers_to_run)  # a list of {'name': 'monitor, scenario or disruptor name', 'success': True or False, 'n_exceptions': 10}
         else:
             results = map(starter, workers_to_run)
-
-        exceptions = []
-        for result in results:
-            exceptions.extend(result.get('exceptions', []))
-
-        elk = Elk(proxy=cloud.get_mediator())
-        elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
-
-        self.publish_to_tims(lab=cloud.get_lab(), results=results)
-
-        return exceptions
+        return results
 
     @decorators.section('reporting to TIMS and SLACK')
     def publish_to_tims(self, lab, results):
@@ -81,4 +67,4 @@ class RunnerHA(LabWorker):
 
         t = Tims()
         mercury_version, vts_version = lab.r_get_version()
-        t.publish_result_to_tims(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, lab=lab, results=results)
+        t.publish_result(test_cfg_path=self._task_yaml_path, mercury_version=mercury_version, lab=lab, results=results)

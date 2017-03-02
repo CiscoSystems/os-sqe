@@ -24,14 +24,15 @@ class NttScenario(ParallelWorker):
 
     def loop_worker(self):
         ans = []
-        for parmaters in ['--rate ndr_pdr --flow-count 10000', '--rate 1.3Gbps']:
+        for parmaters in ['--rate 1.3Gbps --flow-count 10000', '--rate ndr_pdr --flow-count 10000']:
             ans.append(self.single_run(parameters=parmaters))
         return ans
 
     def single_run(self, parameters):
         import json
 
-        ans = self._build_node.exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
+        # ans = self._build_node.exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
+        ans = 'ok'
         if 'ERROR' in ans:
             raise RuntimeError(ans)
         else:
@@ -45,7 +46,14 @@ class NttScenario(ParallelWorker):
             res_json = json.loads(res_json_body)
             res = []
             for mtu, di in res_json['benchmarks']['network']['service_chain']['PVP']['result'][0]['result'].items():
-                res.append('MTU={} RT={}'.format(mtu, di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']))
+                if 'ndr' in di:
+                    for t in ['ndr', 'pdr']:
+                        la_min, la_avg, la_max = di[t]['stats']['overall']['min_delay_usec'], di[t]['stats']['overall']['avg_delay_usec'], di[t]['stats']['overall']['max_delay_usec']
+                        gbps = di[t]['rate_bps'] / 1e9
+                        drop_thr = di[t]['stats']['overall']['drop_rate_percent']
+                        res.append('MTU={} {}({:.4f}) rate={:.4f} Gbps latency={:.1f} {:.1f} {:.1f} usec'.format(mtu, t, drop_thr, gbps, la_min, la_avg, la_max))
+                else:
+                    res.append('MTU={} RT={}'.format(mtu, di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']))
             return parameters + '-->' + '; '.join(res)
 
     def teardown_worker(self):
