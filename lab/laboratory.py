@@ -5,6 +5,9 @@ from lab.with_log import WithLogMixIn
 
 
 class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
+    MERCURY = 'MERCURY'
+    OSPD = 'OSPD'
+
     def __repr__(self):
         return self._lab_name
 
@@ -19,7 +22,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.wire import Wire
         from lab.nodes.lab_server import LabServer
 
-        self._supported_lab_types = ['MERCURY', 'OSPD']
+        self._supported_lab_types = [self.MERCURY, self.OSPD]
         self._unique_dict = dict()  # to make sure that all needed objects are unique
         if config_path is None:
             return
