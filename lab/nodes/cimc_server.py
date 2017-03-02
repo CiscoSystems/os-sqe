@@ -7,35 +7,34 @@ class CimcServer(LabServer):
 
     def __init__(self, **kwargs):
         super(CimcServer, self).__init__(**kwargs)
-        self._handle = None
+        self.__handle = None
         self._dump_xml = False
         self._logout_on_each_command = False
 
     def logger(self, message):
         self.log('CIMC ' + message)
-        
-    def _login(self):
+
+    @property
+    def _handle(self):
         import ImcSdk
 
-        if self._dump_xml:
-            self.logger('logging in')
-        self._handle = ImcSdk.ImcHandle()
-        oob_ip, oob_username, oob_password = self.get_oob()
-        if not all([oob_ip, oob_username, oob_password]):
-            raise AttributeError('To control CIMC you need to provide OOB IP, username and password.')
-        self._handle.login(name=oob_ip, username=oob_username, password=self._oob_password, dump_xml=self._dump_xml)
+        if self.__handle is None:
+            if self._dump_xml:
+                self.logger('logging in')
+            self.__handle = ImcSdk.ImcHandle()
+            oob_ip, oob_username, oob_password = self.get_oob()
+            self._handle.login(name=oob_ip, username=oob_username, password=self._oob_password, dump_xml=self._dump_xml)
+        return self.__handle
 
     def _logout(self):
         if self._dump_xml:
             self.logger('logging out')
         self._handle.logout()
-        self._handle = None
+        self.__handle = None
 
     def cmd(self, cmd, in_mo=None, class_id=None, params=None):
         from ImcSdk.ImcCoreMeta import ImcException
         
-        if not self._handle:
-            self._login()
         if cmd not in dir(self._handle):
             raise NotImplemented('{} does not exist'.format(cmd))
         func = getattr(self._handle, cmd)
@@ -52,6 +51,9 @@ class CimcServer(LabServer):
             finally:
                 if self._logout_on_each_command:
                     self._logout()
+
+    def cimc_get_raid_battery_status(self):
+        return self.cimc_get_mo_by_class_id('storageRaidBattery')
 
     def _cimc_lom(self, status):
         self.logger('{} all LOM'.format(status))
@@ -205,12 +207,13 @@ class CimcServer(LabServer):
             self.log(' is already ON')
 
     def cimc_reset(self):
-        from ImcSdk.ImcMos import ComputeRackUnit
+        pass
+        # from ImcSdk.ImcMos import ComputeRackUnit
 
-        #mo = handle.config_resolve_dn("sys/rack-unit-1")
+        # mo = handle.config_resolve_dn("sys/rack-unit-1")
 
-        #mo.admin_power = ComputeRackUnit.CONST_ADMIN_POWER_BMC_RESET_IMMEDIATE
-        #set_imc_managedobject(mo, class_id="ComputeRackUnit", params={ComputeRackUnit.ADMIN_POWER:
+        # mo.admin_power = ComputeRackUnit.CONST_ADMIN_POWER_BMC_RESET_IMMEDIATE
+        # set_imc_managedobject(mo, class_id="ComputeRackUnit", params={ComputeRackUnit.ADMIN_POWER:
         #                                                 ComputeRackUnit.CONST_ADMIN_POWER_BMC_RESET_IMMEDIATE,
         #                                             ComputeRackUnit.DN: "sys/rack-unit-1"})
 
@@ -220,7 +223,6 @@ class CimcServer(LabServer):
 
     def cleanup(self):
         self.logger('Cleaning CIMC {0}'.format(self))
-        self._login()
         self.cimc_enable_lom()
         self.cimc_delete_all_vnics()
         self.cimc_power_down()
@@ -238,7 +240,7 @@ class CimcServer(LabServer):
                 if port_id in ['LOM-1', 'LOM-2']:
                     actual_mac = actual_loms[port_id]['mac']
                     if mac.upper() != actual_mac.upper():
-                        raise ValueError('{}: "{}" actual mac is "{}" while requested "{}". Edit lab config!'.format(self.get_id(), port_id, actual_mac, mac))
+                        raise ValueError('{}: "{}" actual mac is "{}" while requested "{}". Edit lab config!'.format(self.get_node_id(), port_id, actual_mac, mac))
                 else:
                     if 'eth' not in self.get_nics() and nic.is_ssh():  # if no NIC called eth and it's nic on ssh network, use default eth0, eth1
                         if name in actual_vnics:
@@ -291,7 +293,7 @@ class CimcServer(LabServer):
 
     def cimc_set_hostname(self):
         current = self.cimc_get_mgmt_nic()
-        new_cimc_hostname = '{}-ru{}-{}'.format(self.lab(), self.get_hardware_info()[0], self.get_id())
+        new_cimc_hostname = '{}-ru{}-{}'.format(self.lab(), self.get_hardware_info()[0], self.get_node_id())
         if new_cimc_hostname != current['hostname']:
             self.logger(message='setting hostname to {}'.format(new_cimc_hostname))
             self.cimc_set_mo_by_class_id(class_id='mgmtIf', params={'dn': 'sys/rack-unit-1/mgmt/if-1', 'hostname': new_cimc_hostname})
