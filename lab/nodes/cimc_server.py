@@ -55,33 +55,27 @@ class CimcServer(LabServer):
     def cimc_get_raid_battery_status(self):
         return self.cimc_get_mo_by_class_id('storageRaidBattery')
 
-    def _cimc_lom(self, status):
+    def _cimc_bios_lom(self, status):
         self.logger('{} all LOM'.format(status))
-        params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status, 'vpLOMPort0State': status, 'vpLOMPort1State': status}
-        self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
-
-    def cimc_enable_lom(self):
-        from time import sleep
-
-        loms = self.cimc_list_lom_ports()
-        if not loms:
-            self._cimc_lom(status='Enabled')
+        actual = self.cimc_get_mo_by_class_id(class_id='BiosVfLOMPortOptionROM')
+        if actual.Status != status:
+            params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status, 'vpLOMPort0State': status, 'vpLOMPort1State': status}
+            self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
             self.cimc_power_cycle()
-            while True:
-                loms = self.cimc_list_lom_ports()
-                if loms:
-                    self.logger('LOMs are enabled')
-                    return
-                sleep(20)
-        else:
-            self.log('LOMs are already enabled')
 
-    def cimc_disable_lom(self):
-        self._cimc_lom(status='Disabled')
+    def cimc_enable_loms_in_bios(self):
+        self._cimc_bios_lom(status='Enable')
 
-    def cimc_list_lom_ports(self):
+    def cimc_disable_loms_in_bios(self):
+        self._cimc_bios_lom(status='Disable')
+
+    def cimc_list_pci_nic_ports(self):
         r = self.cimc_get_mo_by_class_id('networkAdapterEthIf')
-        return {'LOM-' + x.Id: {'mac': x.Mac, 'dn': x.Dn} for x in r}
+        return {x.Dn: x.Mac for x in r}
+
+    def cimc_list_pci_nic(self):
+        r = self.cimc_get_mo_by_class_id('networkAdapterUnit')
+        return [{'Dn': x.Dn, 'Model': x.Model} for x in r]
 
     def cimc_list_vnics(self):
         ans1 = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
@@ -221,16 +215,9 @@ class CimcServer(LabServer):
         current_power_state = self.cimc_get_power_status()
         self._cimc_power('up' if current_power_state == 'off' else 'cycle-immediate')
 
-    def cleanup(self):
-        self.logger('Cleaning CIMC {0}'.format(self))
-        self.cimc_enable_lom()
-        self.cimc_delete_all_vnics()
-        self.cimc_power_down()
-        self._logout()
-
     def cimc_recreate_vnics(self):
         actual_vnics = self.cimc_list_vnics()
-        actual_loms = self.cimc_list_lom_ports()
+        actual_loms = [x for x in self.cimc_list_pci_nic_ports() if 'L' in x['Dn']]
 
         for nic_order, nic in enumerate(self.get_nics().values()):  # NIC order starts from 0
             names = nic.get_names()
@@ -266,19 +253,21 @@ class CimcServer(LabServer):
         self._dump_xml = is_debug
         lab_type = self.lab().get_type()
         self.logger('configuring for {}'.format(lab_type))
-        self.cimc_power_up()
-        is_any_nic_on_lom = any(map(lambda x: x.is_on_lom(), self.get_nics().values()))
-        if is_any_nic_on_lom:
-            self.cimc_enable_lom()
-        self.cimc_recreate_vnics()
         self.cimc_set_hostname()
-        self.cimc_change_boot_order(pxe_order=1, hdd_order=2)
-        self.cimc_enable_sol()
+        self.cimc_power_up()
+        if self.lab().get_type() == self.lab().MERCURY:
+            self.cimc_disable_loms_in_bios()
+        else:
+            is_any_nic_on_lom = any(map(lambda x: x.is_on_lom(), self.get_nics().values()))
+            if is_any_nic_on_lom:
+                self.cimc_enable_loms_in_bios()
+            self.cimc_recreate_vnics()
+            self.cimc_change_boot_order(pxe_order=1, hdd_order=2)
         # if lab_type == self.lab().LAB_MERCURY:
         #    self.create_storage('1', 2, True)
         self._logout()
 
-    def cimc_get_adapters(self):
+    def cimc_get_adaptors(self):
         r = self.cimc_get_mo_by_class_id('AdaptorUnit')
         return r
 
