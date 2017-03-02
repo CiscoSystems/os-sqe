@@ -1,7 +1,8 @@
 from lab.with_log import WithLogMixIn
+from lab.with_config import WithConfig
 
 
-class Tims(WithLogMixIn):
+class Tims(WithLogMixIn, WithConfig):
     FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'PERFOMANCE AND SCALE': 'Tcbr1840f'}
     TOKENS = {'kshileev': '0000003933000000000D450000000000',
               'nfedotov': '26520000006G00005F42000077044G47',
@@ -18,6 +19,7 @@ class Tims(WithLogMixIn):
         import getpass
         import os
 
+        self._jenkins_text = os.getenv('BUILD_URL', None) or 'run manually out of jenkins'
         user_token = os.getenv('TIMS_USER_TOKEN', None)  # some Jenkins jobs define this variable in form user-token
         if user_token and user_token.count('-') == 1:
             username, token = user_token.split('-')
@@ -33,10 +35,10 @@ class Tims(WithLogMixIn):
 
         self._xml_tims_wrapper = '''<Tims xmlns="http://tims.cisco.com/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink"
                                     xsi:schemaLocation="http://tims.cisco.com/namespace http://tims.cisco.com/xsd/Tims.xsd">
-                              <Credential user="{}" token="{}"/>
-                              {{body}}
-                              </Tims>
-                           '''.format(username, token) if username else None
+                                    <Credential user="{}" token="{}"/>
+                                        {{body}}
+                                    </Tims>
+                                 '''.format(username, token) if username else None
 
     def __repr__(self):
         return u'TIMS'
@@ -54,51 +56,88 @@ class Tims(WithLogMixIn):
                 raise RuntimeError(response.content)
             return response.content
 
-    def publish_tests_to_tims(self):
-        from lab.with_config import WithConfig
+    def search_test_case(self, test_cfg_path):
+        body = '''<Search scope="project" root="{}" entity="case" casesensitive="true">
+                    <TextCriterion operator="is">
+                        <FieldName><![CDATA[Logical ID]]></FieldName>
+                        <Value><![CDATA[{}]]></Value>
+                        </TextCriterion>
+                  </Search>'''.format(self.TIMS_PROJECT_ID, test_cfg_path)
 
-        available_tc = WithConfig.ls_configs(directory='ha')
-        test_cfg_pathes = sorted(filter(lambda x: 'tc-vts' in x, available_tc))
+        res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
+        return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
 
-        test_case_template = '''
+    def search_result(self, test_cfg_path, mercury_version):
+        body = '''<Search scope="project" root="{}" entity="case" casesensitive="true">
+                    <TextCriterion operator="is">
+                        <FieldName><![CDATA[Logical ID]]></FieldName>
+                        <Value><![CDATA[{}:{}]]></Value>
+                        </TextCriterion>
+                  </Search>'''.format(self.TIMS_PROJECT_ID, test_cfg_path, mercury_version)
+
+        res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
+        return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
+
+    def update_create_test_case(self, test_cfg_path):
+        import json
+
+        case_id = self.search_test_case(test_cfg_path=test_cfg_path)
+        logical_or_case_id = '<ID xlink:href="http://tims.cisco.com/xml/{0}/entity.svc">{0}</ID>\n<LogicalID>{1}</LogicalID>'.format(case_id, test_cfg_path) if case_id else '<LogicalID>{}</LogicalID>'.format(test_cfg_path)
+        cfg_body = self.read_config_from_file(config_path=test_cfg_path, directory='ha')
+        folder_name = cfg_body[0].get('Folder', '')
+        if not folder_name or folder_name not in self.FOLDERS:
+            raise ValueError('test {} should start with\n---\n- Folder: one of {}'.format(test_cfg_path, self.FOLDERS.keys()))
+        test_name = ' '.join(test_cfg_path.strip('.yaml').split('-')[2:])
+        desc = 'This is the configuration actually used in testing:\n' + json.dumps(cfg_body, indent=5) + '\nuploaded from <a href="https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}">'.format(test_cfg_path)
+
+        body = '''
         <Case>
             <Title><![CDATA[ {test_name} ]]></Title>
-            <Description><![CDATA[{description}]]></Description>
-            <LogicalID>{logical_id}</LogicalID>
+            <Description><![CDATA[{desc}]]></Description>
+            {id}
             <WriteAccess>member</WriteAccess>
             <ProjectID xlink:href="http://tims.cisco.com/xml/{project_id}/project.svc">{project_id}</ProjectID>
             <DatabaseID xlink:href="http://tims.cisco.com/xml/NFVICLOUDINFRA/database.svc">NFVICLOUDINFRA</DatabaseID>
             <FolderID xlink:href="http://tims.cisco.com/xml/{folder_id}/entity.svc">{folder_id}</FolderID>
         </Case>
-        '''
-
-        body = ''
-        for test_cfg_path in test_cfg_pathes:
-            cfg_body = WithConfig.read_config_from_file(config_path=test_cfg_path, directory='ha', is_as_string=True)
-
-            folder_name = None
-            test_name = ' '.join(test_cfg_path.strip('.yaml').split('-')[2:])
-
-            for d in WithConfig.read_config_from_file(config_path=test_cfg_path, directory='ha'):
-                folder_name = d.get('Folder', folder_name)
-
-            if not folder_name:
-                raise ValueError('test {} does not specify - Folder: {}'.format(test_cfg_path, self.FOLDERS.keys()))
-
-            try:
-                folder_id = self.FOLDERS[folder_name]
-            except KeyError:
-                raise ValueError('test {} specifies wrong Folder {}, possible values {}'.format(test_cfg_path, folder_name, self.FOLDERS.keys()))
-
-            description = 'This is the configuration actually used in testing:\n' + cfg_body + '\nuploaded from <a href="https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}">'.format(test_cfg_path)
-            body += test_case_template.format(test_name=test_name, logical_id=test_cfg_path, description=description, folder_id=folder_id, project_id=self.TIMS_PROJECT_ID)
+        '''.format(test_name=test_name, desc=desc, id=logical_or_case_id, project_id=self.TIMS_PROJECT_ID, folder_id=self.FOLDERS[folder_name])
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
 
-    def publish_result_to_tims(self, test_cfg_path, mercury_version, lab, results):
+    def update_special_dima_result(self, test_cfg_path, mercury_version, desc, status, lab):
+        result_id = self.search_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version)
+        if not result_id:
+            return ''
+        body = '''
+            <Result>
+                <Title><![CDATA[Result for {test_cfg_path}]]></Title>
+                <ID xlink:href="http://tims.cisco.com/xml/{result_id}/entity.svc">{result_id}</ID>
+                <Description><![CDATA[{description}]]></Description>
+                <LogicalID><![CDATA[{test_cfg_path}:{mercury_version}]]></LogicalID>
+                <Owner>
+                        <UserID>kshileev</UserID>
+                </Owner>
+                <WriteAccess>member</WriteAccess>
+                <ListFieldValue multi-value="true">
+                    <FieldName><![CDATA[ Software Version ]]></FieldName>
+                    <Value><![CDATA[ {mercury_version} ]]></Value>
+                </ListFieldValue>
+                <Status>{status}</Status>
+            </Result>
+        '''.format(test_cfg_path=test_cfg_path, description=desc, mercury_version=mercury_version, status=status, lab_id=lab, result_id=result_id)
+
+        ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
+        return ' and for release http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
+
+    def publish_result(self, test_cfg_path, mercury_version, lab, results):
         import json
 
-        result_template = '''
+        self.update_create_test_case(test_cfg_path=test_cfg_path)
+
+        status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'
+        desc = self._jenkins_text + '\n' + json.dumps(results, indent=5)
+
+        body = '''
         <Result>
                 <Title><![CDATA[Result for {test_cfg_path}]]></Title>
                 <Description><![CDATA[{description}]]></Description>
@@ -125,64 +164,25 @@ class Tims(WithLogMixIn):
                         </TextFieldValue>
                 </ConfigLookup>
         </Result>
-        '''
-
-        fixed_dima_template = '''
-            <Result>
-                <Title><![CDATA[Result for {test_cfg_path}]]></Title>
-                <ID xlink:href="http://tims.cisco.com/xml/{result_id}/entity.svc">{result_id}</ID>
-                <Description><![CDATA[{description}]]></Description>
-                <LogicalID><![CDATA[{test_cfg_path}:{mercury_version}]]></LogicalID>
-                <Owner>
-                        <UserID>kshileev</UserID>
-                </Owner>
-                <WriteAccess>member</WriteAccess>
-                <ListFieldValue multi-value="true">
-                    <FieldName><![CDATA[ Software Version ]]></FieldName>
-                    <Value><![CDATA[ {mercury_version} ]]></Value>
-                </ListFieldValue>
-                <Status>{status}</Status>
-            </Result>
-        '''
-
-        search_by_logical_id = """
-            <Search scope="project" root="{project_id}" entity="result" casesensitive="true">
-               <TextCriterion operator="is">
-                    <FieldName><![CDATA[Logical ID]]></FieldName>
-                    <Value><![CDATA[{test_cfg_path}:{mercury_version}]]></Value>
-                </TextCriterion>
-            </Search>
-        """
-
-        print("Results: {0}".format(results))
-        status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'
-        description = json.dumps(results, indent=4)
-        body = result_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab)
+        '''.format(test_cfg_path=test_cfg_path, description=desc, mercury_version=mercury_version, status=status, lab_id=lab)
 
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
         if ans:
             tims_report_url = 'http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
-
-            search_result = self._api_post(operation=self._OPERATION_SEARCH, body=search_by_logical_id.format(project_id=self.TIMS_PROJECT_ID, test_cfg_path=test_cfg_path, mercury_version=mercury_version))
-            resutl_id = search_result.split('</SearchHit>')[0].rsplit('>', 1)[-1]
-            if resutl_id.startswith('Tcbr'):
-                body_dima = fixed_dima_template.format(test_cfg_path=test_cfg_path, description=description, mercury_version=mercury_version, status=status, lab_id=lab, result_id=resutl_id)
-                self._api_post(operation=self._OPERATION_UPDATE, body=body_dima)
+            tims_report_url += self.update_special_dima_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, desc=desc, status=status, lab=lab)
         else:
             tims_report_url = 'and not reported to tims since user not known'
 
         self.log_to_slack(message='{} {}: {} {} {}'.format(lab, mercury_version, test_cfg_path, status.upper(), tims_report_url))
 
     def simulate(self):
-        from lab.with_config import WithConfig
+        mercury_version, vts_version = '6773', 'vts'
 
-        mercury_version, vts_version = '0022', 'vts'
+        available_tc = self.ls_configs(directory='ha')
 
-        available_tc = WithConfig.ls_configs(directory='ha')
-
-        for test_cfg_path in sorted(filter(lambda x: 'tc-vts' in x, available_tc)):
-            results = [{'name': 'worker=ParallelWorker', 'input': 'generic input', 'exceptions': []}]
-            self.publish_result_to_tims(test_cfg_path=test_cfg_path, mercury_version=mercury_version, lab='FAKE', results=results)
+        for test_cfg_path in sorted(filter(lambda x: 'ntt' in x, available_tc)):
+            results = [{'output': ['FAKE TEST'], 'input': 'FAKE TEST', 'exceptions': ['FAKE TEST1', 'FAKE TEST2']}]
+            self.publish_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, lab='g7-2', results=results)
 
 if __name__ == '__main__':
     t = Tims()
