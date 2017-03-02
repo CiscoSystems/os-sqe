@@ -31,8 +31,7 @@ class NttScenario(ParallelWorker):
     def single_run(self, parameters):
         import json
 
-        # ans = self._build_node.exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
-        ans = 'ok'
+        ans = self._build_node.exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
         if 'ERROR' in ans:
             raise RuntimeError(ans)
         else:

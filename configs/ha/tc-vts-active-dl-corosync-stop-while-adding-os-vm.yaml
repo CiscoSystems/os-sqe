@@ -10,7 +10,8 @@
 
 - class: lab.scenarios.vts_scenario.VtsScenario
   how-many-networks: 1
-  how-many-servers: 1
+  how-many-servers:
+  uptime: 20
   run_while:
     - VtsDisruptor
 
