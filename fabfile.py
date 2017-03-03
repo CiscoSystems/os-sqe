@@ -76,6 +76,7 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
         :param is_debug: if True, do not run actual workers just test the infrastructure
         :param is_parallel: if False, switch off parallel execution and run in sequence
     """
+    import time
     from lab.with_config import WithConfig
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.runners.runner_ha import RunnerHA
@@ -93,13 +94,15 @@ def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
     mercury_version, vts_version = cloud.get_lab().r_get_version()
     tims = Tims()
 
-    results = []
+    exceptions = []
     for tst in tests:
+        start_time = time.time()
         runner = RunnerHA(config={'task-yaml': tst, 'is-debug': is_debug, 'is-parallel': is_parallel})
-        results.extend(runner.execute(cloud))
+        results = runner.execute(cloud)
         elk = Elk(proxy=cloud.get_mediator())
         elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
-        tims.publish_result_to_tims(test_cfg_path=tst, mercury_version=mercury_version, lab=cloud.get_lab(), results=results)
+        tims.publish_result(test_cfg_path=tst, mercury_version=mercury_version, lab=cloud.get_lab(), results=results)
+        exceptions = reduce(lambda l, x: l + x['exceptions'], results, exceptions)
 
     if exceptions:
         raise RuntimeError('Possible reason: {}'.format(exceptions))

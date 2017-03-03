@@ -9,7 +9,9 @@
 - class: lab.scenarios.vts_scenario.VtsScenario
   delay: 20
   how-many-networks: 1
-  how-many-servers: 3
+  how-many-servers:
+  what-to-run-inside: ping
+  uptime: 20
   run_while:
     - VtsDisruptor
 

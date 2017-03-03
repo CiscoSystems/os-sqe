@@ -12,6 +12,7 @@
   how-many-networks: 1
   how-many-servers: 1
   uptime: 20
+  what-to-run-inside: ping
   run_while:
     - VtsDisruptor
 

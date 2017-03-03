@@ -11,6 +11,8 @@
   delay: 20
   how-many-networks: 1
   how-many-servers: 2
+  what-to-run-inside: ping
+  uptime: 20
   run_while:
     - VtsDisruptor
 

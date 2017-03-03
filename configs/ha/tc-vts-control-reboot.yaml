@@ -16,6 +16,8 @@
   how-many-networks: 1
   how-many-servers: 3
   n_repeats: 1
+  what-to-run-inside: ping
+  uptime: 20
   set: scenario-runnning
 
 
