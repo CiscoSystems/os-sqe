@@ -5,9 +5,8 @@
 - class: lab.monitors.vts_monitor.VtsMonitor
   period: 2
   run_while:
-    - VtsDisruptor-master-vtc
-    - VtsDisruptor-slave-vtc
-    - vts-scenario
+    - VtsDisruptor
+    - VtsScenario
 
 # wait for long time. Check if VTC HA comes up by booting up VMs
 - class: lab.scenarios.vts_scenario.VtsScenario
@@ -17,8 +16,6 @@
   n_repeats: 2
   what-to-run-inside: ping
   uptime: 20
-  set:
-    - vts-scenario
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 3
@@ -27,8 +24,6 @@
   n_repeats: 1
   downtime: 90
   uptime: 20
-  set:
-    - VtsDisruptor-master-vtc
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   delay: 3
@@ -37,7 +32,5 @@
   n_repeats: 1
   downtime: 90
   uptime: 20
-  set:
-    - VtsDisruptor-slave-vtc
 
 # Validate VTC Ha comes up properly after both Active and Standby VTCs VMs are paused and then resumed

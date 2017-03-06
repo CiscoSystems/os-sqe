@@ -1,25 +1,22 @@
 ---
 - Folder: NEGATIVE
-- Desription: In this test scenario we verify the behavior of the system when one of the OpenStack Controller fails and recovers.
+- Desription: Create servers on different computes start pinging them form mgmt node, then reboot OS controller node
 
 - class: lab.monitors.vts_monitor.VtsMonitor
-  run_while: [scenario-runnning, disruptor-running]
+  run_while: [CloudDisruptor, VtsScenario]
   period: 2
 
 - class: lab.disruptors.cloud_disruptor.CloudDisruptor
-  run_after: scenario-running
-  disrupt: {controller-1: reboot}
-  set: disruptor-running
+  delay: 10
+  n_repeats: 1
+  node-to-disrupt: control
+  method-to-disrupt: reboot
 
 - class: lab.scenarios.vts_scenario.VtsScenario
-  delay: 20
+  delay: 3
   how-many-networks: 1
-  how-many-servers: 3
+  how-many-servers: 2
   n_repeats: 1
   what-to-run-inside: ping
   uptime: 20
-  set: scenario-runnning
-
-
-# Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'
-# Possible methods:  'isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop'
+  run-while: CloudDisruptor
