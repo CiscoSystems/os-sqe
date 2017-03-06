@@ -16,6 +16,7 @@ class ParallelWorker(WithLogMixIn):
 
         self._shared_dict = shared_dict
         self._kwargs = self._shared_dict[name]
+        self._kwargs['status'] = 'init'
 
         self._results = {'name': str(self), 'exceptions': [], 'output': [], 'input': self._kwargs}
 
