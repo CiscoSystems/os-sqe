@@ -15,7 +15,7 @@ class Xrvr(VirtualServer):
     def disrupt(self, method_to_disrupt, downtime):
         import time
 
-        vts_host = [x.get_peer_node(self) for x in self.get_all_wires() if x.get_peer_node(self).is_vts_host()][0]
+        vts_host = self.get_hardware_server()
         if method_to_disrupt == 'vm-shutdown':
             # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
             vts_host.exe(command='virsh suspend xrnc{}'.format(self.get_node_id()[-1]))
