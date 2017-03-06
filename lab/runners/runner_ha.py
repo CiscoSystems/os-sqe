@@ -29,6 +29,7 @@ class RunnerHA(LabWorker):
         manager = multiprocessing.Manager()
         shared_dict = manager.dict()
         shared_dict['cloud'] = cloud
+        shared_dict['lab'] = cloud.get_lab() if cloud else ''
         shared_dict['yaml-path'] = self._task_yaml_path
         shared_dict['is-debug'] = self._mode in [self.MODE_DEBUG, self.MODE_CHECK]
 
@@ -72,6 +73,7 @@ class RunnerHA(LabWorker):
             except AttributeError:
                 raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
             workers.append(klass(shared_dict=shared_dict, name=name))
+        return workers
 
     @staticmethod
     def run(lab_cfg_path, test_regex, mode):

@@ -1,4 +1,5 @@
 - class: lab.monitors.vts_monitor.VtsMonitor
-  duration: 60
+  name: VtsMonitor
+  n_repeats: 10
   period: 2
   delay: 10
