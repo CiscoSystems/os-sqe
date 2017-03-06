@@ -3,7 +3,8 @@ from lab.decorators import section
 
 
 class VtsDeleteScenario(ParallelWorker):
-    def check_arguments(self, **kwargs):
+
+    def check_config(self):
         pass
 
     # noinspection PyAttributeOutsideInit

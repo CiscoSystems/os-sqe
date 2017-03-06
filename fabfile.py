@@ -69,43 +69,19 @@ def cmd():
 
 
 @task
-def ha(lab_cfg_path, test_regex, is_debug=False, is_parallel=True):
+def ha(lab_cfg_path, test_regex, mode='run'):
     """fab ha:g10,str\t\t\tRun all tests with 'str' in name on g10
         :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
-        :param is_debug: if True, do not run actual workers just test the infrastructure
-        :param is_parallel: if False, switch off parallel execution and run in sequence
+        :param mode: 'run' to run tests 'debug' to debug parallel infrastructure, 'check' to validate all HA test configs
     """
-    import time
-    from lab.with_config import WithConfig
-    from lab.deployers.deployer_existing import DeployerExisting
     from lab.runners.runner_ha import RunnerHA
-    from lab.tims import Tims
-    from lab.elk import Elk
 
-    available_tc = WithConfig.ls_configs(directory='ha')
-    tests = sorted(filter(lambda x: test_regex in x, available_tc))
+    possible_modes = [RunnerHA.MODE_CHECK, RunnerHA.MODE_DEBUG, RunnerHA.MODE_RUN]
+    if mode not in possible_modes:
+        raise ValueError('fabfile.py.ha(): mode "{}" is invalid, use one of {}'.format(mode, possible_modes))
 
-    if not tests:
-        raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
-
-    deployer = DeployerExisting(config={'hardware-lab-config': lab_cfg_path})
-    cloud = deployer.execute([])
-    mercury_version, vts_version = cloud.get_lab().r_get_version()
-    tims = Tims()
-
-    exceptions = []
-    for tst in tests:
-        start_time = time.time()
-        runner = RunnerHA(config={'task-yaml': tst, 'is-debug': is_debug, 'is-parallel': is_parallel})
-        results = runner.execute(cloud)
-        elk = Elk(proxy=cloud.get_mediator())
-        elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
-        tims.publish_result(test_cfg_path=tst, mercury_version=mercury_version, lab=cloud.get_lab(), results=results)
-        exceptions = reduce(lambda l, x: l + x['exceptions'], results, exceptions)
-
-    if exceptions:
-        raise RuntimeError('Possible reason: {}'.format(exceptions))
+    RunnerHA.run(lab_cfg_path=lab_cfg_path, test_regex=test_regex, mode=mode)
 
 
 @task

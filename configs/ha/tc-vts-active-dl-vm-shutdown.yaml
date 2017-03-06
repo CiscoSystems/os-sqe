@@ -2,11 +2,13 @@
 - Folder: HIGH AVAILABILITY
 - Description: first create OS VM then start disruptor
 - class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
   period: 2
   run_while:
     - VtsDisruptor
 
 - class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
   delay: 20
   how-many-networks: 1
   how-many-servers:
@@ -16,6 +18,7 @@
     - VtsDisruptor
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptor
   delay: 20
   node-to-disrupt: master-dl
   method-to-disrupt: vm-shutdown

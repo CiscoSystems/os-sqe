@@ -3,14 +3,12 @@ from lab.decorators import section
 
 
 class VtsScenario(ParallelWorker):
-    def check_arguments(self, **kwargs):
+
+    def check_config(self):
         try:
             self.log('n. of nets={} n. servers={} uptime={} run={}'.format(self._n_nets, self._n_servers, self._uptime, self._runner))
         except KeyError as ex:
-            raise ValueError('{}: no required parameter "{}"'.format(self, ex))
-
-        if len(self.get_cloud().get_computes()) < 2:
-            raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(self))
+            raise ValueError('{} section {}: no required parameter "{}"'.format(self._yaml_path, self, ex))
 
     @property
     def _n_nets(self):
@@ -30,7 +28,7 @@ class VtsScenario(ParallelWorker):
 
     @property
     def _vtc(self):
-        return self._lab.get_vtc()[0]
+        return self.get_lab().get_vtc()[0]
 
     @section('Setup')
     def setup_worker(self):
@@ -73,7 +71,7 @@ class VtsScenario(ParallelWorker):
     def _ping_part(self, servers):
         for server in servers:
             n_packets = 50
-            ans = self._build_node.exe('ping -c {} {}'.format(n_packets, server.get_ssh_ip()), is_warn_only=True)
+            ans = self.get_mgmt().exe('ping -c {} {}'.format(n_packets, server.get_ssh_ip()), is_warn_only=True)
             if '{0} packets transmitted, {0} received, 0% packet loss'.format(n_packets) not in ans:
                 raise RuntimeError(ans)
 
@@ -95,7 +93,7 @@ class VtsScenario(ParallelWorker):
 
         nets = self._network_part()
         self._vtc.r_vtc_set_port_for_border_leaf()
-        self._build_node.r_create_access_points(nets)
+        self.get_mgmt().r_create_access_points(nets)
 
         servers = self._instances_part(on_nets=nets)
 
@@ -109,7 +107,7 @@ class VtsScenario(ParallelWorker):
         [s.delete() for s in servers]
         self.log('Instances deleted in {} sec'.format(time.time() - start_delete_time))
 
-        self._cloud.os_cleanup()
+        self.get_cloud().os_cleanup()
 
     @staticmethod
     def debug_output():

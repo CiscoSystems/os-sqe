@@ -3,8 +3,7 @@ from lab.decorators import section
 
 
 class VtsDeleteCompute(ParallelWorker):
-    @staticmethod
-    def check_arguments(**kwargs):
+    def check_config(self):
         pass
 
     @section('Setup')

@@ -3,20 +3,23 @@
 - Desription: Create servers on different computes start pinging them form mgmt node, then reboot OS controller node
 
 - class: lab.monitors.vts_monitor.VtsMonitor
-  run_while: [CloudDisruptor, VtsScenario]
+  name: VtsMonitor
   period: 2
+  run_while: [VtsScenario]
 
 - class: lab.disruptors.cloud_disruptor.CloudDisruptor
+  name: CloudDisruptor
   delay: 10
   n_repeats: 1
   node-to-disrupt: control
   method-to-disrupt: reboot
 
 - class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
   delay: 3
   how-many-networks: 1
   how-many-servers: 2
   n_repeats: 1
   what-to-run-inside: ping
   uptime: 20
-  run-while: CloudDisruptor
+  run-while: [CloudDisruptor]

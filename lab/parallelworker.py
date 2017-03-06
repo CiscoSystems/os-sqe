@@ -6,35 +6,27 @@ class ParallelWorker(WithLogMixIn):
     def __repr__(self):
         return u'worker={}'.format(type(self).__name__)
 
-    def __init__(self,  cloud, shared_dict, is_debug, **kwargs):
+    def __init__(self,  shared_dict, name):
         """ Executed before subprocesses start in the context of RunnerHA.execute()
-        :param cloud: instance of Cloud class
         :param shared_dict: dictionary defined as multiprocessing.Manager().dict()
-        :param is_debug: id true don't run actual cloud and lab operations, used as a way to debug parallel infrastructure
-        :param kwargs: dictionary with parameters as defined in worker section of yaml file
         """
         import validators
 
-        self._kwargs = kwargs
-        self._cloud = cloud
-        self._lab = cloud.get_lab()
-        self._build_node = cloud.get_mediator()
         self._run_params = {}
 
         self._shared_dict = shared_dict
-        self._this_worker_in_shared_dict = type(self).__name__
-        self._results = {'name': str(self), 'exceptions': [], 'output': [], 'input': kwargs}
+        self._kwargs = self._shared_dict[name]
 
-        self._is_debug = is_debug
-        self._delay = kwargs.get('delay', 0)  # worker will be delayed by this seconds
-        self._period = kwargs.get('period', 2)  # worker loop will be repeated with this period
-        self._timeout = kwargs.get('timeout', 3600)  # if flags don't be False in that time, the worker will be forced to quit with exception
+        self._results = {'name': str(self), 'exceptions': [], 'output': [], 'input': self._kwargs}
 
-        self._n_repeats = kwargs.get('n_repeats')      # worker loop will be repeated n_repeats times
+        self._delay = self._kwargs.get('delay', 0)  # worker will be delayed by this seconds
+        self._period = self._kwargs.get('period', 2)  # worker loop will be repeated with this period
+        self._timeout = self._kwargs.get('timeout', 3600)  # if flags don't be False in that time, the worker will be forced to quit with exception
+
+        self._n_repeats = self._kwargs.get('n_repeats')      # worker loop will be repeated n_repeats times
         self._loop_counter = 0                         # counts loops executed
-        self._run_while = kwargs.get('run_while', [])  # worker will run till all these flags go False
-        self._run_after = kwargs.get('run_after', [])  # worker will be delayed until all these flags will go False
-        self.check_arguments(**kwargs)  # this call might change n_repeats
+        self._run_while = self._kwargs.get('run_while', [])  # worker will run till all these flags go False
+        self._run_after = self._kwargs.get('run_after', [])  # worker will be delayed until all these flags will go False
 
         if type(self._run_while) is not list:
             self._run_while = [self._run_while]
@@ -50,45 +42,59 @@ class ParallelWorker(WithLogMixIn):
 
         if self._run_while:
             if any([self._run_after, self._n_repeats]):
-                raise ValueError('run_while can not co-exists with either of n_repeats and run_after in {}'.format(kwargs))
+                raise ValueError('run_while can not co-exists with either of n_repeats and run_after in {}'.format(self._kwargs))
         else:
             if self._n_repeats is None or self._n_repeats < 1:
-                raise ValueError('Please define n_repeats >=1 in {}'.format(kwargs))
+                raise ValueError('{} section {}: please define n_repeats >=1'.format(self._yaml_path, self._kwargs['class']))
 
-        self._ip = kwargs.get('ip')
+        self._ip = self._kwargs.get('ip')
         if self._ip:
             if validators.ipv4(self._ip):
                 try:
-                    self._username, self._password = kwargs['username'], kwargs['password']
+                    self._username, self._password = self._kwargs['username'], self._kwargs['password']
                 except KeyError:
                     raise ValueError('"username" and/or "password"  are not provided'.format())
             else:
                 raise ValueError('Provided invalid ip address: "{0}"'.format(self._ip))
+        self.check_config()
 
     def get_lab(self):
-        return self._lab
+        return self._shared_dict['lab']
 
     def get_cloud(self):
-        return self._cloud
+        return self._shared_dict['cloud']
+
+    def get_mgmt(self):
+        return self.get_lab().get_director()
+
+    def is_debug(self):
+        return self._shared_dict['is-debug']
+
+    @property
+    def _yaml_path(self):
+        return self._shared_dict['yaml-path']
+
+    def set_status(self, status):
+        self._kwargs['status'] = status
 
     @abc.abstractmethod
-    def check_arguments(self, **kwargs):
+    def check_config(self):
         raise NotImplementedError(self)
 
     @abc.abstractmethod
-    def setup_worker(self, **kwargs):
-        raise NotImplementedError
+    def setup_worker(self):
+        raise NotImplementedError(self)
 
     @abc.abstractmethod
-    def loop_worker(self, **kwargs):
-        raise NotImplementedError
+    def loop_worker(self):
+        raise NotImplementedError(self)
 
     def teardown_worker(self):
         pass
 
     def is_still_loop(self):
         if self._run_while:
-            return all([self._shared_dict[x] for x in self._run_while])
+            return all([self._shared_dict[x]['status'] == 'running' for x in self._run_while])
         elif self._n_repeats:
             self._n_repeats -= 1
             return True
@@ -100,7 +106,7 @@ class ParallelWorker(WithLogMixIn):
 
         if self._delay:
             self.log('delay by {} secs...'.format(self._delay))
-            if not self._is_debug:
+            if not self.is_debug():
                 time.sleep(self._delay)
 
         time_passed = 0
@@ -124,29 +130,30 @@ class ParallelWorker(WithLogMixIn):
 
         self.log('status=started ppid={} pid={} arguments={}'.format(os.getppid(), os.getpid(), self._results['input']))
 
-        self._shared_dict[self._this_worker_in_shared_dict] = True
+        self.set_status(status='setting')
 
         try:
             self.delay()
 
-            if not self._is_debug:
+            if not self.is_debug():
                 self.setup_worker()
+            self.set_status(status='looping')
 
             while self.is_still_loop():
                 self.log('Loop number {}...'.format(self._loop_counter))
-                loop_output = self.loop_worker() if not self._is_debug else self.debug_output()
+                loop_output = self.loop_worker() if not self.is_debug() else self.debug_output()
                 self._loop_counter += 1
                 self._results['output'].append(loop_output)
                 time.sleep(self._period)
 
-            if not self._is_debug:
+            if not self.is_debug():
                 self.teardown_worker()
             self.log('FINISHED')
         except Exception as ex:
             self._results['exceptions'].append(str(ex))
             self.log(message='EXCEPTION', level='exception')
         finally:
-            self._shared_dict[self._this_worker_in_shared_dict] = False
+            self.set_status(status='finished')
         return self._results
 
     @staticmethod

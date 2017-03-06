@@ -3,23 +3,22 @@ from lab.parallelworker import ParallelWorker
 
 class VtsDisruptor(ParallelWorker):
 
-    @staticmethod
-    def check_arguments(**kwargs):
+    def check_config(self):
         possible_nodes = ['master-vtc', 'slave-vtc', 'master-dl', 'slave-dl']
         possible_methods = ['isolate-from-mx', 'isolate-from-api', 'isolate-from-t', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop']
         try:
-            if kwargs['downtime'] <= 0:
+            if self._kwargs['downtime'] <= 0:
                 raise ValueError('downtime must be > 0')
-            if kwargs['uptime'] <= 0:
+            if self._kwargs['uptime'] <= 0:
                 raise ValueError('uptime must be > 0')
-            if kwargs['node-to-disrupt'] not in possible_nodes:
+            if self._kwargs['node-to-disrupt'] not in possible_nodes:
                 raise ValueError('node-to-disrupt must be  one of: {0}'.format(possible_nodes))
-            if kwargs['method-to-disrupt'] not in possible_methods:
-                raise ValueError('{}: "{}" invalid. method-to-disrupt must be one of: {}'.format(kwargs['yaml_path'], kwargs['method-to-disrupt'], possible_methods))
+            if self._kwargs['method-to-disrupt'] not in possible_methods:
+                raise ValueError('{}: "{}" invalid. method-to-disrupt must be one of: {}'.format(self._kwargs['yaml_path'], self._kwargs['method-to-disrupt'], possible_methods))
         except KeyError:
-            raise ValueError('This monitor requires uptime, downtime, node-to-disrupt, method-to-disrupt {}'.format(kwargs))
+            raise ValueError('This monitor requires uptime, downtime, node-to-disrupt, method-to-disrupt {}'.format(self._kwargs))
 
-    def setup_worker(self, **kwargs):
+    def setup_worker(self):
         pass
 
     def loop_worker(self):
@@ -60,7 +59,7 @@ class VtsDisruptor(ParallelWorker):
                     node_object_to_disrupt = xrvr
                     break
 
-        node_object_disrupted = self._kwargs.get('previously_disrupted', None)
+        self._kwargs.get('previously_disrupted', None)
 
         # TODO: Uncomment if fixed
 

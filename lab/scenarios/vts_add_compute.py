@@ -3,8 +3,8 @@ from lab.decorators import section
 
 
 class VtsAddCompute(ParallelWorker):
-    @staticmethod
-    def check_arguments(**kwargs):
+
+    def check_config(self):
         pass
     
     @section('Setup')

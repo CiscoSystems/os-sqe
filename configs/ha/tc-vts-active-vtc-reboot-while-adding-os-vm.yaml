@@ -3,11 +3,13 @@
 - Description: first create OS VM then start disruptor
 
 - class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
   period: 2
   run_while:
     - VtsDisruptor
 
 - class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
   delay: 100
   how-many-networks: 1
   how-many-servers: 3
@@ -17,13 +19,12 @@
     - VtsDisruptor
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptor
   delay: 3
   node-to-disrupt: master-vtc
   method-to-disrupt: vm-reboot
   n_repeats: 5
   downtime: 90
   uptime: 20
-  set:
-    - VtsDisruptor
 
 # Validate Standby VTC becomes "Active' when Active VTC is rebooted while Tenant VMs are also being created

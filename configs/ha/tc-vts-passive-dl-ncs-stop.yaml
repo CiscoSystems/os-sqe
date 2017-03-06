@@ -3,11 +3,13 @@
 - Description: first create OS VM then start disruptor
 
 - class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
   period: 2
   run_while:
     - VtsDisruptor
 
 - class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
   how-many-networks: 1
   how-many-servers: 1
   what-to-run-inside: ping
@@ -16,14 +18,13 @@
     - VtsDisruptor
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptor
   delay: 20
   node-to-disrupt: slave-dl
   method-to-disrupt: ncs-stop
   n_repeats: 5
   downtime: 90
   uptime: 20
-  set:
-    - VtsDisruptor
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'
 # Possible methods:  'isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop'
