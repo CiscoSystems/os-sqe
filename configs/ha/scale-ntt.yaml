@@ -3,5 +3,6 @@
 - Description: creates parametrised number of CSR images per compute node, then run nfvbench in PVP mode (see path in http://172.29.172.152/doc/nfvbench/readme.html#pvp-packet-path)
 
 - class: lab.scenarios.ntt_scenario.NttScenario
+  name: NttScenario
   no-cleanup: False
   n_repeats: 1

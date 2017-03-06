@@ -2,5 +2,5 @@
   how-many-networks: 2
   how-many-servers: 1
   n_repeats: 1
-  uptime: 100
+  uptime: 10
   what-to-run-inside: ping
