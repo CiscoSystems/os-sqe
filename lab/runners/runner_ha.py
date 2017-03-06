@@ -29,19 +29,18 @@ class RunnerHA(LabWorker):
         manager = multiprocessing.Manager()
         shared_dict = manager.dict()
         shared_dict['cloud'] = cloud
-        shared_dict['lab'] = cloud.get_lab() if cloud else ''
+        shared_dict['lab'] = cloud.get_lab()
         shared_dict['yaml-path'] = self._task_yaml_path
-        shared_dict['is-debug'] = self._mode in [self.MODE_DEBUG, self.MODE_CHECK]
+        shared_dict['is-debug'] = self._mode == self.MODE_DEBUG
 
         self.add_all_workers_to_shared_dict(shared_dict)
 
         workers = self.initialize_workers(shared_dict=shared_dict)
 
-        if self._mode == self.MODE_RUN:
-            fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
+        fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
 
-            pool = multiprocessing.Pool(len(workers))
-            return pool.map(starter, workers)
+        pool = multiprocessing.Pool(len(workers))
+        return pool.map(starter, workers)
 
     def add_all_workers_to_shared_dict(self, shared_dict):
         for desc in self._task_body:
@@ -88,16 +87,16 @@ class RunnerHA(LabWorker):
         if not tests:
             raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
-        if mode == RunnerHA.MODE_RUN:
-            deployer = DeployerExisting(config={'hardware-lab-config': lab_cfg_path})
-            cloud = deployer.execute([])
-            if len(cloud.get_computes()) < 2:
-                raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(lab_cfg_path))
+        RunnerHA.check_config()
+        if mode == RunnerHA.MODE_CHECK:
+            return
 
-            mercury_version, vts_version = cloud.get_lab().r_get_version()
-        else:
-            cloud = None
-            mercury_version = 'fake mercury version'
+        deployer = DeployerExisting(config={'hardware-lab-config': lab_cfg_path})
+        cloud = deployer.execute([])
+        if len(cloud.get_computes()) < 2:
+            raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(lab_cfg_path))
+
+        mercury_version, vts_version = cloud.get_lab().r_get_version()
 
         tims = Tims()
         exceptions = []
@@ -106,11 +105,19 @@ class RunnerHA(LabWorker):
             start_time = time.time()
             runner = RunnerHA(config={'task-yaml': tst, 'mode': mode})
             results = runner.execute(cloud)
-            if mode == RunnerHA.MODE_RUN:
-                elk = Elk(proxy=cloud.get_mediator())
-                elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
-                tims.publish_result(test_cfg_path=tst, mercury_version=mercury_version, lab=cloud.get_lab(), results=results)
-                exceptions = reduce(lambda l, x: l + x['exceptions'], results, exceptions)
+
+            elk = Elk(proxy=cloud.get_mediator())
+            elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
+            tims.publish_result(test_cfg_path=tst, mercury_version=mercury_version, lab=cloud.get_lab(), results=results)
+            exceptions = reduce(lambda l, x: l + x['exceptions'], results, exceptions)
 
         if exceptions:
             raise RuntimeError('Possible reason: {}'.format(exceptions))
+
+    @staticmethod
+    def check_config():
+        for tst in RunnerHA.ls_configs(directory='ha'):
+            r = RunnerHA(config={'task-yaml': tst, 'mode': RunnerHA.MODE_CHECK})
+            shared_dict = {}
+            r.add_all_workers_to_shared_dict(shared_dict)
+            r.initialize_workers(shared_dict)

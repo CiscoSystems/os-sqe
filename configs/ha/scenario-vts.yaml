@@ -1,4 +1,5 @@
 - class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
   how-many-networks: 2
   how-many-servers: 1
   n_repeats: 1
