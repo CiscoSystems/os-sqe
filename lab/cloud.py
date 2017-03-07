@@ -87,6 +87,9 @@ class CloudImage(object):
         except ValueError:
             raise ValueError('File {} has wrong body: "{}"'.format(url + '.txt', r.text))
 
+        if len(checksum) != 32:
+            raise ValueError('File {} has checksum which is not md5sum: "{}"'.format(url + '.txt', r.text))
+
         self._status = cloud.os_image_show(name)
 
         if not self._status or self._status['checksum'] != checksum:

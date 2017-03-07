@@ -179,7 +179,7 @@ class Server(object):
         calc_checksum = self.exe(command='{} {}'.format('sha256sum' if len(checksum) == 64 else 'md5sum', loc), in_directory='cache')
         if calc_checksum.split()[0] != str(checksum.strip('\n')):  # checksum arg might by unicode with spaces
             raise RuntimeError('image {} taken from {} has wrong checksum. Check it manually'.format(loc, url))
-        self.exe('cp $HOME/cache/{} .'.format(loc), in_directory=to_directory)
+        self.exe('rm -f {0} && cp $HOME/cache/{0} .'.format(loc), in_directory=to_directory)
         return self.exe(command='readlink -f {0}'.format(loc), in_directory=to_directory)
 
     def check_or_install_packages(self, package_names):
