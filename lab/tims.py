@@ -105,11 +105,15 @@ class Tims(WithLogMixIn, WithConfig):
         '''.format(test_name=test_name, desc=desc, id=logical_or_case_id, project_id=self.TIMS_PROJECT_ID, folder_id=self.FOLDERS[folder_name])
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
+        return case_id
 
-    def update_special_dima_result(self, test_cfg_path, mercury_version, status):
+    def update_special_dima_result(self, test_cfg_path, mercury_version, status, lab_id, test_case_id):
         result_id = self.search_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version)
         if not result_id:
             return ''
+
+        lab_vs_id = {'c24top': 'Tcbr2061g', 'i11tb3': 'Tcbr2062g', 'g7-2': 'Tcbr8154g', 'marahaika': 'Tcbr9367g'}
+
         body = '''
             <Result>
                 <Title><![CDATA[Result for {test_cfg_path}]]></Title>
@@ -121,8 +125,10 @@ class Tims(WithLogMixIn, WithConfig):
                     <Value><![CDATA[ {mercury_version} ]]></Value>
                 </ListFieldValue>
                 <Status>{status}</Status>
+                <ConfigID xlink:href="http://tims.cisco.com/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
+                <CaseID xlink:href="http://tims.cisco.com/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
             </Result>
-        '''.format(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status, result_id=result_id)
+        '''.format(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status, result_id=result_id, conf_id=lab_vs_id[lab_id], test_case_id=test_case_id)
 
         ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
         return ' and for release http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
@@ -130,7 +136,7 @@ class Tims(WithLogMixIn, WithConfig):
     def publish_result(self, test_cfg_path, mercury_version, lab, results):
         import json
 
-        self.update_create_test_case(test_cfg_path=test_cfg_path)
+        test_case_id = self.update_create_test_case(test_cfg_path=test_cfg_path)
 
         status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'
         desc = self._jenkins_text + '\n' + json.dumps(results, indent=5)
@@ -167,7 +173,7 @@ class Tims(WithLogMixIn, WithConfig):
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
         if ans:
             tims_report_url = 'http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
-            tims_report_url += self.update_special_dima_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status)
+            tims_report_url += self.update_special_dima_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status, lab_id=str(lab), test_case_id=test_case_id)
         else:
             tims_report_url = 'and not reported to tims since user not known'
 
