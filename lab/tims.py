@@ -86,7 +86,8 @@ class Tims(WithLogMixIn, WithConfig):
         cfg_body = self.read_config_from_file(config_path=test_cfg_path, directory='ha')
         folder_name = cfg_body[0].get('Folder', '')
         if not folder_name or folder_name not in self.FOLDERS:
-            raise ValueError('test {} should start with\n---\n- Folder: one of {}'.format(test_cfg_path, self.FOLDERS.keys()))
+            self.log('test {} is not updated since does not specify correct folder (one of {})'.format(test_cfg_path, self.FOLDERS.keys()))
+            return
         test_name = ' '.join(test_cfg_path.strip('.yaml').split('-')[2:])
         desc = 'This is the configuration actually used in testing:\n' + json.dumps(cfg_body, indent=5) + '\nuploaded from <a href="https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}">'.format(test_cfg_path)
 
