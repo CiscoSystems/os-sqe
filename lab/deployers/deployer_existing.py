@@ -8,7 +8,7 @@ class DeployerExisting(LabWorker):
         return {'hardware-lab-config': 'path to yaml which describes the lab'}
 
     def __init__(self, config):
-        self._lab_cfg = config['hardware-lab-config']
+        self._lab_cfg_path = config['hardware-lab-config']
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):
@@ -33,7 +33,7 @@ class DeployerExisting(LabWorker):
         from lab.cloud import Cloud
 
         if not list_of_servers:
-            lab = Laboratory(config_path=self._lab_cfg)
+            lab = Laboratory(config_path=self._lab_cfg_path)
             list_of_servers.append(lab.get_director())
             list_of_servers.extend(lab.get_controllers())
             list_of_servers.extend(lab.get_computes())
@@ -48,9 +48,9 @@ class DeployerExisting(LabWorker):
                 break
 
         if not openrc_body:
-            raise RuntimeError('Provided lab does not contain any valid cloud')
+            raise RuntimeError('{}: lab {} does not contain any valid cloud'.format(self, self._lab_cfg_path))
 
-        return Cloud.from_openrc(name=self._lab_cfg.replace('.yaml', ''), mediator=director, openrc_as_string=openrc_body)
+        return Cloud.from_openrc(name=self._lab_cfg_path.replace('.yaml', ''), mediator=director, openrc_as_string=openrc_body)
 
     def execute(self, servers):
         cloud = self.deploy_cloud(servers)
