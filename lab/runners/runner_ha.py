@@ -31,7 +31,7 @@ class RunnerHA(LabWorker):
         manager = multiprocessing.Manager()
         status_dict = manager.dict()
 
-        common_args = {'cloud': cloud, 'lab': cloud.get_lab(), 'yaml-path': self._task_yaml_path, 'is-debug': self.MODE_DEBUG}
+        common_args = {'cloud': cloud, 'lab': cloud.get_lab(), 'yaml-path': self._task_yaml_path, 'is-debug': self._mode == self.MODE_DEBUG}
 
         names_already_seen = []
         for desc in self._task_body:  # first path to check that all workers have unique names
