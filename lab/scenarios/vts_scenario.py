@@ -5,10 +5,7 @@ from lab.decorators import section
 class VtsScenario(ParallelWorker):
 
     def check_config(self):
-        try:
-            self.log('n. of nets={} n. servers={} uptime={} run={}'.format(self._n_nets, self._n_servers, self._uptime, self._runner))
-        except KeyError as ex:
-            raise ValueError('{} section {}: no required parameter "{}"'.format(self._yaml_path, self, ex))
+        self.log('n. of nets={} n. servers={} uptime={} run={}'.format(self._n_nets, self._n_servers, self._uptime, self._runner))
 
     @property
     def _n_nets(self):

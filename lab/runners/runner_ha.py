@@ -118,6 +118,6 @@ class RunnerHA(LabWorker):
     def check_config():
         for tst in RunnerHA.ls_configs(directory='ha'):
             r = RunnerHA(config={'task-yaml': tst, 'mode': RunnerHA.MODE_CHECK})
-            shared_dict = {}
+            shared_dict = {'yaml-path': tst}
             r.add_all_workers_to_shared_dict(shared_dict)
             r.initialize_workers(shared_dict)

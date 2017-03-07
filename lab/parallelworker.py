@@ -57,7 +57,11 @@ class ParallelWorker(WithLogMixIn):
                     raise ValueError('"username" and/or "password"  are not provided'.format())
             else:
                 raise ValueError('Provided invalid ip address: "{0}"'.format(self._ip))
-        self.check_config()
+
+        try:
+            self.check_config()
+        except KeyError as ex:
+            raise ValueError('{} section {}: no required parameter "{}"'.format(self._yaml_path, self, ex))
 
     def get_lab(self):
         return self._shared_dict['lab']
