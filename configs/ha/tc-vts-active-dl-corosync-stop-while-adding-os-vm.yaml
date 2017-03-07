@@ -7,7 +7,7 @@
   name: VtsMonitor
   period: 2
   run_while:
-§    - VtsScenario
+    - VtsScenario
 
 - class: lab.scenarios.vts_scenario.VtsScenario
   name: VtsScenario

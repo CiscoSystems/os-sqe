@@ -68,7 +68,7 @@ class Tims(WithLogMixIn, WithConfig):
         return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
 
     def search_result(self, test_cfg_path, mercury_version):
-        body = '''<Search scope="project" root="{}" entity="case" casesensitive="true">
+        body = '''<Search scope="project" root="{}" entity="result" casesensitive="true">
                     <TextCriterion operator="is">
                         <FieldName><![CDATA[Logical ID]]></FieldName>
                         <Value><![CDATA[{}:{}]]></Value>
@@ -89,7 +89,8 @@ class Tims(WithLogMixIn, WithConfig):
             self.log('test {} is not updated since does not specify correct folder (one of {})'.format(test_cfg_path, self.FOLDERS.keys()))
             return
         test_name = ' '.join(test_cfg_path.strip('.yaml').split('-')[2:])
-        desc = 'This is the configuration actually used in testing:\n' + json.dumps(cfg_body, indent=5) + '\nuploaded from <a href="https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}">'.format(test_cfg_path)
+        desc = 'This is the configuration actually used in testing:\n' + json.dumps(cfg_body, indent=5) + \
+               '\nuploaded from <a href="https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}">'.format(test_cfg_path)
 
         body = '''
         <Case>
@@ -105,7 +106,7 @@ class Tims(WithLogMixIn, WithConfig):
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
 
-    def update_special_dima_result(self, test_cfg_path, mercury_version, desc, status, lab):
+    def update_special_dima_result(self, test_cfg_path, mercury_version, status):
         result_id = self.search_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version)
         if not result_id:
             return ''
@@ -113,11 +114,7 @@ class Tims(WithLogMixIn, WithConfig):
             <Result>
                 <Title><![CDATA[Result for {test_cfg_path}]]></Title>
                 <ID xlink:href="http://tims.cisco.com/xml/{result_id}/entity.svc">{result_id}</ID>
-                <Description><![CDATA[{description}]]></Description>
                 <LogicalID><![CDATA[{test_cfg_path}:{mercury_version}]]></LogicalID>
-                <Owner>
-                        <UserID>kshileev</UserID>
-                </Owner>
                 <WriteAccess>member</WriteAccess>
                 <ListFieldValue multi-value="true">
                     <FieldName><![CDATA[ Software Version ]]></FieldName>
@@ -125,7 +122,7 @@ class Tims(WithLogMixIn, WithConfig):
                 </ListFieldValue>
                 <Status>{status}</Status>
             </Result>
-        '''.format(test_cfg_path=test_cfg_path, description=desc, mercury_version=mercury_version, status=status, lab_id=lab, result_id=result_id)
+        '''.format(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status, result_id=result_id)
 
         ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
         return ' and for release http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
@@ -170,7 +167,7 @@ class Tims(WithLogMixIn, WithConfig):
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
         if ans:
             tims_report_url = 'http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
-            tims_report_url += self.update_special_dima_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, desc=desc, status=status, lab=lab)
+            tims_report_url += self.update_special_dima_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status)
         else:
             tims_report_url = 'and not reported to tims since user not known'
 

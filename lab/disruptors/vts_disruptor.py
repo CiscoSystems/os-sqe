@@ -6,17 +6,23 @@ class VtsDisruptor(ParallelWorker):
     def check_config(self):
         possible_nodes = ['master-vtc', 'slave-vtc', 'master-dl', 'slave-dl']
         possible_methods = ['isolate-from-mx', 'isolate-from-api', 'isolate-from-t', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop']
-        try:
-            if self._kwargs['downtime'] <= 0:
-                raise ValueError('downtime must be > 0')
-            if self._kwargs['uptime'] <= 0:
-                raise ValueError('uptime must be > 0')
-            if self._kwargs['node-to-disrupt'] not in possible_nodes:
-                raise ValueError('node-to-disrupt must be  one of: {0}'.format(possible_nodes))
-            if self._kwargs['method-to-disrupt'] not in possible_methods:
-                raise ValueError('{}: "{}" invalid. method-to-disrupt must be one of: {}'.format(self._kwargs['yaml_path'], self._kwargs['method-to-disrupt'], possible_methods))
-        except KeyError:
-            raise ValueError('This monitor requires uptime, downtime, node-to-disrupt, method-to-disrupt {}'.format(self._kwargs))
+        if self._kwargs['downtime'] <= 0:
+            raise ValueError('downtime must be > 0')
+        if self._kwargs['uptime'] <= 0:
+            raise ValueError('uptime must be > 0')
+        if self._node_to_disrupt not in possible_nodes:
+            raise ValueError('node-to-disrupt must be  one of: {0}'.format(possible_nodes))
+        if self._method_to_disrupt not in possible_methods:
+            raise ValueError('{}: "{}" invalid. method-to-disrupt must be one of: {}'.format(self._kwargs['yaml_path'], self._method_to_disrupt, possible_methods))
+        return 'disrupt {} by {}'.format(self._node_to_disrupt, self._method_to_disrupt)
+
+    @property
+    def _node_to_disrupt(self):
+        return self._kwargs['node-to-disrupt']
+
+    @property
+    def _method_to_disrupt(self):
+        return self._kwargs['method-to-disrupt']
 
     def setup_worker(self):
         pass

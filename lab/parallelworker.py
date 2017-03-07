@@ -141,6 +141,8 @@ class ParallelWorker(WithLogMixIn):
 
         worker_parameters = 'ppid={} pid={} {}'.format(os.getppid(), os.getpid(), self.check_config())
         self.log(worker_parameters)
+        time.sleep(1)
+
         exceptions = []
         loop_output = []
         try:
