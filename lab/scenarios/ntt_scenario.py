@@ -4,14 +4,13 @@ from lab.parallelworker import ParallelWorker
 class NttScenario(ParallelWorker):
 
     def check_config(self):
-
-        self.log('run {}, n. csr per compute {}, no-cleanup {}'.format(self._what_to_run, self._n_csr_per_compute, self._is_no_cleanup))
         if type(self._is_no_cleanup) is not bool:
             raise ValueError('{}: define no-cleanup: True/False'.format(self))
 
         possible_modes = ['csr', 'nfvbench', 'both']
         if self._what_to_run not in possible_modes:
             raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
+        return 'run {}, n. csr per compute {}, no-cleanup {}'.format(self._what_to_run, self._n_csr_per_compute, self._is_no_cleanup)
 
     @property
     def _is_no_cleanup(self):
@@ -48,6 +47,7 @@ class NttScenario(ParallelWorker):
                 raise ValueError('File {} has wrong body: "{}"'.format(csr_url + '.txt', r.text))
 
             self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory='os-sqe-tmp/nfvi-test', checksum=checksum)
+        self.get_cloud().os_cleanup(is_all=True)
 
     def loop_worker(self):
         ans = []
@@ -64,8 +64,7 @@ class NttScenario(ParallelWorker):
     def single_nfvbench_run(self, parameters):
         import json
 
-        #ans = self.get_mgmt().exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
-        ans = 'fake'
+        ans = self.get_mgmt().exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
         if 'ERROR' in ans:
             raise RuntimeError(ans)
         else:
@@ -91,6 +90,7 @@ class NttScenario(ParallelWorker):
 
     def teardown_worker(self):
         if not self._is_no_cleanup:
+            self.get_cloud().os_cleanup(is_all=True)
             self.get_mgmt().exe('rm -rf os-sqe-tmp')
 
 """

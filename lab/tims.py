@@ -94,7 +94,7 @@ class Tims(WithLogMixIn, WithConfig):
 
         body = '''
         <Case>
-            <Title><![CDATA[ {test_name} ]]></Title>
+            <Title><![CDATA[{test_name}]]></Title>
             <Description><![CDATA[{desc}]]></Description>
             {id}
             <WriteAccess>member</WriteAccess>

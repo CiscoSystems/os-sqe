@@ -386,8 +386,8 @@ export OS_AUTH_URL={end_point}
         self.r_collect_information(regex=image['Name'], comment='image problem')
         raise RuntimeError('image {} failed'.format(image['name']))
 
-    def os_image_delete(self, name):
-        return self.os_cmd('openstack image delete {}'.format(name))
+    def os_image_delete(self, image_id):
+        return self.os_cmd('openstack image delete {}'.format(image_id))
 
     def os_image_list(self):
         return self.os_cmd('openstack image list -f json')
@@ -460,28 +460,41 @@ export OS_AUTH_URL={end_point}
     def os_server_show(self, name):
         return self.os_cmd('openstack server show -f json {}'.format(name))
 
+    def os_security_group_rule_delete(self, rule_id):
+        return self.os_cmd('openstack security group rule delete {}'.format(rule_id))
+
+    def os_security_group_rule_list(self, group_name):
+        return self.os_cmd('openstack security group rule list -f json {}'.format(group_name))
+
     @section('Cleanup: deleting all cloud objects created by all previous test runs')
-    def os_cleanup(self):
+    def os_cleanup(self, is_all=False):
         servers = self.os_server_list()
         routers = self.os_router_list()
         ports = self.os_port_list()
         keypairs = self.os_keypair_list()
         networks = self.os_network_list()
         flavors = self.os_flavor_list()
+        images = self.os_image_list()
+        rules = self.os_security_group_rule_list(group_name='default')
 
-        sqe_servers = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], servers)
-        sqe_ports = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['name'], ports)
-        sqe_networks = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], networks)
-        sqe_routes = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['name'], routers)
-        sqe_keypairs = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], keypairs)
-        sqe_flavors = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], flavors)
+        rules = [x for x in rules if x['IP Protocol']]
+        if not is_all:
+            servers = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], servers)
+            ports = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['name'], ports)
+            networks = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], networks)
+            routers = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['name'], routers)
+            keypairs = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], keypairs)
+            flavors = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], flavors)
+            images = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], images)
 
-        map(lambda server: self.os_server_delete(server_id=server['ID']), sqe_servers)
-        map(lambda router: self._clean_router(router['name']), sqe_routes)
-        map(lambda port: self.os_port_delete(port['id']), sqe_ports)
-        map(lambda net: self.os_network_delete(net['ID']), sqe_networks)
-        map(lambda keypair: self.os_keypair_delete(keypair['Name']), sqe_keypairs)
-        map(lambda flavor: self.os_flavor_delete(flavor['Name']), sqe_flavors)
+        map(lambda server: self.os_server_delete(server_id=server['ID']), servers)
+        map(lambda router: self._clean_router(router['name']), routers)
+        map(lambda port: self.os_port_delete(port['id']), ports)
+        map(lambda net: self.os_network_delete(net['ID']), networks)
+        map(lambda keypair: self.os_keypair_delete(keypair['Name']), keypairs)
+        map(lambda flavor: self.os_flavor_delete(flavor['Name']), flavors)
+        map(lambda image: self.os_image_delete(image['ID']), images)
+        map(lambda rule: self.os_security_group_rule_delete(rule['ID']), rules)
 
     def r_collect_information(self, regex, comment):
         body = ''
