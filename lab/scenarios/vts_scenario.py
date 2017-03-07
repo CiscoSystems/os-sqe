@@ -5,7 +5,7 @@ from lab.decorators import section
 class VtsScenario(ParallelWorker):
 
     def check_config(self):
-        self.log('n. of nets={} n. servers={} uptime={} run={}'.format(self._n_nets, self._n_servers, self._uptime, self._runner))
+        return 'n. of nets={} n. servers={} uptime={} run={}'.format(self._n_nets, self._n_servers, self._uptime, self._runner)
 
     @property
     def _n_nets(self):
@@ -105,15 +105,3 @@ class VtsScenario(ParallelWorker):
         self.log('Instances deleted in {} sec'.format(time.time() - start_delete_time))
 
         self.get_cloud().os_cleanup()
-
-    @staticmethod
-    def debug_output():
-        return '''WARNING: attempt to set TCP maximum segment size to 9000, but got 536
-------------------------------------------------------------
-Client connecting to 10.0.5.11, TCP port 1111
-TCP window size: 85.0 KByte (default)
-------------------------------------------------------------
-[  3] local 10.0.5.12 port 52724 connected with 10.0.5.11 port 1111
-[ ID] Interval       Transfer     Bandwidth
-[  3]  0.0-10.7 sec  10.0 GBytes  8.03 Gbits/sec
-'''

@@ -6,3 +6,5 @@
   name: NttScenario
   no-cleanup: False
   n_repeats: 1
+  what-to-run: both  # might by nfvbench, csr, both
+  n-csr-per-compute: 1

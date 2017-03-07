@@ -23,46 +23,33 @@ class RunnerHA(LabWorker):
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
 
     def execute(self, cloud):
+        import importlib
         import multiprocessing
         import fabric.network
+        import time
 
         manager = multiprocessing.Manager()
-        shared_dict = manager.dict()
-        shared_dict['cloud'] = cloud
-        shared_dict['lab'] = cloud.get_lab()
-        shared_dict['yaml-path'] = self._task_yaml_path
-        shared_dict['is-debug'] = self._mode == self.MODE_DEBUG
+        status_dict = manager.dict()
 
-        self.add_all_workers_to_shared_dict(shared_dict)
+        common_args = {'cloud': cloud, 'lab': cloud.get_lab(), 'yaml-path': self._task_yaml_path, 'is-debug': self.MODE_DEBUG}
 
-        workers = self.initialize_workers(shared_dict=shared_dict)
-
-        fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
-
-        pool = multiprocessing.Pool(len(workers))
-        return pool.map(starter, workers)
-
-    def add_all_workers_to_shared_dict(self, shared_dict):
-        for desc in self._task_body:
+        names_already_seen = []
+        for desc in self._task_body:  # first path to check that all workers have unique names
             if 'class' not in desc:
                 continue
             try:
                 name = desc['name']
             except KeyError:
                 raise ValueError('{} in {} should define "name"'.format(desc['class'], self._task_yaml_path))
-            if name in shared_dict:
-                raise ValueError('{} in {} defines name "{}" which is already defined'.format(desc['class'], self._task_yaml_path, name))
-            shared_dict[name] = desc
-
-    def initialize_workers(self, shared_dict):
-        import importlib
+            if name in names_already_seen:
+                raise ValueError('{} in {} defines name "{}" which is already defined somewhere else'.format(desc['class'], self._task_yaml_path, name))
+            status_dict[name] = 'before init'
 
         workers = []
-        for name, desc in shared_dict.items():
-            if type(desc) is not dict:
+        for desc in self._task_body:  # second path to init all workers
+            if 'class' not in desc:
                 continue
             path_to_module, class_name = desc['class'].rsplit('.', 1)
-
             try:
                 module = importlib.import_module(path_to_module)
             except ImportError:
@@ -71,8 +58,16 @@ class RunnerHA(LabWorker):
                 klass = getattr(module, class_name)
             except AttributeError:
                 raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
-            workers.append(klass(shared_dict=shared_dict, name=name))
-        return workers
+            desc.update(common_args)
+            workers.append(klass(status_dict=status_dict, args_dict=desc))
+
+        if self._mode == self.MODE_CHECK:
+            return []
+        fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
+        time.sleep(2)
+
+        pool = multiprocessing.Pool(len(workers))
+        return pool.map(starter, workers)
 
     @staticmethod
     def run(lab_cfg_path, test_regex, mode):
@@ -87,9 +82,7 @@ class RunnerHA(LabWorker):
         if not tests:
             raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
-        RunnerHA.check_config()
-        if mode == RunnerHA.MODE_CHECK:
-            return
+        RunnerHA.check_config(tests)
 
         deployer = DeployerExisting(config={'hardware-lab-config': lab_cfg_path})
         cloud = deployer.execute([])
@@ -109,15 +102,21 @@ class RunnerHA(LabWorker):
             elk = Elk(proxy=cloud.get_mediator())
             elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
             tims.publish_result(test_cfg_path=tst, mercury_version=mercury_version, lab=cloud.get_lab(), results=results)
-            exceptions = reduce(lambda l, x: l + x['exceptions'], results, exceptions)
+            exceptions = reduce(lambda l, x: l + x.values()[0]['exceptions'], results, exceptions)
 
         if exceptions:
             raise RuntimeError('Possible reason: {}'.format(exceptions))
 
     @staticmethod
-    def check_config():
-        for tst in RunnerHA.ls_configs(directory='ha'):
+    def check_config(tests):
+
+        class FakeCloud(object):
+            @staticmethod
+            def get_lab():
+                return 'fake_lab'
+
+        cloud = FakeCloud()
+
+        for tst in tests:
             r = RunnerHA(config={'task-yaml': tst, 'mode': RunnerHA.MODE_CHECK})
-            shared_dict = {'yaml-path': tst}
-            r.add_all_workers_to_shared_dict(shared_dict)
-            r.initialize_workers(shared_dict)
+            r.execute(cloud=cloud)

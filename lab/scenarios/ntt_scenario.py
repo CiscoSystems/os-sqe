@@ -4,14 +4,30 @@ from lab.parallelworker import ParallelWorker
 class NttScenario(ParallelWorker):
 
     def check_config(self):
+
+        self.log('run {}, n. csr per compute {}, no-cleanup {}'.format(self._what_to_run, self._n_csr_per_compute, self._is_no_cleanup))
         if type(self._is_no_cleanup) is not bool:
-            raise ValueError('{}: define no-cleanup: True/False')
+            raise ValueError('{}: define no-cleanup: True/False'.format(self))
+
+        possible_modes = ['csr', 'nfvbench', 'both']
+        if self._what_to_run not in possible_modes:
+            raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
 
     @property
     def _is_no_cleanup(self):
         return self._kwargs['no-cleanup']
 
+    @property
+    def _what_to_run(self):
+        return self._kwargs['what-to-run']
+
+    @property
+    def _n_csr_per_compute(self):
+        return self._kwargs['n-csr-per-compute']
+
     def setup_worker(self):
+        import requests
+
         self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir='os-sqe-tmp/nfvi-test')
         self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir='os-sqe-tmp/testbed')
         self.get_mgmt().exe('rm -f nfvbench_config.yaml && cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory='os-sqe-tmp')
@@ -21,18 +37,35 @@ class NttScenario(ParallelWorker):
         self.get_mgmt().r_put_string_as_file_in_dir(string_to_put=body, file_name='execute', in_directory='os-sqe-tmp')
         self.get_mgmt().exe('docker pull cloud-docker.cisco.com/nfvbench')
         self.get_mgmt().exe('yum install kernel-devel kernel-headers -y')
-        # self.get_cloud().os_image_create('csr')
+
+        if self._what_to_run in ['csr', 'both']:
+            csr_url = 'http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2'
+
+            r = requests.get(csr_url + '.txt')
+            try:
+                checksum, _, self._username, self._password = r.text.split()
+            except ValueError:
+                raise ValueError('File {} has wrong body: "{}"'.format(csr_url + '.txt', r.text))
+
+            self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory='os-sqe-tmp/nfvi-test', checksum=checksum)
 
     def loop_worker(self):
         ans = []
-        for parmaters in ['--rate 1.3Gbps --flow-count 10000', '--rate ndr_pdr --flow-count 10000']:
-            ans.append(self.single_run(parameters=parmaters))
+        if self._what_to_run in ['csr', 'both']:
+            ans.append(self.get_mgmt().exe('source $HOME/openstack-configs/openrc && ./csr_create.sh {}'.format(self._n_csr_per_compute), in_directory='os-sqe-tmp/nfvi-test'))
+
+        if self._what_to_run == 'nfvbench':
+            for par in ['--rate 1.3Gbps --flow-count 10000', '--rate ndr_pdr --flow-count 10000']:
+                ans.append(self.single_nfvbench_run(parameters=par))
+        if self._what_to_run == 'both':
+            ans.append(self.single_nfvbench_run('--rate 1.3Gbps --flow-count 10000 --service-chain EXT'))
         return ans
 
-    def single_run(self, parameters):
+    def single_nfvbench_run(self, parameters):
         import json
 
-        ans = self.get_mgmt().exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
+        #ans = self.get_mgmt().exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
+        ans = 'fake'
         if 'ERROR' in ans:
             raise RuntimeError(ans)
         else:
