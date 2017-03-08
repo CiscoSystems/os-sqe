@@ -14,7 +14,7 @@
   how-many-servers: 3
   what-to-run-inside: ping
   uptime: 20
-  run_while: VtsDisruptor
+  run_while: VtsDisruptorVtcMaster
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   name: VtsDisruptorVtcMaster
