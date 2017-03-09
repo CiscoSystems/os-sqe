@@ -94,7 +94,7 @@ class CloudImage(object):
 
         if not self._status or self._status['checksum'] != checksum:
             local_path = cloud.get_mediator().r_get_remote_file(url=url, to_directory='cloud_images', checksum=checksum)
-            cloud.os_cmd('openstack image create {} --public --protected --disk-format qcow2 --container-format bare --file {}'.format(name, local_path))
+            cloud.os_cmd('openstack image create {} --public --disk-format qcow2 --container-format bare --file {}'.format(name, local_path))
             self._status = cloud.os_image_wait(name)
         else:
             cloud.log('image has a matched checksum: {}'.format(checksum))
