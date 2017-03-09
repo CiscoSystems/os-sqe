@@ -175,17 +175,14 @@ class LabServer(LabNode):
         self.exe(command='subscription-manager repos {}'.format(repos_to_enable))
 
     def r_install_sshpass_openvswitch_expect(self):
-        import requests
-
         for rpm, checksum in ['sshpass-1.06-1.el7.rf.x86_64.rpm', 'openvswitch-2.5.0-1.el7.centos.x86_64.rpm']:
-            checksum = requests.get(rpm + '.txt').text.split(' ')[0]
-            local_path = self.r_get_remote_file(url='http://172.29.173.233/redhat/{}'.format(rpm), checksum=checksum)
+            local_path, _ = self.r_get_remote_file(url='http://172.29.173.233/redhat/{}'.format(rpm))
             self.exe(command='rpm -i {}'.format(local_path), is_warn_only=True)
             self.exe(command='rm -f {}'.format(local_path))
         self.exe('yum install -q -y expect')
 
-    def r_get_remote_file(self, url, checksum, to_directory='.'):
-        return self._server.wget_file(url, to_directory=to_directory, checksum=checksum)
+    def r_get_remote_file(self, url, to_directory='.'):
+        return self._server.r_get_remote_file(url, to_directory=to_directory)
 
     def r_get_file_from_dir(self, file_name, in_directory='.', local_path=None):
         return self._server.r_get_file_from_dir(file_name=file_name, in_directory=in_directory, local_path=local_path)

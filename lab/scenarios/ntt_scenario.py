@@ -24,35 +24,31 @@ class NttScenario(ParallelWorker):
     def _n_csr_per_compute(self):
         return self._kwargs['n-csr-per-compute']
 
-    def setup_worker(self):
-        import requests
+    @property
+    def _tmp_dir(self):
+        return self._kwargs['tmp-dir']
 
-        self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir='os-sqe-tmp/nfvi-test')
-        self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir='os-sqe-tmp/testbed')
-        self.get_mgmt().exe('rm -f nfvbench_config.yaml && cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory='os-sqe-tmp')
+    def setup_worker(self):
+        self._kwargs['tmp-dir'] = '/var/tmp/os-sqe-tmp/'
+
+        self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self._tmp_dir + 'nfvi-test')
+        self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir=self._tmp_dir + 'testbed')
+        self.get_mgmt().exe('rm -f nfvbench_config.yaml && cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory=self._tmp_dir)
 
         with open('lab/scenarios/nfvbench.sh', 'r') as f:
             body = f.read()
-        self.get_mgmt().r_put_string_as_file_in_dir(string_to_put=body, file_name='execute', in_directory='os-sqe-tmp')
+        self.get_mgmt().r_put_string_as_file_in_dir(string_to_put=body, file_name='execute', in_directory=self._tmp_dir)
         self.get_mgmt().exe('docker pull cloud-docker.cisco.com/nfvbench')
         self.get_mgmt().exe('yum install kernel-devel kernel-headers -y')
 
         if self._what_to_run in ['csr', 'both']:
-            csr_url = 'http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2'
-
-            r = requests.get(csr_url + '.txt')
-            try:
-                checksum, _, self._username, self._password = r.text.split()
-            except ValueError:
-                raise ValueError('File {} has wrong body: "{}"'.format(csr_url + '.txt', r.text))
-
-            self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory='os-sqe-tmp/nfvi-test', checksum=checksum)
+            self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory=self._tmp_dir + 'nfvi-test')
         self.get_cloud().os_cleanup(is_all=True)
 
     def loop_worker(self):
         ans = []
         if self._what_to_run in ['csr', 'both']:
-            ans.append(self.get_mgmt().exe('source $HOME/openstack-configs/openrc && ./csr_create.sh {}'.format(self._n_csr_per_compute), in_directory='os-sqe-tmp/nfvi-test'))
+            ans.append(self.get_mgmt().exe('source $HOME/openstack-configs/openrc && ./csr_create.sh {}'.format(self._n_csr_per_compute), in_directory=self._tmp_dir + 'nfvi-test'))
 
         if self._what_to_run == 'nfvbench':
             for par in ['--rate 1.3Gbps --flow-count 10000', '--rate ndr_pdr --flow-count 10000']:
@@ -64,11 +60,11 @@ class NttScenario(ParallelWorker):
     def single_nfvbench_run(self, parameters):
         import json
 
-        ans = self.get_mgmt().exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory='os-sqe-tmp', is_warn_only=True)
+        ans = self.get_mgmt().exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory=self._tmp_dir, is_warn_only=True)
         if 'ERROR' in ans:
             raise RuntimeError(ans)
         else:
-            res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json', in_directory='os-sqe-tmp')
+            res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json', in_directory=self._tmp_dir)
 
             suffix = parameters.replace(' ', '_')
             with self.get_lab().open_artifact('nfvbench_results_{}.json'.format(suffix), 'w') as f:
@@ -91,7 +87,7 @@ class NttScenario(ParallelWorker):
     def teardown_worker(self):
         if not self._is_no_cleanup:
             self.get_cloud().os_cleanup(is_all=True)
-            self.get_mgmt().exe('rm -rf os-sqe-tmp')
+            self.get_mgmt().exe('rm -rf ' + self._tmp_dir)
 
 """
 #!/bin/bash

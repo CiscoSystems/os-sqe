@@ -170,17 +170,41 @@ class Server(object):
                     body = sudo('cat {0}'.format(file_name))
                     return body
 
-    def wget_file(self, url, checksum, to_directory='.'):
-        loc = url.split('/')[-1]
-        if to_directory != '.':
-            self.exe('mkdir -p {0}'.format(to_directory))
-        self.exe('mkdir -p cache')
-        self.exe(command='test -e {loc} || curl -s -R {url} -o {loc}'.format(loc=loc, url=url), in_directory='cache')  # download to $HOME directory and use as cache
-        calc_checksum = self.exe(command='{} {}'.format('sha256sum' if len(checksum) == 64 else 'md5sum', loc), in_directory='cache')
-        if calc_checksum.split()[0] != str(checksum.strip('\n')):  # checksum arg might by unicode with spaces
-            raise RuntimeError('image {} taken from {} has wrong checksum. Check it manually'.format(loc, url))
-        self.exe('rm -f {0} && cp $HOME/cache/{0} .'.format(loc), in_directory=to_directory)
-        return self.exe(command='readlink -f {0}'.format(loc), in_directory=to_directory)
+    def r_get_remote_file(self, url, to_directory='/var/tmp'):
+        import requests
+
+        if not to_directory.startswith('/'):
+            raise ValueError('to_directory needs to be full path')
+        url = url.strip().strip('\'')
+        info_url = url + '.txt'
+        r = requests.get(info_url)
+        try:
+            checksum, loc, size, username, password = r.text.split()
+        except ValueError:
+            raise ValueError('File {} has wrong body: "{}"'.format(info_url, r.text))
+
+        loc_path = to_directory + '/' + loc
+        cache_dir = '/var/tmp/cache'
+        cache_path = cache_dir + '/' + loc
+
+        self.exe('mkdir -p {0}'.format(to_directory))
+        self.exe('mkdir -p ' + cache_dir)
+
+        while True:
+            self.exe(command='test -e {c} || curl --silent --remote-time {url} -o {c}'.format(c=cache_path, url=url))  # download to cache directory and use as cache
+            actual_checksum = self.exe(command='{} {}'.format('sha256sum' if len(checksum) == 64 else 'md5sum', cache_path)).split()[0]
+            if actual_checksum == checksum:
+                break
+            else:
+                actual_size = self.exe('ls -la {}'.format(cache_path)).split()[4]
+                if int(size) - int(actual_size) > 0:  # probably curl fails to download up to the end, repeat it
+                    self.exe(command='rm -f {}'.format(cache_path))
+                    continue
+                else:
+                    raise RuntimeError('image described here {} has wrong checksum. Check it manually'.format(info_url))
+
+        self.exe('rm -f {l} && cp {c} {l}'.format(l=loc_path, c=cache_path), in_directory=to_directory)
+        return loc_path, checksum, username, password
 
     def check_or_install_packages(self, package_names):
         pm = self.get_package_manager()

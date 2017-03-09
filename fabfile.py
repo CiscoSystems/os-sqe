@@ -32,7 +32,8 @@ def cmd():
         return d, [x for x in dir(d) if not (x.startswith('_') or x[0].isupper())]
 
     def execute(d, name):
-        d.log('executing method {}'.format(name, 10*':'))
+        d.log('executing method {} {}'.format(name, 10*':'))
+        time.sleep(1)
         method_to_execute = getattr(d, name)
         parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
         arguments = []

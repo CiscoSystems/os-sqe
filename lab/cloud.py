@@ -79,21 +79,12 @@ class CloudServer(Server):
 
 class CloudImage(object):
     def __init__(self, name, url, cloud):
-        import requests
 
-        r = requests.get(url + '.txt')
-        try:
-            checksum, _, self._username, self._password = r.text.split()
-        except ValueError:
-            raise ValueError('File {} has wrong body: "{}"'.format(url + '.txt', r.text))
-
-        if len(checksum) != 32:
-            raise ValueError('File {} has checksum which is not md5sum: "{}"'.format(url + '.txt', r.text))
+        local_path, checksum, self._username, self._password = cloud.get_mediator().r_get_remote_file(url=url, to_directory='/var/tmp/cloud_images')
 
         self._status = cloud.os_image_show(name)
 
         if not self._status or self._status['checksum'] != checksum:
-            local_path = cloud.get_mediator().r_get_remote_file(url=url, to_directory='cloud_images', checksum=checksum)
             cloud.os_cmd('openstack image create {} --public --disk-format qcow2 --container-format bare --file {}'.format(name, local_path))
             self._status = cloud.os_image_wait(name)
         else:
