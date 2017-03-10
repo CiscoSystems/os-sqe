@@ -163,9 +163,9 @@ export OS_AUTH_URL={end_point}
 """
         return open_rc.format(user=self._user, tenant=self._tenant, password=self._password, end_point=self._end_point)
 
-    def os_cmd(self, cmd, server=None, is_warn_only=False):
+    def os_cmd(self, cmd, comment='', server=None, is_warn_only=False):
         server = server or self._mediator
-        ans = server.exe(command='{cmd} --os-username {u} --os-tenant-name {t} --os-password {p} --os-auth-url {a}'.format(cmd=cmd, u=self._user, t=self._tenant, p=self._password, a=self._end_point), is_warn_only=is_warn_only)
+        ans = server.exe(command='{} --os-username {} --os-tenant-name {} --os-password {} --os-auth-url {} {}'.format(cmd, self._user, self._tenant, self._password, self._end_point, comment), is_warn_only=is_warn_only)
         if '-f csv' in cmd:
             return self._process_csv_output(ans)
         elif '-f json' in cmd:
@@ -377,8 +377,8 @@ export OS_AUTH_URL={end_point}
         self.r_collect_information(regex=image['Name'], comment='image problem')
         raise RuntimeError('image {} failed'.format(image['name']))
 
-    def os_image_delete(self, image_id):
-        return self.os_cmd('openstack image delete {}'.format(image_id))
+    def os_image_delete(self, image):
+        return self.os_cmd(cmd='openstack image delete ' + image['ID'], comment='# image name ' + image['Name'])
 
     def os_image_list(self):
         return self.os_cmd('openstack image list -f json')
@@ -418,7 +418,7 @@ export OS_AUTH_URL={end_point}
         return net_status, subnet_status
 
     def os_network_delete(self, net):
-        return self.os_cmd('openstack network delete {}'.format(net.get_net_name() if type(net) is CloudNetwork else net))
+        return self.os_cmd(cmd='openstack network delete ' + net['ID'], comment='# net name ' + net['Name'])
 
     def os_network_list(self):
         return self.os_cmd('openstack network list -f json')
@@ -429,8 +429,8 @@ export OS_AUTH_URL={end_point}
         port_name = self._add_name_prefix('{}-port-{}-on-{}'.format(server_number, 'sriov' if sriov else 'virio', net_name))
         return self.os_cmd('neutron port-create -f json --name {port_name} {net_name} {ip_addon} {sriov_addon}'.format(port_name=port_name, net_name=net_name, ip_addon=fixed_ip_addon, sriov_addon=sriov_addon))
 
-    def os_port_delete(self, name):
-        return self.os_cmd('neutron port-delete {}'.format(name))
+    def os_port_delete(self, port):
+        return self.os_cmd(cmd='neutron port-delete ' + port['id'], comment='# port name ' + port['name'])
 
     def os_port_list(self):
         return self.os_cmd('neutron port-list -f json')
@@ -442,8 +442,8 @@ export OS_AUTH_URL={end_point}
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, port_ids))
         return self.os_cmd('openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name sqe-key1 {}'.format(srv_name, flavor_name, image_name, zone_name, ports_part))
 
-    def os_server_delete(self, name=None, server_id=None):
-        return self.os_cmd('openstack server delete {}'.format(self._add_name_prefix(name) if name else server_id))
+    def os_server_delete(self, server):
+        return self.os_cmd('openstack server delete ' + server['ID'], comment='# server name ' + server['Name'])
 
     def os_server_list(self):
         return self.os_cmd('openstack server list -f json')
@@ -470,21 +470,21 @@ export OS_AUTH_URL={end_point}
 
         rules = [x for x in rules if x['IP Protocol']]
         if not is_all:
-            servers = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], servers)
-            ports = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['name'], ports)
-            networks = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], networks)
-            routers = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['name'], routers)
-            keypairs = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], keypairs)
-            flavors = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], flavors)
-            images = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x['Name'], images)
+            servers = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], servers)
+            ports = filter(lambda p: UNIQUE_PATTERN_IN_NAME in p['name'], ports)
+            networks = filter(lambda n: UNIQUE_PATTERN_IN_NAME in n['Name'], networks)
+            routers = filter(lambda r: UNIQUE_PATTERN_IN_NAME in r['name'], routers)
+            keypairs = filter(lambda k: UNIQUE_PATTERN_IN_NAME in k['Name'], keypairs)
+            flavors = filter(lambda f: UNIQUE_PATTERN_IN_NAME in f['Name'], flavors)
+            images = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], images)
 
-        map(lambda server: self.os_server_delete(server_id=server['ID']), servers)
+        map(lambda server: self.os_server_delete(server), servers)
         map(lambda router: self._clean_router(router['name']), routers)
-        map(lambda port: self.os_port_delete(port['id']), ports)
-        map(lambda net: self.os_network_delete(net['ID']), networks)
+        map(lambda port: self.os_port_delete(port), ports)
+        map(lambda net: self.os_network_delete(net), networks)
         map(lambda keypair: self.os_keypair_delete(keypair['Name']), keypairs)
         map(lambda flavor: self.os_flavor_delete(flavor['Name']), flavors)
-        map(lambda image: self.os_image_delete(image['ID']), images)
+        map(lambda image: self.os_image_delete(image), images)
         map(lambda rule: self.os_security_group_rule_delete(rule['ID']), rules)
 
     def r_collect_information(self, regex, comment):
