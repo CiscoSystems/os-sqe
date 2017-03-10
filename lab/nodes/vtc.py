@@ -69,9 +69,12 @@ class Vtc(VirtualServer):
             if self._via == self._via_curl:
                 ans = self._curl(method=method, url=url, username=username, password=password, headers=kwargs['headers'], data=kwargs.get('data'))
             else:
-                ans = self._rest_api(method=method, url=url, username=username, password=password, headers=kwargs['headers'])
+                ans = self._rest_api(method=method, url=url, username=username, password=password, headers=kwargs['headers'], data=kwargs.get('data'))
             try:
-                return json.loads(ans)
+                ans = json.loads(ans)
+                if 'errors' in ans:
+                    raise RuntimeError('{} {} {}'.format(cmd, kwargs, ans))
+                return ans
             except ValueError:
                 continue
 
@@ -323,7 +326,7 @@ class Vtc(VirtualServer):
             self.r_vtc_ncs_cli('delete openstack port\ndelete openstack subnet\ndelete openstack network')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
-            return NotImplemented
+            return NotImplemented()
 
     def r_vtc_ncs_cli(self, command):
         self.exe('ncs_cli << EOF\nconfigure\n{}\ncommit\nexit\nexit\nEOF'.format(command))
