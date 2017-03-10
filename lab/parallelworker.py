@@ -167,7 +167,7 @@ class ParallelWorker(WithLogMixIn):
             self.log(message='EXCEPTION', level='exception')
         finally:
             self.set_status(status=self.STATUS_FINISHED)
-            return {self._name: {'exceptions': exceptions, 'loop_output': loop_output, 'params': worker_parameters}}
+            return {'worker name': self._name, 'exceptions': exceptions, 'loop_output': loop_output, 'params': worker_parameters}
 
     def debug_output(self):
         return '{} loop {} ok'.format(self._name, self._loop_counter)

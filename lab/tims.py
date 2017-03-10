@@ -138,7 +138,7 @@ class Tims(WithLogMixIn, WithConfig):
 
         test_case_id = self.update_create_test_case(test_cfg_path=test_cfg_path)
 
-        status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'
+        status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'  # [{'name': 'VtsSCeanrio',  'exceptions: []}, {'name': 'VtsDisruptor'}]
         desc = self._jenkins_text + '\n' + json.dumps(results, indent=5)
 
         body = '''

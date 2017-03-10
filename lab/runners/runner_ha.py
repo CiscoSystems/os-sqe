@@ -102,7 +102,9 @@ class RunnerHA(LabWorker):
             elk = Elk(proxy=cloud.get_mediator())
             elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
             tims.publish_result(test_cfg_path=tst, mercury_version=mercury_version, lab=cloud.get_lab(), results=results)
-            exceptions = reduce(lambda l, x: l + x.values()[0]['exceptions'], results, exceptions)
+            exceptions = reduce(lambda l, x: l + x['exceptions'], results, exceptions)
+
+        cloud.get_lab().r_collect_information(regex='error', comment=test_regex)
 
         if exceptions:
             raise RuntimeError('Possible reason: {}'.format(exceptions))
