@@ -460,6 +460,12 @@ export OS_AUTH_URL={end_point}
     @section('Cleanup: deleting all cloud objects created by all previous test runs')
     def os_cleanup(self, is_all=False):
         servers = self.os_server_list()
+
+        if not is_all:  # first servers then all others since servers usually reserves ports
+            servers = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], servers)
+
+        map(lambda server: self.os_server_delete(server), servers)
+
         routers = self.os_router_list()
         ports = self.os_port_list()
         keypairs = self.os_keypair_list()
@@ -470,7 +476,6 @@ export OS_AUTH_URL={end_point}
 
         rules = [x for x in rules if x['IP Protocol']]
         if not is_all:
-            servers = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], servers)
             ports = filter(lambda p: UNIQUE_PATTERN_IN_NAME in p['name'], ports)
             networks = filter(lambda n: UNIQUE_PATTERN_IN_NAME in n['Name'], networks)
             routers = filter(lambda r: UNIQUE_PATTERN_IN_NAME in r['name'], routers)
@@ -478,7 +483,6 @@ export OS_AUTH_URL={end_point}
             flavors = filter(lambda f: UNIQUE_PATTERN_IN_NAME in f['Name'], flavors)
             images = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], images)
 
-        map(lambda server: self.os_server_delete(server), servers)
         map(lambda router: self._clean_router(router['name']), routers)
         map(lambda port: self.os_port_delete(port), ports)
         map(lambda net: self.os_network_delete(net), networks)
