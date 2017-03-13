@@ -159,14 +159,14 @@ class ParallelWorker(WithLogMixIn):
                 self._loop_counter += 1
                 time.sleep(self._period)
 
-            if not self.is_debug():
-                self.teardown_worker()
             self.log('FINISHED')
         except Exception as ex:
             exceptions.append(str(ex))
             self.log(message='EXCEPTION', level='exception')
         finally:
             self.set_status(status=self.STATUS_FINISHED)
+            if not self.is_debug():
+                self.teardown_worker()
             return {'worker name': self._name, 'exceptions': exceptions, 'loop_output': loop_output, 'params': worker_parameters}
 
     def debug_output(self):
