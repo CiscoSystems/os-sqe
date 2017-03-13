@@ -3,7 +3,7 @@ from lab.with_config import WithConfig
 
 
 class Tims(WithLogMixIn, WithConfig):
-    FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'PERFOMANCE AND SCALE': 'Tcbr1840f'}
+    FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'VTS PERF AND SCALE': 'Tcbr1840f'}
     TOKENS = {'kshileev': '0000003933000000000D450000000000',
               'nfedotov': '26520000006G00005F42000077044G47',
               'dratushn': '000000525F7G007900000000006G4700',
@@ -88,13 +88,16 @@ class Tims(WithLogMixIn, WithConfig):
         if not folder_name or folder_name not in self.FOLDERS:
             self.log('test {} is not updated since does not specify correct folder (one of {})'.format(test_cfg_path, self.FOLDERS.keys()))
             return
-        test_name = ' '.join(test_cfg_path.strip('.yaml').split('-')[2:])
+        try:
+            test_title = [x for x in cfg_body if 'Title' in x][0]['Title']
+        except IndexError:
+            raise ValueError('test {}: does not define - Title: some text'.format(test_cfg_path))
         desc = 'This is the configuration actually used in testing:\n' + json.dumps(cfg_body, indent=5) + \
                '\nuploaded from <a href="https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}">'.format(test_cfg_path)
 
         body = '''
         <Case>
-            <Title><![CDATA[{test_name}]]></Title>
+            <Title><![CDATA[{test_title}]]></Title>
             <Description><![CDATA[{desc}]]></Description>
             {id}
             <WriteAccess>member</WriteAccess>
@@ -102,7 +105,7 @@ class Tims(WithLogMixIn, WithConfig):
             <DatabaseID xlink:href="http://tims.cisco.com/xml/NFVICLOUDINFRA/database.svc">NFVICLOUDINFRA</DatabaseID>
             <FolderID xlink:href="http://tims.cisco.com/xml/{folder_id}/entity.svc">{folder_id}</FolderID>
         </Case>
-        '''.format(test_name=test_name, desc=desc, id=logical_or_case_id, project_id=self.TIMS_PROJECT_ID, folder_id=self.FOLDERS[folder_name])
+        '''.format(test_title=test_title, desc=desc, id=logical_or_case_id, project_id=self.TIMS_PROJECT_ID, folder_id=self.FOLDERS[folder_name])
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
         return case_id
@@ -184,7 +187,7 @@ class Tims(WithLogMixIn, WithConfig):
 
         available_tc = self.ls_configs(directory='ha')
 
-        for test_cfg_path in sorted(filter(lambda x: 'ntt' in x, available_tc)):
+        for test_cfg_path in sorted(filter(lambda x: 'perf' in x, available_tc)):
             results = [{'output': ['FAKE TEST'], 'input': 'FAKE TEST', 'exceptions': ['FAKE TEST1', 'FAKE TEST2']}]
             self.publish_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, lab='g7-2', results=results)
 
