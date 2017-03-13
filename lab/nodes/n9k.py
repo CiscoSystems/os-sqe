@@ -41,10 +41,15 @@ class Nexus(LabNode):
 
         oob_ip, oob_u, oob_p = self.get_oob()
         body = [{"jsonrpc": "2.0", "method": method, "params": {"cmd": x, "version": 1}, "id": i} for i, x in enumerate(commands, start=1)]
+        url = 'http://{0}/ins'.format(oob_ip)
         try:
             data = json.dumps(body)
-            result = requests.post('http://{0}/ins'.format(oob_ip), auth=(oob_u, oob_p), headers={'content-type': 'application/json-rpc'}, data=data, timeout=timeout)
-            return result.json()
+            result = requests.post(url, auth=(oob_u, oob_p), headers={'content-type': 'application/json-rpc'}, data=data, timeout=timeout)
+            if result.ok:
+                return result.json()
+            else:
+                raise RuntimeError('{}: {} {} {}'.format(self, url, body, result.text))
+
         except requests.exceptions.ConnectionError:
             self.n9_allow_feature_nxapi()
             return self._rest_api(commands=commands, timeout=timeout)
