@@ -1,4 +1,5 @@
 from lab.parallelworker import ParallelWorker
+from lab.decorators import section
 
 
 class NttScenario(ParallelWorker):
@@ -10,7 +11,7 @@ class NttScenario(ParallelWorker):
         possible_modes = ['csr', 'nfvbench', 'both']
         if self._what_to_run not in possible_modes:
             raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
-        return 'run {}, n. csr per compute {}, no-cleanup {}'.format(self._what_to_run, self._n_csr_per_compute, self._is_no_cleanup)
+        return 'run {}, n. CSR {}, chain {}, n chains {}, flow {}, mtu {}, no-cleanup {}'.format(self._what_to_run, self._n_csr_per_compute, self._chain_type, self._chain_count, self._flow_count, self._mtu, self._is_no_cleanup)
 
     @property
     def _is_no_cleanup(self):
@@ -25,9 +26,26 @@ class NttScenario(ParallelWorker):
         return self._kwargs['n-csr-per-compute']
 
     @property
+    def _chain_type(self):
+        return self._kwargs['chain-type']
+
+    @property
+    def _chain_count(self):
+        return self._kwargs['chain-count']
+
+    @property
+    def _flow_count(self):
+        return self._kwargs['flow-count']
+
+    @property
+    def _mtu(self):
+        return self._kwargs['mtu']
+
+    @property
     def _tmp_dir(self):
         return self._kwargs['tmp-dir']
 
+    @section(message='Setting up', estimated_time=100)
     def setup_worker(self):
         self._kwargs['tmp-dir'] = '/var/tmp/os-sqe-tmp/'
 
@@ -52,10 +70,10 @@ class NttScenario(ParallelWorker):
             ans.append(self.get_mgmt().exe('source $HOME/openstack-configs/openrc && ./csr_create.sh {}'.format(self._n_csr_per_compute), in_directory=self._tmp_dir + 'nfvi-test'))
 
         if self._what_to_run == 'nfvbench':
-            for par in ['--rate 1.3Gbps --flow-count 10000', '--rate ndr_pdr --flow-count 10000']:
+            for par in ['--rate 1.3Gbps --service-chain {} --service-chain-count {} --flow-count {}'.format(self._chain_type, self._chain_count, self._flow_count,)]:
                 ans.append(self.single_nfvbench_run(parameters=par))
         if self._what_to_run == 'both':
-            ans.append(self.single_nfvbench_run('--rate 1.3Gbps --flow-count 10000 --service-chain EXT'))
+            ans.append(self.single_nfvbench_run('--rate 1.3Gbps --service-chain {} --service-chain-count {} --flow-count {}'.format(self._chain_type, self._chain_count, self._flow_count, )))
         return ans
 
     def single_nfvbench_run(self, parameters):
@@ -63,12 +81,12 @@ class NttScenario(ParallelWorker):
 
         ans = self.get_mgmt().exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory=self._tmp_dir, is_warn_only=True)
         if 'ERROR' in ans:
-            raise RuntimeError(ans)
+            raise RuntimeError(ans.rsplit('ERROR', 1)[-1])
         else:
             res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json', in_directory=self._tmp_dir)
 
             suffix = parameters.replace(' ', '_')
-            with self.get_lab().open_artifact('nfvbench_results_{}.json'.format(suffix), 'w') as f:
+            with self.get_lab().open_artifact('{}-{}-{}.json'.format(self._chain_type, self._chain_count, self._flow_count, self._mtu), 'w') as f:
                 f.write(res_json_body)
             with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(suffix), 'w') as f:
                 f.write(ans)
@@ -85,6 +103,7 @@ class NttScenario(ParallelWorker):
                     res.append('MTU={} RT={}'.format(mtu, di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']))
             return parameters + '-->' + '; '.join(res)
 
+    @section(message='Tearing down', estimated_time=30)
     def teardown_worker(self):
         if not self._is_no_cleanup:
             self.get_cloud().os_cleanup(is_all=True)

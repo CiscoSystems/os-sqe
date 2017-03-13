@@ -16,4 +16,4 @@ NFVBENCH_COMMAND="docker run \
     -v /root/openstack-configs:/tmp/nfvbench/openstack \
     ${NFVBENCH_CONTAINER} nfvbench"
 
-$NFVBENCH_COMMAND -c /tmp/nfvbench/nfvbench_config.yaml $* --json /tmp/nfvbench/results.json
+$NFVBENCH_COMMAND -c /tmp/nfvbench/nfvbench_config.yaml --json /tmp/nfvbench/results.json $*
