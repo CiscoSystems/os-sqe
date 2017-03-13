@@ -31,6 +31,7 @@ class NttScenario(ParallelWorker):
     def setup_worker(self):
         self._kwargs['tmp-dir'] = '/var/tmp/os-sqe-tmp/'
 
+        self.get_mgmt().exe('rm -rf {}'.format(self._tmp_dir))
         self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self._tmp_dir + 'nfvi-test')
         self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir=self._tmp_dir + 'testbed')
         self.get_mgmt().exe('rm -f nfvbench_config.yaml && cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory=self._tmp_dir)
