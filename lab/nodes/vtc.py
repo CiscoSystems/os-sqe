@@ -10,9 +10,7 @@ class Vtc(VirtualServer):
         super(Vtc, self).__init__(**kwargs)
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
         self._is_api_via_vip = True
-        self._via_curl = 'curl'
-        self._via_requests = 'requests'
-        self._via = self._via_curl
+        self._executor = Curl(self)
         self.set_vip(kwargs['vip'], kwargs['nics']['mx']['ip'])
 
     def disable_vip(self):
@@ -25,58 +23,14 @@ class Vtc(VirtualServer):
         data = "--data '{}'".format(data) if data else ''
         return self.exe('curl -X {} {} -u {}:{} -k --header "{}" {}'.format(method, url, username, password, headers, data))
 
-    def _rest_api(self, method, url, username, password, headers, data=None, params=None):
-        import requests
-        # from requests.packages import urllib3
-
-        # urllib3.disable_warnings()  # Suppressing warning due to self-signed certificate
-        auth = (username, password)
-
-        call = getattr(requests, method)
-        try:
-            ans = call(url, auth=auth, headers=headers, params=params, data=data, timeout=100, verify=False)
-            if ans.ok:
-                return ans.text
-            else:
-                raise RuntimeError('for {}: {}'.format(url, ans.text or ans.reason))
-        except requests.ConnectTimeout:
-            self.log(message='{}'.format(url), level='exception')
-            raise
-        except Exception as e:
-            raise RuntimeError('{}({}) when doing {} {} with {}'.format(type(e), e, e.request.method, e.request.url, e.request.headers))
-
     def set_vip(self, vip, vip_mx):
         self._vip_a, self._vip_mx = vip, vip_mx
 
     def get_vtc_vips(self):
         return self._vip_a, self._vip_mx
 
-    def cmd(self, cmd, **kwargs):
-        import json
-        
-        method, url_path = cmd.split()
-
-        method = method.lower()
-        if method not in ['get', 'patch', 'put']:
-            raise ValueError('Unsupported type of call: "{}"'.format(method))
- 
-        url_path = url_path.strip('/')
-        _, username, password = self.get_oob()
-        vip = self.get_vtc_vips()[0] if self._is_api_via_vip else self._server.get_ssh_ip()
-        url = 'https://{ip}:{port}/{resource}'.format(ip=vip, port=8888, resource=url_path)
-
-        while True:
-            if self._via == self._via_curl:
-                ans = self._curl(method=method, url=url, username=username, password=password, headers=kwargs['headers'], data=kwargs.get('data'))
-            else:
-                ans = self._rest_api(method=method, url=url, username=username, password=password, headers=kwargs['headers'], data=kwargs.get('data'))
-            try:
-                ans = json.loads(ans)
-                if 'errors' in ans:
-                    raise RuntimeError('{} {} {}'.format(cmd, kwargs, ans))
-                return ans
-            except ValueError:
-                continue
+    def cmd(self, cmd=''):
+        return self._executor
 
     def get_vtf(self):
         from lab.nodes.vtf import Vtf
@@ -87,7 +41,7 @@ class Vtc(VirtualServer):
         return map(lambda x: x.get_id(), self.lab().get_xrvr())
 
     def r_vtc_get_vtfs(self):
-        ans = self.cmd(cmd='GET /api/running/cisco-vts', headers={'Accept': 'application/vnd.yang.data+json'})
+        ans = self.cmd().get('/api/running/cisco-vts')
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
         vtf_nodes = self.get_vtf()
         for vtf in vtf_nodes:
@@ -368,88 +322,65 @@ class Vtc(VirtualServer):
     def r_vtc_crm_status(self):
         return self.exe('sudo crm status')
 
-    def r_vtc_show_configuration_xrvr_groups(self, is_via_ncs=False):  #
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow configuration cisco-vts xrvr-groups xrvr-group\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888//api/running/cisco-vts/xrvr-groups/xrvr-group
-            return self.cmd(cmd='GET /api/running/cisco-vts/xrvr-groups/xrvr-group/', headers={'Accept': 'application/vnd.yang.collection+json'})
+    def r_vtc_show_configuration_xrvr_groups(self):  #
+        return self.cmd().get(url='/api/running/cisco-vts/xrvr-groups/xrvr-group/')
 
-    def r_vtc_show_ha_cluster_members(self, is_via_ncs=False):
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow ha-cluster members\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/operational/ha-cluster/members
-            return self.cmd(cmd='GET /api/operational/ha-cluster/members', headers={'Accept': 'application/vnd.yang.collection+json'})
+    def r_vtc_show_ha_cluster_members(self):
+        return self.cmd().get(url='/api/operational/ha-cluster/members')
 
-    def r_vtc_show_openstack_network(self, is_via_ncs=False, network_id=''):
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow openstack network {}\nexit\nEOF'.format(network_id))
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/openstack/network
-            r = self.cmd(cmd='GET /api/running/openstack/network/{}'.format(network_id), headers={'Accept': 'application/vnd.yang.{}+json'.format('data' if network_id else 'collection')})
-            return r['collection']['cisco-vts-openstack:network'] if 'collection' in r else []
+    def r_vtc_show_openstack_network(self):
+        r = self.cmd().get(url='/api/running/openstack/network')
+        return r['collection']['cisco-vts-openstack:network'] if 'collection' in r else []
 
-    def r_vtc_show_openstack_subnet(self, is_via_ncs=False):
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow openstack subnet\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/openstack/subnet
-            return self.cmd(cmd='GET /api/running/openstack/subnet', headers={'Accept': 'application/vnd.yang.collection+json'})
+    def r_vtc_delete_openstack_network(self, network):
+        r = self.cmd().delete(url='/api/running/openstack/network/{}'.format(network['id']))
 
-    def r_vtc_show_openstack_port(self, is_via_ncs=False):
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow openstack port\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/openstack/port
-            return self.cmd(cmd='GET /api/running/openstack/port', headers={'Accept': 'application/vnd.yang.collection+json'})
+    def r_vtc_show_openstack_subnet(self):
+        return self.cmd().get(url='/api/running/openstack/subnet')
 
-    def r_vtc_show_vni_pool(self, is_via_ncs=False):
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow vni-allocator pool\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/resource-pools/vni-pool
-            return self.cmd(cmd='GET /api/running/resource-pools/vni-pool', headers={'Accept': 'application/vnd.yang.collection+json'})
+    def r_vtc_show_openstack_port(self):
+        return self.cmd().get(url='/api/running/openstack/port')
 
-    def r_vtc_show_vlan_pool(self, is_via_ncs=False):
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow vlan-allocator pool\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/resource-pools/vni-pool
-            return self.cmd(cmd='GET /api/running/resource-pools/vlan-pool', headers={'Accept': 'application/vnd.yang.collection+json'})
+    def r_vtc_show_vni_pool(self):
+        return self.cmd().get(url='/api/running/resource-pools/vni-pool')
 
-    def r_vtc_show_uuid_servers(self, is_via_ncs=False):
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://11.11.11.150:8888/api/running/cisco-vts/uuid-servers/uuid-server
-            res = self.cmd(cmd='GET /api/running/cisco-vts/uuid-servers/uuid-server', headers={'Accept': 'application/vnd.yang.collection+json'})
-            return res['collection']['cisco-vts:uuid-server']
+    def r_vtc_show_vlan_pool(self):
+        return self.cmd().get(url='/api/running/resource-pools/vlan-pool')['collection']['resource-allocator:vlan-pool']
 
-    def r_vtc_show_devices_device(self, is_via_ncs=False):
-        if is_via_ncs:
-            return self.exe('ncs_cli << EOF\nshow devices device\nexit\nEOF')
-        else:
-            # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/devices/device
-            return self.cmd(cmd='GET /api/running/devices/device', headers={'Accept': 'application/vnd.yang.collection+json'})
+    def r_vtc_show_uuid_servers(self):
+        res = self.cmd().get(url='/api/running/cisco-vts/uuid-servers/uuid-server')
+        return res['collection']['cisco-vts:uuid-server']
+
+    def r_vtc_show_devices_device(self):
+        return self.cmd().get(url='/api/running/devices/device')
 
     def r_vtc_set_port_for_border_leaf(self):
         import uuid
         import json
+        from collections import OrderedDict
 
+        vlans = 3599
         mgmt_srv = [x for x in self.r_vtc_show_uuid_servers() if 'baremetal' in x['server-type']][0]
         tenant = 'admin'
 
-        for network in self.r_vtc_show_openstack_network():
-            if 'sqe' in network['name']:
-                continue
+        nets = filter(lambda x: 'sqe' in x, self.r_vtc_show_openstack_network())
+        for network in nets:
             port_id = str(uuid.uuid4())
-            mac = 'unknown-' + str(uuid.uuid4())
-            body = {"port": {"id": port_id, "status": "cisco-vts-identities:active", "tagging": "mandatory", "network-id": network['id'], "binding-host-id": mgmt_srv['server-id'],
-                    "device-id": 'null', "connid": [{"id": mgmt_srv['connid']}], "admin-state-up": "true", "type": "cisco-vts-identities:baremetal", "mac-address": mac, "vlan-id": '3333'}}
+            new_uuid = str(uuid.uuid4())
+            port_dict = OrderedDict()
+            port_dict['id'] = port_id
+            port_dict['network-id'] = network['id']
+            port_dict['admin-state-up'] = True
+            port_dict['status'] = 'cisco-vts-identities:active'
+            port_dict['binding-host-id'] = mgmt_srv['server-id']
+            port_dict['vlan-id'] = vlans
+            vlans -= 1
+            port_dict['mac-address'] = 'unknown-' + new_uuid
+            port_dict['connid'] = [{'id': mgmt_srv['connid']}]
+            port_data = {'port': port_dict}
 
-            self.cmd(cmd='PATCH /api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port'.format(tenant), data=json.dumps(body),
-                     headers={'Content-type': 'application/vnd.yang.data+json', 'Accept': 'application/vnd.yang.collection+json'})
+            port_json = json.dumps(port_data)
+            self.cmd().put(url='/api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port/{1}'.format(tenant, port_id), data=port_json)
 
         # return self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts tenants tenant admin ports port <port UUID> followed by body\nexit\nEOF')
 
@@ -484,9 +415,93 @@ class Vtc(VirtualServer):
     def r_vtc_validate(self):
         self.r_vtc_show_configuration_xrvr_groups()
 
+    def r_vtc_cleanup(self):
+        for net in self.r_vtc_show_openstack_network():
+            self.r_vtc_delete_openstack_network(net)
+
     def r_xrvr_show_evpn(self):
         return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.lab().get_xrvr())
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
     ROLE = 'vts-host-n9'
+
+
+class Curl(object):
+    """Performs requests to VTC API for attaching or detaching ports.
+    Works more reliably than Python requests solution.
+
+    Moving from Ubuntu 14.04 to Ubuntu 16.04 caused requests to fail with following error:
+    requests.exceptions.SSLError: ("bad handshake: SysCallError(-1, 'Unexpected EOF')",)
+
+    This error was also produced if only urllib3 is used, it's caused by underlying layers.
+    It is thrown even when SSL verification is disabled (as it verifies only certificate,
+    ciphering is still done). Possible reason might be unknown host cipher for ssl library
+    in Python STL. No workaround found worked, leaving this unsolved.
+    """
+
+    def __init__(self, vtc_object):
+        self._data_hdr = "'Accept: application/vnd.yang.data+json'"
+        self._put_hdr = "'Content-Type: application/vnd.yang.data+json'"
+        self._collection_hdr = "'Accept: application/vnd.yang.collection+json'"
+        self._vtc = vtc_object
+        _, self._uname, self._pwd = vtc_object.get_oob()
+
+    @property
+    def _http(self):
+        return 'https://{}:8888'.format(self._vtc.get_vtc_vips()[0])
+
+    def get(self, url):
+        import json
+
+        while True:
+            cmd = 'curl -s -k -u {}:{} -H {} -X GET {}'.format(self._uname, self._pwd, self._collection_hdr, self._http + url)
+            ans = self._vtc.exe(cmd, is_warn_only=True)
+
+            if ans.failed:
+                raise RuntimeError(ans)
+            else:
+                try:  # sometimes the answer is not fully formed (usually happens with server list), simply repeat
+                    return json.loads(ans) if ans else []  # it might be empty
+                except ValueError:  # something like ValueError: Unterminated string starting at: line 65 column 11 (char 4086)
+                    continue
+
+    def put(self, url, data):
+        cmd = "curl -s -k -u {}:{} -H {} -X PUT -d '{}' {}".format(self._uname, self._pwd, self._put_hdr, data, self._http + url)
+        ans = self._vtc.exe(cmd)
+
+        if 'errors' in ans:
+            raise RuntimeError(ans)
+        else:
+            return ans
+
+    def delete(self, url):
+        cmd = "curl -s -k -u {}:{} -H {} -X DELETE {}".format(self._uname, self._pwd, self._data_hdr, self._http + url)
+        ans = self._vtc.exe(cmd)
+
+        if 'errors' in ans:
+            raise RuntimeError(ans)
+        else:
+            return ans
+
+
+class NcsCli(object):
+    def __init__(self, vtc_object):
+        self._vtc = vtc_object
+
+    def get(self, url):
+        url_to_cmd = {
+            '/api/running/openstack/network': 'ncs_cli << EOF\nshow openstack network {}\nexit\nEOF',
+            '/api/running/openstack/subnet': 'ncs_cli << EOF\nshow openstack subnet\nexit\nEOF',
+            '/api/running/openstack/port': 'ncs_cli << EOF\nshow openstack port\nexit\nEOF',
+            '/api/running/devices/device': 'ncs_cli << EOF\nshow devices device\nexit\nEOF',
+            '/api/running/cisco-vts/uuid-servers/uuid-server': 'ncs_cli << EOF\nshow configuration cisco-vts uuid-servers\nexit\nEOF',
+            '/api/running/cisco-vts/xrvr-groups/xrvr-group/': 'ncs_cli << EOF\nshow configuration cisco-vts xrvr-groups xrvr-group\nexit\nEOF',
+            '/api/running/resource-pools/vni-pool': 'ncs_cli << EOF\nshow vni-allocator pool\nexit\nEOF',
+            '/api/running/resource-pools/vlan-pool': 'ncs_cli << EOF\nshow vlan-allocator pool\nexit\nEOF',
+            '/api/operational/ha-cluster/members': 'ncs_cli << EOF\nshow ha-cluster members\nexit\nEOF'
+        }
+
+        if url not in url_to_cmd:
+            raise NotImplementedError('This url {} is not implemented via NCS CLI'.format(url))
+        return self._vtc.exe(url_to_cmd[url])
