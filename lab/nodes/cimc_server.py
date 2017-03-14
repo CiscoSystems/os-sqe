@@ -328,7 +328,7 @@ class CimcDirector(CimcServer):
             cmd = 'ip link show br_mgmt.{0} || ( ip link add link br_mgmt name br_mgmt.{0} type vlan id {0} && ip link set dev br_mgmt.{0} up && ip address add {1} dev br_mgmt.{0} )'.format(vlan, ip)
             self.exe(cmd)
 
-    def r_list_intel_nics(self):
+    def r_check_intel_nics(self):
         ans = self.exe('lspci | grep Intel | grep 10-Gigabit', is_warn_only=True)
         if not ans:
             raise RuntimeError('{}: there is no Intel NIC'.format(self))
