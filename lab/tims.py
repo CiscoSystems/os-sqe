@@ -93,7 +93,7 @@ class Tims(WithLogMixIn, WithConfig):
         except IndexError:
             raise ValueError('test {}: does not define - Title: some text'.format(test_cfg_path))
         desc = 'This is the configuration actually used in testing:\n' + json.dumps(cfg_body, indent=5) + \
-               '\nuploaded from <a href="https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}">'.format(test_cfg_path)
+               '\nuploaded from https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}'.format(test_cfg_path)
 
         body = '''
         <Case>
