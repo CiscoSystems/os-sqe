@@ -311,34 +311,36 @@ export OS_AUTH_URL={end_point}
     def os_flavor_list(self):
         return self.os_cmd('openstack flavor list -f json')
 
-    def os_server_reboot(self, name, hard=False):
+    def os_server_reboot(self, server, hard=False):
         flags = ['--hard' if hard else '--soft']
-        self.os_cmd('openstack server reboot {flags} {name}'.format(flags=' '.join(flags), name=name))
-        self.wait_instances_ready(names=[name])
+        self.os_cmd('openstack server reboot {} {}'.format(flags, server['ID']), comment='# server {}'.format(server['Name']))
+        self.wait_instances_ready(servers=[server])
 
-    def os_server_rebuild(self, name, image):
-        self.os_cmd('openstack server rebuild {name} --image {image}'.format(name=name, image=image))
-        self.wait_instances_ready(names=[name])
+    def os_server_rebuild(self, server, image):
+        self.os_cmd('openstack server rebuild {} --image {}'.format(server['ID'], image), comment='# {}'.format(server['Name']))
+        self.wait_instances_ready(servers=[server])
 
-    def os_server_suspend(self, name):
-        self.os_cmd('openstack server suspend {name}'.format(name=name))
-        self.wait_instances_ready(names=[name], status='SUSPENDED')
+    def os_server_suspend(self, server):
+        self.os_cmd('openstack server suspend {}'.format(server['ID']))
+        self.wait_instances_ready([server], status='SUSPENDED')
 
-    def os_server_resume(self, name):
-        self.os_cmd('openstack server resume {name}'.format(name=name))
-        self.wait_instances_ready(names=[name])
+    def os_server_resume(self, server):
+        self.os_cmd('openstack server resume {}'.format(server['ID']), comment='# server {}'.format(server['Name']))
+        self.wait_instances_ready(servers=[server])
 
-    def wait_instances_ready(self, names=None, status='ACTIVE', timeout=300):
+    def wait_instances_ready(self, servers, status='ACTIVE', timeout=300):
         import time
 
+        required_n_servers = 0 if status == 'DELETED' else len(servers)
+        our_ids = [s['ID'] for s in servers]
         start_time = time.time()
         while True:
             all_instances = self.os_server_list()
-            our_instances = filter(lambda x: x['Name'] in names, all_instances) if names else all_instances
+            our_instances = filter(lambda x: x['ID'] in our_ids, all_instances)
             instances_in_error = filter(lambda x: x['Status'] == 'ERROR', our_instances)
-            instances_in_active = filter(lambda x: x['Status'] == status, our_instances)
-            if len(instances_in_active) == len(names):
-                return  # successfully created
+            instances_in_status = filter(lambda x: x['Status'] == status, our_instances) if status != 'DELETED' else our_instances
+            if len(instances_in_status) == required_n_servers:
+                return  # all successfully reached the status
             if instances_in_error:
                 for instance in instances_in_error:
                     self.analyse_instance_problems(instance)
@@ -442,8 +444,12 @@ export OS_AUTH_URL={end_point}
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, port_ids))
         return self.os_cmd('openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name sqe-key1 {}'.format(srv_name, flavor_name, image_name, zone_name, ports_part))
 
-    def os_server_delete(self, server):
-        return self.os_cmd('openstack server delete ' + server['ID'], comment='# server name ' + server['Name'])
+    def os_server_delete(self, servers):
+        if len(servers):
+            ids = [s['ID'] for s in servers]
+            names = [s['Name'] for s in servers]
+            self.os_cmd('openstack server delete ' + ' '.join(ids), comment='# server names ' + ' '.join(names))
+            self.wait_instances_ready(servers=servers, status='DELETED')
 
     def os_server_list(self):
         return self.os_cmd('openstack server list -f json')
@@ -457,14 +463,13 @@ export OS_AUTH_URL={end_point}
     def os_security_group_rule_list(self, group_name):
         return self.os_cmd('openstack security group rule list -f json {}'.format(group_name))
 
-    @section('Cleanup: deleting all cloud objects created by all previous test runs')
     def os_cleanup(self, is_all=False):
         servers = self.os_server_list()
 
         if not is_all:  # first servers then all others since servers usually reserves ports
             servers = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], servers)
 
-        map(lambda server: self.os_server_delete(server), servers)
+        self.os_server_delete(servers)
 
         routers = self.os_router_list()
         ports = self.os_port_list()

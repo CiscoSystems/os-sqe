@@ -58,7 +58,7 @@ class NttScenario(ParallelWorker):
         if self._what_to_run in ['both', 'csr']:
             self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self._tmp_dir + 'nfvi-test')
             self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory=self._tmp_dir + 'nfvi-test')
-        if self._what_to_run in ['both', 'nvfbench']:
+        if self._what_to_run in ['both', 'nfvbench']:
             self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir=self._tmp_dir + 'testbed')
             self.get_mgmt().exe('rm -f nfvbench_config.yaml && cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory=self._tmp_dir)
 
@@ -87,7 +87,7 @@ class NttScenario(ParallelWorker):
             f.write(cmd + '\n')
             f.write(ans)
         if 'ERROR' in ans:
-            raise RuntimeError(ans.split('ERROR')[1][:100])
+            raise RuntimeError(ans.split('ERROR')[1][:200])
 
     def single_nfvbench_run(self, parameters):
         import json
@@ -99,7 +99,7 @@ class NttScenario(ParallelWorker):
             f.write(ans)
 
         if 'ERROR' in ans:
-            raise RuntimeError(ans.split('ERROR')[1][:100])
+            raise RuntimeError(ans.split('ERROR')[1][:200])
         else:
             res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json', in_directory=self._tmp_dir)
 
