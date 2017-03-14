@@ -1,6 +1,6 @@
 ---
 - Folder: VTS PERF AND SCALE
-- Title: 1 CSR chain EXT,  chain count 1, flow 1000, size 64
+- Title: 1 CSR chain EXT,  chain count 1, flow count 1000, size 64
 - Description: runs number of perfomance benchmarks described in https://cisco.jiveon.com/docs/DOC-1711443. Target architecture is defined by pod on which this test is run.
 
 - class: lab.scenarios.ntt_scenario.NttScenario

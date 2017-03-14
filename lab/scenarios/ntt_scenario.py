@@ -11,7 +11,7 @@ class NttScenario(ParallelWorker):
         possible_modes = ['csr', 'nfvbench', 'both']
         if self._what_to_run not in possible_modes:
             raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
-        return 'run {}, n. CSR {}, chain {}, n chains {}, flow {}, mtu {}, no-cleanup {}'.format(self._what_to_run, self._n_csr_per_compute, self._chain_type, self._chain_count, self._flow_count, self._mtu, self._is_no_cleanup)
+        return 'run {}, CSR # {}, chain {}, chain # {}, flow # {}, mtu {}, no-cleanup {}'.format(self._what_to_run, self._n_csr_per_compute, self._chain_type, self._chain_count, self._flow_count, self._mtu, self._is_no_cleanup)
 
     @property
     def _is_no_cleanup(self):
