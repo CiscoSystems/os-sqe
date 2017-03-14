@@ -80,10 +80,11 @@ class NttScenario(ParallelWorker):
     def csr_run(self):
 
         n_csr = self._csr_per_compute if int(self._csr_per_compute) == 1 else int(self._csr_per_compute) * len(self.get_cloud().get_computes())
-        parameters = '{} {} {}'.format(n_csr, self._csr_per_compute, self._csr_sleep)
-        ans = self.get_mgmt().exe('source $HOME/openstack-configs/openrc && ./csr_create.sh ' + parameters, in_directory=self._tmp_dir + 'nfvi-test')
+        cmd = 'source $HOME/openstack-configs/openrc && ./csr_create.sh  {} {} {}'.format(n_csr, self._csr_per_compute, self._csr_sleep)
+        ans = self.get_mgmt().exe(cmd, in_directory=self._tmp_dir + 'nfvi-test')
 
-        with self.get_lab().open_artifact('csr_create_output_{}.txt'.format(parameters.replace(' ', '-')), 'w') as f:
+        with self.get_lab().open_artifact('csr_create_output.txt', 'w') as f:
+            f.write(cmd + '\n')
             f.write(ans)
         if 'ERROR' in ans:
             raise RuntimeError(ans.split('ERROR')[1][:100])
@@ -91,17 +92,19 @@ class NttScenario(ParallelWorker):
     def single_nfvbench_run(self, parameters):
         import json
 
-        ans = self.get_mgmt().exe('. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else ''), in_directory=self._tmp_dir, is_warn_only=True)
+        cmd = '. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else '')
+        ans = self.get_mgmt().exe(cmd, in_directory=self._tmp_dir, is_warn_only=True)
+        with self.get_lab().open_artifact('nfvbench_output.txt', 'w') as f:
+            f.write(cmd + '\n')
+            f.write(ans)
+
         if 'ERROR' in ans:
             raise RuntimeError(ans.split('ERROR')[1][:100])
         else:
             res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json', in_directory=self._tmp_dir)
 
-            suffix = parameters.replace(' ', '_')
             with self.get_lab().open_artifact('{}-{}-{}.json'.format(self._chain_type, self._chain_count, self._flow_count, self._frame_size), 'w') as f:
                 f.write(res_json_body)
-            with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(suffix), 'w') as f:
-                f.write(ans)
             res_json = json.loads(res_json_body)
             res = []
             for mtu, di in res_json['benchmarks']['network']['service_chain']['PVP']['result'][0]['result'].items():
