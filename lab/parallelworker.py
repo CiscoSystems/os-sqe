@@ -144,7 +144,6 @@ class ParallelWorker(WithLogMixIn):
         time.sleep(1)
 
         exceptions = []
-        loop_output = []
         try:
             self.delay()
 
@@ -155,7 +154,7 @@ class ParallelWorker(WithLogMixIn):
 
             while not self.is_ready_to_finish():
                 self.log('Loop number {}...'.format(self._loop_counter))
-                loop_output.append(self.loop_worker() if not self.is_debug() else self.debug_output())
+                self.loop_worker() if not self.is_debug() else self.debug_output()
                 self._loop_counter += 1
                 time.sleep(self._period)
 
@@ -167,7 +166,7 @@ class ParallelWorker(WithLogMixIn):
             self.set_status(status=self.STATUS_FINISHED)
             if not self.is_debug():
                 self.teardown_worker()
-            return {'worker name': self._name, 'exceptions': exceptions, 'loop_output': loop_output, 'params': worker_parameters}
+            return {'worker name': self._name, 'exceptions': exceptions, 'params': worker_parameters}
 
     def debug_output(self):
         return '{} loop {} ok'.format(self._name, self._loop_counter)
