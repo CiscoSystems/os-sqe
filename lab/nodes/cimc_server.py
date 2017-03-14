@@ -328,6 +328,16 @@ class CimcDirector(CimcServer):
             cmd = 'ip link show br_mgmt.{0} || ( ip link add link br_mgmt name br_mgmt.{0} type vlan id {0} && ip link set dev br_mgmt.{0} up && ip address add {1} dev br_mgmt.{0} )'.format(vlan, ip)
             self.exe(cmd)
 
+    def r_list_intel_nics(self):
+        ans = self.exe('lspci | grep Intel | grep 10-Gigabit', is_warn_only=True)
+        return ans
+
+    def r_latest_gerrit_tag(self):
+        import requests
+
+        ans = requests.get('https://cloud-infra.cisco.com/api/v1.0/changeset/?number_only=1&branch=master&namespace=mercury-rhel7-osp10')
+        return ans.text
+
 
 class CimcController(CimcServer):
     ROLE = 'control-n9'
