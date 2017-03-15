@@ -179,7 +179,8 @@ class Tims(WithLogMixIn, WithConfig):
             tims_report_url += self.update_special_dima_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status, lab_id=str(lab), test_case_id=test_case_id)
         else:
             tims_report_url = 'and not reported to tims since user not known'
-
+        with self.open_artifact('tims.html', 'w') as f:
+            f.write(tims_report_url)
         self.log_to_slack(message='{} {}: {} {} {}'.format(lab, mercury_version, test_cfg_path, status.upper(), tims_report_url))
 
     def simulate(self):
