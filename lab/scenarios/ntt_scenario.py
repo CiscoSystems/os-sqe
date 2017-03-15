@@ -57,7 +57,7 @@ class NttScenario(ParallelWorker):
         self.get_mgmt().exe('rm -rf {}'.format(self._tmp_dir))
         if self._what_to_run in ['both', 'csr']:
             self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self._tmp_dir + 'nfvi-test')
-            self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory=self._tmp_dir + 'nfvi-test')
+            self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory=self._tmp_dir + 'nfvi-test')
         if self._what_to_run in ['both', 'nfvbench']:
             self.get_mgmt().r_check_intel_nics()
             # self.get_cloud().os_image_create('testpmd')
