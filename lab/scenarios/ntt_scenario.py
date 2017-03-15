@@ -89,7 +89,10 @@ class NttScenario(ParallelWorker):
             f.write(cmd + '\n')
             f.write(ans)
         if 'ERROR' in ans:
-            raise RuntimeError(ans.split('ERROR')[1][:200])
+            errors = [x.split('\r\n')[0] for x in ans.split('ERROR')[1:]]
+            errors = [x for x in errors if 'No hypervisor matching' not in x]
+            if errors:
+                raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
 
     def single_nfvbench_run(self, parameters):
         import json
