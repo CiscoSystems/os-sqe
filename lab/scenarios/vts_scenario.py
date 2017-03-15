@@ -32,7 +32,7 @@ class VtsScenario(ParallelWorker):
         self.get_cloud().os_cleanup(is_all=True)
         self._vtc.r_vtc_cleanup()
         self.get_cloud().os_keypair_create()
-        self.get_cloud().os_image_create('iperf')
+        self.get_cloud().os_image_create('sqe-iperf')
         self.get_cloud().os_flavor_create('vts')
 
     @section('Creating networks')
