@@ -117,26 +117,37 @@ class Cloud(WithLogMixIn):
     ROLE_COMPUTE = 'compute'
     ROLE_MEDIATOR = 'mediator'
 
-    def __init__(self, cloud, user, admin, tenant, password, end_point, mediator):
+    def __init__(self, name, mediator, openrc_path, openrc_body):
         self._show_subnet_cmd = 'neutron subnet-show -f shell '
 
         self._provider_physical_network = 'Default Value Set In Cloud.__init__()'
         self._openstack_version = 'Default Value Set In Cloud.__init__()'
 
-        self._name = cloud
-        self._user = user
-        self._admin = admin
-        self._tenant = tenant
-        self._password = password
-        self._end_point = end_point
+        self._name = name
+        self._openrc_path = openrc_path
+        self._username,  self._tenant, self._password, self._end_point = self.process_openrc(openrc_as_string=openrc_body)
         self._mediator = mediator  # special server to be used to execute CLI commands for this cloud
         self._instance_counter = 0  # this counter is used to count how many instances are created via this class
         service_lst = self.os_host_list()
         self._controls = sorted([x['Host Name'] for x in service_lst if x['Service'] == 'scheduler'])
         self._computes = sorted([x['Host Name'] for x in service_lst if x['Service'] == 'compute'])
 
+    @staticmethod
+    def process_openrc(openrc_as_string):
+        username, tenant, password, end_point = None, None, None, None
+        for line in openrc_as_string.split('\n'):
+            if 'OS_USERNAME' in line:
+                username = line.split('=')[-1].strip()
+            elif 'OS_TENANT_NAME' in line:
+                tenant = line.split('=')[-1].strip()
+            elif 'OS_PASSWORD' in line:
+                password = line.split('=')[-1].strip()
+            elif 'OS_AUTH_URL' in line:
+                end_point = line.split('=')[-1].strip()
+        return username, tenant, password, end_point
+
     def __repr__(self):
-        return 'Cloud {n}: {a} {u} {p}'.format(u=self._user, n=self._name, p=self._password, a=self._end_point)
+        return 'Cloud {}: {} {} {}'.format(self._name, self._username, self._password, self._end_point)
 
     @staticmethod
     def _add_name_prefix(name):
@@ -162,19 +173,20 @@ export OS_TENANT_NAME={tenant}
 export OS_PASSWORD={password}
 export OS_AUTH_URL={end_point}
 """
-        return open_rc.format(user=self._user, tenant=self._tenant, password=self._password, end_point=self._end_point)
+        return open_rc.format(user=self._username, tenant=self._tenant, password=self._password, end_point=self._end_point)
 
     def os_cmd(self, cmd, comment='', server=None, is_warn_only=False):
         server = server or self._mediator
-        ans = server.exe(command='{} --os-username {} --os-tenant-name {} --os-password {} --os-auth-url {} {}'.format(cmd, self._user, self._tenant, self._password, self._end_point, comment), is_warn_only=is_warn_only)
+        cmd = 'source {} && {}  {}'.format(self._openrc_path, cmd, comment)
+        ans = server.exe(command=cmd, is_warn_only=is_warn_only)
         if '-f csv' in cmd:
             return self._process_csv_output(ans)
         elif '-f json' in cmd:
             return self._process_json_output(ans)
         elif '-f shell' in cmd:
-            return self._process_shell_output(ans)
+            return self._process_shell_output(answer=ans, command=cmd)
         else:
-            return ans
+            return self._process_shell_output(answer=ans, command=cmd)
 
     @staticmethod
     def _filter(minus_c, flt):
@@ -208,17 +220,18 @@ export OS_AUTH_URL={end_point}
         return output_list
 
     @staticmethod
-    def _process_shell_output(answer):
-        output_dict = {}
-        if answer:
-            lines = answer.split('\n')
-            for line in lines:
-                if '=' not in line:  # might be lines not in form a=b
-                    continue
-                line = line.strip('\r')
-                key, value = line.split('=', 1)
-                output_dict[key.strip('" ')] = value.strip('" ')
-        return output_dict
+    def _process_shell_output(command, answer):
+        if 'delete' in command or not answer:
+            return []
+        else:
+            lines = answer.split('\r\n')
+            output = []
+            keys = [x.strip() for x in lines[1].split('|') if x]
+            for line in lines[3:-1]:
+                values = [x.strip() for x in line.split('|') if x]
+                d = {k: v for k, v in zip(keys, values)}
+                output.append(d)
+            return output
 
     @staticmethod
     def _names_from_answer(ans):
@@ -464,13 +477,22 @@ export OS_AUTH_URL={end_point}
     def os_security_group_rule_list(self, group_name):
         return self.os_cmd('openstack security group rule list -f json {}'.format(group_name))
 
+    def os_server_group_list(self):
+        return self.os_cmd(cmd='nova server-group-list')
+
+    def os_server_group_delete(self, server_groups):
+        if len(server_groups):
+            ids = [s['Id'] for s in server_groups]
+            names = [s['Name'] for s in server_groups]
+            self.os_cmd('nova server-group-delete ' + ' '.join(ids), comment='# server groups ' + ' '.join(names))
+
     def os_cleanup(self, is_all=False):
         servers = self.os_server_list()
 
         if not is_all:  # first servers then all others since servers usually reserves ports
             servers = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], servers)
 
-        self.os_server_delete(servers)
+        self.os_server_delete(servers=servers)
 
         routers = self.os_router_list()
         ports = self.os_port_list()
@@ -479,6 +501,7 @@ export OS_AUTH_URL={end_point}
         flavors = self.os_flavor_list()
         images = self.os_image_list()
         rules = self.os_security_group_rule_list(group_name='default')
+        server_groups = self.os_server_group_list()
 
         rules = [x for x in rules if x['IP Protocol']]
         if not is_all:
@@ -488,6 +511,7 @@ export OS_AUTH_URL={end_point}
             keypairs = filter(lambda k: UNIQUE_PATTERN_IN_NAME in k['Name'], keypairs)
             flavors = filter(lambda f: UNIQUE_PATTERN_IN_NAME in f['Name'], flavors)
             images = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], images)
+            server_groups = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], server_groups)
 
         map(lambda router: self._clean_router(router['name']), routers)
         map(lambda port: self.os_port_delete(port), ports)
@@ -496,6 +520,7 @@ export OS_AUTH_URL={end_point}
         map(lambda flavor: self.os_flavor_delete(flavor['Name']), flavors)
         map(lambda image: self.os_image_delete(image), images)
         map(lambda rule: self.os_security_group_rule_delete(rule['ID']), rules)
+        self.os_server_group_delete(server_groups=server_groups)
 
     def r_collect_information(self, regex, comment):
         body = ''
@@ -534,18 +559,3 @@ export OS_AUTH_URL={end_point}
 
         self.os_cmd('neutron quota-update --network 100 --subnet 100 --port 500')
         return self
-
-    @staticmethod
-    def from_openrc(name, mediator, openrc_as_string):
-        user = tenant = password = end_point = None
-        for line in openrc_as_string.split('\n'):
-            if 'OS_USERNAME' in line:
-                user = line.split('=')[-1].strip()
-            elif 'OS_TENANT_NAME' in line:
-                tenant = line.split('=')[-1].strip()
-            elif 'OS_PASSWORD' in line:
-                password = line.split('=')[-1].strip()
-            elif 'OS_AUTH_URL' in line:
-                end_point = line.split('=')[-1].strip()
-
-        return Cloud(cloud=name, user=user, tenant=tenant, admin=tenant, password=password, end_point=end_point, mediator=mediator)

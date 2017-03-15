@@ -40,17 +40,19 @@ class DeployerExisting(LabWorker):
 
         director = list_of_servers[0]
 
+        openrc_path = None
         openrc_body = None
-        for openrc_path in ['openstack-configs/openrc', '/home/stack/overcloudrc', 'keystonerc_admin']:
-            ans = director.exe(command='cat {0}'.format(openrc_path), is_warn_only=True)
+        for path in ['/root/openstack-configs/openrc', '/home/stack/overcloudrc', '/root/keystonerc_admin']:
+            ans = director.exe(command='cat {}'.format(path), is_warn_only=True)
             if 'No such file or directory' not in ans:
                 openrc_body = ans
+                openrc_path = path
                 break
 
-        if not openrc_body:
+        if openrc_path is None:
             raise RuntimeError('{}: lab {} does not contain any valid cloud'.format(self, self._lab_cfg_path))
 
-        return Cloud.from_openrc(name=self._lab_cfg_path.replace('.yaml', ''), mediator=director, openrc_as_string=openrc_body)
+        return Cloud(name=self._lab_cfg_path.replace('.yaml', ''), mediator=director, openrc_path=openrc_path, openrc_body=openrc_body)
 
     def execute(self, servers):
         cloud = self.deploy_cloud(servers)
