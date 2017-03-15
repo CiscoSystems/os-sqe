@@ -103,7 +103,8 @@ class CloudImage(object):
     @section('Creating custom image')
     def add_image(image_name, cloud):
         images = {'iperf': 'http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2',
-                  'csr':   'http://172.29.173.233/csr/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2'}
+                  'csr':   'http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2',
+                  'testpmd': 'http://172.29.173.233/cloud-images/testpmdvm-latest.qcow2'}
         if image_name not in images.keys():
             raise ValueError('Image "{}" is not known'.format(image_name))
         return CloudImage(name=UNIQUE_PATTERN_IN_NAME + '-' + image_name, url=images[image_name], cloud=cloud)
