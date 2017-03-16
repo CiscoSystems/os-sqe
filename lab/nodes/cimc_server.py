@@ -332,16 +332,17 @@ class CimcDirector(CimcServer):
         ans = self.exe('lspci | grep Intel | grep 10-Gigabit', is_warn_only=True)
         if not ans:
             raise RuntimeError('{}: there is no Intel NIC'.format(self))
-        pci_addrs = [x.split()[0] for x in ans.split('\r\n')]
-        for pci_addr in pci_addrs:
-            bus = int(pci_addr[:2], 16)
-            card = int(pci_addr[3:5])
-            port = int(pci_addr[6:])
-            ans = self.exe('ethtool -i enp{}s{}f{}'.format(bus, card, port), is_warn_only=True)
-            if 'No such device' in ans:
-                raise RuntimeError('{}: Intel lspci | grep {} is not seen as iface'.format(self, pci_addr))
+        # pci_addrs = [x.split()[0] for x in ans.split('\r\n')]
+        # for pci_addr in pci_addrs:
+        #     bus = int(pci_addr[:2], 16)
+        #     card = int(pci_addr[3:5])
+        #     port = int(pci_addr[6:])
+        #     ans = self.exe('ethtool -i enp{}s{}f{}'.format(bus, card, port), is_warn_only=True)
+        #     if 'No such device' in ans:
+        #         raise RuntimeError('{}: Intel lspci | grep {} is not seen as iface'.format(self, pci_addr))
 
-    def r_latest_gerrit_tag(self):
+    @staticmethod
+    def r_get_latest_gerrit_tag():
         import requests
 
         ans = requests.get('https://cloud-infra.cisco.com/api/v1.0/changeset/?number_only=1&branch=master&namespace=mercury-rhel7-osp10')
