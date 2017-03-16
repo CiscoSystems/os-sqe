@@ -12,12 +12,13 @@ class RunnerHA(LabWorker):
 
     @staticmethod
     def sample_config():
-        return {'task-yaml': 'task-ha.yaml', 'mode': 'run'}
+        return {'task-yaml': 'task-ha.yaml', 'mode': 'run', 'is-noclean': True}
 
     def __init__(self, config):
         self._task_yaml_path = config['task-yaml']
         self._task_body = self.read_config_from_file(config_path=self._task_yaml_path, directory='ha')
         self._mode = config['mode']
+        self._is_noclean = config['is-noclean']
 
         if not self._task_body:
             raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
@@ -31,7 +32,7 @@ class RunnerHA(LabWorker):
         manager = multiprocessing.Manager()
         status_dict = manager.dict()
 
-        common_args = {'cloud': cloud, 'lab': cloud.get_lab(), 'yaml-path': self._task_yaml_path, 'is-debug': self._mode == self.MODE_DEBUG}
+        common_args = {'cloud': cloud, 'lab': cloud.get_lab(), 'yaml-path': self._task_yaml_path, 'is-debug': self._mode == self.MODE_DEBUG, 'is-noclean': self._is_noclean}
 
         names_already_seen = []
         for desc in self._task_body:  # first path to check that all workers have unique names
@@ -70,7 +71,7 @@ class RunnerHA(LabWorker):
         return pool.map(starter, workers)
 
     @staticmethod
-    def run(lab_cfg_path, test_regex, mode):
+    def run(lab_cfg_path, test_regex, mode, is_noclean):
         import time
         from lab.deployers.deployer_existing import DeployerExisting
         from lab.tims import Tims
@@ -96,7 +97,7 @@ class RunnerHA(LabWorker):
 
         for tst in tests:
             start_time = time.time()
-            runner = RunnerHA(config={'task-yaml': tst, 'mode': mode})
+            runner = RunnerHA(config={'task-yaml': tst, 'mode': mode, 'is-noclean': is_noclean})
             results = runner.execute(cloud)
 
             elk = Elk(proxy=cloud.get_mediator())
@@ -120,5 +121,5 @@ class RunnerHA(LabWorker):
         cloud = FakeCloud()
 
         for tst in tests:
-            r = RunnerHA(config={'task-yaml': tst, 'mode': RunnerHA.MODE_CHECK})
+            r = RunnerHA(config={'task-yaml': tst, 'mode': RunnerHA.MODE_CHECK, 'is-noclean': False})
             r.execute(cloud=cloud)

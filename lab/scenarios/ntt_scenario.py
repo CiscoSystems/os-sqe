@@ -5,18 +5,11 @@ from lab.decorators import section
 class NttScenario(ParallelWorker):
 
     def check_config(self):
-        if type(self._is_no_cleanup) is not bool:
-            raise ValueError('{}: define no-cleanup: True/False'.format(self))
-
         possible_modes = ['csr', 'nfvbench', 'both']
         if self._what_to_run not in possible_modes:
             raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
-        return 'run {}, # CSR {}, sleep {},  chain {}, # chains {}, # flows {}, frame size {}, no-cleanup {}'.format(self._what_to_run, self._csr_per_compute, self._csr_sleep,
-                                                                                                                     self._chain_type, self._chain_count, self._flow_count, self._frame_size, self._is_no_cleanup)
-
-    @property
-    def _is_no_cleanup(self):
-        return self._kwargs['no-cleanup']
+        return 'run {}, # CSR {}, sleep {},  chain {}, # chains {}, # flows {}, frame size {}'.format(self._what_to_run, self._csr_per_compute, self._csr_sleep,
+                                                                                                      self._chain_type, self._chain_count, self._flow_count, self._frame_size)
 
     @property
     def _what_to_run(self):
@@ -95,9 +88,7 @@ class NttScenario(ParallelWorker):
                 raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
 
     def single_nfvbench_run(self, parameters):
-        import json
-
-        cmd = '. execute {} {}'.format(parameters, '--no-cleanup' if self._is_no_cleanup else '')
+        cmd = '. execute {} {}'.format(parameters, '--no-cleanup' if self.is_noclean else '')
         ans = self.get_mgmt().exe(cmd, in_directory=self._tmp_dir, is_warn_only=True)
         with self.get_lab().open_artifact('nfvbench_output.txt', 'w') as f:
             f.write(cmd + '\n')
@@ -107,25 +98,31 @@ class NttScenario(ParallelWorker):
             raise RuntimeError(ans.split('ERROR')[1][:200])
         else:
             res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json', in_directory=self._tmp_dir)
-
             with self.get_lab().open_artifact('{}-{}-{}.json'.format(self._chain_type, self._chain_count, self._flow_count, self._frame_size), 'w') as f:
                 f.write(res_json_body)
-            res_json = json.loads(res_json_body)
-            res = []
-            for mtu, di in res_json['benchmarks']['network']['service_chain']['PVP']['result'][0]['result'].items():
-                if 'ndr' in di:
-                    for t in ['ndr', 'pdr']:
-                        la_min, la_avg, la_max = di[t]['stats']['overall']['min_delay_usec'], di[t]['stats']['overall']['avg_delay_usec'], di[t]['stats']['overall']['max_delay_usec']
-                        gbps = di[t]['rate_bps'] / 1e9
-                        drop_thr = di[t]['stats']['overall']['drop_rate_percent']
-                        res.append('MTU={} {}({:.4f}) rate={:.4f} Gbps latency={:.1f} {:.1f} {:.1f} usec'.format(mtu, t, drop_thr, gbps, la_min, la_avg, la_max))
-                else:
-                    res.append('MTU={} RT={}'.format(mtu, di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']))
-            return parameters + '-->' + '; '.join(res)
+            self.retrieve_values_from_nfvbench_json(parameters=parameters, res_json_body=res_json_body)
+
+    def retrieve_values_from_nfvbench_json(self, parameters, res_json_body):
+        import json
+
+        res_json = json.loads(res_json_body)
+        res = []
+        for mtu, di in res_json['benchmarks']['network']['service_chain']['PVP']['result'][0]['result'].items():
+            if 'ndr' in di:
+                for t in ['ndr', 'pdr']:
+                    la_min, la_avg, la_max = di[t]['stats']['overall']['min_delay_usec'], di[t]['stats']['overall']['avg_delay_usec'], di[t]['stats']['overall']['max_delay_usec']
+                    gbps = di[t]['rate_bps'] / 1e9
+                    drop_thr = di[t]['stats']['overall']['drop_rate_percent']
+                    res.append('MTU={} {}({:.4f}) rate={:.4f} Gbps latency={:.1f} {:.1f} {:.1f} usec'.format(mtu, t, drop_thr, gbps, la_min, la_avg, la_max))
+            else:
+                res.append('MTU={} RT={}'.format(mtu, di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']))
+
+        with self.get_lab().open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
+            f.write(parameters + '-->' + '; '.join(res))
 
     @section(message='Tearing down', estimated_time=30)
     def teardown_worker(self):
-        if not self._is_no_cleanup:
+        if not self.is_noclean:
             self.get_cloud().os_cleanup(is_all=True)
             self.get_mgmt().exe('rm -rf ' + self._tmp_dir)
 

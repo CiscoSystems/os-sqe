@@ -70,11 +70,12 @@ def cmd():
 
 
 @task
-def ha(lab_cfg_path, test_regex, mode='run'):
+def ha(lab_cfg_path, test_regex, mode='run', is_noclean=False):
     """fab ha:g10,str\t\t\tRun all tests with 'str' in name on g10
         :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
         :param mode: 'run' to run tests 'debug' to debug parallel infrastructure, 'check' to validate all HA test configs
+        :param is_noclean: if True, do not cleanup objects created during test, leave them from post analysis
     """
     from lab.runners.runner_ha import RunnerHA
 
@@ -82,7 +83,7 @@ def ha(lab_cfg_path, test_regex, mode='run'):
     if mode not in possible_modes:
         raise ValueError('fabfile.py.ha(): mode "{}" is invalid, use one of {}'.format(mode, possible_modes))
 
-    RunnerHA.run(lab_cfg_path=lab_cfg_path, test_regex=test_regex, mode=mode)
+    RunnerHA.run(lab_cfg_path=lab_cfg_path, test_regex=test_regex, mode=mode, is_noclean=is_noclean)
 
 
 @task

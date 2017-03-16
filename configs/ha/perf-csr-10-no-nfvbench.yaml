@@ -5,7 +5,6 @@
 
 - class: lab.scenarios.ntt_scenario.NttScenario
   name: NttScenario
-  no-cleanup: False
   n_repeats: 1
   what-to-run: csr  # might by nfvbench, csr, both
   csr-per-compute: 10  # special value 1 means just a single CSR, starting from 2 it will be considered as number of CRSs per compute node

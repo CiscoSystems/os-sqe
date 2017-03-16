@@ -79,6 +79,10 @@ class ParallelWorker(WithLogMixIn):
         return self._kwargs['is-debug']
 
     @property
+    def is_noclean(self):
+        return self._kwargs['is-noclean']
+
+    @property
     def _yaml_path(self):
         return self._kwargs['yaml-path']
 
