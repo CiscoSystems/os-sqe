@@ -32,6 +32,12 @@ class WithConfig(object):
         return open(WithConfig.get_artifact_file_path(short_name=name), mode)
 
     @staticmethod
+    def is_artifact_exists(name):
+        import os
+
+        return os.path.isfile(WithConfig.get_artifact_file_path(short_name=name))
+
+    @staticmethod
     def get_artifact_file_path(short_name):
         if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
             os.makedirs(WithConfig.ARTIFACTS_DIR)

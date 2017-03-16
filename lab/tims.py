@@ -3,7 +3,7 @@ from lab.with_config import WithConfig
 
 
 class Tims(WithLogMixIn, WithConfig):
-    FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'VTS PERF AND SCALE': 'Tcbr1840f'}
+    FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'VTS PERF AND SCALE': 'Tcbr1840f', 'API_TEST': 'Tcbr2001f'}
     TOKENS = {'kshileev': '0000003933000000000D450000000000',
               'nfedotov': '26520000006G00005F42000077044G47',
               'dratushn': '000000525F7G007900000000006G4700',
@@ -137,12 +137,20 @@ class Tims(WithLogMixIn, WithConfig):
         return ' and for release http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
 
     def publish_result(self, test_cfg_path, mercury_version, lab, results):
-        import json
 
         test_case_id = self.update_create_test_case(test_cfg_path=test_cfg_path)
 
-        status = 'passed' if sum([len(x.get('exceptions', [])) for x in results]) == 0 else 'failed'  # [{'name': 'VtsSCeanrio',  'exceptions: []}, {'name': 'VtsDisruptor'}]
-        desc = self._jenkins_text + '\n' + json.dumps(results, indent=5)
+        desc = self._jenkins_text + '\n'
+        status = 'passed'
+        for res in results:  # [{'worker name': 'VtsScenario',  'exceptions': [], 'params': '...'}, ...]
+            desc += res['worker name'] + ' ' + res['params'] + '\n'
+            if res['exceptions']:
+                status = 'failed'
+                desc += '\n'.join(res['exceptions']) + '\n'
+
+        if self.is_artifact_exists('main-results-for-tims.txt'):
+            with self.open_artifact('main-results-for-tims.txt', 'r') as f:
+                desc += 'MAIN RESULTS:\n' + f.read()
 
         body = '''
         <Result>
@@ -174,22 +182,29 @@ class Tims(WithLogMixIn, WithConfig):
         '''.format(test_cfg_path=test_cfg_path, description=desc, mercury_version=mercury_version, status=status, lab_id=lab)
 
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
+        log_msg = '{} {}: {} {} '.format(lab, mercury_version, test_cfg_path, status.upper())
         if ans:
-            tims_report_url = 'http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
-            tims_report_url += self.update_special_dima_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status, lab_id=str(lab), test_case_id=test_case_id)
+            url = 'http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
+            with self.open_artifact('tims.html', 'w') as f:
+                f.write('<a href="{}">TIMS result</a>'.format(url))
+            log_msg += url
+            log_msg += self.update_special_dima_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status, lab_id=str(lab), test_case_id=test_case_id)
         else:
-            tims_report_url = 'and not reported to tims since user not known'
-        with self.open_artifact('tims.html', 'w') as f:
-            f.write('<a href="{}">TIMS result</a>'.format(tims_report_url))
-        self.log_to_slack(message='{} {}: {} {} {}'.format(lab, mercury_version, test_cfg_path, status.upper(), tims_report_url))
+            log_msg += 'and not reported to tims since user not known'
+        self.log_to_slack(log_msg)
+        self.log(log_msg)
 
     def simulate(self):
         mercury_version, vts_version = '6773', 'vts'
 
         available_tc = self.ls_configs(directory='ha')
 
-        for test_cfg_path in sorted(filter(lambda x: 'perf' in x, available_tc)):
-            results = [{'output': ['FAKE TEST'], 'input': 'FAKE TEST', 'exceptions': ['FAKE TEST1', 'FAKE TEST2']}]
+        for test_cfg_path in sorted(filter(lambda x: 'tims-test' in x, available_tc)):
+            results = [{'worker name': 'FakeScenario', 'params': 'FAKE params', 'exceptions': ['FAKE exception 1', 'FAKE exception 2']},
+                       {'worker name': 'FakeMonitor', 'params': 'FAKE params', 'exceptions': []},
+                       ]
+            with self.open_artifact('main-results-for-tims.txt', 'w') as f:
+                f.write('main results 1\nmain results 2')
             self.publish_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, lab='g7-2', results=results)
 
 if __name__ == '__main__':
