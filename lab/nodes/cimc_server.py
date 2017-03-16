@@ -329,7 +329,7 @@ class CimcDirector(CimcServer):
             self.exe(cmd)
 
     def r_check_intel_nics(self):
-        ans = self.exe('lspci | grep Intel | grep 10-Gigabit', is_warn_only=True)
+        ans = self.exe('lspci | grep Intel | grep SFP+', is_warn_only=True)
         if not ans:
             raise RuntimeError('{}: there is no Intel NIC'.format(self))
         # pci_addrs = [x.split()[0] for x in ans.split('\r\n')]
