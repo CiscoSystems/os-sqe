@@ -180,7 +180,7 @@ class Tims(WithLogMixIn, WithConfig):
         else:
             tims_report_url = 'and not reported to tims since user not known'
         with self.open_artifact('tims.html', 'w') as f:
-            f.write(tims_report_url)
+            f.write('<a href="{}">TIMS result</a>'.format(tims_report_url))
         self.log_to_slack(message='{} {}: {} {} {}'.format(lab, mercury_version, test_cfg_path, status.upper(), tims_report_url))
 
     def simulate(self):
