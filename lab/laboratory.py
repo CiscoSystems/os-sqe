@@ -5,7 +5,8 @@ from lab.with_log import WithLogMixIn
 
 
 class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
-    MERCURY = 'MERCURY'
+    MERCURY_VTS = 'MERCURY-VTS'
+    MERCURY_VPP = 'MERCURY-VPP'
     OSPD = 'OSPD'
 
     def __repr__(self):
@@ -22,7 +23,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.wire import Wire
         from lab.nodes.lab_server import LabServer
 
-        self._supported_lab_types = [self.MERCURY, self.OSPD]
+        self._supported_lab_types = [self.MERCURY_VTS, self.MERCURY_VPP, self.OSPD]
         self._unique_dict = dict()  # to make sure that all needed objects are unique
         if config_path is None:
             return
@@ -275,7 +276,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     def r_get_version(self):
         cloud_version = self.get_director().r_get_version()
-        vts_version = self.get_vtc()[0].r_vtc_get_version()
+        vts_version = self.get_vtc()[0].r_vtc_get_version() if self.get_vtc() else 'no-vts'
         return cloud_version, vts_version
 
     def save_lab_config(self):
