@@ -8,8 +8,7 @@ class NttScenario(ParallelWorker):
         possible_modes = ['csr', 'nfvbench', 'both']
         if self._what_to_run not in possible_modes:
             raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
-        return 'run {}, # CSR {}, sleep {},  chain {}, # chains {}, # flows {}, frame size {}'.format(self._what_to_run, self._csr_per_compute, self._csr_sleep,
-                                                                                                      self._chain_type, self._chain_count, self._flow_count, self._frame_size)
+        return 'run {}, # CSR {}, sleep {},  chain {}, # chains {}, # flows {}'.format(self._what_to_run, self._csr_per_compute, self._csr_sleep, self._chain_type, self._chain_count, self._flow_count)
 
     @property
     def _what_to_run(self):
@@ -34,10 +33,6 @@ class NttScenario(ParallelWorker):
     @property
     def _flow_count(self):
         return self._kwargs['flow-count']
-
-    @property
-    def _frame_size(self):
-        return self._kwargs['frame-size']
 
     @property
     def _tmp_dir(self):
@@ -98,7 +93,7 @@ class NttScenario(ParallelWorker):
             raise RuntimeError(ans.split('ERROR')[1][:200])
         else:
             res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json', in_directory=self._tmp_dir)
-            with self.get_lab().open_artifact('{}-{}-{}.json'.format(self._chain_type, self._chain_count, self._flow_count, self._frame_size), 'w') as f:
+            with self.get_lab().open_artifact('{}-{}.json'.format(self._chain_type, self._chain_count, self._flow_count), 'w') as f:
                 f.write(res_json_body)
             self.retrieve_values_from_nfvbench_json(parameters=parameters, res_json_body=res_json_body)
 

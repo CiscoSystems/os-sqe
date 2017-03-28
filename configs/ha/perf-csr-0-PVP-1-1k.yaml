@@ -1,6 +1,6 @@
 ---
 - Folder: VTS PERF AND SCALE
-- Title: no CSR, chain PVP,  chain count 1, flow count 1000, size 64
+- Title: no CSR, chain PVP,  chain count 1, flow count 1000
 - Description: runs number of perfomance benchmarks described in https://cisco.jiveon.com/docs/DOC-1711443. Target architecture is defined by pod on which this test is run.
 
 - class: lab.scenarios.ntt_scenario.NttScenario
@@ -12,4 +12,3 @@
   chain-type: PVP # possible values EXT PVP PVVP
   chain-count: 1  # number of concurrent chains
   flow-count: 1000
-  frame-size: 64
