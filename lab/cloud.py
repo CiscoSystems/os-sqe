@@ -125,6 +125,7 @@ class Cloud(WithLogMixIn):
 
         self._name = name
         self._openrc_path = openrc_path
+        self._os_sqe_password = 'os-sqe'
         self._username,  self._tenant, self._password, self._end_point = self.process_openrc(openrc_as_string=openrc_body)
         self._mediator = mediator  # special server to be used to execute CLI commands for this cloud
         self._instance_counter = 0  # this counter is used to count how many instances are created via this class
@@ -319,8 +320,8 @@ export OS_AUTH_URL={end_point}
         self.os_cmd('openstack flavor set {} --property hw:mem_page_size=large'.format(name_with_prefix))
         return res
 
-    def os_flavor_delete(self, name):
-        self.os_cmd('openstack flavor delete {}'.format(name))
+    def os_flavor_delete(self, flavors):
+        map(lambda x: self.os_cmd('openstack flavor delete {}'.format(x['Name'])), flavors)
 
     def os_flavor_list(self):
         return self.os_cmd('openstack flavor list -f json')
@@ -393,8 +394,8 @@ export OS_AUTH_URL={end_point}
         self.r_collect_information(regex=image['Name'], comment='image problem')
         raise RuntimeError('image {} failed'.format(image['name']))
 
-    def os_image_delete(self, image):
-        return self.os_cmd(cmd='openstack image delete ' + image['ID'], comment='# image name ' + image['Name'])
+    def os_image_delete(self, images):
+        map(lambda x: self.os_cmd(cmd='openstack image delete ' + x['ID'], comment='# image name ' + x['Name']), images)
 
     def os_image_list(self):
         return self.os_cmd('openstack image list -f json')
@@ -422,8 +423,8 @@ export OS_AUTH_URL={end_point}
 
         self.os_cmd('openstack keypair create {} --public-key {}'.format(self._add_name_prefix('key1'), public_path))
 
-    def os_keypair_delete(self, name):
-        return self.os_cmd('openstack keypair delete {}'.format(name))
+    def os_keypair_delete(self, keypairs):
+        map(lambda x: self.os_cmd('openstack keypair delete {}'.format(x['Name'])), keypairs)
 
     def os_keypair_list(self):
         return self.os_cmd('openstack keypair list -f json')
@@ -433,8 +434,8 @@ export OS_AUTH_URL={end_point}
         subnet_status = self.os_cmd(net.get_subnet_cmd())
         return net_status, subnet_status
 
-    def os_network_delete(self, net):
-        return self.os_cmd(cmd='openstack network delete ' + net['ID'], comment='# net name ' + net['Name'])
+    def os_network_delete(self, networks):
+        map(lambda x: self.os_cmd(cmd='openstack network delete ' + x['ID'], comment='# net name ' + x['Name']), networks)
 
     def os_network_list(self):
         return self.os_cmd('openstack network list -f json')
@@ -445,8 +446,8 @@ export OS_AUTH_URL={end_point}
         port_name = self._add_name_prefix('{}-port-{}-on-{}'.format(server_number, 'sriov' if sriov else 'virio', net_name))
         return self.os_cmd('neutron port-create -f json --name {port_name} {net_name} {ip_addon} {sriov_addon}'.format(port_name=port_name, net_name=net_name, ip_addon=fixed_ip_addon, sriov_addon=sriov_addon))
 
-    def os_port_delete(self, port):
-        return self.os_cmd(cmd='neutron port-delete ' + port['id'], comment='# port name ' + port['name'])
+    def os_port_delete(self, ports):
+        map(lambda x: self.os_cmd(cmd='neutron port-delete ' + x['id'], comment='# port ' + x['name']), ports)
 
     def os_port_list(self):
         return self.os_cmd('neutron port-list -f json')
@@ -471,11 +472,17 @@ export OS_AUTH_URL={end_point}
     def os_server_show(self, name):
         return self.os_cmd('openstack server show -f json {}'.format(name))
 
-    def os_security_group_rule_delete(self, rule_id):
-        return self.os_cmd('openstack security group rule delete {}'.format(rule_id))
+    def os_security_group_list(self):
+        return self.os_cmd('openstack security group list -f json')
 
-    def os_security_group_rule_list(self, group_name):
-        return self.os_cmd('openstack security group rule list -f json {}'.format(group_name))
+    def os_security_group_delete(self, security_groups):
+        map(lambda x: self.os_cmd('openstack security group delete {}'.format(x['ID'])), security_groups)
+
+    def os_security_group_rule_delete(self, rules):
+        map(lambda x: self.os_cmd('openstack security group rule delete {}'.format(x['ID'])), rules)
+
+    def os_security_group_rule_list(self, security_group):
+        return self.os_cmd('openstack security group rule list -f json {}'.format(security_group['ID']))
 
     def os_server_group_list(self):
         return self.os_cmd(cmd='nova server-group-list')
@@ -485,6 +492,15 @@ export OS_AUTH_URL={end_point}
             ids = [s['Id'] for s in server_groups]
             names = [s['Name'] for s in server_groups]
             self.os_cmd('nova server-group-delete ' + ' '.join(ids), comment='# server groups ' + ' '.join(names))
+
+    def os_user_list(self):
+        return self.os_cmd('openstack user list -f json')
+
+    def os_user_create(self, user_name):
+        return self.os_cmd('openstack user create --password {} {} -f json'.format(self._os_sqe_password, user_name))
+
+    def os_user_delete(self, users):
+        map(lambda x: self.os_cmd('openstack user delete {}'.format(x['ID']), comment='# user {}'.format(x['Name'])), users)
 
     def os_cleanup(self, is_all=False):
         servers = self.os_server_list()
@@ -500,10 +516,10 @@ export OS_AUTH_URL={end_point}
         networks = self.os_network_list()
         flavors = self.os_flavor_list()
         images = self.os_image_list()
-        rules = self.os_security_group_rule_list(group_name='default')
         server_groups = self.os_server_group_list()
+        security_groups = [x for x in self.os_security_group_list() if x['Name'] != 'default']  # don not delete default security group
+        users = [x for x in self.os_user_list() if x['Name'] not in ['admin', 'glance', 'neutron', 'cinder', 'nova', 'cloudpulse']]
 
-        rules = [x for x in rules if x['IP Protocol']]
         if not is_all:
             ports = filter(lambda p: UNIQUE_PATTERN_IN_NAME in p['name'], ports)
             networks = filter(lambda n: UNIQUE_PATTERN_IN_NAME in n['Name'], networks)
@@ -512,15 +528,24 @@ export OS_AUTH_URL={end_point}
             flavors = filter(lambda f: UNIQUE_PATTERN_IN_NAME in f['Name'], flavors)
             images = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], images)
             server_groups = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], server_groups)
+            security_groups = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], security_groups)
+            users = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], users)
 
-        map(lambda router: self._clean_router(router['name']), routers)
-        map(lambda port: self.os_port_delete(port), ports)
-        map(lambda net: self.os_network_delete(net), networks)
-        map(lambda keypair: self.os_keypair_delete(keypair['Name']), keypairs)
-        map(lambda flavor: self.os_flavor_delete(flavor['Name']), flavors)
-        map(lambda image: self.os_image_delete(image), images)
-        map(lambda rule: self.os_security_group_rule_delete(rule['ID']), rules)
+        self._clean_router(routers=routers)
+        self.os_port_delete(ports=ports)
+        self.os_network_delete(networks=networks)
+        self.os_keypair_delete(keypairs=keypairs)
+        self.os_flavor_delete(flavors=flavors)
+        self.os_image_delete(images=images)
+        self.os_security_group_delete(security_groups=security_groups)
         self.os_server_group_delete(server_groups=server_groups)
+        self.os_user_delete(users=users)
+
+        for sec_grp in self.os_security_group_list():  # delete all non IP rules from all default security groups
+            if sec_grp['Name'] != 'default':
+                continue
+            rules = self.os_security_group_rule_list(security_group=sec_grp)
+            self.os_security_group_rule_delete(rules=[x for x in rules if x['IP Protocol']])
 
     def r_collect_information(self, regex, comment):
         body = ''
@@ -533,14 +558,16 @@ export OS_AUTH_URL={end_point}
         self.log_to_artifact(name='cloud_{}{}.txt'.format(self._name, addon), body=body)
         return body
 
-    def _clean_router(self, router_name):
+    def _clean_router(self, routers):
         import re
 
-        self.os_cmd('neutron router-gateway-clear {0}'.format(router_name))
-        ans = self.os_cmd('neutron router-port-list {0} | grep -v HA'.format(router_name))
-        subnet_ids = re.findall('"subnet_id": "(.*)",', ans)
-        map(lambda subnet_id: self.os_cmd('neutron router-interface-delete {router_name} {subnet_id}'.format(router_name=router_name, subnet_id=subnet_id)), subnet_ids)
-        self.os_cmd('neutron router-delete {0}'.format(router_name))
+        for router in routers:
+            router_name = router['name']
+            self.os_cmd('neutron router-gateway-clear {0}'.format(router_name))
+            ans = self.os_cmd('neutron router-port-list {0} | grep -v HA'.format(router_name))
+            subnet_ids = re.findall('"subnet_id": "(.*)",', ans)
+            map(lambda subnet_id: self.os_cmd('neutron router-interface-delete {router_name} {subnet_id}'.format(router_name=router_name, subnet_id=subnet_id)), subnet_ids)
+            self.os_cmd('neutron router-delete {0}'.format(router_name))
 
     def verify_cloud(self):
         ans = self.os_cmd('openstack --version')

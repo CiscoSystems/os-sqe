@@ -240,7 +240,7 @@ def bash():
     from lab.laboratory import Laboratory
     from fabric.api import local
 
-    lab_cfg_path = get_user_input(options_lst=['g7-2.yaml', 'marahaika.yaml', 'c42top.yaml', 'i13tb3.yaml'])
+    lab_cfg_path = get_user_input(options_lst=KNOWN_LABS)
     l = Laboratory(lab_cfg_path)
     file_name = 'tmp.aliases'
     local('rm -f ' + file_name)
