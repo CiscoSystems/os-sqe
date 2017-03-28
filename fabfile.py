@@ -83,7 +83,7 @@ def ha(lab_cfg_path, test_regex, mode='run', is_noclean=False):
     if mode not in possible_modes:
         raise ValueError('fabfile.py.ha(): mode "{}" is invalid, use one of {}'.format(mode, possible_modes))
 
-    RunnerHA.run(lab_cfg_path=lab_cfg_path, test_regex=test_regex, mode=mode, is_noclean=is_noclean)
+    RunnerHA.run(lab_cfg_path=lab_cfg_path, test_regex=test_regex, mode=mode, is_noclean=str(is_noclean) in ['true', 'True', 'yes', 'Yes'])
 
 
 @task
