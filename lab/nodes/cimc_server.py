@@ -315,7 +315,7 @@ class CimcDirector(CimcServer):
         self.exe('ip a flush dev br_mgmt')
         self.exe('ip a a {} dev br_mgmt'.format(mx_ip))
         self.exe('ip a a {} dev br_mgmt'.format(mx_gw_ip))
-        self.exe('iptables -t nat -A POSTROUTING -o br_api -j MASQUERADE')  # this NAT is only used to access to centralized ceph
+        self.exe('iptables -t nat -L | grep -q -F "MASQUERADE  all  --  anywhere             anywhere" || iptables -t nat -A POSTROUTING -o br_api -j MASQUERADE')  # this NAT is only used to access to centralized ceph
 
     @decorators.section('creating access points on mgmt node')
     def r_create_access_points(self, networks):
