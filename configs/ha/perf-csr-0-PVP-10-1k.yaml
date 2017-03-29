@@ -1,6 +1,6 @@
 ---
 - Folder: VTS PERF AND SCALE
-- Title: no CSR, 1 PVVP chain with 1k flows
+- Title: no CSR, 10 PVP chains with 1000 flows
 - Description: runs number of perfomance benchmarks described in https://cisco.jiveon.com/docs/DOC-1711443. Target architecture is defined by pod on which this test is run.
 
 - class: lab.scenarios.ntt_scenario.NttScenario
@@ -9,6 +9,6 @@
   what-to-run: nfvbench  # might by nfvbench, csr, both
   csr-per-compute: not-used # special value 1 means just a single CSR, starting from 2 it will be considered as number of CRSs per compute node
   csr-sleep: not-used  # seconds between 2 successive openstack server create requests
-  chain-type: PVVP # possible values EXT PVP PVVP
-  chain-count: 1  # number of concurrent chains
+  chain-type: PVP # possible values EXT PVP PVVP
+  chain-count: 10  # number of concurrent chains
   flow-count: 1000
