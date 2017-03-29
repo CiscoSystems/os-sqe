@@ -38,6 +38,10 @@ class NttScenario(ParallelWorker):
     def _tmp_dir(self):
         return self._kwargs['tmp-dir']
 
+    @property
+    def _nfvbench_cmd(self):
+        return self._kwargs['nfvbench-cmd']
+
     @section(message='Setting up', estimated_time=100)
     def setup_worker(self):
         self._kwargs['tmp-dir'] = '/var/tmp/os-sqe-tmp/'
@@ -52,12 +56,16 @@ class NttScenario(ParallelWorker):
             self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir=self._tmp_dir + 'testbed')
             self.get_mgmt().exe('rm -f nfvbench_config.yaml && cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory=self._tmp_dir)
 
-            with open('lab/scenarios/nfvbench.sh', 'r') as f:
-                body = f.read()
-            self.get_mgmt().r_put_string_as_file_in_dir(string_to_put=body, file_name='execute', in_directory=self._tmp_dir)
-            self.get_mgmt().exe('docker pull cloud-docker.cisco.com/nfvbench')
+            docker_image = 'cloud-docker.cisco.com/nfvbench'
+            self.get_mgmt().exe('docker pull {}'.format(docker_image))
             self.get_mgmt().exe('yum install kernel-devel kernel-headers -y')
-
+            ker, tag = self.get_mgmt().exe('uname -r && cat /etc/cisco-mercury-release').split('\r\n')
+            par = '--privileged --net host ' \
+                  '-v ${{PWD}}:/tmp/nfvbench -v /etc/hosts:/etc/hosts -v ${{HOME}}/.ssh:/root/.ssh -v /dev:/dev -v /root/openstack-configs:/tmp/nfvbench/openstack ' \
+                  '-v /lib/modules/{ker}:/lib/modules/{ker} -v /usr/src/kernels/{ker}:/usr/src/kernels/{ker} '\
+                  '--name nfvbench_{tag} cloud-docker.cisco.com/nfvbench'.format(ker=ker.strip(), tag=tag.strip())
+            self.get_mgmt().exe('grep -q -F "alias start_nfv=" /root/.bashrc || echo alias start_nfv=\'docker run -d {}\' >> /root/.bashrc'.format(par))
+            self._kwargs['nfvbench-cmd'] = 'docker run --rm -it ' + par + ' nfvbench -c /tmp/nfvbench/nfvbench_config.yaml --json /tmp/nfvbench/results.json'
         self.get_cloud().os_cleanup(is_all=True)
 
     def loop_worker(self):
@@ -83,7 +91,8 @@ class NttScenario(ParallelWorker):
                 raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
 
     def single_nfvbench_run(self, parameters):
-        cmd = '. execute {} {}'.format(parameters, '--no-cleanup' if self.is_noclean else '')
+        container_info = ''
+        cmd = self._nfvbench_cmd + ' {} {}'.format(container_info, parameters, '--no-cleanup' if self.is_noclean else '')
         ans = self.get_mgmt().exe(cmd, in_directory=self._tmp_dir, is_warn_only=True)
         with self.get_lab().open_artifact('nfvbench_output.txt', 'w') as f:
             f.write(cmd + '\n')
