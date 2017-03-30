@@ -5,7 +5,7 @@ if '.' not in sys.path:
     sys.path.append('.')
 
 
-KNOWN_LABS = ['g7-2-vts.yaml', 'g7-2-vpp.yaml', 'marahaika.yaml', 'c42top.yaml', 'i11tb3.yaml']
+KNOWN_LABS = ['g7-2-vts.yaml', 'g7-2-vpp.yaml', 'marahaika-vts.yaml', 'c42top.yaml', 'i11tb3.yaml']
 
 
 @task
