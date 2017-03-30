@@ -67,6 +67,7 @@ class NttScenario(ParallelWorker):
             self.get_mgmt().exe('grep -q -F "alias start_nfv=" /root/.bashrc || echo alias start_nfv=\'docker run -d {}\' >> /root/.bashrc'.format(par))
             self._kwargs['nfvbench-cmd'] = 'docker run --rm -it ' + par + ' nfvbench -c /tmp/nfvbench/nfvbench_config.yaml --json /tmp/nfvbench/results.json'
         self.get_cloud().os_cleanup(is_all=True)
+        self.get_cloud().os_quota_set()
 
     def loop_worker(self):
         if self._what_to_run in ['csr', 'both']:

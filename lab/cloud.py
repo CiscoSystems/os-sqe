@@ -361,7 +361,7 @@ export OS_AUTH_URL={end_point}
                     self.analyse_instance_problems(instance)
                 raise RuntimeError('These instances failed: {0}'.format(instances_in_error))
             if time.time() > start_time + timeout:
-                raise RuntimeError('Instances {} are not active after {} secs'.format(our_instances, timeout))
+                raise RuntimeError('Instances {} are not {} after {} secs'.format(our_instances, status, timeout))
             time.sleep(30)
 
     def analyse_instance_problems(self, instance):
@@ -584,5 +584,9 @@ export OS_AUTH_URL={end_point}
         #         end_point = self.cmd('openstack catalog show {service} | grep {url} | awk \'{{print $4}}\''.format(service=service, url=url))
         #         self.add_service_end_point(service=service, url=url, end_point=end_point)
 
-        self.os_cmd('neutron quota-update --network 100 --subnet 100 --port 500')
-        return self
+    def os_quota_set(self):
+        admin_id = [x['ID'] for x in self.os_project_list() if x['Name'] == 'admin'][0]
+        self.os_cmd('openstack quota set --instances 1000 --ram 512000 --networks 100 --subnets 300 --ports 500 {}'.format(admin_id))
+
+    def os_project_list(self):
+        return self.os_cmd(cmd='openstack project list -f json')

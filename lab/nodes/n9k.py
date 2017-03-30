@@ -175,6 +175,11 @@ class Nexus(LabNode):
                     self.log('{} has actual mode "{}" while requested is "{}", do: {}'.format(req_vpc_id, actual_vpc['portmode'], req_vpc['mode'], ' '.join(cmd)))
                     if is_fix():
                         self.n9_cmd(cmd)
+                if actual_vpc['MTU'] != 9216:
+                    cmd = ['conf t', 'int ' + req_vpc_id, 'mtu 9216']
+                    self.log('{} has actual mode "{}" while requested is "{}", do: {}'.format(req_vpc_id, actual_vpc['portmode'], req_vpc['mode'], ' '.join(cmd)))
+                    if is_fix():
+                        self.n9_cmd(cmd)
 
         self.log(60 * '-')
 
