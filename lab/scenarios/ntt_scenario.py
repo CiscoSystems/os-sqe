@@ -125,7 +125,7 @@ class NttScenario(ParallelWorker):
                 res.append('MTU={} RT={}'.format(mtu, di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']))
 
         with self.get_lab().open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
-            f.write(parameters + '-->' + '; '.join(res))
+            f.write(parameters + '\n' + '; '.join(res))
 
     @section(message='Tearing down', estimated_time=30)
     def teardown_worker(self):
