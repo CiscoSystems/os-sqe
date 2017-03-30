@@ -10,6 +10,7 @@ class CloudNetwork(object):
     def __init__(self, common_part_of_name, class_a, number, vlan_id, is_dhcp, cloud):
         from netaddr import IPNetwork
 
+        is_via_neutron = True
         self._net_name = '{}-{}-net-{}'.format(UNIQUE_PATTERN_IN_NAME, common_part_of_name, number)
         self._subnet_name = self._net_name.replace('-net-', '-subnet-')
 
@@ -19,10 +20,18 @@ class CloudNetwork(object):
         self._network = IPNetwork('{}.{}.0.0/16'.format(class_a, number))
 
         phys_net_addon = '--provider:physical_network=physnet1 --provider:network_type=vlan --provider:segmentation_id={}'.format(self._vlan_id) if self._vlan_id else ''
-        self._net_cmd = 'neutron net-create {} {} -f shell'.format(self._net_name, phys_net_addon)
+
+        if is_via_neutron:
+            self._net_cmd = 'neutron net-create {} {} -f json'.format(self._net_name, phys_net_addon)
+        else:
+            self._net_cmd = 'openstack network create {} {} -f json'.format(self._net_name, phys_net_addon)
         cidr, gw, start, stop = self._network, self._network[-2], self._network[1], self._network[5000]
-        self._subnet_cmd = 'neutron subnet-create {} {} --name {} --gateway {} --dns-nameserver {} {} --allocation-pool start={},end={} -f shell'.format(self._net_name, cidr, self._subnet_name, gw, self._dns,
-                                                                                                                                                         '' if is_dhcp else '--disable-dhcp', start, stop)
+        if is_via_neutron:
+            self._subnet_cmd = 'neutron subnet-create {} {} --name {} --gateway {} --dns-nameserver {} {} --allocation-pool start={},end={} -f json'.format(self._net_name, cidr, self._subnet_name, gw, self._dns,
+                                                                                                                                                            '' if is_dhcp else '--disable-dhcp', start, stop)
+        else:
+            self._subnet_cmd = 'openstack subnet create --network {net} --subnet-range {cidr} --gateway {gw} --dns-nameserver {dns} --{dhcp}-dhcp --allocation-pool start={start},end={end} {name} -f json'.format(
+                net=self._net_name, cidr=cidr, name=self._subnet_name, gw=gw, dns=self._dns, dhcp='' if is_dhcp else 'no', start=start, end=stop)
         self._net_status, self._subnet_status = cloud.os_network_create(self)
 
     def get_net_id(self):
@@ -118,11 +127,9 @@ class Cloud(WithLogMixIn):
     ROLE_MEDIATOR = 'mediator'
 
     def __init__(self, name, mediator, openrc_path, openrc_body):
-        self._show_subnet_cmd = 'neutron subnet-show -f shell '
-
         self._provider_physical_network = 'Default Value Set In Cloud.__init__()'
-        self._openstack_version = 'Default Value Set In Cloud.__init__()'
 
+        self._openstackclient_version = None
         self._name = name
         self._openrc_path = openrc_path
         self._os_sqe_password = 'os-sqe'
@@ -149,6 +156,12 @@ class Cloud(WithLogMixIn):
 
     def __repr__(self):
         return 'Cloud {}: {} {} {}'.format(self._name, self._username, self._password, self._end_point)
+
+    @property
+    def os_openstackclient_version(self):
+        if self._openstackclient_version is None:
+            self._openstackclient_version = self.os_cmd(cmd='openstack --version').split(' ')[-1]
+        return self._openstackclient_version
 
     @staticmethod
     def _add_name_prefix(name):
@@ -184,10 +197,10 @@ export OS_AUTH_URL={end_point}
             return self._process_csv_output(ans)
         elif '-f json' in cmd:
             return self._process_json_output(ans)
-        elif '-f shell' in cmd:
-            return self._process_shell_output(answer=ans, command=cmd)
+        elif '-f table' in cmd:
+            return self._process_table_output(answer=ans, command=cmd)
         else:
-            return self._process_shell_output(answer=ans, command=cmd)
+            return self._process_table_output(answer=ans, command=cmd)
 
     @staticmethod
     def _filter(minus_c, flt):
@@ -199,8 +212,11 @@ export OS_AUTH_URL={end_point}
 
         try:
             ans = json.loads(answer)
-        except ValueError:  # this may happen e.g. openstack image show non-existing -f json which gives "Could not find resource sqe-test-iperf"
-            return {}
+        except ValueError:  # openstack image show non-existing -f json which gives "Could not find resource non-existing"
+            try:
+                ans = json.loads(answer.split('\r\n')[-1])  # neutron net-create kir1 -f json produces Created a new network:\n [{"Field": "admin_state_up", "Value": true} ....
+            except ValueError:
+                return {}
         if type(ans) is list and len(ans) and 'Value' in ans[0]:
             return {x['Field']: x['Value'] for x in ans}  # some old OS clients return [{"Field": "foo", "Value": "bar"}, ...]
         else:
@@ -221,7 +237,7 @@ export OS_AUTH_URL={end_point}
         return output_list
 
     @staticmethod
-    def _process_shell_output(command, answer):
+    def _process_table_output(command, answer):
         if 'delete' in command or not answer:
             return []
         else:
@@ -307,7 +323,7 @@ export OS_AUTH_URL={end_point}
         return self.os_cmd('neutron port-list -f csv {q}'.format(q=query))
 
     def show_port(self, port_id):
-        return self.os_cmd('neutron port-show {0} -f shell'.format(port_id))
+        return self.os_cmd('neutron port-show {0} -f json'.format(port_id))
 
     def os_create_fips(self, fip_net, how_many):
         return map(lambda _: self.os_cmd('neutron floatingip-create {0}'.format(fip_net.get_net_name())), range(how_many))
@@ -315,7 +331,7 @@ export OS_AUTH_URL={end_point}
     @section('Creating custom flavor')
     def os_flavor_create(self, name):
         name_with_prefix = self._add_name_prefix(name)
-        res = self.os_cmd('openstack flavor create {} --vcpu 2 --ram 4096 --disk 40 --public -f shell'.format(name_with_prefix))
+        res = self.os_cmd('openstack flavor create {} --vcpu 2 --ram 4096 --disk 40 --public -f json'.format(name_with_prefix))
         self.os_cmd('openstack flavor set {} --property hw:numa_nodes=1'.format(name_with_prefix))
         self.os_cmd('openstack flavor set {} --property hw:mem_page_size=large'.format(name_with_prefix))
         return res
@@ -570,9 +586,6 @@ export OS_AUTH_URL={end_point}
             self.os_cmd('neutron router-delete {0}'.format(router_name))
 
     def verify_cloud(self):
-        ans = self.os_cmd('openstack --version')
-        self._openstack_version = int(''.join(ans.rsplit('.')).replace('openstack ', ''))
-
         self.os_network_list()
         self.os_port_list()
         self.os_router_list()
