@@ -41,17 +41,18 @@ class VtsScenario(ParallelWorker):
 
         nets = CloudNetwork.create(common_part_of_name='internal', class_a=1, how_many=self._n_nets, is_dhcp=False, cloud=self.get_cloud())
         self._wait_for_vtc_networks(nets=nets)
+        return nets
 
     @section('Waiting till VTC registers networks')
     def _wait_for_vtc_networks(self, nets):
         import time
 
-        required = [(x.get_net_id(), x.get_segmentation_id()) for x in nets]
+        required = [(x.get_net_id(), str(x.get_segmentation_id())) for x in nets]
         max_retries = 10
         while True:
             vtc_nets = self._vtc.r_vtc_show_openstack_network()
             actual = [(x['id'], x['provider-segmentation-id']) for x in vtc_nets]
-            if set(required).issubset(set(actual)):
+            if set(required) <= (set(actual)):
                 return
             if max_retries == 0:
                 self.log(''.format(required, actual))

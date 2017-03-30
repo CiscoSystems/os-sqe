@@ -599,7 +599,7 @@ export OS_AUTH_URL={end_point}
 
     def os_quota_set(self):
         admin_id = [x['ID'] for x in self.os_project_list() if x['Name'] == 'admin'][0]
-        self.os_cmd('openstack quota set --instances 1000 --ram 512000 --networks 100 --subnets 300 --ports 500 {}'.format(admin_id))
+        self.os_cmd('openstack quota set --instances 1000 --cores 2000 --ram 512000 --networks 100 --subnets 300 --ports 500 {}'.format(admin_id))
 
     def os_project_list(self):
         return self.os_cmd(cmd='openstack project list -f json')

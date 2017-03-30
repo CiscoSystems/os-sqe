@@ -339,7 +339,7 @@ class Vtc(VirtualServer):
         return self.cmd().get(url='/api/running/openstack/subnet')
 
     def r_vtc_delete_openstack_subnet(self, subnet):
-        self.cmd().delete(url='/api/running/openstack/network/{}'.format(network['id']))
+        self.cmd().delete(url='/api/running/openstack/subnet/{}'.format(subnet['id']))
 
     def r_vtc_show_openstack_port(self):
         return self.cmd().get(url='/api/running/openstack/port')
@@ -363,10 +363,10 @@ class Vtc(VirtualServer):
         from collections import OrderedDict
 
         vlans = 3599
-        mgmt_srv = [x for x in self.r_vtc_show_uuid_servers() if 'baremetal' in x['server-type']][0]
+        mgmt_srv = [srv for srv in self.r_vtc_show_uuid_servers() if 'baremetal' in srv['server-type']][0]
         tenant = 'admin'
 
-        nets = filter(lambda x: 'sqe' in x, self.r_vtc_show_openstack_network())
+        nets = filter(lambda net: 'sqe' in net['name'], self.r_vtc_show_openstack_network())
         for network in nets:
             port_id = str(uuid.uuid4())
             new_uuid = str(uuid.uuid4())
@@ -419,11 +419,7 @@ class Vtc(VirtualServer):
         self.r_vtc_show_configuration_xrvr_groups()
 
     def r_vtc_cleanup(self):
-        for subnet in self.r_vtc_show_openstack_subnet():
-            self.r_vtc_delete_openstack_subnet(subnet)
-
-        for net in self.r_vtc_show_openstack_network():
-            self.r_vtc_delete_openstack_network(net)
+        self.r_vtc_delete_openstack_objects(is_via_ncs=True)
 
     def r_xrvr_show_evpn(self):
         return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.lab().get_xrvr())
