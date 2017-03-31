@@ -59,13 +59,8 @@ class NttScenario(ParallelWorker):
             docker_image = 'cloud-docker.cisco.com/nfvbench'
             self.get_mgmt().exe('docker pull {}'.format(docker_image))
             self.get_mgmt().exe('yum install kernel-devel kernel-headers -y')
-            ker, tag = self.get_mgmt().exe('uname -r && cat /etc/cisco-mercury-release').split('\r\n')
-            par = '--privileged --net host ' \
-                  '-v ${{PWD}}:/tmp/nfvbench -v /etc/hosts:/etc/hosts -v ${{HOME}}/.ssh:/root/.ssh -v /dev:/dev -v /root/openstack-configs:/tmp/nfvbench/openstack ' \
-                  '-v /lib/modules/{ker}:/lib/modules/{ker} -v /usr/src/kernels/{ker}:/usr/src/kernels/{ker} '\
-                  '--name nfvbench_{tag} cloud-docker.cisco.com/nfvbench'.format(ker=ker.strip(), tag=tag.strip())
-            self.get_mgmt().exe('grep -q -F "alias start_nfv=" /root/.bashrc || echo alias start_nfv=\'docker run -d {}\' >> /root/.bashrc'.format(par))
-            self._kwargs['nfvbench-cmd'] = 'docker run --rm -it ' + par + ' nfvbench -c /tmp/nfvbench/nfvbench_config.yaml --json /tmp/nfvbench/results.json'
+
+            self._kwargs['nfvbench-cmd'] = self.get_mgmt().construct_nfvbench_command()
         self.get_cloud().os_cleanup(is_all=True)
         self.get_cloud().os_quota_set()
 

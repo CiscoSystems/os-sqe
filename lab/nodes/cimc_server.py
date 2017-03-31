@@ -348,6 +348,17 @@ class CimcDirector(CimcServer):
         ans = requests.get('https://cloud-infra.cisco.com/api/v1.0/changeset/?number_only=1&branch=master&namespace=mercury-rhel7-osp10')
         return ans.text
 
+    def construct_nfvbench_command(self):
+        ker, tag = self.exe('uname -r && cat /etc/cisco-mercury-release').split('\r\n')
+
+        par = '--privileged --net host ' \
+              '-v ${{PWD}}:/tmp/nfvbench -v /etc/hosts:/etc/hosts -v ${{HOME}}/.ssh:/root/.ssh -v /dev:/dev -v /root/openstack-configs:/tmp/nfvbench/openstack ' \
+              '-v /lib/modules/{ker}:/lib/modules/{ker} -v /usr/src/kernels/{ker}:/usr/src/kernels/{ker} ' \
+              '--name nfvbench_{tag} cloud-docker.cisco.com/nfvbench'.format(ker=ker.strip(), tag=tag.strip())
+        self.exe('grep -q -F "alias start_nfv=" /root/.bashrc || echo "alias start_nfv=\'docker run -d {}\'" >> /root/.bashrc'.format(par))
+
+        return 'docker run --rm -it ' + par + ' nfvbench -c /tmp/nfvbench/nfvbench_config.yaml --json /tmp/nfvbench/results.json'
+
 
 class CimcController(CimcServer):
     ROLE = 'control-n9'
