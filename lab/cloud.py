@@ -16,6 +16,7 @@ class CloudNetwork(object):
 
         self._dns = '171.70.168.183'
         self._vlan_id = vlan_id + number if vlan_id else False
+        self._vts_vlan = None
         self._is_dhcp = is_dhcp
         self._network = IPNetwork('{}.{}.0.0/16'.format(class_a, number))
 
@@ -51,6 +52,15 @@ class CloudNetwork(object):
 
     def get_subnet_cmd(self):
         return self._subnet_cmd
+
+    def set_vts_vlan(self, vlan):
+        self._vts_vlan = vlan
+
+    def get_vts_vlan(self):
+        return self._vts_vlan
+
+    def get_ip_with_prefix(self, index):
+        return '{}/{}'.format(self._network[index], self._network.prefixlen)
 
     @staticmethod
     def create(how_many, common_part_of_name, cloud, class_a='99', vlan_id=0, is_dhcp=False):
