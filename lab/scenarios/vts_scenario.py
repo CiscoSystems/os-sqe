@@ -29,8 +29,7 @@ class VtsScenario(ParallelWorker):
 
     @section('Setup')
     def setup_worker(self):
-        self.get_cloud().os_cleanup(is_all=True)
-        self._vtc.r_vtc_cleanup()
+        self.cleanup()
         self.get_cloud().os_keypair_create()
         self.get_cloud().os_image_create('sqe-iperf')
         self.get_cloud().os_flavor_create('vts')
@@ -61,10 +60,10 @@ class VtsScenario(ParallelWorker):
             max_retries -= 1
 
     @section('Creating instances')
-    def _instances_part(self, on_nets, timeout):
+    def _instances_part(self, on_nets):
         from lab.cloud import CloudServer
 
-        return CloudServer.create(how_many=self._n_servers, flavor_name='vts', image='iperf', on_nets=on_nets, timeout=timeout, cloud=self.get_cloud())
+        return CloudServer.create(how_many=self._n_servers, flavor_name='vts', image='iperf', on_nets=on_nets, timeout=self._timeout, cloud=self.get_cloud())
 
     @section('Pinging instances')
     def _ping_part(self, servers):
@@ -91,9 +90,8 @@ class VtsScenario(ParallelWorker):
         start_time = time.time()
 
         nets = self._network_part()
-        self._vtc.r_vtc_set_port_for_border_leaf()
-        self.get_mgmt().r_create_access_points(nets)
 
+        self.set_border_leaf(nets=nets)
         servers = self._instances_part(on_nets=nets)
 
         while time.time() - start_time < self._uptime:
@@ -105,5 +103,13 @@ class VtsScenario(ParallelWorker):
         start_delete_time = time.time()
         [s.delete() for s in servers]
         self.log('Instances deleted in {} sec'.format(time.time() - start_delete_time))
+        self.cleanup()
 
+    def cleanup(self):
+        self._vtc.r_vtc_cleanup()
         self.get_cloud().os_cleanup()
+
+    @section(message='Setting border leaf', estimated_time=10)
+    def set_border_leaf(self, nets):
+        self._vtc.r_vtc_set_port_for_border_leaf(nets)
+        self.get_mgmt().r_create_access_points(nets)

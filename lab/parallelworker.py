@@ -15,7 +15,6 @@ class ParallelWorker(WithLogMixIn):
         """ Executed before subprocesses start in the context of RunnerHA.execute()
         :param status_dict: dictionary defined as multiprocessing.Manager().dict() contains name: status pairs
         """
-        import os
         import validators
 
         self._name = args_dict['name']
@@ -25,7 +24,7 @@ class ParallelWorker(WithLogMixIn):
 
         self._delay = self._kwargs.get('delay', 0)  # worker will be delayed by this seconds
         self._period = self._kwargs.get('period', 2)  # worker loop will be repeated with this period
-        self._timeout = self._kwargs.get('timeout', 3600)  # if flags don't be False in that time, the worker will be forced to quit with exception
+        self._timeout = self._kwargs.get('timeout', 100)  # if operation will not successfully finished in that time, the worker will be forced to quit with exception
 
         self._n_repeats = self._kwargs.get('n_repeats')      # worker loop will be repeated n_repeats times
         self._loop_counter = 0                               # counts loops executed

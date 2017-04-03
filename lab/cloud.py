@@ -62,6 +62,9 @@ class CloudNetwork(object):
     def get_ip_with_prefix(self, index):
         return '{}/{}'.format(self._network[index], self._network.prefixlen)
 
+    def get_ip(self, index):
+        return str(self._network[index])
+
     @staticmethod
     def create(how_many, common_part_of_name, cloud, class_a='99', vlan_id=0, is_dhcp=False):
         return map(lambda n: CloudNetwork(common_part_of_name=common_part_of_name, class_a=class_a, number=n, vlan_id=vlan_id, is_dhcp=is_dhcp, cloud=cloud), range(1, how_many+1))
@@ -90,9 +93,9 @@ class CloudServer(Server):
     def create(how_many, flavor_name, image, on_nets, timeout, cloud):
 
         servers = []
-        compute_hosts = cloud.get_compute_hosts()
+        compute_hosts = cloud.get_computes()
         for n, comp_n in [(y, 1 + y % len(compute_hosts)) for y in range(how_many)]:  # distribute servers per compute host in round robin
-            servers.append(CloudServer(number=n, flavor_name=flavor_name, image=image, on_nets=on_nets, zone_name=compute_hosts[comp_n].get_name(), cloud=cloud))
+            servers.append(CloudServer(number=n, flavor_name=flavor_name, image=image, on_nets=on_nets, zone_name=compute_hosts[comp_n], cloud=cloud))
         cloud.wait_instances_ready(names=[x.get_name() for x in servers], timeout=timeout)
 
 

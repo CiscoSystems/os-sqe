@@ -5,23 +5,21 @@ from lab.nodes.virtual_server import VirtualServer
 
 class Vtc(VirtualServer):
     ROLE = 'vtc'
+    EXECUTOR_CURL = 'curl'
+    EXECUTOR_REST = 'rest'
+    EXECUTOR_NCS = 'ncs'
 
     def __init__(self, **kwargs):
         super(Vtc, self).__init__(**kwargs)
         self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
         self._is_api_via_vip = True
-        self._executor = Curl(self)
+        self._curl_executor = CurlExecutor(vtc_object=self)
+        self._ncs_executor = NcsCliExecutor(vtc_object=self)
+        self._rest_executor = RestExecutor(vtc_object=self)
         self.set_vip(kwargs['vip'], kwargs['nics']['mx']['ip'])
 
     def disable_vip(self):
         self._is_api_via_vip = False
-
-    def _curl(self, method, url, username, password, headers, data):
-
-        method = method.upper()
-        headers = '" --header "'.join([k + ': ' + v for k, v in headers.items()])
-        data = "--data '{}'".format(data) if data else ''
-        return self.exe('curl -X {} {} -u {}:{} -k --header "{}" {}'.format(method, url, username, password, headers, data))
 
     def set_vip(self, vip, vip_mx):
         self._vip_a, self._vip_mx = vip, vip_mx
@@ -30,7 +28,7 @@ class Vtc(VirtualServer):
         return self._vip_a, self._vip_mx
 
     def cmd(self, cmd=''):
-        return self._executor
+        return self._curl_executor
 
     def get_vtf(self):
         from lab.nodes.vtf import Vtf
@@ -41,7 +39,7 @@ class Vtc(VirtualServer):
         return map(lambda x: x.get_id(), self.lab().get_xrvr())
 
     def r_vtc_get_vtfs(self):
-        ans = self.cmd().get('/api/running/cisco-vts')
+        ans = self.cmd().get(url='/api/running/cisco-vts')
         vtf_ips_from_vtc = [x['ip'] for x in ans['cisco-vts:cisco-vts']['vtfs']['vtf']]
         vtf_nodes = self.get_vtf()
         for vtf in vtf_nodes:
@@ -276,8 +274,12 @@ class Vtc(VirtualServer):
         self.r_vtc_ncs_cli(command=sync.render(names=self.get_xrvr_names() + ['n91', 'n92']))
 
     def r_vtc_delete_openstack_objects(self, is_via_ncs=True):
+        members = self.r_vtc_show_ha_cluster_members()
+        master_name = [x['name'] for x in members if x['status'] == 'master'][0]
+
+        master = self.lab().get_node_by_id(master_name)
         if is_via_ncs:
-            self.r_vtc_ncs_cli('delete openstack port\ndelete openstack subnet\ndelete openstack network')
+            master.r_vtc_ncs_cli('delete openstack port\ndelete openstack subnet\ndelete openstack network')
         else:
             # curl -v -k -X GET -u admin:Cisco123! https://111.111.111.150:8888/api/running/resource-pools/vni-pool
             return NotImplemented()
@@ -319,35 +321,38 @@ class Vtc(VirtualServer):
                 method = getattr(self, method_name)
                 method()
 
-    def r_vtc_crm_status(self):
+    def r_vtc_cluster_status(self):
         return self.exe('sudo crm status')
 
     def r_vtc_show_configuration_xrvr_groups(self):  #
         return self.cmd().get(url='/api/running/cisco-vts/xrvr-groups/xrvr-group/')
 
-    def r_vtc_show_ha_cluster_members(self):
-        return self.cmd().get(url='/api/operational/ha-cluster/members')
+    def r_vtc_show_ha_cluster_members(self):  # curl -s -k -u admin:Cisco123! -H 'Accept: application/vnd.yang.collection+json' -X GET https://10.23.228.254:8888/api/operational/ha-cluster/members
+        return self.cmd().get(url='/api/operational/ha-cluster/members')['collection']['tcm:members']
 
     def r_vtc_show_openstack_network(self):
         r = self.cmd().get(url='/api/running/openstack/network')
         return r['collection']['cisco-vts-openstack:network'] if 'collection' in r else []
 
+    def r_vtc_show_openstack_subnet(self):
+        return self.cmd().get(url='/api/running/openstack/subnet')
+
     def r_vtc_delete_openstack_network(self, network):
         self.cmd().delete(url='/api/running/openstack/network/{}'.format(network['id']))
 
-    def r_vtc_show_openstack_subnet(self):
-        return self.cmd().get(url='/api/running/openstack/subnet')
+    def r_vtc_delete_openstack_port(self, port):
+        self.cmd().delete(url='/api/running/openstack/port/{}'.format(port['id']))
 
     def r_vtc_delete_openstack_subnet(self, subnet):
         self.cmd().delete(url='/api/running/openstack/subnet/{}'.format(subnet['id']))
 
-    def r_vtc_show_openstack_port(self):
+    def r_vtc_show_openstack_port(self):  # curl -s -k -u admin:Cisco123! -H 'Accept: application/vnd.yang.collection+json' -X GET https://10.23.228.254:8888/api/running/openstack/port
         return self.cmd().get(url='/api/running/openstack/port')
 
     def r_vtc_show_vni_pool(self):
         return self.cmd().get(url='/api/running/resource-pools/vni-pool')
 
-    def r_vtc_show_vlan_pool(self):
+    def r_vtc_show_vlan_pool(self):  # curl -s -k -u admin:Cisco123! -H 'Accept: application/vnd.yang.collection+json' -X GET https://10.23.228.254:8888/api/running/resource-pools/vlan-pool
         return self.cmd().get(url='/api/running/resource-pools/vlan-pool')['collection']['resource-allocator:vlan-pool']
 
     def r_vtc_show_uuid_servers(self):
@@ -357,27 +362,26 @@ class Vtc(VirtualServer):
     def r_vtc_show_devices_device(self):
         return self.cmd().get(url='/api/running/devices/device')
 
-    def r_vtc_set_port_for_border_leaf(self):
+    def r_vtc_set_port_for_border_leaf(self, os_networks):
         import uuid
         import json
         from collections import OrderedDict
 
-        vlans = 3599
+        vlan = 3500
         mgmt_srv = [srv for srv in self.r_vtc_show_uuid_servers() if 'baremetal' in srv['server-type']][0]
         tenant = 'admin'
 
-        nets = filter(lambda net: 'sqe' in net['name'], self.r_vtc_show_openstack_network())
-        for network in nets:
+        for network in os_networks:
             port_id = str(uuid.uuid4())
             new_uuid = str(uuid.uuid4())
             port_dict = OrderedDict()
             port_dict['id'] = port_id
-            port_dict['network-id'] = network['id']
+            port_dict['network-id'] = network.get_net_id()
             port_dict['admin-state-up'] = True
             port_dict['status'] = 'cisco-vts-identities:active'
-            port_dict['binding-host-id'] = mgmt_srv['server-id']
-            port_dict['vlan-id'] = vlans
-            vlans -= 1
+            port_dict['binding-host-id'] = vlan
+            network.set_vts_vlan(vlan)
+            vlan += 1
             port_dict['mac-address'] = 'unknown-' + new_uuid
             port_dict['connid'] = [{'id': mgmt_srv['connid']}]
             port_data = {'port': port_dict}
@@ -429,7 +433,35 @@ class VtsHost(CimcServer):  # this class is needed just to make sure that the no
     ROLE = 'vts-host-n9'
 
 
-class Curl(object):
+class RestExecutor(object):
+    def __init__(self, vtc_object):
+        self._vtc = vtc_object
+        _, self._uname, self._pwd = vtc_object.get_oob()
+        self._delete_hdr = "'Accept: application/vnd.yang.data+json'"
+        self._put_hdr = "'Content-Type: application/vnd.yang.data+json'"
+        self._get_hdr = "'Accept: application/vnd.yang.collection+json'"
+
+    @property
+    def _http(self):
+        return 'https://{}:8888'.format(self._vtc.get_vtc_vips()[0])
+
+    def get(self, url):
+        import requests
+
+        return requests.get(self._http + 'url', header=self._get_hdr)
+
+    def put(self, url, data):
+        import requests
+
+        return requests.put(self._http + url, data=data, headers=self._put_hdr)
+
+    def delete(self, url):
+        import requests
+
+        return requests.delete(self._http + 'url', headers=self._delete_hdr)
+
+
+class CurlExecutor(RestExecutor):
     """Performs requests to VTC API for attaching or detaching ports.
     Works more reliably than Python requests solution.
 
@@ -443,11 +475,7 @@ class Curl(object):
     """
 
     def __init__(self, vtc_object):
-        self._data_hdr = "'Accept: application/vnd.yang.data+json'"
-        self._put_hdr = "'Content-Type: application/vnd.yang.data+json'"
-        self._collection_hdr = "'Accept: application/vnd.yang.collection+json'"
-        self._vtc = vtc_object
-        _, self._uname, self._pwd = vtc_object.get_oob()
+        super(CurlExecutor, self).__init__(vtc_object=vtc_object)
 
     @property
     def _http(self):
@@ -457,7 +485,7 @@ class Curl(object):
         import json
 
         while True:
-            cmd = 'curl -s -k -u {}:{} -H {} -X GET {}'.format(self._uname, self._pwd, self._collection_hdr, self._http + url)
+            cmd = 'curl -s -k -u {}:{} -H {} -X GET {}'.format(self._uname, self._pwd, self._get_hdr, self._http + url)
             ans = self._vtc.exe(cmd, is_warn_only=True)
 
             if ans.failed:
@@ -478,7 +506,7 @@ class Curl(object):
             return ans
 
     def delete(self, url):
-        cmd = "curl -s -k -u {}:{} -H {} -X DELETE {}".format(self._uname, self._pwd, self._data_hdr, self._http + url)
+        cmd = "curl -s -k -u {}:{} -H {} -X DELETE {}".format(self._uname, self._pwd, self._delete_hdr, self._http + url)
         ans = self._vtc.exe(cmd)
 
         if 'errors' in ans:
@@ -487,7 +515,7 @@ class Curl(object):
             return ans
 
 
-class NcsCli(object):
+class NcsCliExecutor(object):
     def __init__(self, vtc_object):
         self._vtc = vtc_object
 
@@ -507,3 +535,9 @@ class NcsCli(object):
         if url not in url_to_cmd:
             raise NotImplementedError('This url {} is not implemented via NCS CLI'.format(url))
         return self._vtc.exe(url_to_cmd[url])
+
+    def put(self, url):
+        return self.get(url=url)
+
+    def delete(self, url):
+        return self.get(url=url)
