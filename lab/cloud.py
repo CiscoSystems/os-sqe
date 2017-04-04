@@ -81,22 +81,25 @@ class CloudServer(Server):
         for net in on_nets:
             ip = net.get_ip(self._number)
             mac = '00:10:' + ':'.join(map(lambda n: '{0:02}'.format(int(n)) if int(n) < 100 else '{0:02x}'.format(int(x)), str(ip).split('.')))
-            self._ports.append(cloud.os_port_create(net_name=net.get_net_name(), ip=ip, mac=mac))
+            self._ports.append(cloud.os_port_create(server_number=number, net_name=net.get_net_name(), ip=ip, mac=mac))
         super(CloudServer, self).__init__(ip=ip, username=image.get_username(), password=image.get_password())
         self._status = cloud.os_server_create(srv_name=self.get_name(), flavor_name=flavor_name, image_name=image.get_name(), zone_name=zone_name, port_ids=[x['id'] for x in self._ports])
-        assert self._status['OS-EXT-SRV-ATTR:host'] == zone_name
+        self._status['ID'] = self._status['id']
 
     def get_name(self):
         return UNIQUE_PATTERN_IN_NAME + '-' + str(self._number)
+
+    def __getitem__(self, item):
+        return self._status[item]
 
     @staticmethod
     def create(how_many, flavor_name, image, on_nets, timeout, cloud):
 
         servers = []
         compute_hosts = cloud.get_computes()
-        for n, comp_n in [(y, 1 + y % len(compute_hosts)) for y in range(how_many)]:  # distribute servers per compute host in round robin
-            servers.append(CloudServer(number=n, flavor_name=flavor_name, image=image, on_nets=on_nets, zone_name=compute_hosts[comp_n], cloud=cloud))
-        cloud.wait_instances_ready(names=[x.get_name() for x in servers], timeout=timeout)
+        for n, comp_name in [(y, compute_hosts[y % len(compute_hosts)]) for y in range(1, how_many + 1)]:  # distribute servers per compute host in round robin
+            servers.append(CloudServer(number=n, flavor_name=flavor_name, image=image, on_nets=on_nets, zone_name=comp_name, cloud=cloud))
+        cloud.wait_instances_ready(servers, timeout=timeout)
 
 
 class CloudImage(object):
@@ -119,7 +122,7 @@ class CloudImage(object):
         return self._username
 
     def get_name(self):
-        return self._status['Name']
+        return self._status['name']
 
     @staticmethod
     @section('Creating custom image')
@@ -486,7 +489,7 @@ export OS_AUTH_URL={end_point}
 
     def os_server_create(self, srv_name, flavor_name, image_name, zone_name, port_ids):
         ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, port_ids))
-        return self.os_cmd('openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name sqe-key1 {}'.format(srv_name, flavor_name, image_name, zone_name, ports_part))
+        return self.os_cmd('openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name sqe-key1 {} -f json'.format(srv_name, flavor_name, image_name, zone_name, ports_part))
 
     def os_server_delete(self, servers):
         if len(servers):
