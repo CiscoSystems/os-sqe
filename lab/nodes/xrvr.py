@@ -244,7 +244,7 @@ router bgp {{ bgp_asn }}
 
     def r_collect_logs(self, regex):
         logs = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/sr/*', regex=regex)]:
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/sr/*err*.log', regex=regex)]:
             ans = self.cmd(cmd=cmd, is_xrvr=False, is_warn_only=True)
             logs += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return logs

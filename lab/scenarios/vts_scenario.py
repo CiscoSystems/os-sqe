@@ -27,11 +27,15 @@ class VtsScenario(ParallelWorker):
     def _vtc(self):
         return self.get_lab().get_vtc()[0]
 
+    @property
+    def _image(self):
+        return self._kwargs['image']
+
     @section('Setup')
     def setup_worker(self):
         self.cleanup()
         self.get_cloud().os_keypair_create()
-        self.get_cloud().os_image_create('sqe-iperf')
+        self._kwargs['image'] = self.get_cloud().os_image_create('sqe-iperf')
         self.get_cloud().os_flavor_create('vts')
 
     @section('Creating networks')
@@ -63,7 +67,7 @@ class VtsScenario(ParallelWorker):
     def _instances_part(self, on_nets):
         from lab.cloud import CloudServer
 
-        return CloudServer.create(how_many=self._n_servers, flavor_name='vts', image='iperf', on_nets=on_nets, timeout=self._timeout, cloud=self.get_cloud())
+        return CloudServer.create(how_many=self._n_servers, flavor_name='sqe-vts', image=self._image, on_nets=on_nets, timeout=self._timeout, cloud=self.get_cloud())
 
     @section('Pinging instances')
     def _ping_part(self, servers):
@@ -87,29 +91,36 @@ class VtsScenario(ParallelWorker):
     def loop_worker(self):
         import time
 
-        start_time = time.time()
-
         nets = self._network_part()
 
         self.set_border_leaf(nets=nets)
         servers = self._instances_part(on_nets=nets)
+
+        start_time = time.time()
 
         while time.time() - start_time < self._uptime:
             if self._runner.startswith('iperf'):
                 return self._iperf_part(servers)
             else:
                 self._ping_part(servers)
+        self._delete_servers()
 
-        start_delete_time = time.time()
-        [s.delete() for s in servers]
-        self.log('Instances deleted in {} sec'.format(time.time() - start_delete_time))
-        self.cleanup()
+    @section('Deleting servers')
+    def _delete_servers(self, servers):
+        self.get_cloud().os_server_delete(servers=servers)
 
+    @section('Cleaning all objects observed in cloud')
     def cleanup(self):
-        self._vtc.r_vtc_cleanup()
-        self.get_cloud().os_cleanup()
+        self._vtc.r_vtc_delete_border_leaf_port()
+        self.get_cloud().os_cleanup(is_all=True)
+        vtc_networks = self._vtc.r_vtc_show_openstack_network()
+        if vtc_networks:
+            raise RuntimeError('Networks are not deleted in VTC: {}'.format(vtc_networks))
+
+    def teardown_worker(self):
+        self.cleanup()
 
     @section(message='Setting border leaf', estimated_time=10)
     def set_border_leaf(self, nets):
-        self._vtc.r_vtc_set_port_for_border_leaf(nets)
+        self._vtc.r_vtc_create_border_leaf_port(nets)
         self.get_mgmt().r_create_access_points(nets)

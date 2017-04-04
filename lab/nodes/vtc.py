@@ -353,7 +353,8 @@ class Vtc(VirtualServer):
         return self.cmd().get(url='/api/running/resource-pools/vni-pool')
 
     def r_vtc_show_vlan_pool(self):  # curl -s -k -u admin:Cisco123! -H 'Accept: application/vnd.yang.collection+json' -X GET https://10.23.228.254:8888/api/running/resource-pools/vlan-pool
-        return self.cmd().get(url='/api/running/resource-pools/vlan-pool')['collection']['resource-allocator:vlan-pool']
+        pool = self.cmd().get(url='/api/running/resource-pools/vlan-pool')['collection']['resource-allocator:vlan-pool']
+        return [(x['vlan-allocator:range'][0]['start'], x['vlan-allocator:range'][0]['end']) for x in pool if 'TORSWITCHA' in x['name']][0]
 
     def r_vtc_show_uuid_servers(self):
         res = self.cmd().get(url='/api/running/cisco-vts/uuid-servers/uuid-server')
@@ -362,12 +363,18 @@ class Vtc(VirtualServer):
     def r_vtc_show_devices_device(self):
         return self.cmd().get(url='/api/running/devices/device')
 
-    def r_vtc_set_port_for_border_leaf(self, os_networks):
+    def r_vtc_show_port(self):
+        ports = self.cmd().get(url='/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port')
+        return ports['collection']['cisco-vts:port'] if 'collection' in ports else []
+
+    def r_vtc_create_border_leaf_port(self, os_networks):
         import uuid
         import json
         from collections import OrderedDict
 
-        vlan = 3500
+        vlan_start, vlan_end = self.r_vtc_show_vlan_pool()
+
+        vlan = (vlan_start + vlan_end) / 2
         mgmt_srv = [srv for srv in self.r_vtc_show_uuid_servers() if 'baremetal' in srv['server-type']][0]
         tenant = 'admin'
 
@@ -379,7 +386,8 @@ class Vtc(VirtualServer):
             port_dict['network-id'] = network.get_net_id()
             port_dict['admin-state-up'] = True
             port_dict['status'] = 'cisco-vts-identities:active'
-            port_dict['binding-host-id'] = vlan
+            port_dict['binding-host-id'] = mgmt_srv['server-id']
+            port_dict['vlan-id'] = vlan
             network.set_vts_vlan(vlan)
             vlan += 1
             port_dict['mac-address'] = 'unknown-' + new_uuid
@@ -389,41 +397,14 @@ class Vtc(VirtualServer):
             port_json = json.dumps(port_data)
             self.cmd().put(url='/api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port/{1}'.format(tenant, port_id), data=port_json)
 
-        # return self.exe('ncs_cli << EOF\nconfigure\nset cisco-vts tenants tenant admin ports port <port UUID> followed by body\nexit\nEOF')
+    def r_vtc_delete_border_leaf_port(self):
+        ports = self.r_vtc_show_port()
 
-    def r_vtc_old_set_port_for_border_leaf(self):
-        import json
-        import requests
-
-        s = requests.Session()
-        s.post('https://{}:{}/VTS/j_spring_security_check'.format(self._vip_a, 8443), data={'j_username': self._oob_username, 'j_password': self._oob_password, 'Submit': 'Login'}, verify=False)
-        resp = s.get('https://{}:{}/VTS/JavaScriptServlet'.format(self._vip_a, 8443), verify=False)
-        owasp_csrftoken = resp.text.rsplit('OWASP_CSRFTOKEN",', 1)[-1].split(',', 1)[0].replace('"', '').strip()
-
-        mgmt_srv = [x for x in self.r_vtc_show_uuid_servers() if 'baremetal' in x['server-type']][0]
-
-        for network in self.r_vtc_show_openstack_network():
-            port = {'resource': {'id': network['id'],
-                                 'network': {'network_name': network['name'], 'router-external': False},
-                                 # 'tenant_id': tenant['vmm-tenant-id'], 'tenant_name': 'admin',
-                                 'tor_port': [{'binding_host_id': mgmt_srv['server-id'], 'connid': [{'id': mgmt_srv['connid']}], 'device_id': mgmt_srv['torname'], 'mac': "", 'tagging': 'mandatory', 'type': "baremetal"}],
-                                 # 'ToRPortToDelete': []
-                                 }
-                    }
-
-            headers = {'Accept': 'application/json, text/plain, */*', 'Accept-Encoding': 'gzip, deflate, sdch, br', 'Content-Type': 'application/json;charset=UTF-8', 'OWASP_CSRFTOKEN': owasp_csrftoken,
-                       'X-Requested-With': 'OWASP CSRFGuard Project'}
-            resp = s.put('https://{}:{}/VTS/rs/vtsService/tenantTopology/admin/admin/network/{}'.format(self._vip_a, 8443, network['id']), data=json.dumps(port), headers=headers, verify=False)
-            if resp.status_code != 200:
-                raise RuntimeError('Failed to add {} port to {} network, reason: {}'.format(mgmt_srv['server-id'], network['name'], resp.text))
-            self.log('Added {} port to {} network'.format(mgmt_srv['server-id'], network['name']))
-        s.close()
+        for port in ports:
+            self.cmd().delete(url='/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/{}'.format(port['id']))
 
     def r_vtc_validate(self):
         self.r_vtc_show_configuration_xrvr_groups()
-
-    def r_vtc_cleanup(self):
-        self.r_vtc_delete_openstack_objects(is_via_ncs=True)
 
     def r_xrvr_show_evpn(self):
         return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.lab().get_xrvr())
