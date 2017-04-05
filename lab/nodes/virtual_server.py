@@ -12,3 +12,13 @@ class VirtualServer(LabServer):
 
     def get_hardware_server(self):
         return self._hard_server
+
+    def vnc_display(self):
+        import os
+
+        name = self.get_node_id().replace('xrvr', 'xrnc')
+        ans = self._hard_server.exe('virsh vncdisplay {}'.format(name))
+        port = 5900 + int(ans.strip(':'))
+        vts_host_ip = self._hard_server.get_ip_mx()
+        mgmt_ip = self.lab().get_director().get_ip_api()
+        os.system('ssh -2NfL {port}:{vts}:{port} root@{mgmt}'.format(port=port, vts=vts_host_ip, mgmt=mgmt_ip))
