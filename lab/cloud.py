@@ -18,7 +18,7 @@ class CloudNetwork(object):
         self._vlan_id = vlan_id + number if vlan_id else False
         self._vts_vlan = None
         self._is_dhcp = is_dhcp
-        self._network = IPNetwork('{}.{}.0.0/16'.format(class_a, number))
+        self._network = IPNetwork('{}.{}.0.0/24'.format(class_a, number))
 
         phys_net_addon = '--provider:physical_network=physnet1 --provider:network_type=vlan --provider:segmentation_id={}'.format(self._vlan_id) if self._vlan_id else ''
 
@@ -26,7 +26,7 @@ class CloudNetwork(object):
             self._net_cmd = 'neutron net-create {} {} -f json'.format(self._net_name, phys_net_addon)
         else:
             self._net_cmd = 'openstack network create {} {} -f json'.format(self._net_name, phys_net_addon)
-        cidr, gw, start, stop = self._network, self._network[-2], self._network[1], self._network[5000]
+        cidr, gw, start, stop = self._network, self._network[200], self._network[1], self._network[50]
         if is_via_neutron:
             self._subnet_cmd = 'neutron subnet-create {} {} --name {} --gateway {} --dns-nameserver {} {} --allocation-pool start={},end={} -f json'.format(self._net_name, cidr, self._subnet_name, gw, self._dns,
                                                                                                                                                             '' if is_dhcp else '--disable-dhcp', start, stop)
@@ -347,8 +347,8 @@ export OS_AUTH_URL={end_point}
     @section('Creating custom flavor')
     def os_flavor_create(self, name):
         name_with_prefix = self._add_name_prefix(name)
-        res = self.os_cmd('openstack flavor create {} --vcpu 2 --ram 4096 --disk 40 --public -f json'.format(name_with_prefix))
-        self.os_cmd('openstack flavor set {} --property hw:numa_nodes=1'.format(name_with_prefix))
+        res = self.os_cmd('openstack flavor create {} --vcpu 2 --ram 4096 --disk 20 --public -f json'.format(name_with_prefix))
+        # self.os_cmd('openstack flavor set {} --property hw:numa_nodes=1'.format(name_with_prefix))
         self.os_cmd('openstack flavor set {} --property hw:mem_page_size=large'.format(name_with_prefix))
         return res
 
@@ -397,8 +397,9 @@ export OS_AUTH_URL={end_point}
             time.sleep(30)
 
     def analyse_instance_problems(self, instance):
-        instance_details = self.os_server_show(instance['Name'])
-        raise RuntimeError(instance_details['fault']['message'])
+        status = self.os_server_show(instance['Name'])
+        self.get_lab().get_node_by_id(status['OS-EXT-SRV-ATTR:host']).exe('pkill kvm')
+        self.get_lab().r_collect_information(regex=status['id'], comment='fail-of-' + status['name'])
 
     def exe(self, cmd):
         """
