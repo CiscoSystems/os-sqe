@@ -100,6 +100,7 @@ class CloudServer(Server):
         for n, comp_name in [(y, compute_hosts[y % len(compute_hosts)]) for y in range(1, how_many + 1)]:  # distribute servers per compute host in round robin
             servers.append(CloudServer(number=n, flavor_name=flavor_name, image=image, on_nets=on_nets, zone_name=comp_name, cloud=cloud))
         cloud.wait_instances_ready(servers, timeout=timeout)
+        return servers
 
 
 class CloudImage(object):
@@ -207,7 +208,7 @@ export OS_AUTH_URL={end_point}
 
     def os_cmd(self, cmd, comment='', server=None, is_warn_only=False):
         server = server or self._mediator
-        cmd = 'source {} && {}  {}'.format(self._openrc_path, cmd, comment)
+        cmd = 'source {} && {} {}'.format(self._openrc_path, cmd, '# ' + comment if comment else '')
         ans = server.exe(command=cmd, is_warn_only=is_warn_only)
         if '-f csv' in cmd:
             return self._process_csv_output(ans)
@@ -258,6 +259,8 @@ export OS_AUTH_URL={end_point}
             return []
         else:
             lines = answer.split('\r\n')
+            if len(lines) == 1:
+                return []
             output = []
             keys = [x.strip() for x in lines[1].split('|') if x]
             for line in lines[3:-1]:
@@ -360,11 +363,11 @@ export OS_AUTH_URL={end_point}
 
     def os_server_reboot(self, server, hard=False):
         flags = ['--hard' if hard else '--soft']
-        self.os_cmd('openstack server reboot {} {}'.format(flags, server['ID']), comment='# server {}'.format(server['Name']))
+        self.os_cmd('openstack server reboot {} {}'.format(flags, server['ID']), comment=server['Name'])
         self.wait_instances_ready(servers=[server])
 
     def os_server_rebuild(self, server, image):
-        self.os_cmd('openstack server rebuild {} --image {}'.format(server['ID'], image), comment='# {}'.format(server['Name']))
+        self.os_cmd('openstack server rebuild {} --image {}'.format(server['ID'], image), comment=server['Name'])
         self.wait_instances_ready(servers=[server])
 
     def os_server_suspend(self, server):
@@ -372,7 +375,7 @@ export OS_AUTH_URL={end_point}
         self.wait_instances_ready([server], status='SUSPENDED')
 
     def os_server_resume(self, server):
-        self.os_cmd('openstack server resume {}'.format(server['ID']), comment='# server {}'.format(server['Name']))
+        self.os_cmd('openstack server resume {}'.format(server['ID']), comment=server['Name'])
         self.wait_instances_ready(servers=[server])
 
     def wait_instances_ready(self, servers, status='ACTIVE', timeout=300):
@@ -428,7 +431,7 @@ export OS_AUTH_URL={end_point}
         raise RuntimeError('image {} failed'.format(image['name']))
 
     def os_image_delete(self, images):
-        map(lambda x: self.os_cmd(cmd='openstack image delete ' + x['ID'], comment='# image name ' + x['Name']), images)
+        map(lambda x: self.os_cmd(cmd='openstack image delete ' + x['ID'], comment=x['Name']), images)
 
     def os_image_list(self):
         return self.os_cmd('openstack image list -f json')
@@ -468,7 +471,7 @@ export OS_AUTH_URL={end_point}
         return net_status, subnet_status
 
     def os_network_delete(self, networks):
-        map(lambda x: self.os_cmd(cmd='openstack network delete ' + x['ID'], comment='# net name ' + x['Name']), networks)
+        map(lambda x: self.os_cmd(cmd='openstack network delete ' + x['ID'], comment=x['Name']), networks)
 
     def os_network_list(self):
         return self.os_cmd('openstack network list -f json')
@@ -480,7 +483,7 @@ export OS_AUTH_URL={end_point}
         return self.os_cmd('neutron port-create -f json --name {port_name} {net_name} {ip_addon} {sriov_addon}'.format(port_name=port_name, net_name=net_name, ip_addon=fixed_ip_addon, sriov_addon=sriov_addon))
 
     def os_port_delete(self, ports):
-        map(lambda x: self.os_cmd(cmd='neutron port-delete ' + x['id'], comment='# port ' + x['name']), ports)
+        map(lambda x: self.os_cmd(cmd='neutron port-delete ' + x['id'], comment=x['name']), ports)
 
     def os_port_list(self):
         return self.os_cmd('neutron port-list -f json')
@@ -496,7 +499,7 @@ export OS_AUTH_URL={end_point}
         if len(servers):
             ids = [s['ID'] for s in servers]
             names = [s['Name'] for s in servers]
-            self.os_cmd('openstack server delete ' + ' '.join(ids), comment='# server names ' + ' '.join(names))
+            self.os_cmd('openstack server delete ' + ' '.join(ids), comment=' '.join(names))
             self.wait_instances_ready(servers=servers, status='DELETED')
 
     def os_server_list(self):
@@ -524,7 +527,7 @@ export OS_AUTH_URL={end_point}
         if len(server_groups):
             ids = [s['Id'] for s in server_groups]
             names = [s['Name'] for s in server_groups]
-            self.os_cmd('nova server-group-delete ' + ' '.join(ids), comment='# server groups ' + ' '.join(names))
+            self.os_cmd('nova server-group-delete ' + ' '.join(ids), comment=' '.join(names))
 
     def os_user_list(self):
         return self.os_cmd('openstack user list -f json')
@@ -533,7 +536,7 @@ export OS_AUTH_URL={end_point}
         return self.os_cmd('openstack user create --password {} {} -f json'.format(self._os_sqe_password, user_name))
 
     def os_user_delete(self, users):
-        map(lambda x: self.os_cmd('openstack user delete {}'.format(x['ID']), comment='# user {}'.format(x['Name'])), users)
+        map(lambda x: self.os_cmd('openstack user delete {}'.format(x['ID']), comment=x['Name']), users)
 
     def os_cleanup(self, is_all=False):
         servers = self.os_server_list()
@@ -564,7 +567,7 @@ export OS_AUTH_URL={end_point}
             security_groups = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], security_groups)
             users = filter(lambda i: UNIQUE_PATTERN_IN_NAME in i['Name'], users)
 
-        self._clean_router(routers=routers)
+        self.os_clean_router(routers=routers)
         self.os_port_delete(ports=ports)
         self.os_network_delete(networks=networks)
         self.os_keypair_delete(keypairs=keypairs)
@@ -591,16 +594,13 @@ export OS_AUTH_URL={end_point}
         self.log_to_artifact(name='cloud_{}{}.txt'.format(self._name, addon), body=body)
         return body
 
-    def _clean_router(self, routers):
-        import re
-
-        for router in routers:
-            router_name = router['name']
-            self.os_cmd('neutron router-gateway-clear {0}'.format(router_name))
-            ans = self.os_cmd('neutron router-port-list {0} | grep -v HA'.format(router_name))
-            subnet_ids = re.findall('"subnet_id": "(.*)",', ans)
-            map(lambda subnet_id: self.os_cmd('neutron router-interface-delete {router_name} {subnet_id}'.format(router_name=router_name, subnet_id=subnet_id)), subnet_ids)
-            self.os_cmd('neutron router-delete {0}'.format(router_name))
+    def os_clean_router(self, routers):
+        for r in routers:
+            self.os_cmd('neutron router-gateway-clear ' + r['id'], comment=r['name'])
+            ans = self.os_cmd('neutron router-port-list {} -f json'.format(r['id']), comment=r['name'])
+            subnet_ids = [x['fixed_ips'].split(',')[0].split(':')[-1] for x in ans]
+            map(lambda subnet_id: self.os_cmd('neutron router-interface-delete {} {}'.format(r['id'], subnet_id), comment=r['name']), subnet_ids)
+            self.os_cmd('neutron router-delete ' + r['id'], comment=r['name'])
 
     def verify_cloud(self):
         self.os_network_list()
