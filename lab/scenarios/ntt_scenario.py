@@ -8,7 +8,7 @@ class NttScenario(ParallelWorker):
         possible_modes = ['csr', 'nfvbench', 'both']
         if self._what_to_run not in possible_modes:
             raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
-        return 'run {}, # CSR {}, sleep {},  chain {}, # chains {}, # flows {}'.format(self._what_to_run, self._csr_per_compute, self._csr_sleep, self._chain_type, self._chain_count, self._flow_count)
+        return 'run {}, # CSR {}, sleep {},  nfvbench {}'.format(self._what_to_run, self._csr_per_compute, self._csr_sleep, self._nfvbench_args)
 
     @property
     def _what_to_run(self):
@@ -23,24 +23,16 @@ class NttScenario(ParallelWorker):
         return self._kwargs['csr-sleep']
 
     @property
-    def _chain_type(self):
-        return self._kwargs['chain-type']
-
-    @property
-    def _chain_count(self):
-        return self._kwargs['chain-count']
-
-    @property
-    def _flow_count(self):
-        return self._kwargs['flow-count']
-
-    @property
     def _tmp_dir(self):
         return self._kwargs['tmp-dir']
 
     @property
     def _nfvbench_cmd(self):
         return self._kwargs['nfvbench-cmd']
+
+    @property
+    def _nfvbench_args(self):
+        return self._kwargs['nfvbench-args']
 
     @section(message='Setting up', estimated_time=100)
     def setup_worker(self):

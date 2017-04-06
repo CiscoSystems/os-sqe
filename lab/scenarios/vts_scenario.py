@@ -93,8 +93,8 @@ class VtsScenario(ParallelWorker):
 
         nets = self._network_part()
 
-        self.set_border_leaf(nets=nets)
         servers = self._instances_part(on_nets=nets)
+        self.set_border_leaf(nets=nets)
 
         start_time = time.time()
 

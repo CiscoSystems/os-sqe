@@ -9,6 +9,4 @@
   what-to-run: nfvbench  # might by nfvbench, csr, both
   csr-per-compute: not-used # special value 1 means just a single CSR, starting from 2 it will be considered as number of CRSs per compute node
   csr-sleep: not-used  # seconds between 2 successive openstack server create requests
-  chain-type: PVP # possible values EXT PVP PVVP
-  chain-count: 1  # number of concurrent chains
-  flow-count: 10000
+  nfvbench-args: --rate ndr_pdr --service-chain PVP --service-chain-count 1 --flow-count 10000
