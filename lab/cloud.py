@@ -401,7 +401,9 @@ export OS_AUTH_URL={end_point}
 
     def analyse_instance_problems(self, instance):
         status = self.os_server_show(instance['Name'])
-        self.get_lab().get_node_by_id(status['OS-EXT-SRV-ATTR:host']).exe('pkill kvm')
+        comp = self.get_lab().get_node_by_id(status['OS-EXT-SRV-ATTR:host'])
+        ans = comp.exe('cat /var/log/libvirt/qemu/{}'.format(comp['']))
+        comp.exe('pkill kvm')
         self.get_lab().r_collect_information(regex=status['id'], comment='fail-of-' + status['name'])
 
     def exe(self, cmd):

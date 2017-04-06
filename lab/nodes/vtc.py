@@ -406,7 +406,7 @@ class Vtc(VirtualServer):
 
         for port in ports:
             self.cmd().delete(url='/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/{}'.format(port['id']))
-            time.sleep(10)  # if try to delete 2 ports without delay, one may have TOR out of switch
+            time.sleep(20)  # if try to delete 2 ports without delay, one may have TOR out of switch
 
     def r_vtc_validate(self):
         self.r_vtc_show_configuration_xrvr_groups()
