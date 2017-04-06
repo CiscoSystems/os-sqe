@@ -61,7 +61,7 @@ class NttScenario(ParallelWorker):
             self.csr_run()
 
         if self._what_to_run in ['nfvbench', 'both']:
-            self.single_nfvbench_run(parameters='--rate ndr_pdr --service-chain {} --service-chain-count {} --flow-count {}'.format(self._chain_type, self._chain_count, self._flow_count))
+            self.single_nfvbench_run(parameters=self._nfvbench_args)
 
     def csr_run(self):
 
