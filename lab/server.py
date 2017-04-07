@@ -9,16 +9,14 @@ class Server(object):
         self._tmp_dir_exists = False
         self._package_manager = None
         self._mac_server_part = None
-        self._ip, self._username, self._password, self._hostname = ip, username, password, None
-
-    def set_ssh_ip(self, ip):
-        self._ip = ip
+        self._username, self._password, self._hostname = username, password, None
+        self._ips = ip if type(ip) is list else [ip]
 
     def get_ssh_ip(self):
-        return self._ip
+        return self._ips
 
     def get_ssh(self):
-        return self._ip, self._username, self._password
+        return self._ips[0], self._username, self._password
 
     def set_hostname(self, hostname):
         self._hostname = hostname
@@ -40,7 +38,7 @@ class Server(object):
     def construct_settings(self, is_warn_only, connection_attempts):
         from lab import with_config
 
-        kwargs = {'host_string': '{user}@{ip}'.format(user=self._username, ip=self._ip),
+        kwargs = {'host_string': '{user}@{ip}'.format(user=self._username, ip=self._ips[0]),
                   'disable_known_hosts': True,
                   'connection_attempts': connection_attempts,
                   'warn_only': is_warn_only}
@@ -64,16 +62,15 @@ class Server(object):
         from fabric.api import run, settings, cd
         from fabric.exceptions import NetworkError
 
-        if str(self._ip) in ['localhost', '127.0.0.1']:
+        if str(self._ips[0]) in ['localhost', '127.0.0.1']:
             return self._exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
 
         # with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
-        res = None
         with settings(**self.construct_settings(is_warn_only=True, connection_attempts=connection_attempts)):
             with cd(in_directory):
                 try:
                     res = run(command)
-                except NetworkError as e:
+                except NetworkError:
                     if is_warn_only:
                         return ''
                     else:
@@ -92,7 +89,7 @@ class Server(object):
             with cd(in_directory):
                 try:
                     return files.append(file_path, data)
-                except NetworkError as e:
+                except NetworkError:
                     if is_warn_only:
                         return ''
                     else:
@@ -140,7 +137,7 @@ class Server(object):
         if in_directory != '.':
             self.exe(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
 
-        if str(self._ip) in ['localhost', '127.0.0.1']:
+        if str(self._ips[0]) in ['localhost', '127.0.0.1']:
             with lcd(in_directory):
                 local('echo "{0}" > {1}'.format(string_to_put, file_name))
                 return os.path.abspath(os.path.join(in_directory, file_name))
@@ -249,7 +246,7 @@ class Server(object):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
         try:
-            s.connect((str(self._ip), port))
+            s.connect((str(self._ips[0]), port))
             res = True
         except (socket.timeout, socket.error):
             res = False

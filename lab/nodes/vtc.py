@@ -397,7 +397,7 @@ class Vtc(VirtualServer):
 
             port_json = json.dumps(port_data)
             self.cmd().put(url='/api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port/{1}'.format(tenant, port_id), data=port_json)
-            time.sleep(10)
+            time.sleep(20)
 
     def r_vtc_delete_border_leaf_port(self):
         import time
@@ -405,8 +405,9 @@ class Vtc(VirtualServer):
         ports = self.r_vtc_show_port()
 
         for port in ports:
-            self.cmd().delete(url='/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/{}'.format(port['id']))
-            time.sleep(20)  # if try to delete 2 ports without delay, one may have TOR out of switch
+            if 'name' not in port:
+                self.cmd().delete(url='/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/{}'.format(port['id']))
+                time.sleep(20)  # if try to delete 2 ports without delay, one may have TOR out of switch
 
     def r_vtc_validate(self):
         self.r_vtc_show_configuration_xrvr_groups()

@@ -77,12 +77,13 @@ class CloudServer(Server):
         self._on_nets = on_nets
         self._ports = []
 
-        ip = None
+        ips = []
         for net in on_nets:
             ip = net.get_ip(self._number)
             mac = '00:10:' + ':'.join(map(lambda n: '{0:02}'.format(int(n)) if int(n) < 100 else '{0:02x}'.format(int(x)), str(ip).split('.')))
             self._ports.append(cloud.os_port_create(server_number=number, net_name=net.get_net_name(), ip=ip, mac=mac))
-        super(CloudServer, self).__init__(ip=ip, username=image.get_username(), password=image.get_password())
+            ips.append(ip)
+        super(CloudServer, self).__init__(ip=ips, username=image.get_username(), password=image.get_password())
         self._status = cloud.os_server_create(srv_name=self.get_name(), flavor_name=flavor_name, image_name=image.get_name(), zone_name=zone_name, port_ids=[x['id'] for x in self._ports])
         self._status['ID'] = self._status['id']
 

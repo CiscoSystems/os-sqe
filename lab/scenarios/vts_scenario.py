@@ -63,25 +63,26 @@ class VtsScenario(ParallelWorker):
             time.sleep(5)
             max_retries -= 1
 
-    @section('Creating instances')
-    def _instances_part(self, on_nets):
+    @section('Create servers')
+    def create_servers(self, on_nets):
         from lab.cloud import CloudServer
 
-        return CloudServer.create(how_many=self._n_servers, flavor_name='sqe-vts', image=self._image, on_nets=on_nets, timeout=self._timeout, cloud=self.get_cloud())
+        self._kwargs['servers'] = CloudServer.create(how_many=self._n_servers, flavor_name='sqe-vts', image=self._image, on_nets=on_nets, timeout=self._timeout, cloud=self.get_cloud())
 
-    @section('Pinging instances')
-    def _ping_part(self, servers):
-        for server in servers:
+    @section('Ping servers')
+    def ping_servers(self):
+        for server in self._kwargs['servers']:
             n_packets = 50
-            ans = self.get_mgmt().exe('ping -c {} {}'.format(n_packets, server.get_ssh_ip()), is_warn_only=True)
-            if '{0} packets transmitted, {0} received, 0% packet loss'.format(n_packets) not in ans:
-                raise RuntimeError(ans)
+            for ip in server.get_ssh_ip():
+                ans = self.get_mgmt().exe('ping -c {} {}'.format(n_packets, ip), is_warn_only=True)
+                if '{0} packets transmitted, {0} received, 0% packet loss'.format(n_packets) not in ans:
+                    raise RuntimeError(ans)
 
-    @section('Running iperf')
-    def _iperf_part(self, servers):
-        server_passive = servers[0]
-        server_same = [x for x in servers if x.get_compute_host() == server_passive.get_compute_host()][0]
-        server_other = [x for x in servers if x.get_compute_host() != server_passive.get_compute_host()][0]
+    @section('Iperf servers')
+    def iperf_servers(self):
+        server_passive = self._kwargs['servers'][0]
+        server_same = [x for x in self._kwargs['servers'] if x.get_compute_host() == server_passive.get_compute_host()][0]
+        server_other = [x for x in self._kwargs['servers'] if x.get_compute_host() != server_passive.get_compute_host()][0]
 
         ip = server_passive.get_ssh_ip()
         server_passive.exe('iperf -s -p 1111 &')  # run iperf in listening mode on first server of first compute host
@@ -93,24 +94,27 @@ class VtsScenario(ParallelWorker):
 
         nets = self._network_part()
 
-        servers = self._instances_part(on_nets=nets)
+        self.create_servers(on_nets=nets)
         self.attach_border_leaf(nets=nets)
 
+        time.sleep(30)
         start_time = time.time()
 
         while time.time() - start_time < self._uptime:
             if self._runner.startswith('iperf'):
-                return self._iperf_part(servers)
+                return self.iperf_servers()
             else:
-                self._ping_part(servers)
-        self._delete_servers(servers=servers)
+                self.ping_servers()
+        self.delete_servers()
 
     @section('Deleting servers')
-    def _delete_servers(self, servers):
-        self.get_cloud().os_server_delete(servers=servers)
+    def delete_servers(self):
+        if 'servers' in self._kwargs:
+            self.get_cloud().os_server_delete(servers=self._kwargs['servers'])
 
     @section('Cleaning all objects observed in cloud')
     def cleanup(self):
+        self.delete_servers()
         self.detach_border_leaf()
         self.get_cloud().os_cleanup(is_all=True)
         self.check_vts_networks()
