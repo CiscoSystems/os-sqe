@@ -80,7 +80,7 @@ class NttScenario(ParallelWorker):
 
     def single_nfvbench_run(self, parameters):
         container_info = ''
-        cmd = self._nfvbench_cmd + ' {} {}'.format(container_info, parameters, '--no-cleanup' if self.is_noclean else '')
+        cmd = self._nfvbench_cmd + ' {} {} {}'.format(container_info, parameters, '--no-cleanup' if self.is_noclean else '')
         ans = self.get_mgmt().exe(cmd, in_directory=self._tmp_dir, is_warn_only=True)
         with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(parameters.replace(' ', '_')), 'w') as f:
             f.write(cmd + '\n')
