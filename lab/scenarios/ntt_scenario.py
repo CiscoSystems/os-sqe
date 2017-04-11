@@ -27,12 +27,16 @@ class NttScenario(ParallelWorker):
         return self._kwargs['tmp-dir']
 
     @property
+    def _nfv_config_dir(self):
+        return self._kwargs['nfv-config-dir']
+
+    @property
     def _nfvbench_cmd(self):
         return self._kwargs['nfvbench-cmd']
 
     @property
     def _nfvbench_args(self):
-        return self._kwargs['nfvbench-args']
+        return self._kwargs['nfvbench-args'] + ' --no-cleanup' if self.is_noclean else ''
 
     @section(message='Setting up', estimated_time=100)
     def setup_worker(self):
@@ -45,23 +49,32 @@ class NttScenario(ParallelWorker):
             self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory=self._tmp_dir + 'nfvi-test')
         if self._what_to_run in ['both', 'nfvbench']:
             self.get_mgmt().r_check_intel_nics()
-            self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir=self._tmp_dir + 'testbed')
-            self.get_mgmt().exe('rm -f nfvbench_config.yaml && cp testbed/{}/nfvbench_config.yaml .'.format(self.get_lab()), in_directory=self._tmp_dir)
+            self._kwargs['nfv-config-dir'] = self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir=self._tmp_dir + 'testbed')
+            self._kwargs['nfv-config-dir'] += '/' + str(self.get_lab()).rsplit('-', 1)[0]
 
             docker_image = 'cloud-docker.cisco.com/nfvbench'
             self.get_mgmt().exe('docker pull {}'.format(docker_image))
             self.get_mgmt().exe('yum install kernel-devel kernel-headers -y')
-
-            self._kwargs['nfvbench-cmd'] = self.get_mgmt().construct_nfvbench_command()
+            self.construct_nfvbench_command()
         self.get_cloud().os_cleanup(is_all=True)
         self.get_cloud().os_quota_set()
+
+    def construct_nfvbench_command(self):
+        ker, tag = self.get_mgmt().exe('uname -r && cat /etc/cisco-mercury-release').split('\r\n')
+
+        par = '--privileged --net host ' \
+              '-v {cfg}:/tmp/nfvbench -v /etc/hosts:/etc/hosts -v /root/.ssh:/root/.ssh -v /dev:/dev -v /root/openstack-configs:/tmp/nfvbench/openstack ' \
+              '-v /lib/modules/{ker}:/lib/modules/{ker} -v /usr/src/kernels/{ker}:/usr/src/kernels/{ker} '.format(cfg=self._nfv_config_dir, ker=ker.strip())
+        alias = "sed -i '/sqe_nfv/d' /root/.bashrc && echo \"alias sqe_nfv=\'docker run -d {} --name nfvbench_{}  cloud-docker.cisco.com/nfvbench\'\" >> /root/.bashrc".format(par, tag)
+        self.get_mgmt().exe(alias)
+        self._kwargs['nfvbench-cmd'] = 'docker run --rm -it ' + par + '--name nfvbench_sqe_auto cloud-docker.cisco.com/nfvbench nfvbench -c /tmp/nfvbench/{}-config.yaml --json /tmp/nfvbench/results.json'.format(self.get_lab())
 
     def loop_worker(self):
         if self._what_to_run in ['csr', 'both']:
             self.csr_run()
 
         if self._what_to_run in ['nfvbench', 'both']:
-            self.single_nfvbench_run(parameters=self._nfvbench_args)
+            self.nfvbench_run()
 
     def csr_run(self):
 
@@ -78,21 +91,20 @@ class NttScenario(ParallelWorker):
             if errors:
                 raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
 
-    def single_nfvbench_run(self, parameters):
-        container_info = ''
-        cmd = self._nfvbench_cmd + ' {} {} {}'.format(container_info, parameters, '--no-cleanup' if self.is_noclean else '')
-        ans = self.get_mgmt().exe(cmd, in_directory=self._tmp_dir, is_warn_only=True)
-        with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(parameters.replace(' ', '_')), 'w') as f:
+    def nfvbench_run(self):
+        cmd = self._nfvbench_cmd + ' ' + self._nfvbench_args
+        ans = self.get_mgmt().exe(cmd, is_warn_only=True)
+        with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(self._nfvbench_args.replace(' ', '_')), 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
 
         if 'ERROR' in ans:
             raise RuntimeError(ans.split('ERROR')[1][:200])
         else:
-            res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json', in_directory=self._tmp_dir)
-            self.process_nfvbench_json(parameters=parameters, res_json_body=res_json_body)
+            res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='{}/results.json'.format(self._nfv_config_dir))
+            self.process_nfvbench_json(res_json_body=res_json_body)
 
-    def process_nfvbench_json(self, parameters, res_json_body):
+    def process_nfvbench_json(self, res_json_body):
         import json
 
         j = json.loads(res_json_body)
@@ -112,7 +124,7 @@ class NttScenario(ParallelWorker):
                 res.append('MTU={} RT={}'.format(mtu, di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']))
 
         with self.get_lab().open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
-            f.write(parameters + '\n' + '; '.join(res))
+            f.write(self._nfvbench_args + '\n' + '; '.join(res))
 
     @section(message='Tearing down', estimated_time=30)
     def teardown_worker(self):
@@ -161,4 +173,10 @@ NFVBENCH_COMMAND="docker run \
 $NFVBENCH_COMMAND $*
 
 docker rm -f $SPIRENT_CONTAINER_ID
+
+lsmod | grep igb_uio
+cd /opt/trex/v2.18
+./t-rex-64 -i --no-scapy-server
+cat /tmp/trex
+
 """
