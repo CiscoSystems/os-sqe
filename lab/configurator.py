@@ -6,9 +6,9 @@ class LabConfigurator(WithConfig, WithLogMixIn):
     def sample_config(self):
         pass
 
-    def __init__(self):
+    def __init__(self, lab_name):
         super(LabConfigurator, self).__init__()
-        self.execute()
+        self.execute(lab_name=lab_name)
 
     def __repr__(self):
         return u'LAB CONFIGURATOR'
@@ -120,12 +120,16 @@ class LabConfigurator(WithConfig, WithLogMixIn):
             # loms = cimc.cimc_list_lom_ports()
             nodes[1] = cimc
 
-    def execute(self):
+    def execute(self, lab_name):
+        import os
 
-        # yaml_path = prompt(text='If mercury setup_data.yaml exists, enter the path to it, press Enter if you do not have it > ')
-        yaml_path = '~/repo/mercury/testbeds/i11tb3/setup_data.vts.yaml'
-        if yaml_path:
-            self.process_mercury_setup_data(yaml_path=yaml_path)
+        lab_name = 'c35bottom'
+        lab_dir_in_mercury_repo = os.path.expanduser('~/repo/mercury/testbeds/' + lab_name + '/')
+
+        mercury_yaml = lab_dir_in_mercury_repo + 'setup_data.vpp.yaml'
+
+        if os.path.isfile(mercury_yaml):
+            self.process_mercury_setup_data(yaml_path=mercury_yaml)
         else:
             self.log('not yet implemented way to configure')
 
@@ -136,9 +140,10 @@ class LabConfigurator(WithConfig, WithLogMixIn):
 
         lab = Laboratory(config_path=None)
         lab._lab_name = yaml_path.split('/')[-2]
-        lab._lab_type = 'MERCURY'
+        lab.set_lab_type('MERCURY-' + cfg['MECHANISM_DRIVERS'].upper())
         lab._id = 909
 
+        nets = list()
         for net_info in cfg['NETWORKING']['networks']:
             cidr = net_info.get('subnet')
             if not cidr:
@@ -159,35 +164,35 @@ class LabConfigurator(WithConfig, WithLogMixIn):
             else:
                 raise ValueError('unxepected network segment found: {}'.format(segment))
             vlan_id = net_info['vlan_id']
-            is_via_tor = net_name in ['a', 'e']
-            lab.add_network(net_name=net_name, cidr=cidr, vlan_id=vlan_id, mac_pattern=mac_pattern, is_via_tor=is_via_tor, is_via_pxe=False)
+            nets.append({'net-id': net_name, 'vlan': vlan_id, 'mac-pattern': mac_pattern, 'cidr': cidr})
+        lab.add_networks(nets)
 
-        server_vs_role = {}
-        for role, list_of_servers in cfg['ROLES'].items():
-            for server in list_of_servers:
-                server_vs_role[server] = role
+        cimc_username = cfg['CIMC-COMMON']['cimc_username']
+        cimc_password = cfg['CIMC-COMMON']['cimc_password']
+        ssh_username = cfg['COBBLER']['admin_username']
+        ssh_password = 'cisco123'
 
-        common_cimc_username = cfg['CIMC-COMMON']['cimc_username']
-        common_cimc_password = cfg['CIMC-COMMON']['cimc_password']
-        common_ssh_username = cfg['COBBLER']['admin_username']
-        common_ssh_password = 'cisco123'
+        nodes = []
 
-        for server_id, srv_mercury in cfg['SERVERS'].items():
-            try:
-                oob_ip = srv_mercury['cimc_info']['cimc_ip']
-                oob_username = srv_mercury['cimc_info'].get('cimc_username', common_cimc_username)
-                oob_password = srv_mercury['cimc_info'].get('cimc_password', common_cimc_password)
-                role_mercury = server_vs_role[server_id]
+        for i, sw in enumerate(cfg['TORSWITCHINFO']['SWITCHDETAILS'], start=1):
+            nodes.append({'node-id': 'n9' + str(i), 'role': 'n9', 'oob-ip': sw['ssh_ip'], 'oob-username': sw['username'], 'oob-password': sw['password'], 'ssh-username': 'None', 'ssh-password': 'None'})
 
-                role_sqe = '{}{}-n9'.format(role_mercury, '-host' if role_mercury == 'vts' else '')
-                srv_sqe = {'id': server_id, 'role': role_sqe,
-                           'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password,
-                           'ssh-username': common_ssh_username, 'ssh-password': common_ssh_password}
-                mx_ip = srv_mercury['management_ip']
-                t_ip = srv_mercury['tenant_ip']
+        nodes.append({'node-id': 'mgm', 'role': 'director-n9', 'oob-ip': cfg['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': cfg['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': cfg['TESTING_MGMT_CIMC_PASSWORD'],
+                      'ssh-username': ssh_username, 'ssh-password': ssh_password})
 
-                node = lab.add_node(srv_sqe)
-                node.add_nic(nic_name='mx', ip=mx_ip)
-            except KeyError as ex:
-                raise KeyError('{}: no {}'.format(server_id, ex))
+        for role, node_ids in cfg['ROLES'].items():
+            for node_id in node_ids:
+                role_sqe = role + '-n9'
+                try:
+                    srv_mercury = cfg['SERVERS'][node_id]
+                    oob_ip = srv_mercury['cimc_info']['cimc_ip']
+                    oob_username = srv_mercury['cimc_info'].get('cimc_username', cimc_username)
+                    oob_password = srv_mercury['cimc_info'].get('cimc_password', cimc_password)
+
+                    mx_ip = srv_mercury['management_ip']
+                    t_ip = srv_mercury['tenant_ip']
+                    nodes.append({'node-id': node_id, 'role': role_sqe, 'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': ssh_password})
+                except KeyError as ex:
+                    raise KeyError('{}: no {}'.format(node_id, ex))
+        lab.add_nodes(nodes)
         lab.save_lab_config()

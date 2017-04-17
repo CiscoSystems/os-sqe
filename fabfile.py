@@ -5,7 +5,7 @@ if '.' not in sys.path:
     sys.path.append('.')
 
 
-KNOWN_LABS = ['g7-2-vts.yaml', 'g7-2-vpp.yaml', 'marahaika-vts.yaml', 'c42top.yaml', 'i11tb3.yaml']
+KNOWN_LABS = ['g7-2-vts.yaml', 'g7-2-vpp.yaml', 'marahaika-vts.yaml', 'c35bot-vpp.yaml', 'c42top.yaml', 'i11tb3.yaml']
 
 
 @task
@@ -133,12 +133,12 @@ def run(config_path, version):
 
 
 @task
-def conf():
-    """fab conf\t\t\t\tTries to create lab configuration yaml
+def conf(lab_name):
+    """fab conf:lab-name\t\t\tTries to create lab configuration yaml
     """
     from lab.configurator import LabConfigurator
 
-    LabConfigurator()
+    LabConfigurator(lab_name=lab_name)
 
 
 @task

@@ -11,7 +11,7 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def __init__(self, **kwargs):
         self._lab = kwargs.pop('lab')        # link to parent Laboratory object
-        self._id = kwargs['id']              # some id which unique in the given role, usually role + some small integer
+        self._id = kwargs['node-id']         # some id which unique in the given role, usually role + some small integer
         self._role = kwargs['role']          # which role this node play, possible roles are defined in Laboratory
         self._oob_ip, self._oob_username, self._oob_password = kwargs['oob-ip'], kwargs['oob-username'], kwargs['oob-password']
 
@@ -39,7 +39,7 @@ class LabNode(WithLogMixIn, WithConfig):
         except KeyError as ex:
             raise ValueError('"{}"\nmust have parameter "{}"'.format(node_desc, ex))
         except TypeError as ex:
-            raise TypeError('{} for the node "{}" of role "{}"'.format(ex, node_desc.get('id'), node_desc.get('role')))
+            raise TypeError('{} for the node "{}" of role "{}"'.format(ex, node_desc.get('node-id'), node_desc.get('role')))
 
     def connect_node(self):
         """This is not server so process just wires information for upstream links. LabServer has this method overridden"""
@@ -160,8 +160,8 @@ class LabNode(WithLogMixIn, WithConfig):
             a += ',\n      wires: {{{}\n      }}'.format(wires)
         else:
             a += '\n'
-        if self.get_nics():
-            nics = ',\n              '.join(map(lambda x: x.get_yaml_body(), self.get_nics().values()))
+        if self._nics:
+            nics = ',\n              '.join(map(lambda x: x.get_yaml_body(), self._nics.values()))
             a += ',\n      nics:  {{{}\n      }}\n'.format(nics)
         else:
             a += '\n'

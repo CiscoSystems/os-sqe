@@ -73,6 +73,10 @@ class Network(object):
         except netaddr.AddrFormatError:
             raise ValueError('{} ip="{}" is not a valid ip'.format(msg, ip))
 
+    def get_yaml_body(self):
+        a = '\t{{net-id: {:5}, vlan: {:4}, mac-pattern: {:2}, cidr: {:19} {} }}'.format(self.get_net_id(), self.get_vlan_id(), self._mac_pattern, self.get_cidr(), 'is-via-tor: True' if self.is_via_tor() else '')
+        return a
+
 
 class Nic(object):
     def __init__(self, nic_id, node, ip, on_wires, is_ssh):
