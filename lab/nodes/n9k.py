@@ -431,17 +431,3 @@ class Nexus(LabNode):
 
     def r_collect_config(self):
         return self._format_single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())
-
-    def correct_port_id(self, port_id, from_node=None):
-        if port_id == 'mgmt0':
-            return port_id
-        err_msg = '{} {}: port id "{}" is wrong, it has to be <number>/<number> or mgmt0'.format('{} -> '.format(from_node) if from_node else '', self, port_id)
-        i = 0
-        for i, value in enumerate(port_id.split('/'), start=1):
-            try:
-                int(value)
-            except ValueError:
-                raise ValueError(err_msg)
-        if i != 2:
-            raise ValueError(err_msg)
-        return 'Ethernet' + port_id

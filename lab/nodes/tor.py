@@ -11,9 +11,6 @@ class Oob(Nexus):
     ROLE = 'oob'
     ROLE_OCTET = 'XX'
 
-    def correct_port_id(self, port_id, from_node=None):
-        return port_id
-
 
 class Pxe(Nexus):
     ROLE = 'pxe'
