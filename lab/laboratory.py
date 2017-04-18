@@ -68,11 +68,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             Wire.add_wire(local_node=from_node, local_port_id=peer_link['own-port'], peer_desc={'peer-id': peer_link['peer-id'], 'peer-port': peer_link['peer-port'], 'port-channel': peer_link['port-channel']})
 
         role_vs_nets = {}
-        for net_id, net_desc in self._cfg['nets'].items():
-            for role in net_desc['should-be']:
+        for net in self._cfg['nets']:
+            for role in net['should-be']:
                 self.get_role_class(role=role)
                 role_vs_nets.setdefault(role, set())
-                role_vs_nets[role].add(net_id)
+                role_vs_nets[role].add(net['net-id'])
 
         for node in self._nodes:
             if isinstance(node, LabServer):
@@ -182,6 +182,16 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.nodes.n9k import Nexus
 
         return filter(lambda x: type(x) is Nexus, self._nodes)
+
+    def get_oob(self):
+        from lab.nodes.tor import Oob
+
+        return filter(lambda x: type(x) is Oob, self._nodes)[0]
+
+    def get_tor(self):
+        from lab.nodes.tor import Tor
+
+        return filter(lambda x: type(x) is Tor, self._nodes)[0]
 
     def get_controllers(self):
         from lab.nodes.cimc_server import CimcController
