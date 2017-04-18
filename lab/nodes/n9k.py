@@ -58,8 +58,16 @@ class Nexus(LabNode):
 
     def n9_cmd(self, commands, timeout=5):
         d = {}
+        if type(commands) is not list:
+            is_not_list = True
+            commands = [commands]
+        else:
+            is_not_list = False
         self.log('executing ' + ' '.join(commands))
-        for c, r in zip(commands, self._rest_api(commands=commands, timeout=timeout)):
+        results = self._rest_api(commands=[commands] if type(commands) is not list else commands, timeout=timeout)
+        if is_not_list:
+            results = [results]
+        for c, r in zip(commands, results):
             if 'result' not in r or r['result'] is None:
                 d[c] = []
             else:
@@ -93,7 +101,7 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'int {}'.format(port_no), port_state])
 
     def n9_show_all(self):
-        a = self.n9_cmd(['sh port-channel summary', 'sh int st', 'sh int br', 'sh vpc', 'sh vlan', 'sh cdp nei det', 'sh lldp nei det'])
+        a = self.n9_cmd(['sh port-channel summary', 'sh int st', 'sh int br', 'sh vpc', 'sh vlan', 'sh cdp nei det', 'sh lldp nei det'], timeout=30)
         r = {'ports': {},
              'vlans': {x['vlanshowbr-vlanid']: x for x in a['sh vlan']['TABLE_vlanbrief']['ROW_vlanbrief']},
              'cdp': a['sh cdp nei det'],
