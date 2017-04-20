@@ -115,7 +115,7 @@ class Tims(WithLogMixIn, WithConfig):
         if not result_id:
             return ''
 
-        lab_vs_id = {'c24top': 'Tcbr2061g', 'i11tb3': 'Tcbr2062g', 'g7-2': 'Tcbr8154g', 'marahaika': 'Tcbr9367g'}
+        lab_vs_id = {'c24top': 'Tcbr2061g', 'i11tb3': 'Tcbr2062g', 'g7-2': 'Tcbr8154g', 'marahaika': 'Tcbr9367g', 'c35bot-vpp': 'Tcbr95554g'}
 
         body = '''
             <Result>
