@@ -9,7 +9,6 @@ class LabServer(LabNode):
         self._tmp_dir_exists = False
         self._package_manager = None
         self._mac_server_part = None
-        self._proxy_server = None
         self.__server = None
         self._ssh_username, self._ssh_password = kwargs['ssh-username'], kwargs['ssh-password']
         self._virtual_servers = set()  # virtual servers running on this hardware server
@@ -28,21 +27,16 @@ class LabServer(LabNode):
     def cmd(self, cmd):
         raise NotImplementedError
 
-    def connect_node(self):
-        """This method overrides method in LabNode class and adds specific operations with NICs"""
-        from lab.network import Nic
-
-        super(LabServer, self).connect_node()  # call super to get all wires connected
-        proxy_id = self._cfg.get('proxy', None)
-        if proxy_id:
-            self.set_proxy_server(self._lab.get_node_by_id(proxy_id))
-        self._nics = {nic_id: Nic.add_nic(node=self, nic_id=nic_id, nic_desc=nic_desc) for nic_id, nic_desc in self._cfg.get('nics', {}).items()}  # some servers might be without NICs like cobbler
-
     def get_nic(self, nic):
         try:
             return self._nics[nic]
         except KeyError:
             return RuntimeError('{}: is not on {} network'.format(self.get_node_id(), nic))
+
+    def add_nics(self, nics_cfg):
+        from lab.network import Nic
+
+        self._nics = Nic.add_nics(node=self, nics_cfg=nics_cfg)
 
     def get_ssh_ip(self):
         return [x for x in self._nics.values() if x.is_ssh()][0].get_ip_and_mask()[0]
@@ -74,12 +68,9 @@ class LabServer(LabNode):
     def get_ssh_for_bash(self):
         ip, u, p = self.get_ssh()
         command = 'sshpass -p {} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {}@{}'.format(p, u, ip)
-        if self._proxy_server:
-            command = self._proxy_server.get_ssh_for_bash()[0].replace('ssh ', 'ssh -t ') + ' ' + command
+        if self._proxy:
+            command = self._proxy.get_ssh_for_bash()[0].replace('ssh ', 'ssh -t ') + ' ' + command
         return command, super(LabServer, self).get_ssh_for_bash()
-
-    def set_proxy_server(self, proxy):
-        self._proxy_server = proxy
 
     def set_hostname(self, hostname):
         self._server.set_hostname(hostname=hostname)
@@ -129,9 +120,9 @@ class LabServer(LabNode):
         if estimated_time:
             self.log('Running {}... (usually it takes {} secs)'.format(command, estimated_time))
         started_at = time.time()
-        if self._proxy_server:
+        if self._proxy:
             while True:
-                ans = self._proxy_server.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # run on {}".format(password, username, ip, command, self.get_node_id()), in_directory=in_directory, is_warn_only=True)
+                ans = self._proxy.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # run on {}".format(password, username, ip, command, self.get_node_id()), in_directory=in_directory, is_warn_only=True)
                 if 'No route to host' in ans:
                     if connection_attempts == 0:
                         raise RuntimeError('Can not execute {} since {}'.format(command, ans))
@@ -147,7 +138,7 @@ class LabServer(LabNode):
         return ans
 
     def file_append(self, file_path, data, in_directory='.', is_warn_only=False, connection_attempts=100):
-        if self._proxy_server:
+        if self._proxy:
             raise NotImplemented
         else:
             ans = self._server.file_append(file_path=file_path, data=data, in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
@@ -194,8 +185,8 @@ class LabServer(LabNode):
         return self._server.put_string_as_file_in_dir(string_to_put, file_name, in_directory=in_directory)
 
     def r_is_online(self):
-        if self._proxy_server:
-            ans = self._proxy_server.exe(command='ping -c 1 {}'.format(self._server.get_ssh()[0]), is_warn_only=True)
+        if self._proxy:
+            ans = self._proxy.exe(command='ping -c 1 {}'.format(self._server.get_ssh()[0]), is_warn_only=True)
             return '1 received, 0% packet loss' in ans
         else:
             return self._server.ping()

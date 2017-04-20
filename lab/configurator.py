@@ -6,9 +6,9 @@ class LabConfigurator(WithConfig, WithLogMixIn):
     def sample_config(self):
         pass
 
-    def __init__(self, lab_name):
+    def __init__(self):
         super(LabConfigurator, self).__init__()
-        self.execute(lab_name=lab_name)
+        self.execute()
 
     def __repr__(self):
         return u'LAB CONFIGURATOR'
@@ -25,102 +25,60 @@ class LabConfigurator(WithConfig, WithLogMixIn):
             else:
                 continue
 
-    def process_mgmt_node(self, bld_ip):
-        from fabric.operations import prompt
-        import validators
-        from lab.server import Server
+    def process_connections(self, lab):
+        def normalize_mac(m):
+            return ':'.join([m[0:2], m[2:4], m[5:7], m[7:9], m[10:12], m[12:14]])
 
-        bld_ip = self.get_ip('Specify your mgmt node IP', ip=bld_ip)
-        bld_username = 'root'
-        bld_password = 'cisco123'
+        global_vlans = filter(lambda net: net.is_via_tor(), lab.get_all_nets().values())
 
-        bld_username = prompt(text='Enter username for N9K at {} (default is {}): '.format(bld_ip, bld_username)) or bld_username
-        bld_password = prompt(text='Enter password for N9K at {} (default is {}): '.format(bld_ip, bld_password)) or bld_password
-        bld = Server(ip=bld_ip, username=bld_username, password=bld_password)
+        mac_vs_node = {}
+        for cimc in lab.get_cimc_servers():
+            self.log('Reading {} CIMC NICs'.format(cimc))
+            r = cimc.cimc_list_pci_nic_ports()
+            for port_id, mac in r.items():
+                mac_vs_node[mac] = {'node': cimc, 'port-id': port_id}
 
-        # bld.exe('cat /etc/hosts')
-        self._mac_host = {x: 'bld' for x in bld.r_list_ip_info().keys() if validators.mac_address(x)}
+        wires_cfg = []
+        for n9 in lab.get_n9k():
+            r = n9.n9_show_all()
 
-    def process_n9(self, n9_ip):
-        from fabric.operations import prompt
-        from lab.nodes.n9k import Nexus
-        from lab.nodes.tor import Oob, Tor
-        from lab.wire import Wire
-        from lab.nodes.cimc_server import CimcServer
+            a = n9.n9_cmd('sh spanning-tree vlan {}'.format(global_vlans[0].get_vlan_id()))
+            uplink_candidate_pc_id = [x['if_index'] for x in a.values()[0][u'TABLE_port'][u'ROW_port'] if x['role'] == 'root'][0]
+            uplink_candidate_port_ids = [x['port'] for x in r['ports'][uplink_candidate_pc_id]['ports']]
+            for cdp in r['cdp']:
+                n9_port_id = cdp.get('intf_id')
+                n9_mac = 'unknown'
+                peer_port_id = cdp.get('port_id')
+                peer_ip = cdp.get('v4mgmtaddr')
+                peer_mac = 'unknown'
+                n9_pc_id = 'unknown'
 
-        n91_ip = self.get_ip('Specify one of your N9K IP', n9_ip)
-        n9k_username = 'admin'
-        n9k_password = 'CTO1234!'
+                if n9_port_id == 'mgmt0':
+                    peer = lab.get_oob()
+                    peer.set_oob_creds(ip=peer_ip, username='openstack-read', password='CTO1234!')
+                elif n9_port_id in uplink_candidate_port_ids:
+                    peer = lab.get_tor()
+                    peer.set_oob_creds(ip=peer_ip, username='openstack-read', password='CTO1234!')
+                else:  # assuming here that all others are peer link
+                    peer = [x for x in lab.get_n9k() if x.get_oob()[0] == peer_ip]
+                    if len(peer) != 1:
+                        continue  # assume that this device is not a part of the lab
+                    peer = peer[0]
+                wires_cfg.append({'from-node-id': n9.get_node_id(), 'from-port-id': n9_port_id, 'from-mac': n9_mac, 'to-node-id': peer.get_node_id(), 'to-port-id': peer_port_id, 'to-mac': peer_mac, 'pc-id': n9_pc_id})
 
-        n9_username = prompt(text='Enter username for N9K at {} (default is {}): '.format(n91_ip, n9k_username)) or n9k_username
-        n9_password = prompt(text='Enter password for N9K at {} (default is {}): '.format(n91_ip, n9k_password)) or n9k_password
+            for lldp in r['lldp']['TABLE_nbor_detail']['ROW_nbor_detail']:
+                cimc_mac = normalize_mac(lldp['port_id'])
+                if cimc_mac in mac_vs_node:
+                    n9_port_id = lldp.get('l_port_id').replace('Eth', 'Ethernet')
+                    n9_mac = 'unknown'
+                    n9_pc_id_lst = [p_id for p_id, p_d in r['ports'].items() if 'port-channel' in p_id and n9_port_id in [x['port']for x in p_d['ports']]]
+                    n9_pc_id = n9_pc_id_lst[0] if len(n9_pc_id_lst) else 'unknown'
+                    cimc_node = mac_vs_node[cimc_mac]['node']
+                    cimc_port_id = mac_vs_node[cimc_mac]['port-id']
+                    wires_cfg.append({'from-node-id': cimc_node.get_node_id(), 'from-port-id': cimc_port_id, 'from-mac': cimc_mac, 'to-node-id': n9.get_node_id(), 'to-port-id': n9_port_id, 'to-mac': n9_mac, 'pc-id': n9_pc_id})
+        return sorted(wires_cfg, key=lambda e: e['from-node-id'])
 
-        n91 = Nexus(node_id='n91', role=Nexus.ROLE, lab='fake-lab')
-        n91.set_oob_creds(ip=n91_ip, username=n9k_username, password=n9k_password)
-
-        self.log('Step 1: we try to find peer info:')
-        #    nodes = OrderedDict()
-        nodes = {'tor': None, 'oob': None, 'n9k': [n91], 'cimc': [], 'fi': []}
-        # for node in self.get_nodes_by_class(CimcServer):
-        #     nodes[node.get_id()] = node.cimc_list_vnics()
-        #     nodes[node.get_id()] = node.cimc_list_lom_ports()
-        #     node.cimc_get_mgmt_nic()
-
-        # peer_links = []
-        n92 = None
-        cdps = n91.n9_show_cdp_neighbor()
-        # ports = n91.n9_show_ports()
-        # pc = n91.n9_show_port_channels()
-        # vpc = n91.n9_show_vpc()
-
-        for cdp in cdps:
-            own_port_id = cdp.get('intf_id')
-            peer_port_id = cdp.get('port_id')
-
-            if own_port_id == 'mgmt0':
-                oob = Oob(node_id='oob', role=Oob.ROLE, lab='fake-lab')
-                oob.set_oob_creds(ip=cdp.get('v4mgmtaddr'), username='?????', password='?????')
-                Wire(node_n=oob, port_n=peer_port_id, node_s=n91, port_s=own_port_id, port_channel=None, vlans=[], mac=None)
-                nodes['oob'] = oob
-            elif 'TOR' in cdp.get('sysname', ''):
-                tor = Tor(node_id='tor', role=Tor.ROLE, lab='fake-lab')
-                tor.set_oob_creds(ip=cdp.get('v4mgmtaddr'), username='?????', password='?????')
-                Wire(node_n=tor, port_n=peer_port_id, node_s=n91, port_s=own_port_id, port_channel='uplink', vlans=[], mac=None)
-                nodes.setdefault('tor', tor)
-            else:
-                ip = cdp.get('v4mgmtaddr')
-                if n92 and n92.get_oob()[0] != ip:
-                    raise RuntimeError('Failed to detect peer: different ips: {} and {}'.format(n92.get_oob()[0], ip))
-                if not n92:
-                    n92 = Nexus(node_id='n92', role=Nexus.ROLE, lab='fake-lab')
-                    n92.set_oob_creds(ip=ip, username=n9_username, password=n9_password)
-                Wire(node_n=n92, port_n=peer_port_id, node_s=n91, port_s=peer_port_id, port_channel='peer-link', vlans=[], mac=None)
-
-        lldps = n91.n9_show_lldp_neighbor()
-        cimc_username = 'admin'
-        cimc_password = 'cisco123!'
-
-        def normalize_mac(a):
-            return ':'.join([a[0:2], a[2:4], a[5:7], a[7:9], a[10:12], a[12:14]])
-
-        for lldp in lldps:
-            own_port_id = lldp.get('l_port_id').replace('Eth', 'Ethernet')
-            # own_port_info = ports[own_port_id]
-            peer_mac = normalize_mac(lldp['port_id'])
-            if peer_mac not in self._mac_host:
-                continue
-            # peer_mgmt_mac = lldp['chassis_id']
-            cimc_ip = lldp.get('mgmt_addr')
-            cimc_ip = self.get_ip('Something connected to {} with mac {}, CIMC address not known , please provide it'.format(own_port_id, peer_mac), None) if 'not advertised' in cimc_ip else cimc_ip
-
-            cimc_username = prompt(text='Enter username for N9K at {} (default is {}): '.format(cimc_ip, cimc_username)) or cimc_username
-            cimc_password = prompt(text='Enter password for N9K at {} (default is {}): '.format(cimc_ip, cimc_password)) or cimc_password
-            cimc = CimcServer(node_id='???', role='???', lab='fake-lab')
-            cimc.set_oob_creds(ip=cimc_ip, username=cimc_username, password=cimc_password)
-            # loms = cimc.cimc_list_lom_ports()
-            nodes[1] = cimc
-
-    def execute(self, lab_name):
+    def execute(self):
         import os
 
         lab_name = 'c35bottom'
@@ -136,20 +94,22 @@ class LabConfigurator(WithConfig, WithLogMixIn):
     def process_mercury_setup_data(self, yaml_path):
         from lab.laboratory import Laboratory
 
-        cfg = self.read_config_from_file(yaml_path)
+        mercury_cfg = self.read_config_from_file(yaml_path)
 
-        lab = Laboratory(config_path=None)
-        lab._lab_name = yaml_path.split('/')[-2]
-        lab.set_lab_type('MERCURY-' + cfg['MECHANISM_DRIVERS'].upper())
-        lab._id = 909
+        net_name_translator = {'api': 'a', 'management': 'mx', 'tenant': 't', 'external': 'e', 'provider': 'p', 'storage': 's'}
+        should_be = {'a':  ['director-n9', 'control-n9', 'vtc'],
+                     'mx': ['director-n9', 'control-n9', 'compute-n9', 'ceph-n9', 'vtc', 'xrvr', 'vts-host-n9'],
+                     't':  ['compute-n9', 'xrvr', 'vts-host-n9'],
+                     's':  ['control-n9', 'compute-n9', 'ceph-n9'],
+                     'e':  ['control-n9'],
+                     'p':  ['compute-n9']}
 
         nets = list()
-        for net_info in cfg['NETWORKING']['networks']:
+        for net_info in mercury_cfg['NETWORKING']['networks']:
             cidr = net_info.get('subnet')
             if not cidr:
                 continue
-            segment = net_info['segments'][0]
-            net_name = 'mx' if 'management' in segment else segment[0]
+            net_name = net_name_translator[net_info['segments'][0]]
 
             if net_name == 'mx':
                 mac_pattern = '99'
@@ -160,39 +120,90 @@ class LabConfigurator(WithConfig, WithLogMixIn):
             elif net_name == 'a':
                 mac_pattern = 'aa'
             elif net_name == 'e':
+                mac_pattern = 'ee'
+            elif net_name == 'p':
                 mac_pattern = 'ff'
             else:
-                raise ValueError('unxepected network segment found: {}'.format(segment))
+                raise ValueError('unxepected network segment found')
             vlan_id = net_info['vlan_id']
-            nets.append({'net-id': net_name, 'vlan': vlan_id, 'mac-pattern': mac_pattern, 'cidr': cidr})
-        lab.add_networks(nets)
+            nets.append({'net-id': net_name, 'vlan': vlan_id, 'mac-pattern': mac_pattern, 'cidr': cidr, 'should-be': should_be[net_name], 'is-via-tor': net_name in ['a']})
 
-        cimc_username = cfg['CIMC-COMMON']['cimc_username']
-        cimc_password = cfg['CIMC-COMMON']['cimc_password']
-        ssh_username = cfg['COBBLER']['admin_username']
+        cimc_username = mercury_cfg['CIMC-COMMON']['cimc_username']
+        cimc_password = mercury_cfg['CIMC-COMMON']['cimc_password']
+        ssh_username = mercury_cfg['COBBLER']['admin_username']
         ssh_password = 'cisco123'
 
-        nodes = []
+        switches = [{'node-id': 'oob', 'role': 'oob', 'oob-ip': '???1', 'oob-username': '????', 'oob-password': '?????', 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None},
+                    {'node-id': 'tor', 'role': 'tor', 'oob-ip': '???2', 'oob-username': '????', 'oob-password': '?????', 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None}]
 
-        for i, sw in enumerate(cfg['TORSWITCHINFO']['SWITCHDETAILS'], start=1):
-            nodes.append({'node-id': 'n9' + str(i), 'role': 'n9', 'oob-ip': sw['ssh_ip'], 'oob-username': sw['username'], 'oob-password': sw['password'], 'ssh-username': 'None', 'ssh-password': 'None'})
+        for i, sw in enumerate(mercury_cfg['TORSWITCHINFO']['SWITCHDETAILS'], start=1):
+            switches.append({'node-id': 'n9' + str(i), 'role': 'n9', 'oob-ip': sw['ssh_ip'], 'oob-username': sw['username'], 'oob-password': sw['password'], 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
 
-        nodes.append({'node-id': 'mgm', 'role': 'director-n9', 'oob-ip': cfg['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': cfg['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': cfg['TESTING_MGMT_CIMC_PASSWORD'],
-                      'ssh-username': ssh_username, 'ssh-password': ssh_password})
+        nodes = [{'node-id': 'mgm', 'role': 'director-n9', 'oob-ip': mercury_cfg['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': mercury_cfg['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': mercury_cfg['TESTING_MGMT_CIMC_PASSWORD'],
+                  'ssh-username': ssh_username, 'ssh-password': ssh_password, 'proxy-id': None,
+                  'nics': [{'nic-id': 'a', 'ip': mercury_cfg['TESTING_MGMT_NODE_API_IP'].split('/')[0], 'is-ssh': True},
+                           {'nic-id': 'mx', 'ip': mercury_cfg['TESTING_MGMT_NODE_MGMT_IP'].split('/')[0], 'is-ssh': False}]}]
 
-        for role, node_ids in cfg['ROLES'].items():
+        for role, node_ids in mercury_cfg['ROLES'].items():
             for node_id in node_ids:
                 role_sqe = role + '-n9'
                 try:
-                    srv_mercury = cfg['SERVERS'][node_id]
-                    oob_ip = srv_mercury['cimc_info']['cimc_ip']
-                    oob_username = srv_mercury['cimc_info'].get('cimc_username', cimc_username)
-                    oob_password = srv_mercury['cimc_info'].get('cimc_password', cimc_password)
+                    srv_cfg = mercury_cfg['SERVERS'][node_id]
+                    oob_ip = srv_cfg['cimc_info']['cimc_ip']
+                    oob_username = srv_cfg['cimc_info'].get('cimc_username', cimc_username)
+                    oob_password = srv_cfg['cimc_info'].get('cimc_password', cimc_password)
 
-                    mx_ip = srv_mercury['management_ip']
-                    t_ip = srv_mercury['tenant_ip']
-                    nodes.append({'node-id': node_id, 'role': role_sqe, 'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': ssh_password})
+                    ips = {net_name_translator[key.replace('_ip', '')]: val for key, val in srv_cfg.items() if '_ip' in key}
+
+                    nics = [{'nic-id': net_id, 'ip': ip, 'is-ssh': net_id == 'mx'} for net_id, ip in ips.items()]
+                    nodes.append({'node-id': node_id, 'role': role_sqe, 'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': ssh_password, 'nics': nics,
+                                  'proxy-id': 'mgm'})
                 except KeyError as ex:
                     raise KeyError('{}: no {}'.format(node_id, ex))
-        lab.add_nodes(nodes)
-        lab.save_lab_config()
+
+        sqe_cfg = {'lab-name': yaml_path.split('/')[-2], 'lab-id': 99, 'lab-type': 'MERCURY-' + mercury_cfg['MECHANISM_DRIVERS'].upper(), 'dns': ['171.70.168.183'], 'ntp': ['171.68.38.66'],
+                   'special-creds': {'neutron_username': 'admin', 'neutron_password': 'new123'},
+                   'networks': nets, 'switches': switches, 'nodes': nodes, 'wires': []}
+        lab = Laboratory(sqe_cfg)
+        sqe_cfg['wires'] = self.process_connections(lab=lab)
+        sqe_cfg['switches'][0]['oob-ip'] = lab.get_oob().get_oob()[0]
+        sqe_cfg['switches'][1]['oob-ip'] = lab.get_tor().get_oob()[0]
+
+        lab = Laboratory(sqe_cfg)
+
+        self.save_lab_config(lab=lab)
+
+    def save_lab_config(self, lab):
+        saved_config_path = self.get_artifact_file_path('saved_{}.yaml'.format(lab._lab_name))
+        with self.open_artifact(name=saved_config_path, mode='w') as f:
+            f.write('lab-id: {} # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n'.format(lab.get_id()))
+            f.write('lab-name: {} # any string to be used on logging\n'.format(lab))
+            f.write('lab-type: {} # supported types: {}\n'.format(lab.get_type(), ' '.join(lab.SUPPORTED_TYPES)))
+            f.write('description-url: "{}"\n'.format(lab))
+            f.write('\n')
+            f.write('dns: {}\n'.format(lab.get_dns()))
+            f.write('ntp: {}\n'.format(lab.get_ntp()))
+            f.write('\n')
+            f.write('# special creds to be used by OS neutron services\n')
+            f.write('special-creds: {{neutron_username: {}, neutron_password: {}}}\n'.format(lab._neutron_username, lab._neutron_password))
+            f.write('\n')
+
+            f.write('networks: [\n')
+            net_bodies = [net.get_yaml_body() for net in lab.get_all_nets().values()]
+            f.write(',\n'.join(net_bodies))
+            f.write('\n]\n\n')
+
+            f.write('nodes: [\n')
+            node_bodies = [node.get_yaml_body() for node in lab.get_switches()]
+            f.write(',\n'.join(node_bodies))
+            f.write('\n]\n\n')
+
+            f.write('nodes: [\n')
+            node_bodies = [node.get_yaml_body() for node in lab.get_servers_with_nics()]
+            f.write(',\n\n'.join(node_bodies))
+            f.write('\n]\n\n')
+
+            f.write('wires: [\n')
+            wires_body = [wire.get_yaml_body() for wire in lab.get_all_wires()]
+            f.write(',\n'.join(wires_body))
+            f.write('\n]\n')

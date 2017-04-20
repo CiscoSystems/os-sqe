@@ -17,85 +17,78 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def sample_config():
         return 'path to lab config'
 
-    def add_networks(self, nets):
-        from lab.network import Network
-
-        self._nets = {net_desc['net-id']: Network.add_network(lab=self, net_id=net_desc['net-id'], net_desc=net_desc) for net_desc in nets}
-        map(lambda net: self.make_sure_that_object_is_unique(obj=net.get_vlan_id(), owner=net), self._nets.values())  # make sure that all nets have unique VLAN ID
-        map(lambda net: self.make_sure_that_object_is_unique(obj=net.get_cidr(), owner=net), self._nets.values())  # make sure that all nets have unique CIDR
-        return self._nets
-
-    def add_nodes(self, nodes):
-        from lab.nodes import LabNode
-
-        self._nodes = list()
-        map(lambda nd: LabNode.add_node(lab=self, node_desc=nd), nodes)  # first pass - just create nodes
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_node_id(), owner=self), self._nodes)  # make sure that all nodes have unique ids
-        map(lambda n: n.connect_node(), self._nodes)  # second pass - process wires and nics section to connect node to peers
-        return self._nodes
-
-    def set_lab_type(self, lab_type):
-        if lab_type not in [self.MERCURY_VPP, self.MERCURY_VTS, self.OSPD]:
-            raise ValueError('"{}" is not one of supported types: {}'.format(self._lab_type, self._supported_lab_types))
-        self._lab_type = lab_type
-        return lab_type
-
     def __init__(self, config_path):
         from lab import with_config
+        from lab.nodes.virtual_server import VirtualServer
+        from lab.network import Network
+        from lab.nodes import LabNode
         from lab.wire import Wire
-        from lab.nodes.lab_server import LabServer
 
         self._supported_lab_types = [self.MERCURY_VTS, self.MERCURY_VPP, self.OSPD]
         self._unique_dict = dict()  # to make sure that all needed objects are unique
         if config_path is None:
             return
-
-        self._cfg = with_config.read_config_from_file(config_path=config_path)
+        if type(config_path) is dict:
+            self._cfg = config_path
+        else:
+            self._cfg = with_config.read_config_from_file(config_path=config_path)
         self._id = self._cfg['lab-id']
         self._lab_name = self._cfg['lab-name']
-        self._lab_type = self.set_lab_type(self._cfg['lab-type'])
 
+        self._lab_type = self._cfg['lab-type']
+        if self._lab_type not in [self.MERCURY_VPP, self.MERCURY_VTS, self.OSPD]:
+            raise ValueError('"{}" is not one of supported types: {}'.format(self._lab_type, self._supported_lab_types))
         self._is_sriov = self._cfg.get('use-sr-iov', False)
 
         self._dns, self._ntp = self._cfg['dns'], self._cfg['ntp']
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
-        self._nets = self.add_networks(nets=self._cfg['nets'])
-        self._nodes = self.add_nodes(nodes=self._cfg['nodes'])
+        self._nets = {net_desc['net-id']: Network.add_network(lab=self, net_id=net_desc['net-id'], net_desc=net_desc) for net_desc in self._cfg['networks']}
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_vlan_id(), owner=n), self._nets.values())  # make sure that all nets have unique VLAN ID
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_cidr(), owner=n), self._nets.values())  # make sure that all nets have unique CIDR
 
-        for peer_link in self._cfg['peer-links']:  # list of {'own-id': 'n97', 'own-port': '1/46', 'port-channel': 'pc100', 'peer-id': 'n98', 'peer-port': '1/46'}
-            from_node = self.get_node_by_id(peer_link['own-id'])
-            Wire.add_wire(local_node=from_node, local_port_id=peer_link['own-port'], peer_desc={'peer-id': peer_link['peer-id'], 'peer-port': peer_link['peer-port'], 'port-channel': peer_link['port-channel']})
+        self._nodes = LabNode.add_nodes(lab=self, nodes_cfg=self._cfg['switches'])  # first pass - just create nodes
+        self._nodes.extend(LabNode.add_nodes(lab=self, nodes_cfg=self._cfg['nodes']))
+        if 'virtuals' in self._cfg:
+            self._nodes.extend(VirtualServer.add_nodes(lab=self, nodes_cfg=self._cfg['virtuals']))
+
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_node_id(), owner=self), self._nodes)  # make sure that all nodes have unique ids
+
+        self._wires = Wire.add_wires(lab=self, wires_cfg=self._cfg['wires'])  # second pass - process wires and nics section to connect node to peers
+
+        map(lambda n: self.get_node_by_id(node_id=n['node-id'].strip()).add_nics(nics_cfg=n['nics']), self._cfg['nodes'] + self._cfg.get('virtuals', []))    # third pass - process all nics
 
         role_vs_nets = {}
-        for net in self._cfg['nets']:
+        for net in self._cfg['networks']:
             for role in net['should-be']:
                 self.get_role_class(role=role)
                 role_vs_nets.setdefault(role, set())
                 role_vs_nets[role].add(net['net-id'])
 
-        for node in self._nodes:
-            if isinstance(node, LabServer):
-                if node.get_role() in role_vs_nets:
-                    actual_nets = set(node.get_nics().keys())
-                    req_nets = role_vs_nets[node.get_role()]
-                    if actual_nets != req_nets:
-                        raise ValueError('{}: should be on nets {} (parameter should-be in section nets )while actually on {} (section nics)'.format(node, req_nets, actual_nets))
-                # for nic in node.get_nics().values():
-                #     self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
-                #     for mac in nic.get_macs():
-                #         self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_node_id())  # check that all MAC are unique
-                try:
-                    node.get_ssh_ip()
-                except IndexError:
-                    raise ValueError('{}: no NIC is marked as is_ssh')
-            for wire in node.get_all_wires():
-                peer_node = wire.get_peer_node(node)
-                peer_port_id = wire.get_peer_port(node)
-                self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), owner=node.get_node_id())  # check that this peer_node-peer_port is unique
+        for node in self.get_servers_with_nics():
+            if node.get_role() in role_vs_nets:
+                actual_nets = set(node.get_nics().keys())
+                req_nets = role_vs_nets[node.get_role()]
+                if actual_nets != req_nets:
+                    raise ValueError('{}: should be on nets {} (parameter should-be in section nets )while actually on {} (section nics)'.format(node, req_nets, actual_nets))
+            # for nic in node.get_nics().values():
+            #     self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
+            #     for mac in nic.get_macs():
+            #         self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_node_id())  # check that all MAC are unique
+            try:
+                node.get_ssh_ip()
+            except IndexError:
+                raise ValueError('{}: no NIC is marked as is_ssh'.format(node))
+            # for wire in node.get_all_wires():
+            #     peer_node = wire.get_peer_node(node)
+            #     peer_port_id = wire.get_peer_port(node)
+            #     self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), owner=node.get_node_id())  # check that this peer_node-peer_port is unique
 
     def is_sriov(self):
         return self._is_sriov
+
+    def get_all_wires(self):
+        return self._wires
 
     @staticmethod
     def get_role_class(role):
@@ -141,7 +134,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             return self._nodes
 
     def get_node_by_id(self, node_id):
-        nodes = list(filter(lambda x: x.get_node_id() == node_id, self._nodes))
+        nodes = list(filter(lambda x: x.get_node_id() == node_id.strip(), self._nodes))
         if len(nodes) == 1:
             return nodes[0]
         else:
@@ -193,6 +186,9 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         return filter(lambda x: type(x) is Tor, self._nodes)[0]
 
+    def get_switches(self):
+        return [self.get_tor()] + [self.get_oob()] + self.get_n9k()
+
     def get_controllers(self):
         from lab.nodes.cimc_server import CimcController
         from lab.nodes.fi import FiController
@@ -209,6 +205,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.nodes.cimc_server import CimcServer
 
         return self.get_nodes_by_class(klass=CimcServer)
+
+    def get_servers_with_nics(self):
+        from lab.nodes.cimc_server import LabServer
+
+        return self.get_nodes_by_class(klass=LabServer)
 
     def get_neutron_creds(self):
         return self._neutron_username, self._neutron_password
@@ -302,38 +303,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         cloud_version = self.get_director().r_get_version()
         vts_version = self.get_vtc()[0].r_vtc_get_version() if self.get_vtc() else 'no-vts'
         return cloud_version, vts_version
-
-    def save_lab_config(self):
-        import functools
-
-        with self.open_artifact(name='saved_{}.yaml'.format(self._lab_name), mode='w') as f:
-            f.write('lab-id: {} # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n'.format(self.get_id()))
-            f.write('lab-name: {} # any string to be used on logging\n'.format(self._lab_name))
-            f.write('lab-type: {} # supported types: {}\n'.format(self._lab_type, ' '.join(self.SUPPORTED_TYPES)))
-            f.write('description-url: "{}"\n'.format(self._lab_name))
-            f.write('\n')
-            f.write('dns: [171.70.168.183]\n')
-            f.write('ntp: [171.68.38.66]\n')
-            f.write('\n')
-
-            f.write('networks: [\n')
-            net_bodies = [net.get_yaml_body() for net in self.get_all_nets().values()]
-            f.write(',\n'.join(net_bodies))
-            f.write('\n]\n\n')
-
-            f.write('nodes: [\n')
-            node_bodies = [node.get_yaml_body() for node in self.get_nodes_by_class()]
-            f.write(',\n\n'.join(node_bodies))
-            f.write('\n]\n\n')
-
-            f.write('peer-links: [ # Section which describes peer-links in the form {own-id: n92, own-port:  1/46, peer-id: n91, peer-port: 1/46, port-channel: pc100}\n   ')
-
-            peer_links = []
-
-            for wire in set(functools.reduce(lambda lst, x: lst + x.get_peer_link_wires(), self.get_n9k(), [])):
-                peer_links.append(wire.get_peer_link_yaml_body())
-            f.write(',\n   '.join(peer_links))
-            f.write('\n]\n')
 
     def exe(self, cmd):
         from lab.nodes.lab_server import LabServer

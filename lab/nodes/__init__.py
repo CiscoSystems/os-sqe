@@ -10,9 +10,13 @@ class LabNode(WithLogMixIn, WithConfig):
     _ROLE_VS_COUNT = {}
 
     def __init__(self, **kwargs):
-        self._lab = kwargs.pop('lab')        # link to parent Laboratory object
-        self._id = kwargs['node-id']         # some id which unique in the given role, usually role + some small integer
-        self._role = kwargs['role']          # which role this node play, possible roles are defined in Laboratory
+        self._lab = kwargs.pop('lab')                     # link to parent Laboratory object
+        self._id = kwargs['node-id'].strip()              # some id which unique in the given role, usually role + some small integer
+        self._role = kwargs['role'].strip()               # which role this node play, possible roles are defined in Laboratory
+        self._proxy_node_id = kwargs['proxy-id']          # external ssh access via this node id or None
+        if self._proxy_node_id is not None:
+            self._proxy_node_id.strip()
+        self.__proxy = None                               # instance of class LabNode ,will be used as proxy
         self._oob_ip, self._oob_username, self._oob_password = kwargs['oob-ip'], kwargs['oob-username'], kwargs['oob-password']
 
         self._nics = dict()                  # list of NICs, will be filled in connect_node via class Wire
@@ -22,31 +26,35 @@ class LabNode(WithLogMixIn, WithConfig):
         self._ROLE_VS_COUNT.setdefault(role, 0)
         self._ROLE_VS_COUNT[role] += 1
         self._n = self._ROLE_VS_COUNT[role]  # number of this node in a list of nodes for this role
-        self._cfg = kwargs                   # initial configuration dictionary as provided in lab config file
         self._wires = []
-        self._lab.get_nodes_by_class().append(self)  # add this node to the lab. this step is needed since virtual servers relay on hardware
 
     def __repr__(self):
         return u'{} {}'.format(self.get_lab_id(), self.get_node_id())
 
+    @property
+    def _proxy(self):  # lazy initialisation, keep node id until the first use, then convert it to node reference
+        if self.__proxy is None:
+            try:
+                self.__proxy = self._lab.get_node_by_id(self._proxy_node_id)
+            except ValueError:
+                self.__proxy = None
+        return self.__proxy
+
     @staticmethod
-    def add_node(lab, node_desc):
+    def add_node(lab, node_cfg):
         try:
-            role = node_desc['role']
+            role = node_cfg['role']
             klass = lab.get_role_class(role)
-            node_desc['lab'] = lab
-            return klass(**node_desc)
+            node_cfg['lab'] = lab
+            return klass(**node_cfg)
         except KeyError as ex:
-            raise ValueError('"{}"\nmust have parameter "{}"'.format(node_desc, ex))
+            raise ValueError('"{}"\nmust have parameter "{}"'.format(node_cfg, ex))
         except TypeError as ex:
-            raise TypeError('{} for the node "{}" of role "{}"'.format(ex, node_desc.get('node-id'), node_desc.get('role')))
+            raise TypeError('{} for the node "{}" of role "{}"'.format(ex, node_cfg.get('node-id'), node_cfg.get('role')))
 
-    def connect_node(self):
-        """This is not server so process just wires information for upstream links. LabServer has this method overridden"""
-        from lab.wire import Wire
-
-        for local_port_id, peer_desc in self._cfg.get('wires', {}).items():  # node might have no wires
-            Wire.add_wire(local_node=self, local_port_id=local_port_id, peer_desc=peer_desc)
+    @staticmethod
+    def add_nodes(lab, nodes_cfg):
+        return [LabNode.add_node(lab=lab, node_cfg=node_cfg) for node_cfg in nodes_cfg]
 
     def get_ssh_for_bash(self):
         return 'sshpass -p {} ssh {}@{}'.format(self._oob_password, self._oob_username, self._oob_ip)
@@ -152,17 +160,12 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def get_yaml_body(self):
 
-        a = ' {{id: "{}", role: {}, oob-ip: {}, ssh-username: None, ssh-password: None, oob-username: "{}", oob-password: "{}", '.format(self._id, self._role, self._oob_ip, self._oob_username, self._oob_password)
+        a = ' {{node-id: "{:5}", role: {:5}, proxy-id: {:5}, oob-ip: {:5}, ssh-username: None, ssh-password: None, oob-username: "{}", oob-password: "{}", '.format(self._id, self._role, self._proxy_node_id,
+                                                                                                                                                                    self._oob_ip, self._oob_username, self._oob_password)
         a += 'hostname: "{}", model: "{}", ru: "{}"'.format('1', self._model, self._ru)
-
-        if self._wires:
-            wires = ',\n              '.join(map(lambda x: x.get_yaml_body(), self._wires))
-            a += ',\n      wires: {{{}\n      }}'.format(wires)
-        else:
-            a += '\n'
         if self._nics:
             nics = ',\n              '.join(map(lambda x: x.get_yaml_body(), self._nics.values()))
-            a += ',\n      nics:  {{{}\n      }}\n'.format(nics)
+            a += ',\n      nics: [ {}\n      ]\n'.format(nics)
         else:
             a += '\n'
         a += ' }'

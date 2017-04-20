@@ -133,12 +133,12 @@ def run(config_path, version):
 
 
 @task
-def conf(lab_name):
-    """fab conf:lab-name\t\t\tTries to create lab configuration yaml
+def conf():
+    """fab conf\t\t\t\tTries to create lab configuration yaml
     """
     from lab.configurator import LabConfigurator
 
-    LabConfigurator(lab_name=lab_name)
+    LabConfigurator()
 
 
 @task

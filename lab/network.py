@@ -1,5 +1,5 @@
 class Network(object):
-    def __init__(self, lab, net_id, cidr, vlan, mac_pattern, is_via_tor=False, is_pxe=False):
+    def __init__(self, lab, net_id, cidr, vlan, mac_pattern, roles_must_present, is_via_tor):
         from netaddr import IPNetwork
 
         self._lab = lab
@@ -7,8 +7,8 @@ class Network(object):
         self._net_id = net_id
         self._vlan = vlan  # single network needs to sit on single vlan
         self._mac_pattern = mac_pattern
-        self._is_pxe = is_pxe  # NICs on this network will be configured as PXE enabled
         self._is_via_tor = is_via_tor  # this network if supposed to go out of lab's TOR
+        self._this_roles_must_present = roles_must_present  # list of node's roles which should sit on this network
 
     def __repr__(self):
         return u'net: {} {} {}'.format(self._net_id, self._net, self._vlan)
@@ -23,7 +23,7 @@ class Network(object):
         """
 
         try:
-            return Network(lab=lab, net_id=net_id, cidr=net_desc['cidr'], vlan=str(net_desc['vlan']), mac_pattern=net_desc['mac-pattern'], is_via_tor=net_desc.get('is-via-tor', False), is_pxe=net_desc.get('is-pxe', False))
+            return Network(lab=lab, net_id=net_id, cidr=net_desc['cidr'], vlan=str(net_desc['vlan']), mac_pattern=net_desc['mac-pattern'], roles_must_present=net_desc['should-be'], is_via_tor=net_desc['is-via-tor'])
         except KeyError as ex:
             raise ValueError('network {} does not specify {}'.format(net_id, ex))
 
@@ -38,9 +38,6 @@ class Network(object):
 
     def get_gw(self):
         return self._net[1]
-
-    def is_pxe(self):
-        return self._is_pxe
 
     def is_via_tor(self):
         return self._is_via_tor
@@ -74,71 +71,58 @@ class Network(object):
             raise ValueError('{} ip="{}" is not a valid ip'.format(msg, ip))
 
     def get_yaml_body(self):
-        a = '\t{{net-id: {:5}, vlan: {:4}, mac-pattern: {:2}, cidr: {:19} {} }}'.format(self.get_net_id(), self.get_vlan_id(), self._mac_pattern, self.get_cidr(), 'is-via-tor: True' if self.is_via_tor() else '')
+        a = '  {{net-id: {:3}, vlan: {:4}, mac-pattern: {:2}, cidr: {:19}, is-via-tor: {:5}, should-be: {}}}'.format(self.get_net_id(), self.get_vlan_id(), self._mac_pattern, self.get_cidr(),
+                                                                                                                     'True' if self.is_via_tor() else 'False', self._this_roles_must_present)
         return a
 
 
 class Nic(object):
-    def __init__(self, nic_id, node, ip, on_wires, is_ssh):
+    def __init__(self, nic_id, node, ip, is_ssh):
 
         self._net = node.lab().get_net(nic_id)    # valid lab.network.Network
         self._net.check_ip_correct(msg='{}: nic "{}" has problem: '.format(node, nic_id), ip=ip)
 
         self._node = node  # nic belongs to the node
-        self._names = []  # this is NIC name which coincides with network name
+        self._nic_id = nic_id  # this is NIC name which coincides with network name
         self._ip = ip  # might be also not int but a sting which says that ip for this NIC is not yet available
-        self._on_wires = on_wires  # this NIC sits on this list of wires, usually 2 for port channel and 1 for PXE boot via LOM
-        self._macs = []
-        self._port_ids = []
         self._is_ssh = is_ssh
 
-        for wire in self._on_wires:
-            wire.add_nic(self)
-            own_port_id = wire.get_own_port(node)
-            self._port_ids.append(own_port_id)
-            self._is_on_lom = own_port_id in ['LOM-1', 'LOM-2']
-            mac = wire.get_mac()
-            mac = mac[:-2] + str(self._net.get_mac_pattern()) if own_port_id not in ['LOM-1', 'LOM-2'] else mac
-            self._macs.append(mac)
-            if len(self._on_wires) == 1:
-                self._names = [nic_id]  # if nic sits on single wire, nic names has just a single value coinciding with given name
-            else:
-                self._names.append(nic_id + ('0' if own_port_id in ['MLOM/0', 'LOM-1'] else '1'))
+    # def associate_with_wires(self, wires):
+    #     for wire in wires:
+    #         wire.add_nic(self)
+    #         own_port_id = wire.get_own_port(self._node)
+    #         own_mac = wire.get_own_mac(self._node)
+    #         self._port_ids.append(own_port_id)
+    #         self._is_on_lom = own_port_id in ['LOM-1', 'LOM-2']
+    #         mac = wire.get_mac()
+    #         mac = mac[:-2] + str(self._net.get_mac_pattern()) if own_port_id not in ['LOM-1', 'LOM-2'] else mac
+    #         self._macs.append(mac)
+    #         if len(self._on_wires) == 1:
+    #             self._names = [nic_id]  # if nic sits on single wire, nic names has just a single value coinciding with given name
+    #         else:
+    #             self._names.append(nic_id + ('0' if own_port_id in ['MLOM/0', 'LOM-1'] else '1'))
 
     def __repr__(self):
-        return u'{} {} {}'.format(self.get_ip_with_prefix(), self.get_names(), self.get_macs())
+        return u'{} {}'.format(self.get_ip_with_prefix(), self._nic_id)
 
     @staticmethod
-    def add_nic(node, nic_id, nic_desc):
+    def add_nic(node, nic_cfg):
         """Fabric to create a class Nic instance
-        :param node: class LabServer derived instance
-        :param nic_id: short string id of this NIC, must be the same as corresponding net_id of class Network
-        :param nic_desc: dictionary e.g. {'ip': '10.23.221.142', 'ports': [MLOM0/0, MLOM/1], 'is_ssh': True}
+        :param node: object of class LabServer or derived
+        :param nic_cfg: dict e.g. {'nic-id': XX, 'ip': XX, 'ports': [XXX, XXX], 'is_ssh': True}
         :returns class Nic instance
         """
-        from lab.nodes.virtual_server import VirtualServer
-
         try:
-            ports = nic_desc['ports']
-            node_with_wires = node.get_hardware_server() if isinstance(node, VirtualServer) else node
-            on_wires = [x for x in node_with_wires.get_all_wires() if x.get_own_port(node_with_wires) in ports]  # filter all wires of the node which has the same port as this NIC
-            if not on_wires:
-                raise ValueError('{}: NIC "{}" tries to sit on non existing ports: {}'.format(node, nic_id, ports))
-            return Nic(nic_id=nic_id, node=node, ip=nic_desc['ip'], on_wires=on_wires, is_ssh=nic_desc.get('is_ssh', False))
+            return Nic(nic_id=nic_cfg['nic-id'], node=node, ip=nic_cfg['ip'], is_ssh=nic_cfg['is-ssh'])
         except KeyError as ex:
-            raise ValueError('{}: nic "{}" does not specify {}'.format(node, nic_id, ex))
+            raise ValueError('{}: nic "{}" does not specify {}'.format(node, nic_cfg, ex))
 
-    def is_pxe(self):
-        return self._net.is_pxe()
-
-    def is_on_lom(self):
-        return self._is_on_lom
+    @staticmethod
+    def add_nics(node, nics_cfg):
+        return {nic_cfg['nic-id']: Nic.add_nic(node=node, nic_cfg=nic_cfg) for nic_cfg in nics_cfg}
 
     def is_ssh(self):
         return self._is_ssh
-
-    def get_names(self):
-        return self._names
 
     def get_ip_and_mask(self):
         return str(self.get_ip()), str(self._net.get_netmask())
@@ -161,12 +145,5 @@ class Nic(object):
     def get_vlan_id(self):
         return self._net.get_vlan_id()
 
-    def get_macs(self):
-        return self._macs
-
-    def get_port_ids(self):
-        return self._port_ids
-
     def get_yaml_body(self):
-        ports = [x.get_own_port(self) for x in self._on_wires]
-        return '{:6}: {{ip: {:10}, ports: {} }}'.format(self._names[0][:-1] if len(self._names) > 1 else self._names[0], self.get_ip_and_mask()[0], ports)
+        return '{{nic-id: {:3}, ip: {:20}, is-ssh: {} }}'.format(self._nic_id, self.get_ip_and_mask()[0], self.is_ssh())
