@@ -69,9 +69,11 @@ class CimcServer(LabServer):
     def cimc_disable_loms_in_bios(self):
         self._cimc_bios_lom(status='Disable')
 
-    def cimc_list_pci_nic_ports(self):
-        r = self.cimc_get_mo_by_class_id('networkAdapterEthIf')
-        return {x.Dn: x.Mac for x in r}
+    def cimc_list_all_nics_and_vnics(self):
+        r1 = self.cimc_get_mo_by_class_id('networkAdapterEthIf')
+        r2 = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
+
+        return {x.Dn: x.Mac for x in r1 + r2}
 
     def cimc_list_pci_nic(self):
         r = self.cimc_get_mo_by_class_id('networkAdapterUnit')
@@ -338,6 +340,10 @@ class CimcDirector(CimcServer):
 
         ans = requests.get('https://cloud-infra.cisco.com/api/v1.0/changeset/?number_only=1&branch=master&namespace=mercury-rhel7-osp10')
         return ans.text
+
+    def r_resolve_power_failure(self):
+        ver = self.r_get_version()
+        self.exe('python openstack/hw_validations.py --resolve-failures power', in_directory='installer-' + ver)
 
 
 class CimcController(CimcServer):
