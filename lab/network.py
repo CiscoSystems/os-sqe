@@ -80,7 +80,7 @@ class Nic(object):
     def __init__(self, nic_id, node, ip, is_ssh):
 
         self._net = node.lab().get_net(nic_id)    # valid lab.network.Network
-        self._net.check_ip_correct(msg='{}: nic "{}" has problem: '.format(node, nic_id), ip=ip)
+        # self._net.check_ip_correct(msg='{}: nic "{}" has problem: '.format(node, nic_id), ip=ip) TODO remove when fix the problem in c25bot
 
         self._node = node  # nic belongs to the node
         self._nic_id = nic_id  # this is NIC name which coincides with network name
