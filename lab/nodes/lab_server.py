@@ -10,7 +10,6 @@ class LabServer(LabNode):
         self._package_manager = None
         self._mac_server_part = None
         self.__server = None
-        self._ssh_username, self._ssh_password = kwargs['ssh-username'], kwargs['ssh-password']
         self._virtual_servers = set()  # virtual servers running on this hardware server
 
     def add_virtual_server(self, server):

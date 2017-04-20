@@ -18,6 +18,7 @@ class LabNode(WithLogMixIn, WithConfig):
             self._proxy_node_id.strip()
         self.__proxy = None                               # instance of class LabNode ,will be used as proxy
         self._oob_ip, self._oob_username, self._oob_password = kwargs['oob-ip'], kwargs['oob-username'], kwargs['oob-password']
+        self._ssh_username, self._ssh_password = kwargs['ssh-username'], kwargs['ssh-password']
 
         self._nics = dict()                  # list of NICs, will be filled in connect_node via class Wire
         self._ru, self._model = kwargs.get('ru', 'RU_XXX'), kwargs.get('model', 'MODEL_XXX')
@@ -160,14 +161,13 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def get_yaml_body(self):
 
-        a = ' {{node-id: "{:5}", role: {:5}, proxy-id: {:5}, oob-ip: {:5}, ssh-username: None, ssh-password: None, oob-username: "{}", oob-password: "{}", '.format(self._id, self._role, self._proxy_node_id,
-                                                                                                                                                                    self._oob_ip, self._oob_username, self._oob_password)
+        a = ' {{node-id: "{:5}", role: {:5}, proxy-id: {:5}, ssh-username: {:6}, ssh-password: {:9}, oob-ip: {:5},  oob-username: "{}", oob-password: "{}", '.format(self._id, self._role, self._proxy_node_id,
+                                                                                                                                                                     self._ssh_username, self._ssh_password,
+                                                                                                                                                                     self._oob_ip, self._oob_username, self._oob_password)
         a += 'hostname: "{}", model: "{}", ru: "{}"'.format('1', self._model, self._ru)
         if self._nics:
             nics = ',\n              '.join(map(lambda x: x.get_yaml_body(), self._nics.values()))
             a += ',\n      nics: [ {}\n      ]\n'.format(nics)
-        else:
-            a += '\n'
         a += ' }'
         return a
 
