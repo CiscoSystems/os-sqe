@@ -56,7 +56,7 @@ class NttScenario(ParallelWorker):
             self.get_mgmt().exe('docker pull {}'.format(docker_image))
             self.get_mgmt().exe('yum install kernel-devel kernel-headers -y')
             self.construct_nfvbench_command()
-        self.get_cloud().os_cleanup(is_all=True)
+        self.get_cloud().os_cleanup()
         self.get_cloud().os_quota_set()
 
     def construct_nfvbench_command(self):
@@ -129,7 +129,7 @@ class NttScenario(ParallelWorker):
     @section(message='Tearing down', estimated_time=30)
     def teardown_worker(self):
         if not self.is_noclean:
-            self.get_cloud().os_cleanup(is_all=True)
+            self.get_cloud().os_cleanup()
             self.get_mgmt().exe('rm -rf ' + self._tmp_dir)
 
 """
