@@ -6,22 +6,16 @@ def starter(worker):
 
 
 class RunnerHA(LabWorker):
-    MODE_CHECK = 'check'
-    MODE_RUN = 'run'
-    MODE_DEBUG = 'debug'
-
     @staticmethod
     def sample_config():
-        return {'task-yaml': 'task-ha.yaml', 'mode': 'run', 'is-noclean': True}
+        return {'task-yaml-path': 'task-ha.yaml', 'is-debug': False, 'is-noclean': True}
 
     def __init__(self, config):
-        self._task_yaml_path = config['task-yaml']
-        self._task_body = self.read_config_from_file(config_path=self._task_yaml_path, directory='ha')
-        self._mode = config['mode']
-        self._is_noclean = config['is-noclean']
+        self._task_body = self.read_config_from_file(config_path=config['task-yaml-path'], directory='ha')
 
         if not self._task_body:
-            raise Exception('Empty Test task list. Please check the file: {0}'.format(self._task_yaml_path))
+            raise Exception('Empty Test task list. Please check the file: {0}'.format(config['task-yaml']))
+        self._common_config = config
 
     def execute(self, cloud):
         import importlib
@@ -32,7 +26,8 @@ class RunnerHA(LabWorker):
         manager = multiprocessing.Manager()
         status_dict = manager.dict()
 
-        common_args = {'cloud': cloud, 'lab': cloud.get_lab(), 'yaml-path': self._task_yaml_path, 'is-debug': self._mode == self.MODE_DEBUG, 'is-noclean': self._is_noclean}
+        self._common_config['cloud'] = cloud
+        self._common_config['lab'] = cloud.get_lab()
 
         names_already_seen = []
         for desc in self._task_body:  # first path to check that all workers have unique names
@@ -52,17 +47,17 @@ class RunnerHA(LabWorker):
                 continue
             path_to_module, class_name = desc['class'].rsplit('.', 1)
             try:
-                module = importlib.import_module(path_to_module)
+                mod = importlib.import_module(path_to_module)
             except ImportError:
                 raise ValueError('{}: tries to run {}.py which does not exist'.format(self._task_yaml_path, path_to_module))
             try:
-                klass = getattr(module, class_name)
+                klass = getattr(mod, class_name)
             except AttributeError:
                 raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
-            desc.update(common_args)
+            desc.update(self._common_config)
             workers.append(klass(status_dict=status_dict, args_dict=desc))
 
-        if self._mode == self.MODE_CHECK:
+        if str(cloud.get_lab()) == 'fake':  # do not run, this is just a config validity check
             return []
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
         time.sleep(2)
@@ -71,19 +66,24 @@ class RunnerHA(LabWorker):
         return pool.map(starter, workers)
 
     @staticmethod
-    def run(lab_cfg_path, test_regex, mode, is_noclean):
+    def run(common_config):
         import time
         from lab.deployers.deployer_existing import DeployerExisting
         from lab.tims import Tims
         from lab.elk import Elk
 
+        try:
+            test_regex = common_config['test-regex']
+            lab_cfg_path = common_config['lab-cfg-path']
+        except KeyError as ex:
+            raise ValueError('RunnerHA.run() requires "{}"'.format(ex.message))
         available_tc = RunnerHA.ls_configs(directory='ha')
         tests = sorted(filter(lambda x: test_regex in x, available_tc))
 
         if not tests:
             raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
-        RunnerHA.check_config(tests)
+        RunnerHA.check_config(tests=tests, common_config=common_config)
 
         deployer = DeployerExisting(config={'hardware-lab-config': lab_cfg_path})
         cloud = deployer.execute([])
@@ -97,7 +97,8 @@ class RunnerHA(LabWorker):
 
         for tst in tests:
             start_time = time.time()
-            runner = RunnerHA(config={'task-yaml': tst, 'mode': mode, 'is-noclean': is_noclean})
+            common_config['task-yaml-path'] = tst
+            runner = RunnerHA(config=common_config)
             results = runner.execute(cloud)
 
             elk = Elk(proxy=cloud.get_mediator())
@@ -111,15 +112,16 @@ class RunnerHA(LabWorker):
             raise RuntimeError('Possible reason: {}'.format(exceptions))
 
     @staticmethod
-    def check_config(tests):
+    def check_config(tests, common_config):
 
         class FakeCloud(object):
             @staticmethod
             def get_lab():
-                return 'fake_lab'
+                return 'fake'
 
         cloud = FakeCloud()
 
         for tst in tests:
-            r = RunnerHA(config={'task-yaml': tst, 'mode': RunnerHA.MODE_CHECK, 'is-noclean': False})
+            common_config['task-yaml-path'] = tst
+            r = RunnerHA(config=common_config)
             r.execute(cloud=cloud)

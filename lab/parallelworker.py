@@ -83,7 +83,7 @@ class ParallelWorker(WithLogMixIn):
 
     @property
     def _yaml_path(self):
-        return self._kwargs['yaml-path']
+        return self._kwargs['task-yaml-path']
 
     def set_status(self, status):
         self._status_dict[self._name] = status

@@ -49,7 +49,7 @@ class NttScenario(ParallelWorker):
             self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory=self._tmp_dir + 'nfvi-test')
         if self._what_to_run in ['both', 'nfvbench']:
             self.get_mgmt().r_check_intel_nics()
-            self._kwargs['nfv-config-dir'] = self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git', local_repo_dir=self._tmp_dir + 'testbed')
+            self._kwargs['nfv-config-dir'] = self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git ' + self._kwargs['branch'], local_repo_dir=self._tmp_dir + 'testbed')
             self._kwargs['nfv-config-dir'] += '/' + str(self.get_lab()).rsplit('-', 1)[0]
 
             docker_image = 'cloud-docker.cisco.com/nfvbench'

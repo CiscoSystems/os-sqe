@@ -70,20 +70,20 @@ def cmd():
 
 
 @task
-def ha(lab_cfg_path, test_regex, mode='run', is_noclean=False):
+def ha(lab_cfg_path, test_regex, is_noclean=False, branch='', is_debug=False):
     """fab ha:g10,str\t\t\tRun all tests with 'str' in name on g10
         :param lab_cfg_path: which lab
         :param test_regex: regex to match some tc in $REPO/configs/ha
-        :param mode: 'run' to run tests 'debug' to debug parallel infrastructure, 'check' to validate all HA test configs
+        :param is_debug: if True debug parallel infrastructure
         :param is_noclean: if True, do not cleanup objects created during test, leave them from post analysis
+        :param branch: if not empty apply it directly to git clone command
     """
     from lab.runners.runner_ha import RunnerHA
 
-    possible_modes = [RunnerHA.MODE_CHECK, RunnerHA.MODE_DEBUG, RunnerHA.MODE_RUN]
-    if mode not in possible_modes:
-        raise ValueError('fabfile.py.ha(): mode "{}" is invalid, use one of {}'.format(mode, possible_modes))
+    if branch:
+        branch = '-b ' + branch
 
-    RunnerHA.run(lab_cfg_path=lab_cfg_path, test_regex=test_regex, mode=mode, is_noclean=str(is_noclean) in ['true', 'True', 'yes', 'Yes'])
+    RunnerHA.run({'lab-cfg-path': lab_cfg_path, 'test-regex': test_regex, 'is-debug': str(is_debug) in ['true', 'True', 'yes', 'Yes'], 'is-noclean': str(is_noclean) in ['true', 'True', 'yes', 'Yes'], 'branch': branch})
 
 
 @task
