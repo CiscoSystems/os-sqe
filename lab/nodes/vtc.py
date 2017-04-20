@@ -417,7 +417,7 @@ class Vtc(VirtualServer):
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
-    ROLE = 'vts-host-n9'
+    ROLE = 'vts-n9'
 
 
 class RestExecutor(object):
