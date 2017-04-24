@@ -47,6 +47,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_vlan_id(), owner=n), self._nets.values())  # make sure that all nets have unique VLAN ID
         map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_cidr(), owner=n), self._nets.values())  # make sure that all nets have unique CIDR
 
+        required_networks = {'a', 'm', 't', 's', 'e', 'p'}
+        if set(self._nets.keys()) != required_networks:
+            raise ValueError('{}: not all networks specified: "{}" is missing '.format(self, required_networks - set(self._nets.keys())))
+
         self._nodes = LabNode.add_nodes(lab=self, nodes_cfg=self._cfg['switches'])  # first pass - just create nodes
         self._nodes.extend(LabNode.add_nodes(lab=self, nodes_cfg=self._cfg['nodes']))
         if 'virtuals' in self._cfg:

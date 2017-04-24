@@ -1,14 +1,13 @@
 class Network(object):
-    def __init__(self, lab, net_id, cidr, vlan, mac_pattern, roles_must_present, is_via_tor):
+    def __init__(self, lab, net_id, cidr, vlan, roles_must_present, is_via_tor):
         from netaddr import IPNetwork
 
         self._lab = lab
         self._net = IPNetwork(cidr)
         self._net_id = net_id
         self._vlan = vlan  # single network needs to sit on single vlan
-        self._mac_pattern = mac_pattern
         self._is_via_tor = is_via_tor  # this network if supposed to go out of lab's TOR
-        self._this_roles_must_present = roles_must_present  # list of node's roles which should sit on this network
+        self._roles_on_this_net = roles_must_present  # list of node's roles which should sit on this network
 
     def __repr__(self):
         return u'net: {} {} {}'.format(self._net_id, self._net, self._vlan)
@@ -23,7 +22,7 @@ class Network(object):
         """
 
         try:
-            return Network(lab=lab, net_id=net_id, cidr=net_desc['cidr'], vlan=str(net_desc['vlan']), mac_pattern=net_desc['mac-pattern'], roles_must_present=net_desc['should-be'], is_via_tor=net_desc['is-via-tor'])
+            return Network(lab=lab, net_id=net_id, cidr=net_desc['cidr'], vlan=str(net_desc['vlan']), roles_must_present=net_desc['should-be'], is_via_tor=net_desc['is-via-tor'])
         except KeyError as ex:
             raise ValueError('network {} does not specify {}'.format(net_id, ex))
 
@@ -57,6 +56,9 @@ class Network(object):
     def get_cidr(self):
         return self._net.cidr
 
+    def get_roles(self):
+        return self._roles_on_this_net
+
     def check_ip_correct(self, msg, ip):
         import netaddr
 
@@ -72,14 +74,17 @@ class Network(object):
 
     def get_yaml_body(self):
         a = '  {{net-id: {:3}, vlan: {:4}, mac-pattern: {:2}, cidr: {:19}, is-via-tor: {:5}, should-be: {}}}'.format(self.get_net_id(), self.get_vlan_id(), self._mac_pattern, self.get_cidr(),
-                                                                                                                     'True' if self.is_via_tor() else 'False', self._this_roles_must_present)
+                                                                                                                     'True' if self.is_via_tor() else 'False', self._roles_on_this_net)
         return a
 
 
 class Nic(object):
     def __init__(self, nic_id, node, ip, is_ssh):
 
-        self._net = node.lab().get_net(nic_id)    # valid lab.network.Network
+        try:
+            self._net = node.lab().get_net(nic_id)    # valid lab.network.Network
+        except KeyError:
+            raise ValueError('{}: trying to create NIC on network "{}" which does not exeist'.format(node, nic_id))
         # self._net.check_ip_correct(msg='{}: nic "{}" has problem: '.format(node, nic_id), ip=ip) TODO remove when fix the problem in c25bot
 
         self._node = node  # nic belongs to the node
