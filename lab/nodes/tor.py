@@ -18,7 +18,7 @@ class Pxe(Nexus):
 
 
 class Terminal(LabNode):
-    ROLE = 'terminal'
+    ROLE = 'term'
     ROLE_OCTET = 'XX'
 
     def cmd(self, cmd):

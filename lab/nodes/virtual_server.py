@@ -24,3 +24,6 @@ class VirtualServer(LabServer):
         vts_host_ip = self._hard_server.get_ip_mx()
         mgmt_ip = self.lab().get_director().get_ip_api()
         os.system('ssh -2NfL {port}:{vts}:{port} root@{mgmt}'.format(port=port, vts=vts_host_ip, mgmt=mgmt_ip))
+
+    def get_hard_node_id(self):
+        return self._hard_server.get_node_id()

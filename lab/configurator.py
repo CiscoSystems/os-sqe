@@ -45,7 +45,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
             self.log('Reading {} CIMC NICs'.format(cimc))
             r = cimc.cimc_list_all_nics_and_vnics()
             for port_id, mac in r.items():
-                mac_vs_node[mac] = {'node': cimc, 'port-id': port_id}
+                mac_vs_node[mac] = {'node': cimc, 'cimc-port-id': port_id}
 
         wires_cfg = []
         for n9 in lab.get_n9k():
@@ -83,7 +83,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
                     n9_pc_id_lst = [p_id for p_id, p_d in r['ports'].items() if 'port-channel' in p_id and n9_port_id in [x['port']for x in p_d['ports']]]
                     n9_pc_id = n9_pc_id_lst[0] if len(n9_pc_id_lst) else 'unknown'
                     cimc_node = mac_vs_node[cimc_mac]['node']
-                    cimc_port_id = mac_vs_node[cimc_mac]['port-id']
+                    cimc_port_id = mac_vs_node[cimc_mac]['cimc-port-id']
                     wires_cfg.append({'from-node-id': cimc_node.get_node_id(), 'from-port-id': cimc_port_id, 'from-mac': cimc_mac, 'to-node-id': n9.get_node_id(), 'to-port-id': n9_port_id, 'to-mac': n9_mac, 'pc-id': n9_pc_id})
         return sorted(wires_cfg, key=lambda e: e['from-node-id'])
 
@@ -197,44 +197,3 @@ class LabConfigurator(WithConfig, WithLogMixIn):
                     raise KeyError('{}: no {}'.format(node_id, ex))
         return nodes, virtuals
 
-    def save_lab_config(self, lab):
-        from lab.nodes.virtual_server import VirtualServer
-
-        saved_config_path = self.get_artifact_file_path('saved_{}.yaml'.format(lab))
-        with self.open_artifact(name=saved_config_path, mode='w') as f:
-            f.write('lab-id: {} # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n'.format(lab.get_id()))
-            f.write('lab-name: {} # any string to be used on logging\n'.format(lab))
-            f.write('lab-type: {} # supported types: {}\n'.format(lab.get_type(), ' '.join(lab.SUPPORTED_TYPES)))
-            f.write('description-url: "{}"\n'.format(lab))
-            f.write('\n')
-            f.write('dns: {}\n'.format(lab.get_dns()))
-            f.write('ntp: {}\n'.format(lab.get_ntp()))
-            f.write('\n')
-            f.write('# special creds to be used by OS neutron services\n')
-            f.write('special-creds: {{neutron_username: {}, neutron_password: {}}}\n'.format(lab._neutron_username, lab._neutron_password))
-            f.write('\n')
-
-            f.write('networks: [\n')
-            net_bodies = [net.get_yaml_body() for net in lab.get_all_nets().values()]
-            f.write(',\n'.join(net_bodies))
-            f.write('\n]\n\n')
-
-            f.write('switches: [\n')
-            node_bodies = [node.get_yaml_body() for node in lab.get_switches()]
-            f.write(',\n'.join(node_bodies))
-            f.write('\n]\n\n')
-
-            f.write('nodes: [\n')
-            node_bodies = [node.get_yaml_body() for node in lab.get_servers_with_nics() if not isinstance(node, VirtualServer)]
-            f.write(',\n\n'.join(node_bodies))
-            f.write('\n]\n\n')
-
-            f.write('virtuals: [\n')
-            node_bodies = [node.get_yaml_body() for node in lab.get_servers_with_nics() if isinstance(node, VirtualServer)]
-            f.write(',\n\n'.join(node_bodies))
-            f.write('\n]\n\n')
-
-            f.write('wires: [\n')
-            wires_body = [wire.get_yaml_body() for wire in lab.get_all_wires()]
-            f.write(',\n'.join(wires_body))
-            f.write('\n]\n')

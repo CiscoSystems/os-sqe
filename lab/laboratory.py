@@ -2,9 +2,10 @@ from lab.mercury.with_mercury import WithMercuryMixIn
 from lab.ospd.with_osdp7 import WithOspd7
 from lab.with_config import WithConfig
 from lab.with_log import WithLogMixIn
+from lab.mixins.with_save_lab_config import WithSaveLabConfigMixin
 
 
-class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
+class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSaveLabConfigMixin):
     MERCURY_VTS = 'MERCURY-VTS'
     MERCURY_VPP = 'MERCURY-VPP'
     OSPD = 'OSPD'

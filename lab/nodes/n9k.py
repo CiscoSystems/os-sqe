@@ -75,7 +75,7 @@ class Nexus(LabNode):
                 d[c] = r.values()[0].values()[0] if len(r) == 1 else r
         return d
 
-    def get_hostname(self):
+    def get_actual_hostname(self):
         res = self.cmd(['sh switchname'])
         return res['result']['body']['hostname']
 

@@ -65,13 +65,13 @@ class Wire(object):
     def is_n9_n9(self):
         from lab.nodes.n9k import Nexus
 
-        return type(self._from) is Nexus and type(self._to) is Nexus
+        return type(self._from['node']) is Nexus and type(self._to['node']) is Nexus
 
     def is_n9_tor(self):
         from lab.nodes.n9k import Nexus
         from lab.nodes.tor import Tor
 
-        types = [type(self._from), type(self._to)]
+        types = [type(self._from['node']), type(self._to['node'])]
         return Nexus in types and Tor in types
 
     def is_n9_oob(self):
@@ -121,12 +121,6 @@ class Wire(object):
 
         types = [type(self._from), type(self._to)]
         return Nexus in types and CobblerServer in types
-
-    def get_yaml_body(self):
-        return '{{from-node-id: {:7}, from-port-id: "{:42}", from-mac: "{:17}", to-node-id: {:7}, to-port-id: "{:20}", to-mac: "{:17}", pc-id: {:15}}}'.format(self._from['node'].get_node_id(), self._from['port-id'],
-                                                                                                                                                               self._from['mac'],
-                                                                                                                                                               self._to['node'].get_node_id(), self._to['port-id'], self._to['mac'],
-                                                                                                                                                               self._pc_id)
 
     def get_from_mac(self):
         return self._from['mac']

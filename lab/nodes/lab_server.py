@@ -74,8 +74,8 @@ class LabServer(LabNode):
     def set_hostname(self, hostname):
         self._server.set_hostname(hostname=hostname)
 
-    def get_hostname(self):
-        return self._server.get_hostname()
+    def r_get_hostname(self):
+        return self._server.r_get_hostname()
 
     def get_ssh(self):
         return self._server.get_ssh()

@@ -21,7 +21,8 @@ class LabNode(WithLogMixIn, WithConfig):
         self._ssh_username, self._ssh_password = kwargs['ssh-username'], kwargs['ssh-password']
 
         self._nics = dict()                  # list of NICs, will be filled in connect_node via class Wire
-        self._ru, self._model = kwargs.get('ru', 'RU_XXX'), kwargs.get('model', 'MODEL_XXX')
+        self._ru, self._model = kwargs.get('ru', 'ruXX'), kwargs.get('model', 'XX')
+        self._hostname = kwargs.get('hostname', 'XX')
 
         role = self._role.split('-')[0]      # e.g. control-fi and control-cimc are the same for counting
         self._ROLE_VS_COUNT.setdefault(role, 0)
@@ -49,7 +50,7 @@ class LabNode(WithLogMixIn, WithConfig):
             node_cfg['lab'] = lab
             return klass(**node_cfg)
         except KeyError as ex:
-            raise ValueError('"{}"\nmust have parameter "{}"'.format(node_cfg, ex))
+            raise ValueError('"{}"\nmust have parameter "{}"'.format(node_cfg['node-id'], ex))
         except TypeError as ex:
             raise TypeError('{} for the node "{}" of role "{}"'.format(ex, node_cfg.get('node-id'), node_cfg.get('role')))
 
@@ -57,8 +58,14 @@ class LabNode(WithLogMixIn, WithConfig):
     def add_nodes(lab, nodes_cfg):
         return [LabNode.add_node(lab=lab, node_cfg=node_cfg) for node_cfg in nodes_cfg]
 
+    def get_proxy_node_id(self):
+        return self._proxy_node_id
+
     def get_ssh_for_bash(self):
         return 'sshpass -p {} ssh {}@{}'.format(self._oob_password, self._oob_username, self._oob_ip)
+
+    def get_ssh_u_p(self):
+        return self._ssh_username, self._ssh_password
 
     def attach_wire(self, wire):
         self._wires.append(wire)
@@ -71,6 +78,15 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def get_role(self):
         return self._role
+
+    def get_hostname(self):
+        return self._hostname
+
+    def get_model(self):
+        return self._model
+
+    def get_ru(self):
+        return self._ru
 
     def get_n_in_role(self):
         return self._n
@@ -158,18 +174,6 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def is_virtual(self):
         return any([self.is_vtc(), self.is_xrvr(), self.is_vtf()])
-
-    def get_yaml_body(self):
-
-        a = ' {{node-id: {:5}, role: {:5}, proxy-id: {:5}, ssh-username: {:6}, ssh-password: {:9}, oob-ip: {:12},  oob-username: {}, oob-password: "{}", '.format(self._id, self._role, self._proxy_node_id,
-                                                                                                                                                                  self._ssh_username, self._ssh_password,
-                                                                                                                                                                  self._oob_ip, self._oob_username, self._oob_password)
-        a += 'hostname: "{}", model: "{}", ru: "{}"'.format('1', self._model, self._ru)
-        if self._nics:
-            nics = ',\n              '.join(map(lambda x: x.get_yaml_body(), self._nics.values()))
-            a += ',\n      nics: [ {}\n      ]\n'.format(nics)
-        a += ' }'
-        return a
 
     def calculate_mac(self, port_id, mac):
         import validators

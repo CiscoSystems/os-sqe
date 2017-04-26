@@ -2,9 +2,6 @@ class Server(object):
     N_CONNECTION_ATTEMPTS = 200
     USE_SSH_KEY = 'ssh_key'
 
-    def __repr__(self):
-        return u'sshpass -p {} ssh {}@{}'.format(self._password, self._username, self._ip)
-
     def __init__(self, ip, username, password):
         self._tmp_dir_exists = False
         self._package_manager = None
@@ -240,7 +237,7 @@ class Server(object):
         self.exe(command='chmod 700 .ssh')
         self.exe(command='chmod 600 .ssh/authorized_keys')
 
-    def ping(self, port=22):
+    def r_ping(self, port=22):
         import socket
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
