@@ -70,10 +70,11 @@ class CimcServer(LabServer):
         self._cimc_bios_lom(status='Disable')
 
     def cimc_list_all_nics_and_vnics(self):
-        r1 = self.cimc_get_mo_by_class_id('networkAdapterEthIf')
-        r2 = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
+        r1 = self.cimc_get_mo_by_class_id('networkAdapterEthIf')  # physical Intel NICs (or others in PCI-E slots)
+        r2 = self.cimc_get_mo_by_class_id('adaptorExtEthIf')  # physical Cisco VIC in MLOM
+        r3 = self.cimc_get_mo_by_class_id('adaptorHostEthIf')  # virtual Cisco vNIC in MLOM
 
-        return {x.Dn: x.Mac for x in r1 + r2}
+        return {x.Dn: x.Mac for x in r1 + r2 + r3}
 
     def cimc_list_pci_nic(self):
         r = self.cimc_get_mo_by_class_id('networkAdapterUnit')
