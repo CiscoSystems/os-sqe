@@ -11,21 +11,17 @@ class Vtc(VirtualServer):
 
     def __init__(self, **kwargs):
         super(Vtc, self).__init__(**kwargs)
-        self._vip_a, self._vip_mx = 'Default in Vtc.__init()', 'Default in Vtc.__init()'
+        self._vip_a, self._vip_m = kwargs['vip_a'], kwargs['vip_m']
         self._is_api_via_vip = True
         self._curl_executor = CurlExecutor(vtc_object=self)
         self._ncs_executor = NcsCliExecutor(vtc_object=self)
         self._rest_executor = RestExecutor(vtc_object=self)
-        self.set_vip(kwargs['vip'], kwargs['nics']['mx']['ip'])
 
     def disable_vip(self):
         self._is_api_via_vip = False
 
-    def set_vip(self, vip, vip_mx):
-        self._vip_a, self._vip_mx = vip, vip_mx
-
     def get_vtc_vips(self):
-        return self._vip_a, self._vip_mx
+        return self._vip_a, self._vip_m
 
     def cmd(self, cmd=''):
         return self._curl_executor

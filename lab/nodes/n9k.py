@@ -101,7 +101,7 @@ class Nexus(LabNode):
         self.cmd(['conf t', 'int {}'.format(port_no), port_state])
 
     def n9_show_all(self):
-        a = self.n9_cmd(['sh port-channel summary', 'sh int st', 'sh int br', 'sh vpc', 'sh vlan', 'sh cdp nei det', 'sh lldp nei det'], timeout=30)
+        a = self.n9_cmd(['sh port-channel summary', 'sh int st', 'sh int br', 'sh vlan', 'sh cdp nei det', 'sh lldp nei det'] + (['sh vpc'] if self.get_node_id() != 'n9n' else []), timeout=30)
         r = {'ports': {},
              'vlans': {x['vlanshowbr-vlanid']: x for x in a['sh vlan']['TABLE_vlanbrief']['ROW_vlanbrief']},
              'cdp': a['sh cdp nei det'],
@@ -111,14 +111,18 @@ class Nexus(LabNode):
         pcs = [pcs] if isinstance(pcs, dict) else pcs  # if there is only one port-channel the API returns dict but not a list. Convert to list
         pcs_dic = {x['port-channel']: x for x in pcs}
 
-        vpcs = a['sh vpc']
+        if 'sh vpc' in a:
+            vpcs = a['sh vpc']
 
-        peer_link = vpcs.get('TABLE_peerlink', {'ROW_peerlink': []})['ROW_peerlink']
-        vpc_lst = vpcs.get('TABLE_vpc', {'ROW_vpc': []})['ROW_vpc']
-        vpc_lst = [pcs] if isinstance(vpc_lst, dict) else vpc_lst  # if there is only one vpc the API returns dict but not a list. Convert to list
-        vpc_dic = {x['vpc-ifindex']: x for x in vpc_lst}
-        if peer_link:
-            vpc_dic[peer_link['peerlink-ifindex']] = peer_link
+            peer_link = vpcs.get('TABLE_peerlink', {'ROW_peerlink': []})['ROW_peerlink']
+            vpc_lst = vpcs.get('TABLE_vpc', {'ROW_vpc': []})['ROW_vpc']
+            vpc_lst = [pcs] if isinstance(vpc_lst, dict) else vpc_lst  # if there is only one vpc the API returns dict but not a list. Convert to list
+            vpc_dic = {x['vpc-ifindex']: x for x in vpc_lst}
+            if peer_link:
+                vpc_dic[peer_link['peerlink-ifindex']] = peer_link
+        else:
+            vpc_dic = None
+
         for st, br in zip(a['sh int st'], a['sh int br']):
             st.update(br)  # combine both since br contains pc info
             port_id = st['interface']
@@ -128,7 +132,8 @@ class Nexus(LabNode):
                 ports = [ports] if type(ports) == dict else ports  # if pc has only one port - it's a dict, otherwise - list
                 st.update(pc)
                 st['ports'] = ports
-            st.update(vpc_dic.get(port_id.replace('port-channel', 'Po'), {}))  # combine with vpc status
+            if vpc_dic:
+                st.update(vpc_dic.get(port_id.replace('port-channel', 'Po'), {}))  # combine with vpc status
             r['ports'][port_id] = st
 
         return r

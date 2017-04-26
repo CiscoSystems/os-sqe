@@ -70,11 +70,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 role_vs_nets[role].add(net['net-id'])
 
         for node in self.get_servers_with_nics():
-            if node.get_role() in role_vs_nets:
-                actual_nets = set(node.get_nics().keys())
-                req_nets = role_vs_nets[node.get_role()]
-                if actual_nets != req_nets:
-                    raise ValueError('{}: should be on nets {} (parameter should-be in section nets )while actually on {} (section nics)'.format(node, req_nets, actual_nets))
+            actual_nets = set(node.get_nics().keys())
+            req_nets = role_vs_nets[node.get_role()]
+            if actual_nets != req_nets:
+                raise ValueError('{}: should be on nets {} while actually on {} (section nics)'.format(node, req_nets, actual_nets))
             # for nic in node.get_nics().values():
             #     self.make_sure_that_object_is_unique(obj=nic.get_ip_with_prefix(), node_id=node.get_node_id())
             #     for mac in nic.get_macs():

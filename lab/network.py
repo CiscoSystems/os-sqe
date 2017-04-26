@@ -12,6 +12,17 @@ class Network(object):
     def __repr__(self):
         return u'net: {} {} {}'.format(self._net_id, self._net, self._vlan)
 
+    def set_vlan(self, vlan_id):
+        self._vlan = vlan_id
+
+    def set_cidr(self, cidr):
+        from netaddr import IPNetwork
+
+        self._net = IPNetwork(cidr)
+
+    def set_via_tor(self, is_via_tor):
+        self._is_via_tor = is_via_tor
+
     @staticmethod
     def add_network(lab, net_id, net_desc):
         """Fabric to create a class Nic instance
@@ -73,8 +84,8 @@ class Network(object):
             raise ValueError('{} ip="{}" is not a valid ip'.format(msg, ip))
 
     def get_yaml_body(self):
-        a = '  {{net-id: {:3}, vlan: {:4}, mac-pattern: {:2}, cidr: {:19}, is-via-tor: {:5}, should-be: {}}}'.format(self.get_net_id(), self.get_vlan_id(), self._mac_pattern, self.get_cidr(),
-                                                                                                                     'True' if self.is_via_tor() else 'False', self._roles_on_this_net)
+        a = '  {{net-id: {:3}, vlan: {:4}, cidr: {:19}, is-via-tor: {:5}, should-be: {}}}'.format(self.get_net_id(), self.get_vlan_id(), self.get_cidr(),
+                                                                                                  'True' if self.is_via_tor() else 'False', self._roles_on_this_net)
         return a
 
 

@@ -161,9 +161,9 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def get_yaml_body(self):
 
-        a = ' {{node-id: "{:5}", role: {:5}, proxy-id: {:5}, ssh-username: {:6}, ssh-password: {:9}, oob-ip: {:5},  oob-username: "{}", oob-password: "{}", '.format(self._id, self._role, self._proxy_node_id,
-                                                                                                                                                                     self._ssh_username, self._ssh_password,
-                                                                                                                                                                     self._oob_ip, self._oob_username, self._oob_password)
+        a = ' {{node-id: {:5}, role: {:5}, proxy-id: {:5}, ssh-username: {:6}, ssh-password: {:9}, oob-ip: {:12},  oob-username: {}, oob-password: "{}", '.format(self._id, self._role, self._proxy_node_id,
+                                                                                                                                                                  self._ssh_username, self._ssh_password,
+                                                                                                                                                                  self._oob_ip, self._oob_username, self._oob_password)
         a += 'hostname: "{}", model: "{}", ru: "{}"'.format('1', self._model, self._ru)
         if self._nics:
             nics = ',\n              '.join(map(lambda x: x.get_yaml_body(), self._nics.values()))
