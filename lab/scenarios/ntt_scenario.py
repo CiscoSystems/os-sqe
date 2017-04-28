@@ -49,25 +49,9 @@ class NttScenario(ParallelWorker):
             self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory=self._tmp_dir + 'nfvi-test')
         if self._what_to_run in ['both', 'nfvbench']:
             self.get_mgmt().r_check_intel_nics()
-            self._kwargs['nfv-config-dir'] = self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/testbed.git ' + self._kwargs['branch'], local_repo_dir=self._tmp_dir + 'testbed')
-            self._kwargs['nfv-config-dir'] += '/' + str(self.get_lab()).rsplit('-', 1)[0]
 
-            docker_image = 'cloud-docker.cisco.com/nfvbench'
-            self.get_mgmt().exe('docker pull {}'.format(docker_image))
-            self.get_mgmt().exe('yum install kernel-devel kernel-headers -y')
-            self.construct_nfvbench_command()
         self.get_cloud().os_cleanup()
         self.get_cloud().os_quota_set()
-
-    def construct_nfvbench_command(self):
-        ker, tag = self.get_mgmt().exe('uname -r && cat /etc/cisco-mercury-release').split('\r\n')
-
-        par = '--privileged --net host ' \
-              '-v {cfg}:/tmp/nfvbench -v /etc/hosts:/etc/hosts -v /root/.ssh:/root/.ssh -v /dev:/dev -v /root/openstack-configs:/tmp/nfvbench/openstack ' \
-              '-v /lib/modules/{ker}:/lib/modules/{ker} -v /usr/src/kernels/{ker}:/usr/src/kernels/{ker} '.format(cfg=self._nfv_config_dir, ker=ker.strip())
-        alias = "sed -i '/sqe_nfv/d' /root/.bashrc && echo \"alias sqe_nfv=\'docker run -d {} --name nfvbench_{}  cloud-docker.cisco.com/nfvbench\'\" >> /root/.bashrc".format(par, tag)
-        self.get_mgmt().exe(alias)
-        self._kwargs['nfvbench-cmd'] = 'docker run --rm -it ' + par + '--name nfvbench_sqe_auto cloud-docker.cisco.com/nfvbench nfvbench -c /tmp/nfvbench/{}-config.yaml --json /tmp/nfvbench/results.json'.format(self.get_lab())
 
     def loop_worker(self):
         if self._what_to_run in ['csr', 'both']:
@@ -92,7 +76,7 @@ class NttScenario(ParallelWorker):
                 raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
 
     def nfvbench_run(self):
-        cmd = self._nfvbench_cmd + ' ' + self._nfvbench_args
+        cmd = 'nfvbench ' + self._nfvbench_args
         ans = self.get_mgmt().exe(cmd, is_warn_only=True)
         with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(self._nfvbench_args.replace(' ', '_')), 'w') as f:
             f.write(cmd + '\n')
