@@ -27,16 +27,8 @@ class NttScenario(ParallelWorker):
         return self._kwargs['tmp-dir']
 
     @property
-    def _nfv_config_dir(self):
-        return self._kwargs['nfv-config-dir']
-
-    @property
-    def _nfvbench_cmd(self):
-        return self._kwargs['nfvbench-cmd']
-
-    @property
     def _nfvbench_args(self):
-        return self._kwargs['nfvbench-args'] + ' --no-cleanup' if self.is_noclean else ''
+        return self._kwargs['nfvbench-args'] + (' --no-cleanup' if self.is_noclean else '')
 
     @section(message='Setting up', estimated_time=100)
     def setup_worker(self):
@@ -85,7 +77,7 @@ class NttScenario(ParallelWorker):
         if 'ERROR' in ans:
             raise RuntimeError(ans.split('ERROR')[1][:200])
         else:
-            res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='{}/results.json'.format(self._nfv_config_dir))
+            res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json')
             self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):
