@@ -86,6 +86,7 @@ class CloudServer(Server):
         super(CloudServer, self).__init__(ip=ips, username=image.get_username(), password=image.get_password())
         self._status = cloud.os_server_create(srv_name=self.get_name(), flavor_name=flavor_name, image_name=image.get_name(), zone_name=zone_name, port_ids=[x['id'] for x in self._ports])
         self._status['ID'] = self._status['id']
+        self._status['Name'] = self._status.get('name', '')
 
     def get_name(self):
         return UNIQUE_PATTERN_IN_NAME + '-' + str(self._number)
@@ -501,7 +502,7 @@ export OS_AUTH_URL={end_point}
     def os_server_delete(self, servers):
         if len(servers):
             ids = [s['ID'] for s in servers]
-            names = [s['name'] for s in servers]
+            names = [s['Name'] for s in servers]
             self.os_cmd('openstack server delete ' + ' '.join(ids), comment=' '.join(names))
             self.wait_instances_ready(servers=servers, status='DELETED')
 

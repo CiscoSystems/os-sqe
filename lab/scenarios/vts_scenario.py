@@ -114,7 +114,6 @@ class VtsScenario(ParallelWorker):
 
     @section('Cleaning all objects observed in cloud')
     def cleanup(self):
-        self.delete_servers()
         self.detach_border_leaf()
         self.get_cloud().os_cleanup(is_all=True)
         self.check_vts_networks()
