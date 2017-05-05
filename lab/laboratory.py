@@ -45,8 +45,8 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
         self._nets = {net_desc['net-id']: Network.add_network(lab=self, net_id=net_desc['net-id'], net_desc=net_desc) for net_desc in self._cfg['networks']}
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_vlan_id(), owner=n), self._nets.values())  # make sure that all nets have unique VLAN ID
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_cidr(), owner=n), self._nets.values())  # make sure that all nets have unique CIDR
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_vlan_id(), obj_type='vlan', owner=n), self._nets.values())  # make sure that all nets have unique VLAN ID
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_cidr(), obj_type='cidr', owner=n), self._nets.values())  # make sure that all nets have unique CIDR
 
         required_networks = {'a', 'm', 't', 's', 'e', 'p'}
         if set(self._nets.keys()) != required_networks:
@@ -57,7 +57,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
         if 'virtuals' in self._cfg:
             self._nodes.extend(VirtualServer.add_nodes(lab=self, nodes_cfg=self._cfg['virtuals']))
 
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_node_id(), owner=self), self._nodes)  # make sure that all nodes have unique ids
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_node_id(), obj_type='node_id', owner=self), self._nodes)  # make sure that all nodes have unique ids
 
         self._wires = Wire.add_wires(lab=self, wires_cfg=self._cfg['wires'])  # second pass - process wires and nics section to connect node to peers
 
@@ -230,15 +230,17 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
     def logstash_creds(self):
         return self._cfg['logstash']
 
-    def make_sure_that_object_is_unique(self, obj, owner):
+    def make_sure_that_object_is_unique(self, obj, obj_type, owner):
         """check that given object is unique
         :param obj: object which is supposed to be unique
+        :param obj_type:  type of object like ip or vlan
         :param owner: other object which tries to own the object, usually node or lab
         """
-
         key = str(obj)
+        if key == 'None':  # None is allowed to be owned by multiple objects
+            return
         if key in self._unique_dict.keys():
-            raise ValueError('{} node tries to own {} which is already in use by {}'.format(owner, key, self._unique_dict[key]))
+            raise ValueError('{} tries to own {} {} which is already in use by {}'.format(owner, obj_type, key, self._unique_dict[key]))
         else:
             self._unique_dict[key] = owner
 
