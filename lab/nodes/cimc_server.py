@@ -69,6 +69,12 @@ class CimcServer(LabServer):
     def cimc_disable_loms_in_bios(self):
         self._cimc_bios_lom(status='Disable')
 
+    def cimc_list_all_nics(self):
+        r1 = self.cimc_get_mo_by_class_id('networkAdapterEthIf')  # physical Intel NICs (or others in PCI-E slots)
+        r2 = self.cimc_get_mo_by_class_id('adaptorExtEthIf')  # physical Cisco VIC in MLOM
+
+        return {x.Dn: x.Mac for x in r1 + r2}
+
     def cimc_list_all_nics_and_vnics(self):
         r1 = self.cimc_get_mo_by_class_id('networkAdapterEthIf')  # physical Intel NICs (or others in PCI-E slots)
         r2 = self.cimc_get_mo_by_class_id('adaptorExtEthIf')  # physical Cisco VIC in MLOM
