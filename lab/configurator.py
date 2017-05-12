@@ -16,10 +16,48 @@ class LabConfigurator(WithConfig, WithLogMixIn):
                       'storage':    Network(net_id='s', cidr='33.33.33.0/24', vlan=2033, is_via_tor=False, lab='', roles_must_present=['control-n9', 'compute-n9', 'ceph-n9']),
                       'external':   Network(net_id='e', cidr='44.44.44.0/24', vlan=2044, is_via_tor=False, lab='', roles_must_present=['control-n9']),
                       'provider':   Network(net_id='p', cidr='55.55.55.0/24', vlan=2055, is_via_tor=False, lab='', roles_must_present=['compute-n9'])}
-        self.execute()
+        self.execute_mercury()
 
-    def __repr__(self):
-        return u'LAB CONFIGURATOR'
+    def execute_mercury(self):
+        from lab.laboratory import Laboratory
+
+        mercury_cfg = self.ask_mercury_setup_data()
+        nets_cfg = self.process_mercury_nets(mercury_cfg=mercury_cfg)
+        switches_cfg = self.process_mercury_switches(mercury_cfg=mercury_cfg)
+        nodes_cfg, virtuals_cfg = self.process_mercury_nodes(mercury_cfg=mercury_cfg)
+        sqe_cfg = {'lab-name': mercury_cfg['TESTING_TESTBED_NAME'] + '-' + mercury_cfg['MECHANISM_DRIVERS'].lower(), 'lab-id': 99, 'lab-type': 'MERCURY-' + mercury_cfg['MECHANISM_DRIVERS'].upper(),
+                   'dns': ['171.70.168.183'], 'ntp': ['171.68.38.66'],
+                   'special-creds': {'neutron_username': 'admin', 'neutron_password': 'new123'},
+                   'networks': nets_cfg, 'switches': switches_cfg, 'nodes': nodes_cfg, 'virtuals': virtuals_cfg, 'wires': []}
+        lab = Laboratory(sqe_cfg)
+
+        sqe_cfg['wires'] = self.process_connections(lab=lab)
+        sqe_cfg['switches'][0]['oob-ip'] = lab.get_oob().get_oob()[0]
+        sqe_cfg['switches'][1]['oob-ip'] = lab.get_tor().get_oob()[0]
+
+        lab = Laboratory(sqe_cfg)
+
+        self.save_lab_config(lab=lab)
+
+    @staticmethod
+    def does_mercury_dir_exists(lab_name):
+        import os
+
+        mercury_testbed_dir = os.path.expanduser('~/repo/mercury/testbeds/' + lab_name + '/')
+        if os.path.exists(mercury_testbed_dir):
+            return mercury_testbed_dir
+        else:
+            raise Exception('The lab {} is not found'.format(mercury_testbed_dir))
+
+    def ask_mercury_setup_data(self):
+        import os
+        from fabric.operations import prompt
+
+        mercury_testbed_dir = prompt(text='Enter lab name:', validate=self.does_mercury_dir_exists)
+        names = os.listdir(mercury_testbed_dir)
+        name = prompt(text='you have {} Which yaml to use? '.format(' '.join(names)), default=names[0])
+
+        return self.read_config_from_file(mercury_testbed_dir + name)
 
     @staticmethod
     def ask_ip_u_p(msg):
@@ -35,88 +73,54 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         return ip4, username, password
 
     def process_connections(self, lab):
-        def normalize_mac(m):
-            return ':'.join([m[0:2], m[2:4], m[5:7], m[7:9], m[10:12], m[12:14]])
+        n9_statuses = [n9.n9_show_all() for n9 in lab.get_n9k()]
 
-        global_vlans = filter(lambda net: net.is_via_tor(), lab.get_all_nets().values())
-
-        mac_vs_node = {}
+        cimc_port_id_mac_lst = []
         for cimc in lab.get_cimc_servers():
             self.log('Reading {} CIMC NICs'.format(cimc))
-            r = cimc.cimc_list_all_nics_and_vnics()
+            r = cimc.cimc_list_all_nics()
             for port_id, mac in r.items():
-                mac_vs_node[mac] = {'node': cimc, 'cimc-port-id': port_id}
+                cimc_port_id_mac_lst.append({'cimc-node': cimc, 'cimc-port-id': port_id, 'cimc-mac': mac})
 
         wires_cfg = []
-        for n9 in lab.get_n9k():
-            r = n9.n9_show_all()
+        for cimc_port_id_mac in cimc_port_id_mac_lst:
+            cimc_node = cimc_port_id_mac['cimc-node']
+            cimc_port_id = cimc_port_id_mac['cimc-port-id']
+            cimc_mac = cimc_port_id_mac['cimc-mac']
 
-            a = n9.n9_cmd('sh spanning-tree vlan {}'.format(global_vlans[0].get_vlan_id()))
-            uplink_candidate_pc_id = [x['if_index'] for x in a.values()[0][u'TABLE_port'][u'ROW_port'] if x['role'] == 'root'][0]
-            uplink_candidate_port_ids = [x['port'] for x in r['ports'][uplink_candidate_pc_id]['ports']]
-            for cdp in r['cdp']:
-                n9_port_id = cdp.get('intf_id')
-                n9_mac = 'unknown'
-                peer_port_id = cdp.get('port_id')
-                peer_ip = cdp.get('v4mgmtaddr')
-                peer_mac = 'unknown'
-                n9_pc_id = 'unknown'
+            for n9st in n9_statuses:
+                nei = n9st.find_mac(mac=cimc_mac)
+                n9_node_id = n9st.get_n9_node_id() if nei else 'not_connected'
+                n9_port_id = nei.get_n9_port_id() if nei else 'not_connected'
+                n9_pc_id = nei.get_n9_pc_id() if nei else 'not_connected'
+                wires_cfg.append({'from-node-id': cimc_node.get_node_id(), 'from-port-id': cimc_port_id, 'from-mac': cimc_mac, 'to-node-id': n9_node_id, 'to-port-id': n9_port_id, 'to-mac': 'unknown', 'pc-id': n9_pc_id})
 
-                if n9_port_id == 'mgmt0':
-                    peer = lab.get_oob()
-                    peer.set_oob_creds(ip=peer_ip, username='openstack-read', password='CTO1234!')
-                elif n9_port_id in uplink_candidate_port_ids:
-                    peer = lab.get_tor()
-                    peer.set_oob_creds(ip=peer_ip, username='openstack-read', password='CTO1234!')
-                else:  # assuming here that all others are peer link
-                    peer = [x for x in lab.get_n9k() if x.get_oob()[0] == peer_ip]
-                    if len(peer) != 1:
-                        continue  # assume that this device is not a part of the lab
-                    peer = peer[0]
-                wires_cfg.append({'from-node-id': n9.get_node_id(), 'from-port-id': n9_port_id, 'from-mac': n9_mac, 'to-node-id': peer.get_node_id(), 'to-port-id': peer_port_id, 'to-mac': peer_mac, 'pc-id': n9_pc_id})
+                # global_vlans = filter(lambda net: net.is_via_tor(), lab.get_all_nets().values())
+                # a = n9.n9_cmd('sh spanning-tree vlan {}'.format(global_vlans[0].get_vlan_id()))
+            # uplink_candidate_pc_id = [x['if_index'] for x in a.values()[0][u'TABLE_port'][u'ROW_port'] if x['role'] == 'root'][0]
+            # uplink_candidate_port_ids = [x['port'] for x in r['ports'][uplink_candidate_pc_id]['ports']]
+            # for cdp in r['cdp']:
+            #     n9_port_id = cdp.get('intf_id')
+            #     n9_mac = 'unknown'
+            #     peer_port_id = cdp.get('port_id')
+            #     peer_ip = cdp.get('v4mgmtaddr')
+            #     peer_mac = 'unknown'
+            #     n9_pc_id = 'unknown'
+            #
+            #     if n9_port_id == 'mgmt0':
+            #         peer = lab.get_oob()
+            #         peer.set_oob_creds(ip=peer_ip, username='openstack-read', password='CTO1234!')
+            #     elif n9_port_id in uplink_candidate_port_ids:
+            #         peer = lab.get_tor()
+            #         peer.set_oob_creds(ip=peer_ip, username='openstack-read', password='CTO1234!')
+            #     else:  # assuming here that all others are peer link
+            #         peer = [x for x in lab.get_n9k() if x.get_oob()[0] == peer_ip]
+            #         if len(peer) != 1:
+            #             continue  # assume that this device is not a part of the lab
+            #         peer = peer[0]
+            #     wires_cfg.append({'from-node-id': n9.get_node_id(), 'from-port-id': n9_port_id, 'from-mac': n9_mac, 'to-node-id': peer.get_node_id(), 'to-port-id': peer_port_id, 'to-mac': peer_mac, 'pc-id': n9_pc_id})
 
-            for lldp in r['lldp']['TABLE_nbor_detail']['ROW_nbor_detail']:
-                cimc_mac = normalize_mac(lldp['chassis_id']).upper()
-                if cimc_mac in mac_vs_node:
-                    n9_port_id = lldp.get('l_port_id').replace('Eth', 'Ethernet')
-                    n9_mac = 'unknown'
-                    n9_pc_id_lst = [p_id for p_id, p_d in r['ports'].items() if 'port-channel' in p_id and n9_port_id in [x['port']for x in p_d['ports']]]
-                    n9_pc_id = n9_pc_id_lst[0] if len(n9_pc_id_lst) else 'unknown'
-                    cimc_node = mac_vs_node[cimc_mac]['node']
-                    cimc_port_id = mac_vs_node[cimc_mac]['cimc-port-id']
-                    wires_cfg.append({'from-node-id': cimc_node.get_node_id(), 'from-port-id': cimc_port_id, 'from-mac': cimc_mac, 'to-node-id': n9.get_node_id(), 'to-port-id': n9_port_id, 'to-mac': n9_mac, 'pc-id': n9_pc_id})
         return sorted(wires_cfg, key=lambda e: e['from-node-id'])
-
-    def execute(self):
-        import os
-        from lab.laboratory import Laboratory
-
-        lab_name = 'g7-2'
-        lab_dir_in_mercury_repo = os.path.expanduser('~/repo/mercury/testbeds/' + lab_name + '/')
-
-        mercury_yaml_path = lab_dir_in_mercury_repo + 'setup_data.vts.yaml'
-
-        if os.path.isfile(mercury_yaml_path):
-            mercury_cfg = self.read_config_from_file(mercury_yaml_path)
-
-            nets_cfg = self.process_mercury_nets(mercury_cfg=mercury_cfg)
-            switches_cfg = self.process_mercury_switches(mercury_cfg=mercury_cfg)
-            nodes_cfg, virtuals_cfg = self.process_mercury_nodes(mercury_cfg=mercury_cfg)
-            sqe_cfg = {'lab-name': mercury_yaml_path.split('/')[-2], 'lab-id': 99, 'lab-type': 'MERCURY-' + mercury_cfg['MECHANISM_DRIVERS'].upper(), 'dns': ['171.70.168.183'], 'ntp': ['171.68.38.66'],
-                       'special-creds': {'neutron_username': 'admin', 'neutron_password': 'new123'},
-                       'networks': nets_cfg, 'switches': switches_cfg, 'nodes': nodes_cfg, 'virtuals': virtuals_cfg, 'wires': []}
-            lab = Laboratory(sqe_cfg)
-
-            sqe_cfg['wires'] = self.process_connections(lab=lab)
-            sqe_cfg['switches'][0]['oob-ip'] = lab.get_oob().get_oob()[0]
-            sqe_cfg['switches'][1]['oob-ip'] = lab.get_tor().get_oob()[0]
-
-            lab = Laboratory(sqe_cfg)
-
-            self.save_lab_config(lab=lab)
-
-        else:
-            self.log('not yet implemented way to configure')
 
     def process_mercury_nets(self, mercury_cfg):
 
