@@ -65,7 +65,9 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         import validators
 
         while True:
-            ip4 = prompt(text=msg + ' enter IP > ')
+            ip4 = prompt(text=msg + ' enter IP or none > ')
+            if ip4 == 'none':
+                return None, None, None
             if validators.ipv4(ip4):
                 break
         username = prompt(text=msg + ' enter username > ', default='admin')
@@ -77,7 +79,6 @@ class LabConfigurator(WithConfig, WithLogMixIn):
 
         cimc_port_id_mac_lst = []
         for cimc in lab.get_cimc_servers():
-            self.log('Reading {} CIMC NICs'.format(cimc))
             r = cimc.cimc_list_all_nics()
             for port_id, mac in r.items():
                 cimc_port_id_mac_lst.append({'cimc-node': cimc, 'cimc-port-id': port_id, 'cimc-mac': mac})
@@ -166,7 +167,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         virtuals = []
 
         for mercury_role_id, mercury_node_ids in mercury_cfg['ROLES'].items():
-            sqe_role_id = mercury_role_id + '-n9'
+            sqe_role_id = 'ceph-n9' if mercury_role_id == 'block_storage' else mercury_role_id + '-n9'
 
             nets_for_this_role = {mercury_net_id: net for mercury_net_id, net in self._nets.items() if sqe_role_id in net.get_roles()}
 
