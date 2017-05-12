@@ -2,17 +2,10 @@
 - Folder: PERFOMANCE AND SCALE
 - Description: runs iperf and reports its results
 
-- class: lab.monitors.vts_monitor.VtsMonitor
-  name: VtsMonitor
-  run_while: VtsScenario
-  run_tail: 10
-  period: 2
-
 - class: lab.scenarios.vts_scenario.VtsScenario
   name: VtsScenario
-  how-many-networks: 3
-  how-many-servers: 20
+  how-many-networks: 1
+  how-many-servers: 2
   what-to-run-inside: iperf -n 10G  -M 9000
   n_repeats: 1
-  delay: 2
   uptime: 10

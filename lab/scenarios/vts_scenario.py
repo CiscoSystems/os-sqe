@@ -43,7 +43,8 @@ class VtsScenario(ParallelWorker):
         from lab.cloud import CloudNetwork
 
         nets = CloudNetwork.create(common_part_of_name='internal', class_a=1, how_many=self._n_nets, is_dhcp=False, cloud=self.get_cloud())
-        self._wait_for_vtc_networks(nets=nets)
+        if self.get_lab().is_with_vts():
+            self._wait_for_vtc_networks(nets=nets)
         return nets
 
     @section('Waiting till VTC registers networks')
@@ -95,9 +96,9 @@ class VtsScenario(ParallelWorker):
         nets = self._network_part()
 
         self.create_servers(on_nets=nets)
-        self.attach_border_leaf(nets=nets)
+        if self.get_lab().is_with_vts():
+            self.attach_border_leaf(nets=nets)
 
-        time.sleep(30)
         start_time = time.time()
 
         while time.time() - start_time < self._uptime:
@@ -114,9 +115,11 @@ class VtsScenario(ParallelWorker):
 
     @section('Cleaning all objects observed in cloud')
     def cleanup(self):
-        self.detach_border_leaf()
+        if self.get_lab().is_with_vts():
+            self.detach_border_leaf()
         self.get_cloud().os_cleanup(is_all=True)
-        self.check_vts_networks()
+        if self.get_lab().is_with_vts():
+            self.check_vts_networks()
 
     @section(message='Assert no network in VTC')
     def check_vts_networks(self):
@@ -130,8 +133,11 @@ class VtsScenario(ParallelWorker):
 
     @section(message='Attach border leaf', estimated_time=10)
     def attach_border_leaf(self, nets):
+        import time
+
         self._vtc.r_vtc_create_border_leaf_port(nets)
         self.get_mgmt().r_create_access_points(nets)
+        time.sleep(30)
 
     def teardown_worker(self):
         self.cleanup()

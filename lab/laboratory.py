@@ -165,6 +165,9 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
 
         return filter(lambda x: type(x) is Vtc, self._nodes)
 
+    def is_with_vts(self):
+        return len(self.get_vtc()) > 1
+
     def get_xrvr(self):
         from lab.nodes.xrvr import Xrvr
 
