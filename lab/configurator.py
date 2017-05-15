@@ -194,7 +194,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
                                      {'nic-id': 't', 'ip': mercury_cfg['VTS_PARAMETERS']['VTS_XRNC_TENANT_IPS'][i-1], 'is-ssh': False}]
 
                         virtuals.append({'node-id': 'vtc' + str(i), 'role': 'vtc', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': mercury_cfg['VTS_PARAMETERS']['VTS_PASSWORD'],
-                                         'ssh-username': ssh_username, 'ssh-password': ssh_password,
+                                         'ssh-username': 'admin', 'ssh-password': ssh_password,
                                          'virtual-on': node_id, 'vip_a': mercury_cfg['VTS_PARAMETERS']['VTS_VTC_API_VIP'], 'vip_m': mercury_cfg['VTS_PARAMETERS']['VTS_NCS_IP'], 'proxy-id': None, 'nics': vtc_nics})
                         virtuals.append({'node-id': 'xrvr' + str(i), 'role': 'xrvr', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': ssh_password,
                                          'virtual-on': node_id, 'proxy-id': 'mgm', 'nics': xrvr_nics})
