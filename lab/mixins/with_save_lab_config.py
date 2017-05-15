@@ -51,9 +51,9 @@ class WithSaveLabConfigMixin(object):
                                                                                                                                                                  wire._pc_id) + comment
 
         with open('saved_lab_config.yaml', 'w') as f:
-            f.write('self-id: {} # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n'.format(self.get_id()))
-            f.write('self-name: {} # any string to be used on logging\n'.format(self))
-            f.write('self-type: {} # supported types: {}\n'.format(self.get_type(), ' '.join(self.SUPPORTED_TYPES)))
+            f.write('lab-id: {} # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n'.format(self.get_id()))
+            f.write('lab-name: {} # any string to be used on logging\n'.format(self))
+            f.write('lab-type: {} # supported types: {}\n'.format(self.get_type(), ' '.join(self.SUPPORTED_TYPES)))
             f.write('description-url: "{}"\n'.format(self))
             f.write('\n')
             f.write('dns: {}\n'.format(self.get_dns()))
