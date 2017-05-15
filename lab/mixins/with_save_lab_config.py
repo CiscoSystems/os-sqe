@@ -84,6 +84,6 @@ class WithSaveLabConfigMixin(object):
             f.write('\n]\n\n')
     
             f.write('wires: [\n')
-            wires_body = [wire_yaml_body(wire=x) for x in self.get_all_wires()]
+            wires_body = [wire_yaml_body(wire=x) for x in self.get_all_wires() if x]
             f.write(',\n'.join(wires_body))
             f.write('\n]\n')

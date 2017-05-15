@@ -9,6 +9,9 @@ class N9PortChannel(object):
     def get_ports(self):
         return self._ports
 
+    def get_pc_id(self):
+        return self._dic['port-channel']
+
     def add_port(self, port):
         self._ports.append(port)
 
@@ -41,7 +44,7 @@ class N9Port(object):
         return self._dic['interface']
 
     def get_pc_id(self):
-        return self._pc.get_id() if self._pc else None
+        return self._pc.get_pc_id() if self._pc else None
 
     def get_mode(self):
         return self._dic['portmode']
@@ -97,7 +100,10 @@ class N9neighbour(object):
         self._dic = n9_dic
 
     def get_macs(self):
-        return [self._dic['chassis_id'], self._dic['port_id']]
+        return [self._dic.get('chassis_id', 'No_chassis_id'), self._dic['port_id']]
+
+    def get_n9_port_id(self):
+        return self._dic['l_port_id'].replace('Eth', 'Ethernet')
 
     @staticmethod
     def process_n9_answer(a):
@@ -117,8 +123,8 @@ class N9neighbour(object):
         if ':' in mac:
             mac = N9neighbour.mac_normal_to_n9(m=mac)
         found = [x for x in nei_lst if mac in x.get_macs()]
-        assert len(found) == 1, 'More then 1 neighbour with the same MAC'
-        return found[0]
+        assert len(found) <= 1, 'More then 1 neighbour with the same MAC'
+        return found[0] if found else None
 
 
 class N9Vlan(object):
@@ -189,7 +195,10 @@ class N9Status(object):
         self._neigh_lst.extend(N9neighbour.process_n9_answer(a=a['sh cdp nei det']))
         self._vlans = N9Vlan.process_n9_answer(a=a['sh vlan'])
 
-    def get_pc_id_for_port_id(self, port_id):
+    def get_n9_node_id(self):
+        return self._n9.get_node_id()
+
+    def get_n9_pc_id(self, port_id):
         return self._port_dic[port_id].get_pc_id()
 
     def find_mac(self, mac):

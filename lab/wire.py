@@ -24,6 +24,8 @@ class Wire(object):
             from_port_id = wire_cfg['from-port-id'].strip()
             from_mac = wire_cfg['from-mac'].strip()
             to_node_id = wire_cfg['to-node-id'].strip()
+            if to_node_id == 'not_connected':
+                return None
             to_port_id = wire_cfg['to-port-id'].strip()
             to_mac = wire_cfg['to-mac'].strip()
             pc_id = wire_cfg['pc-id'].strip()

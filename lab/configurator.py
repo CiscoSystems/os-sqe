@@ -37,7 +37,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
 
         lab = Laboratory(sqe_cfg)
 
-        self.save_lab_config(lab=lab)
+        lab.save_self_config()
 
     @staticmethod
     def does_mercury_dir_exists(lab_name):
@@ -93,7 +93,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
                 nei = n9st.find_mac(mac=cimc_mac)
                 n9_node_id = n9st.get_n9_node_id() if nei else 'not_connected'
                 n9_port_id = nei.get_n9_port_id() if nei else 'not_connected'
-                n9_pc_id = nei.get_n9_pc_id() if nei else 'not_connected'
+                n9_pc_id = n9st.get_n9_pc_id(n9_port_id) if nei else 'not_connected'
                 wires_cfg.append({'from-node-id': cimc_node.get_node_id(), 'from-port-id': cimc_port_id, 'from-mac': cimc_mac, 'to-node-id': n9_node_id, 'to-port-id': n9_port_id, 'to-mac': 'unknown', 'pc-id': n9_pc_id})
 
                 # global_vlans = filter(lambda net: net.is_via_tor(), lab.get_all_nets().values())

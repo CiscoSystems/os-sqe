@@ -3,7 +3,7 @@ from lab.with_config import WithConfig
 
 
 class Tims(WithLogMixIn, WithConfig):
-    FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'VTS PERF AND SCALE': 'Tcbr1840f', 'API_TEST': 'Tcbr2001f'}
+    FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'VTS PERF AND SCALE': 'Tcbr1840f', 'PERFOMANCE_AND_SCALE': 'Tcbr1840f', 'API_TEST': 'Tcbr2001f'}
     TOKENS = {'kshileev': '0000003933000000000D450000000000',
               'nfedotov': '26520000006G00005F42000077044G47',
               'dratushn': '000000525F7G007900000000006G4700',
@@ -199,7 +199,8 @@ class Tims(WithLogMixIn, WithConfig):
 
         available_tc = self.ls_configs(directory='ha')
 
-        for test_cfg_path in sorted(filter(lambda x: 'tims-test' in x, available_tc)):
+        cfgs = ['scale-iperf.yaml']
+        for test_cfg_path in cfgs:
             results = [{'worker name': 'FakeScenario', 'params': 'FAKE params', 'exceptions': ['FAKE exception 1', 'FAKE exception 2']},
                        {'worker name': 'FakeMonitor', 'params': 'FAKE params', 'exceptions': []},
                        ]
