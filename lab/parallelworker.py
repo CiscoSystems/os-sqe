@@ -168,7 +168,12 @@ class ParallelWorker(WithLogMixIn):
         finally:
             self.set_status(status=self.STATUS_FINISHED)
             if not self.is_debug():
-                self.teardown_worker()
+                try:
+                    self.teardown_worker()
+                except Exception as ex:
+                    with self.get_lab().open_artifact('exception-in-teardown.txt'.format(), 'w') as f:
+                        f.write(ex)
+
             return {'worker name': self._name, 'exceptions': exceptions, 'params': worker_parameters}
 
     def debug_output(self):

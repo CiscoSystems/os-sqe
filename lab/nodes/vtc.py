@@ -367,7 +367,6 @@ class Vtc(VirtualServer):
         import uuid
         import json
         from collections import OrderedDict
-        import time
 
         vlan_start, vlan_end = self.r_vtc_show_vlan_pool()
 
@@ -393,7 +392,9 @@ class Vtc(VirtualServer):
 
             port_json = json.dumps(port_data)
             self.cmd().put(url='/api/running/cisco-vts/tenants/tenant/{0}/topologies/topology/{0}/ports/port/{1}'.format(tenant, port_id), data=port_json)
-            time.sleep(20)
+
+    def vtc_sync_up_from_tor(self, error_msg):
+        self.cmd().post(url='/api/running/devices/device/{}/_operations/sync-from'.format(error_msg))
 
     def r_vtc_delete_border_leaf_port(self):
         import time
@@ -479,23 +480,30 @@ class CurlExecutor(RestExecutor):
                 except ValueError:  # something like ValueError: Unterminated string starting at: line 65 column 11 (char 4086)
                     continue
 
-    def put(self, url, data):
-        cmd = "curl -s -k -u {}:{} -H {} -X PUT -d '{}' {}".format(self._uname, self._pwd, self._put_hdr, data, self._http + url)
-        ans = self._vtc.exe(cmd)
+    def process_errors(self, ans):
+        import inspect
 
         if 'errors' in ans:
+            if 'out of sync' in ans:
+                return
             raise RuntimeError(ans)
         else:
             return ans
+
+    def put(self, url, data):
+        cmd = "curl -s -k -u {}:{} -H {} -X PUT -d '{}' {}".format(self._uname, self._pwd, self._put_hdr, data, self._http + url)
+        ans = self._vtc.exe(cmd)
+        return self.process_errors(ans=ans)
+
+    def post(self, url):
+        cmd = "curl -s -k -u {}:{} -H {} -X POST {}".format(self._uname, self._pwd, self._put_hdr, self._http + url)
+        ans = self._vtc.exe(cmd)
+        return self.process_errors(ans=ans)
 
     def delete(self, url):
         cmd = "curl -s -k -u {}:{} -H {} -X DELETE {}".format(self._uname, self._pwd, self._delete_hdr, self._http + url)
         ans = self._vtc.exe(cmd)
-
-        if 'errors' in ans:
-            raise RuntimeError(ans)
-        else:
-            return ans
+        return self.process_errors(ans=ans)
 
 
 class NcsCliExecutor(object):

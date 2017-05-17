@@ -76,6 +76,7 @@ class CloudServer(Server):
         self._number = number
         self._on_nets = on_nets
         self._ports = []
+        self._compute_host_name = zone_name
 
         ips = []
         for net in on_nets:
@@ -91,6 +92,9 @@ class CloudServer(Server):
     def get_name(self):
         return UNIQUE_PATTERN_IN_NAME + '-' + str(self._number)
 
+    def get_compute_host(self):
+        return self._compute_host_name
+
     def __getitem__(self, item):
         return self._status[item]
 
@@ -101,7 +105,8 @@ class CloudServer(Server):
         compute_hosts = cloud.get_computes()
         for n, comp_name in [(y, compute_hosts[y % len(compute_hosts)]) for y in range(1, how_many + 1)]:  # distribute servers per compute host in round robin
             servers.append(CloudServer(number=n, flavor_name=flavor_name, image=image, on_nets=on_nets, zone_name=comp_name, cloud=cloud))
-        cloud.wait_instances_ready(servers, timeout=timeout)
+        statuses = cloud.wait_instances_ready(servers, timeout=timeout)
+
         return servers
 
 
@@ -392,7 +397,7 @@ export OS_AUTH_URL={end_point}
             instances_in_error = filter(lambda x: x['Status'] == 'ERROR', our_instances)
             instances_in_status = filter(lambda x: x['Status'] == status, our_instances) if status != 'DELETED' else our_instances
             if len(instances_in_status) == required_n_servers:
-                return  # all successfully reached the status
+                return our_instances # all successfully reached the status
             if instances_in_error:
                 for instance in instances_in_error:
                     self.analyse_instance_problems(instance)

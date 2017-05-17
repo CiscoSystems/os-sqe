@@ -52,17 +52,14 @@ class VtsScenario(ParallelWorker):
         import time
 
         required = [(x.get_net_id(), str(x.get_segmentation_id())) for x in nets]
-        max_retries = 10
-        while True:
+        for i in range(10):
             vtc_nets = self._vtc.r_vtc_show_openstack_network()
             actual = [(x['id'], x['provider-segmentation-id']) for x in vtc_nets]
             if set(required) <= (set(actual)):
-                return
-            if max_retries == 0:
-                self.log(''.format(required, actual))
-                raise RuntimeError('{}: VTC failed to register networks required={} actual={}'.format(self, required, actual))
+                break
             time.sleep(5)
-            max_retries -= 1
+        else:
+            raise RuntimeError('{}: VTC failed to register networks'.format(self))
 
     @section('Create servers')
     def create_servers(self, on_nets):
@@ -87,7 +84,10 @@ class VtsScenario(ParallelWorker):
 
         ip = server_passive.get_ssh_ip()
         server_passive.exe('iperf -s -p 1111 &')  # run iperf in listening mode on first server of first compute host
-        return [x.exe('{} -c {} -p 1111'.format(self._runner, ip)) for x in [server_same, server_other]]
+        a = [x.exe('{} -c {} -p 1111'.format(self._runner, ip)) for x in [server_same, server_other]]
+
+        with self.get_lab().open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
+            f.write(a)
 
     @section('Running test')
     def loop_worker(self):
