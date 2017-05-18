@@ -15,6 +15,6 @@ ans = shell('curl ' + url)
 def regex = /title="[\w-]+\.yaml"/  // match things like title="marahaika-vts.yaml"
 def find_names = (ans =~ /$regex/)
 find_names.each{ s ->
-  pods.push(s.stripIndent(6))
+  pods.push(s.stripIndent(6).replace('"', ''))
 }
 return pods.toSet().sort()
