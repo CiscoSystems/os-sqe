@@ -7,14 +7,14 @@ def shell(String command)
 	return "$sout $serr"
 }
 
-def pods = []
+def tests = []
 
-def url = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/tree/master/lab_configs'
+def url = 'https://github.com/CiscoSystems/os-sqe/tree/master/configs/ha'
 ans = shell('curl ' + url)
 
-def regex = /title="[\w-]+\.yaml"/  // match things like title="marahaika-vts.yaml"
+def regex = /title="[\w-]+\.yaml"/  // match things like title="tc-xxx-vts.yaml"
 def find_names = (ans =~ /$regex/)
 find_names.each{ s ->
-  pods.push(s.stripIndent(6).replace('"', ''))
+  tests.push(s.stripIndent(6).replace('"', ''))
 }
-return pods.toSet().sort()
+return tests.toSet().sort()
