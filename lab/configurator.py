@@ -140,8 +140,8 @@ class LabConfigurator(WithConfig, WithLogMixIn):
     @staticmethod
     def process_mercury_switches(mercury_cfg):
 
-        switches = [{'node-id': 'oob', 'role': 'oob', 'oob-ip': '???1', 'oob-username': '????', 'oob-password': '?????', 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None},
-                    {'node-id': 'tor', 'role': 'tor', 'oob-ip': '???2', 'oob-username': '????', 'oob-password': '?????', 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None}]
+        switches = [{'node-id': 'oob', 'role': 'oob', 'oob-ip': '1.1.1.1', 'oob-username': 'openstack-read', 'oob-password': 'CTO1234!', 'ssh-username': None, 'ssh-password': None, 'proxy-id': None},
+                    {'node-id': 'tor', 'role': 'tor', 'oob-ip': '1.1.1.2', 'oob-username': 'openstack-read', 'oob-password': 'CTO1234!', 'ssh-username': None, 'ssh-password': None, 'proxy-id': None}]
 
         for i, sw in enumerate(mercury_cfg['TORSWITCHINFO']['SWITCHDETAILS'], start=1):
             switches.append({'node-id': 'n9' + str(i), 'role': 'n9', 'oob-ip': sw['ssh_ip'], 'oob-username': sw['username'], 'oob-password': sw['password'], 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
