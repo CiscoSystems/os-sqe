@@ -12,6 +12,7 @@ git clone https://git.openstack.org/openstack/diskimage-builder
 
 virtualenv venv
 source venv/bin/activate
+easy_install pip
 pip install -e ./diskimage-builder
 
 disk-image-create fedora vm selinux-permissive dnsmasq iperf users ip-addresses manage-cloud-init -a amd64 -o ${image_name}
