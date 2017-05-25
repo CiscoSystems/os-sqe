@@ -2,7 +2,7 @@
 
 sudo apt-get install -y git qemu-utils sudo curl kpartx python-setuptools python-dev
 
-image_name=os-sqe-localadmin-ubuntu.qcow2
+image_name=~/os-sqe-localadmin-ubuntu.qcow2
 export ELEMENTS_PATH=$(pwd)/elements
 
 workspace=$(mktemp -d)
@@ -24,4 +24,5 @@ cat >${image_name}.txt<<EOF
 $(md5sum ${image_name}) admin cisco123
 EOF
 
-echo Do scp ${PWD}/${image_name}* localadmin@172.29.173.233:/var/www/cloud-images/
+echo Do scp ${image_name}* localadmin@172.29.173.233:/var/www/cloud-images/
+rm -rf ${workspace}
