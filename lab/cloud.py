@@ -18,7 +18,7 @@ class CloudNetwork(object):
         self._vlan_id = vlan_id + number if vlan_id else False
         self._vts_vlan = None
         self._is_dhcp = is_dhcp
-        self._network = IPNetwork('{}.{}.0.0/24'.format(class_a, number))
+        self._network = IPNetwork('{}.{}.0.0/16'.format(class_a, number))
 
         phys_net_addon = '--provider:physical_network=physnet1 --provider:network_type=vlan --provider:segmentation_id={}'.format(self._vlan_id) if self._vlan_id else ''
 
@@ -63,7 +63,12 @@ class CloudNetwork(object):
         return '{}/{}'.format(self._network[index], self._network.prefixlen)
 
     def get_ip(self, index):
-        return str(self._network[index])
+        # special variant index 99 gives 1.0.0.99 199 gives 1.0.1.99
+        return str(self._network[(index / 100) * 256 + index % 100])
+
+    def get_mac(self, index):
+        ip = self.get_ip(index=index)
+        return 'cc:' + ':'.join(map(lambda n: '{0:02}'.format(int(n)), str(ip).split('.'))) + ':' + str(self._network.prefixlen)
 
     @staticmethod
     def create(how_many, common_part_of_name, cloud, class_a='99', vlan_id=0, is_dhcp=False):
@@ -81,7 +86,7 @@ class CloudServer(Server):
         ips = []
         for net in on_nets:
             ip = net.get_ip(self._number)
-            mac = '00:10:' + ':'.join(map(lambda n: '{0:02}'.format(int(n)) if int(n) < 100 else '{0:02x}'.format(int(x)), str(ip).split('.')))
+            mac = net.get_mac(index=self._number)
             self._ports.append(cloud.os_port_create(server_number=number, net_name=net.get_net_name(), ip=ip, mac=mac))
             ips.append(ip)
         super(CloudServer, self).__init__(ip=ips, username=image.get_username(), password=image.get_password())
@@ -135,7 +140,7 @@ class CloudImage(object):
     @staticmethod
     @section('Creating custom image')
     def add_image(image_name, cloud):
-        images = {'sqe-iperf': 'http://172.29.173.233/fedora/fedora-dnsmasq-localadmin-ubuntu.qcow2',
+        images = {'sqe-iperf': 'http://172.29.173.233/cloud-images/os-sqe-localadmin-ubuntu.qcow2',
                   'FOR_CSR':   'http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2',
                   'testpmd': 'http://172.29.173.233/cloud-images/testpmdvm-latest.qcow2'}
         if image_name not in images.keys():
