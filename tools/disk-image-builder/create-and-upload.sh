@@ -23,3 +23,5 @@ deactivate
 cat >${image_name}.txt<<EOF
 $(md5sum ${image_name}) admin cisco123
 EOF
+
+echo Do scp ${PWD}/${image_name}* localadmin@172.29.173.233:/var/www/cloud-images/
