@@ -6,8 +6,6 @@ from lab.nodes.virtual_server import VirtualServer
 
 
 class Xrvr(VirtualServer):
-    ROLE = 'xrvr'
-
     def __init__(self, **kwargs):
         super(Xrvr, self).__init__(**kwargs)
         self._expect_commands = {}

@@ -2,7 +2,6 @@ from lab.nodes.lab_server import LabServer
 
 
 class CobblerServer(LabServer):
-    ROLE = 'cobbler'
 
     def cmd(self, cmd):
         return self.exe(command=cmd, is_warn_only=True)

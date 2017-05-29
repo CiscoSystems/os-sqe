@@ -144,12 +144,12 @@ class LabConfigurator(WithConfig, WithLogMixIn):
                     {'node-id': 'tor', 'role': 'tor', 'oob-ip': '1.1.1.2', 'oob-username': 'openstack-read', 'oob-password': 'CTO1234!', 'ssh-username': None, 'ssh-password': None, 'proxy-id': None}]
 
         for i, sw in enumerate(mercury_cfg['TORSWITCHINFO']['SWITCHDETAILS'], start=1):
-            switches.append({'node-id': 'n9' + str(i), 'role': 'n9', 'oob-ip': sw['ssh_ip'], 'oob-username': sw['username'], 'oob-password': sw['password'], 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
+            switches.append({'node-id': 'n9' + str(i), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'oob-username': sw['username'], 'oob-password': sw['password'], 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
 
         ip, username, password = LabConfigurator.ask_ip_u_p(msg='Mercury usually has the third switch used to connect MGM node to outer world')
 
         if ip:
-            switches.append({'node-id': 'n9n', 'role': 'n9', 'oob-ip': ip, 'oob-username': username, 'oob-password': password, 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
+            switches.append({'node-id': 'n9n', 'role': 'VimCatalist', 'oob-ip': ip, 'oob-username': username, 'oob-password': password, 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
 
         return switches
 

@@ -277,8 +277,6 @@ class N9Status(object):
 
 
 class Nexus(LabNode):
-    ROLE = 'n9'
-
     def __init__(self, **kwargs):
         super(Nexus, self).__init__(**kwargs)
         self.__requested_topology = None
@@ -543,6 +541,15 @@ class Nexus(LabNode):
         else:
             return []  # no current session
 
+    def n9_show_nve_peers(self):
+        r = self.cmd('sh nve peers')
+        return r['result'] if r['result'] else {}
+
+    def r_collect_config(self):
+        return self._format_single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())
+
+
+class VimTor(Nexus):
     def r_border_leaf(self):
         vlans = self._requested_topology['vlans']
         tenant_vlan_ids = [vlan_id for vlan_id, name_and_others in vlans.items() if name_and_others['name'] == '{}-t'.format(self.lab())]
@@ -561,5 +568,6 @@ class Nexus(LabNode):
                   'neighbor {}'.format(xrvr_bgp_ips[0]), 'remote-as 23', 'update-source Vlan{}'.format(tenant_vlan_id), 'address-family l2vpn evpn', 'send-community both',
                   'neighbor {}'.format(xrvr_bgp_ips[1]), 'remote-as 23', 'update-source Vlan{}'.format(tenant_vlan_id), 'address-family l2vpn evpn', 'send-community both'], timeout=60)
 
-    def r_collect_config(self):
-        return self._format_single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())
+
+class VimCatalist(Nexus):
+    pass

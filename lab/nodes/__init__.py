@@ -12,7 +12,7 @@ class LabNode(WithLogMixIn, WithConfig):
     def __init__(self, **kwargs):
         self._lab = kwargs.pop('lab')                     # link to parent Laboratory object
         self._id = kwargs['node-id'].strip()              # some id which unique in the given role, usually role + some small integer
-        self._role = kwargs['role'].strip()               # which role this node play, possible roles are defined in Laboratory
+        self._role = kwargs['role'].strip().lower()       # which role this node plays, possible roles are defined in get_role_class()
         self._proxy_node_id = kwargs['proxy-id']          # external ssh access via this node id or None
         if self._proxy_node_id is not None:
             self._proxy_node_id.strip()
@@ -46,7 +46,7 @@ class LabNode(WithLogMixIn, WithConfig):
     def add_node(lab, node_cfg):
         try:
             role = node_cfg['role']
-            klass = lab.get_role_class(role)
+            klass = LabNode.get_role_class(role)
             node_cfg['lab'] = lab
             return klass(**node_cfg)
         except KeyError as ex:
@@ -226,3 +226,24 @@ class LabNode(WithLogMixIn, WithConfig):
         finally:
             self.log('OOB ({}) is {}'.format(ip, ok))
             s.close()
+
+    @staticmethod
+    def get_role_class(role):
+        from lab.nodes.fi import FI, FiDirector, FiController, FiCompute, FiCeph
+        from lab.nodes.n9k import Nexus, VimTor, VimCatalist
+        from lab.nodes.asr import Asr
+        from lab.nodes.tor import Tor, Oob, Pxe, Terminal
+        from lab.nodes.cimc_server import CimcDirector, CimcController, CimcCompute, CimcCeph
+        from lab.nodes.xrvr import Xrvr
+        from lab.nodes.vtf import Vtf
+        from lab.nodes.vtc import VtsHost
+        from lab.nodes.vtc import Vtc
+
+        role = role.lower()
+
+        classes = [Tor, Oob, Pxe, Terminal, Nexus, VimTor, VimCatalist, CimcDirector, CimcController, CimcCompute, CimcCeph, VtsHost, Vtc, Vtf, Xrvr, Asr, FI, FiDirector, FiController, FiCompute, FiCeph]
+        for klass in classes:
+            if str(klass).split('.')[-1][:-2].lower() == role:
+                return klass
+        else:
+            raise ValueError('role "{}" is not known. Possible roles: {}'.format(role, ' '.join(map(lambda x: str(x).split('.')[-1][:-2], classes))))

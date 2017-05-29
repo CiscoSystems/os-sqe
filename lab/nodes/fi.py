@@ -34,27 +34,22 @@ class FiServer(LabServer):
 
 
 class FiDirector(FiServer):
-    ROLE = 'director-fi'
     pass
 
 
 class FiController(FiServer):
-    ROLE = 'control-fi'
     pass
 
 
 class FiCompute(FiServer):
-    ROLE = 'compute-fi'
     pass
 
 
 class FiCeph(FiServer):
-    ROLE = 'ceph-fi'
     pass
 
 
 class FI(LabNode):
-    ROLE = 'ucsm'
 
     def __init__(self, node_id, lab):
         # https://communities.cisco.com/docs/DOC-51816

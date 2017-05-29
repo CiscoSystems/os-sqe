@@ -66,7 +66,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
         role_vs_nets = {}
         for net in self._cfg['networks']:
             for role in net['should-be']:
-                self.get_role_class(role=role)
+                role = role.lower()
                 role_vs_nets.setdefault(role, set())
                 role_vs_nets[role].add(net['net-id'])
 
@@ -93,30 +93,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
 
     def get_all_wires(self):
         return self._wires
-
-    @staticmethod
-    def get_role_class(role):
-        from lab.nodes.fi import FI, FiDirector, FiController, FiCompute, FiCeph
-        from lab.nodes.n9k import Nexus
-        from lab.nodes.asr import Asr
-        from lab.nodes.tor import Tor, Oob, Pxe, Terminal
-        from lab.nodes.cimc_server import CimcDirector, CimcController, CimcCompute, CimcCeph
-        from lab.nodes.xrvr import Xrvr
-        from lab.nodes.vtf import Vtf
-        from lab.nodes.vtc import VtsHost
-        from lab.nodes.vtc import Vtc
-
-        role = role.lower()
-        roles = {Oob.ROLE: Oob, Pxe.ROLE: Pxe, Tor.ROLE: Tor, Terminal.ROLE: Terminal,
-                 Asr.ROLE: Asr, Nexus.ROLE: Nexus, FI.ROLE: FI,
-                 FiDirector.ROLE: FiDirector, FiController.ROLE: FiController, FiCompute.ROLE: FiCompute, FiCeph.ROLE: FiCeph,
-                 CimcDirector.ROLE: CimcDirector, CimcController.ROLE: CimcController, CimcCompute.ROLE: CimcCompute, CimcCeph.ROLE: CimcCeph,
-                 VtsHost.ROLE: VtsHost, Vtc.ROLE: Vtc, Xrvr.ROLE: Xrvr, Vtf.ROLE: Vtf}
-
-        try:
-            return roles[role]
-        except KeyError:
-            raise ValueError('role "{0}" is not known,  should be one of: {1}'.format(role, roles.keys()))
 
     def get_id(self):
         return self._id

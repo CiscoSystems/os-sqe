@@ -355,12 +355,10 @@ class CimcDirector(CimcServer):
 
 
 class CimcController(CimcServer):
-    ROLE = 'control-n9'
-
+    pass
 
 class CimcCompute(CimcServer):
-    ROLE = 'compute-n9'
-
+    pass
 
 class CimcCeph(CimcServer):
-    ROLE = 'ceph-n9'
+    pass

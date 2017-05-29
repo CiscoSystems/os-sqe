@@ -130,14 +130,26 @@ class VtsScenario(ParallelWorker):
     @section(message='Detach border leaf')
     def detach_border_leaf(self):
         self._vtc.r_vtc_delete_border_leaf_port()
+        self.check_nve(is_empty=True)  # after detaching border leaf, there should be no nve ifaces on N9Ks
 
     @section(message='Attach border leaf', estimated_time=10)
     def attach_border_leaf(self, nets):
         import time
 
         self._vtc.r_vtc_create_border_leaf_port(nets)
+        self.check_nve(is_empty=False)  # attaching border leaf should create nve ifaces on N9Ks
         self.get_mgmt().r_create_access_points(nets)
         time.sleep(30)
 
     def teardown_worker(self):
         self.cleanup()
+
+    def check_nve(self, is_empty):
+        for n9 in self.get_lab().get_n9k():
+            r = n9.n9_show_nve_peers()
+            if is_empty and len(r):
+                raise RuntimeError('{}: nve is not empty {}'.format(n9, r))
+            else:
+                continue
+
+

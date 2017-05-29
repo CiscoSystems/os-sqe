@@ -4,7 +4,6 @@ from lab.nodes.virtual_server import VirtualServer
 
 
 class Vtc(VirtualServer):
-    ROLE = 'vtc'
     EXECUTOR_CURL = 'curl'
     EXECUTOR_REST = 'rest'
     EXECUTOR_NCS = 'ncs'

@@ -2,8 +2,6 @@ from lab.nodes.lab_server import LabServer
 
 
 class Vtf(LabServer):
-    ROLE = 'vtf'
-
     def __init__(self, **kwargs):
         super(Vtf, self).__init__(**kwargs)
         self._expect_commands = {}
