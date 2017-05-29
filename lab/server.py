@@ -166,6 +166,7 @@ class Server(object):
 
     def r_get_remote_file(self, url, to_directory='/var/tmp'):
         import requests
+        from os import path
 
         if not to_directory.startswith('/'):
             raise ValueError('to_directory needs to be full path')
@@ -177,9 +178,9 @@ class Server(object):
         except ValueError:
             raise ValueError('File {} has wrong body: "{}"'.format(info_url, r.text))
 
-        loc_path = to_directory + '/' + loc
+        loc_path = path.join(to_directory, path.basename(loc))
         cache_dir = '/var/tmp/cache'
-        cache_path = cache_dir + '/' + loc
+        cache_path = path.join(cache_dir, path.basename(loc))
 
         self.exe('mkdir -p {0}'.format(to_directory))
         self.exe('mkdir -p ' + cache_dir)
