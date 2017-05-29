@@ -15,6 +15,8 @@ ans = shell('curl ' + url)
 def regex = /title="[\w-]+\.yaml"/  // match things like title="tc-xxx-vts.yaml"
 def find_names = (ans =~ /$regex/)
 find_names.each{ s ->
-  tests.push(s.stripIndent(6).replace('"', ''))
+  a = s.stripIndent(6).replace('"', '')
+  if (a.startsWith(starts_with))
+  	tests.push(a)
 }
 return tests.toSet().sort()
