@@ -10,12 +10,12 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         from lab.network import Network
         super(LabConfigurator, self).__init__()
 
-        self._nets = {'api':        Network(net_id='a', cidr='10.10.10.0/32', vlan=9999, is_via_tor=True,  lab='', roles_must_present=['director-n9', 'control-n9', 'vtc']),
-                      'management': Network(net_id='m', cidr='11.11.11.0/24', vlan=2011, is_via_tor=False, lab='', roles_must_present=['director-n9', 'control-n9', 'compute-n9', 'ceph-n9', 'vtc', 'xrvr', 'vts-n9']),
-                      'tenant':     Network(net_id='t', cidr='22.22.22.0/24', vlan=2022, is_via_tor=False, lab='', roles_must_present=['compute-n9', 'xrvr', 'vts-n9']),
-                      'storage':    Network(net_id='s', cidr='33.33.33.0/24', vlan=2033, is_via_tor=False, lab='', roles_must_present=['control-n9', 'compute-n9', 'ceph-n9']),
-                      'external':   Network(net_id='e', cidr='44.44.44.0/24', vlan=2044, is_via_tor=False, lab='', roles_must_present=['control-n9']),
-                      'provider':   Network(net_id='p', cidr='55.55.55.0/24', vlan=2055, is_via_tor=False, lab='', roles_must_present=['compute-n9'])}
+        self._nets = {'api':        Network(net_id='a', cidr='10.10.10.0/32', vlan=9999, is_via_tor=True,  lab='', roles_must_present=['CimcDirector', 'CimcController', 'Vtc']),
+                      'management': Network(net_id='m', cidr='11.11.11.0/24', vlan=2011, is_via_tor=False, lab='', roles_must_present=['CimcDirector', 'CimcController', 'CimcCompute', 'CimcCompute', 'Vtc', 'Xrvr', 'VtsHost']),
+                      'tenant':     Network(net_id='t', cidr='22.22.22.0/24', vlan=2022, is_via_tor=False, lab='', roles_must_present=['CimcCompute', 'Xrvr', 'VtsHost']),
+                      'storage':    Network(net_id='s', cidr='33.33.33.0/24', vlan=2033, is_via_tor=False, lab='', roles_must_present=['CimcController', 'CimcCompute', 'CimcCeph']),
+                      'external':   Network(net_id='e', cidr='44.44.44.0/24', vlan=2044, is_via_tor=False, lab='', roles_must_present=['CimcController']),
+                      'provider':   Network(net_id='p', cidr='55.55.55.0/24', vlan=2055, is_via_tor=False, lab='', roles_must_present=['CimcCompute'])}
         self.execute_mercury()
 
     def execute_mercury(self):
@@ -143,13 +143,13 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         switches = [{'node-id': 'oob', 'role': 'oob', 'oob-ip': '1.1.1.1', 'oob-username': 'openstack-read', 'oob-password': 'CTO1234!', 'ssh-username': None, 'ssh-password': None, 'proxy-id': None},
                     {'node-id': 'tor', 'role': 'tor', 'oob-ip': '1.1.1.2', 'oob-username': 'openstack-read', 'oob-password': 'CTO1234!', 'ssh-username': None, 'ssh-password': None, 'proxy-id': None}]
 
-        for i, sw in enumerate(mercury_cfg['TORSWITCHINFO']['SWITCHDETAILS'], start=1):
-            switches.append({'node-id': 'n9' + str(i), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'oob-username': sw['username'], 'oob-password': sw['password'], 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
+        for i, sw in enumerate(mercury_cfg['TORSWITCHINFO']['SWITCHDETAILS'], start=97):
+            switches.append({'node-id': 'n' + chr(i), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'oob-username': sw['username'], 'oob-password': sw['password'], 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
 
         ip, username, password = LabConfigurator.ask_ip_u_p(msg='Mercury usually has the third switch used to connect MGM node to outer world')
 
         if ip:
-            switches.append({'node-id': 'n9n', 'role': 'VimCatalist', 'oob-ip': ip, 'oob-username': username, 'oob-password': password, 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
+            switches.append({'node-id': 'nc', 'role': 'VimCatalist', 'oob-ip': ip, 'oob-username': username, 'oob-password': password, 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
 
         return switches
 
@@ -159,7 +159,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         ssh_username = mercury_cfg['COBBLER']['admin_username']
         ssh_password = 'cisco123'
 
-        nodes = [{'node-id': 'mgm', 'role': 'director-n9', 'oob-ip': mercury_cfg['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': mercury_cfg['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': mercury_cfg['TESTING_MGMT_CIMC_PASSWORD'],
+        nodes = [{'node-id': 'mgm', 'role': 'CimcDirector', 'oob-ip': mercury_cfg['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': mercury_cfg['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': mercury_cfg['TESTING_MGMT_CIMC_PASSWORD'],
                   'ssh-username': ssh_username, 'ssh-password': ssh_password, 'proxy-id': None,
                   'nics': [{'nic-id': 'a', 'ip': mercury_cfg['TESTING_MGMT_NODE_API_IP'].split('/')[0], 'is-ssh': True},
                            {'nic-id': 'm', 'ip': mercury_cfg['TESTING_MGMT_NODE_MGMT_IP'].split('/')[0], 'is-ssh': False}]}]
@@ -167,7 +167,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         virtuals = []
 
         for mercury_role_id, mercury_node_ids in mercury_cfg['ROLES'].items():
-            sqe_role_id = 'ceph-n9' if mercury_role_id == 'block_storage' else mercury_role_id + '-n9'
+            sqe_role_id = {'control': 'CimcController', 'compute': 'CimcCompute', 'block_storage': 'CimcCeph'}[mercury_role_id]
 
             nets_for_this_role = {mercury_net_id: net for mercury_net_id, net in self._nets.items() if sqe_role_id in net.get_roles()}
 

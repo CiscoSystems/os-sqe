@@ -182,7 +182,7 @@ class Tims(WithLogMixIn, WithConfig):
         '''.format(test_cfg_path=test_cfg_path, description=desc, mercury_version=mercury_version, status=status, lab_id=lab)
 
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
-        log_msg = '{} {}: {} {} {}'.format(lab, mercury_version, test_cfg_path, status.upper(), self._jenkins_text)
+        log_msg = '{} {}: {} {} {} '.format(lab, mercury_version, test_cfg_path, status.upper(), self._jenkins_text)
         if ans:
             url = 'http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
             with self.open_artifact('tims.html', 'w') as f:
