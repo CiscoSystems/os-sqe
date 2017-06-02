@@ -404,19 +404,19 @@ export OS_AUTH_URL={end_point}
             if len(instances_in_status) == required_n_servers:
                 return our_instances # all successfully reached the status
             if instances_in_error:
-                for instance in instances_in_error:
-                    self.analyse_instance_problems(instance)
+                self.analyse_instance_problems(instances_in_error)
                 raise RuntimeError('These instances failed: {0}'.format(instances_in_error))
             if time.time() > start_time + timeout:
+                self.analyse_instance_problems(our_instances)
                 raise RuntimeError('Instances {} are not {} after {} secs'.format(our_instances, status, timeout))
             time.sleep(30)
 
-    def analyse_instance_problems(self, instance):
-        status = self.os_server_show(instance['Name'])
-        comp = self.get_lab().get_node_by_id(status['OS-EXT-SRV-ATTR:host'])
-        ans = comp.exe('cat /var/log/libvirt/qemu/{}'.format(comp['']))
-        comp.exe('pkill kvm')
-        self.get_lab().r_collect_information(regex=status['id'], comment='fail-of-' + status['name'])
+    def analyse_instance_problems(self, instances):
+        for instance in instances:
+            status = self.os_server_show(instance['Name'])
+            comp = self.get_lab().get_node_by_id(status['OS-EXT-SRV-ATTR:host'])
+            comp.exe('pkill -f {}'.format((status['OS-EXT-SRV-ATTR:instance_name'])))
+            self.get_lab().r_collect_information(regex=status['id'], comment='fail-of-' + status['name'])
 
     def exe(self, cmd):
         """
