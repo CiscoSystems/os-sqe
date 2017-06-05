@@ -41,8 +41,9 @@ class NttScenario(ParallelWorker):
             self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory=self._tmp_dir + 'nfvi-test')
         if self._what_to_run in ['both', 'nfvbench']:
             self.get_mgmt().r_check_intel_nics()
+            # self.get_lab().get_vtc()[0].vtc_create_nfvbench_tg()
 
-        self.get_cloud().os_cleanup()
+        self.get_cloud().os_cleanup(is_all=True)
         self.get_cloud().os_quota_set()
 
     def loop_worker(self):
@@ -68,7 +69,7 @@ class NttScenario(ParallelWorker):
                 raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
 
     def nfvbench_run(self):
-        cmd = 'nfvbench ' + self._nfvbench_args
+        cmd = 'nfvbench ' + self._nfvbench_args + ' --json results.json'
         ans = self.get_mgmt().exe(cmd, is_warn_only=True)
         with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(self._nfvbench_args.replace(' ', '_')), 'w') as f:
             f.write(cmd + '\n')
