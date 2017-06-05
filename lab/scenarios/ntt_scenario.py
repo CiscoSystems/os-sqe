@@ -69,7 +69,8 @@ class NttScenario(ParallelWorker):
                 raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
 
     def nfvbench_run(self):
-        cmd = 'nfvbench ' + self._nfvbench_args + ' --json results.json'
+        self.get_mgmt().exe('rm -f *', 'nfvbench')
+        cmd = 'nfvbench ' + self._nfvbench_args + ' --std-json /tmp/nfvbench'
         ans = self.get_mgmt().exe(cmd, is_warn_only=True)
         with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(self._nfvbench_args.replace(' ', '_')), 'w') as f:
             f.write(cmd + '\n')
@@ -78,7 +79,7 @@ class NttScenario(ParallelWorker):
         if 'ERROR' in ans:
             raise RuntimeError(ans.split('ERROR')[1][:200])
         else:
-            res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='results.json')
+            res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='*.json', in_directory='nfvbench')
             self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):
@@ -96,9 +97,10 @@ class NttScenario(ParallelWorker):
                     la_min, la_avg, la_max = di[t]['stats']['overall']['min_delay_usec'], di[t]['stats']['overall']['avg_delay_usec'], di[t]['stats']['overall']['max_delay_usec']
                     gbps = di[t]['rate_bps'] / 1e9
                     drop_thr = di[t]['stats']['overall']['drop_percentage']
-                    res.append('MTU={} {}({:.4f}) rate={:.4f} Gbps latency={:.1f} {:.1f} {:.1f} usec'.format(mtu, t, drop_thr, gbps, la_min, la_avg, la_max))
+                    res.append('size={} {}({:.4f}) rate={:.4f} Gbps latency={:.1f} {:.1f} {:.1f} usec'.format(mtu, t, drop_thr, gbps, la_min, la_avg, la_max))
             else:
-                res.append('MTU={} RT={}'.format(mtu, di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']))
+                gbps = (di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']) / 1e9
+                res.append('size={} rate={} Gbps'.format(mtu, gbps))
 
         with self.get_lab().open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
             f.write(self._nfvbench_args + '\n' + '; '.join(res))
