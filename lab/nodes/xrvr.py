@@ -63,7 +63,7 @@ class Xrvr(VirtualServer):
             _, username, password = self.get_oob()
             if cmd not in self._expect_commands:
                 self.create_expect_command_file(cmd=cmd, ip=ip, username=username, password=password, is_xrvr=True)
-            ans = self._proxy_server.exe(command='expect {0}'.format(self._expect_commands[cmd]), is_warn_only=is_warn_only)
+            ans = self._proxy.exe(command='expect {0}'.format(self._expect_commands[cmd]), is_warn_only=is_warn_only)
         else:
             ans = self.exe(command=cmd, is_warn_only=is_warn_only)
         return ans
@@ -71,9 +71,6 @@ class Xrvr(VirtualServer):
     def create_expect_command_file(self, cmd, ip, username, password, is_xrvr):
         import inspect
 
-        stack = inspect.stack()
-        cmd_name = stack[2][3]
-        file_name = 'expect-{}-{}'.format(self.get_node_id(), cmd_name)
 
         sudo_tmpl = '''spawn sshpass -p {p} ssh -o StrictHostKeyChecking=no {u}@{ip}
 set timeout 20
@@ -105,8 +102,12 @@ expect {{
 '''
         tmpl = xrvr_tmpl if is_xrvr else sudo_tmpl
         s = tmpl.format(p=password, u=username, ip=ip, cmd=cmd)
-        self._proxy_server.r_put_string_as_file_in_dir(string_to_put=s, file_name=file_name)
-        self._expect_commands[cmd] = file_name
+        stack = inspect.stack()
+        cmd_name = stack[2][3]
+        expect_scripts_dir = 'expect-scripts'
+        file_name = 'expect-{}-{}'.format(self.get_node_id(), cmd_name)
+        self._proxy.r_put_string_as_file_in_dir(string_to_put=s, file_name=file_name, in_directory='expect-scripts')
+        self._expect_commands[cmd] = expect_scripts_dir + '/' + file_name
 
     @staticmethod
     def _get(raw, key):
