@@ -8,6 +8,11 @@ def shell(String command)
 }
 
 def tests = []
+if (starts_with.startsWith('perf'))
+	tests = ['perf-csr-0', 'perf-csr']
+else if (starts_with.startsWith('tc-vts'))
+    tests = ['tc-vts']
+
 
 def url = 'https://github.com/CiscoSystems/os-sqe/tree/master/configs/ha'
 ans = shell('curl ' + url)
