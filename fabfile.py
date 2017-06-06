@@ -5,9 +5,6 @@ if '.' not in sys.path:
     sys.path.append('.')
 
 
-KNOWN_LABS = ['g7-2-vts.yaml', 'g7-2-vpp.yaml', 'marahaika-vts.yaml', 'c35bot-vpp.yaml', 'c42top.yaml', 'i11tb3.yaml']
-
-
 @task
 def cmd():
     """fab cmd\t\t\t\tRun single command on lab device
@@ -53,7 +50,7 @@ def cmd():
             lab_logger.exception('\n Exception: {0}'.format(ex))
 
     while True:
-        lab_cfg_path = get_user_input(options_lst=KNOWN_LABS)
+        lab_cfg_path = get_user_input(options_lst=Laboratory.get_list_of_pods())
         lab, nodes = get_lab_nodes(lab_cfg_path)
         while True:
             device_name = get_user_input(owner=lab, options_lst=['lab', 'cloud'] + nodes)
@@ -200,7 +197,7 @@ def info(lab_config_path=None, regex=None):
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
 
-    lab_config_path = lab_config_path or get_user_input(options_lst=KNOWN_LABS)
+    lab_config_path = lab_config_path or get_user_input(options_lst=Laboratory.get_list_of_pods())
     regex = regex or get_user_input(options_lst=['ERROR', 'error'])
 
     l = Laboratory(lab_config_path)
@@ -240,7 +237,7 @@ def bash():
     from lab.laboratory import Laboratory
     from fabric.api import local
 
-    lab_cfg_path = get_user_input(options_lst=KNOWN_LABS)
+    lab_cfg_path = get_user_input(options_lst=Laboratory.get_list_of_pods())
     l = Laboratory(lab_cfg_path)
     file_name = 'tmp.aliases'
     local('rm -f ' + file_name)

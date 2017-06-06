@@ -53,6 +53,18 @@ class WithConfig(object):
         local('test -e {a}/{l} || curl -s -R http://{ip}/{p} -o {a}/{l}'.format(a=WithConfig.ARTIFACTS_DIR, l=loc, ip=WithConfig.REMOTE_FILE_STORE_IP, p=path))
         return os.path.join(WithConfig.ARTIFACTS_DIR, loc)
 
+    @staticmethod
+    def get_list_of_pods():
+        import requests
+        import re
+
+        repo_tree_url = 'https://wwwin-gitlab-sjc.cisco.com/mercury/configs/tree/master'
+        resp = requests.get('https://wwwin-gitlab-sjc.cisco.com/mercury/configs/tree/master')
+        if resp.status_code != 200:
+            raise ValueError('Something wrong with repo: {}'.format(repo_tree_url))
+        return re.findall('.*title="(.*)" href=.*yaml', resp.text)
+
+
 KEY_PUBLIC_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'public'))
 KEY_PRIVATE_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'private'))
 
@@ -74,7 +86,7 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
     import os
 
     git_reference = os.getenv('SQE_GIT_REF', 'master').split('/')[-1]
-    gitlab_config_repo = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/raw/{0}/lab_configs/'.format(git_reference)
+    gitlab_config_repo = 'https://wwwin-gitlab-sjc.cisco.com/mercury/configs/raw/{}/'.format(git_reference)
 
     if os.path.isfile(os.path.expanduser(config_path)):
         actual_path = os.path.abspath(os.path.expanduser(config_path))  # path to existing local file
