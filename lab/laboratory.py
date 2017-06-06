@@ -285,9 +285,12 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
         self.log_to_artifact(name='configs-{}{}.txt'.format(self, addon), body=configs)
 
     def r_get_version(self):
-        cloud_version = self.get_director().r_get_version()
-        vts_version = self.get_vtc()[0].r_vtc_get_version() if self.get_vtc() else 'no-vts'
-        return cloud_version, vts_version
+        versions = self.get_director().r_get_version()
+        if versions['mechanism'] == 'vts':
+            versions['vts'] = self.get_vtc()[0].r_vtc_get_version()
+        else:
+            versions['vpp'] = 'nont known'
+        return versions
 
     def exe(self, cmd):
         from lab.nodes.lab_server import LabServer

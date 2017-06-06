@@ -305,7 +305,8 @@ class CimcDirector(CimcServer):
 
     @decorators.section('Getting VIM version tag')
     def r_get_version(self):
-        return self.exe('cat /etc/cisco-mercury-release')
+        ans = self.exe('grep image_tag openstack-configs/defaults.yaml && grep MECHANISM_DRIVERS openstack-configs/setup_data.yaml && grep namespace openstack-configs/defaults.yaml')
+        return {'gerrit_tag': ans.split('\r\n')[0].split(':')[-1].strip(), 'mechanism': ans.split('\r\n')[1].split(':')[-1].strip(), 'container_namespace': ans.split('\r\n')[2].split(':')[-1].strip()}
 
     def r_collect_logs(self, regex):
         body = ''

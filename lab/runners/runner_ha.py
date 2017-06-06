@@ -90,9 +90,7 @@ class RunnerHA(LabWorker):
         if len(cloud.get_computes()) < 2:
             raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(lab_cfg_path))
 
-        mercury_version, vts_version = cloud.get_lab().r_get_version()
-
-        tims = Tims()
+        tims = Tims(pod=cloud.get_lab())
         exceptions = []
 
         for tst in tests:
@@ -103,7 +101,7 @@ class RunnerHA(LabWorker):
 
             elk = Elk(proxy=cloud.get_mediator())
             elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
-            tims.publish_result(test_cfg_path=tst, mercury_version=mercury_version, lab=cloud.get_lab(), results=results)
+            tims.publish_result(test_cfg_path=tst, results=results)
             exceptions = reduce(lambda l, x: l + x['exceptions'], results, exceptions)
 
         cloud.get_lab().r_collect_information(regex='error', comment=test_regex)

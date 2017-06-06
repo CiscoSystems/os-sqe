@@ -4,6 +4,14 @@ from lab.with_config import WithConfig
 
 class Tims(WithLogMixIn, WithConfig):
     FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'VTS PERF AND SCALE': 'Tcbr1840f', 'PERFOMANCE_AND_SCALE': 'Tcbr1840f', 'API_TEST': 'Tcbr2001f'}
+    NAMESPACE_TO_BRANCH = {'mercury-rhel7-osp10': 'master', 'mercury-rhel7-osp10-plus': 'newton', 'mercury-rhel7-osp8': 'liberty'}
+    MECHANISM_TO_TOPOLOGY = {'vts': 'VTS/VLAN', 'vpp': 'VPP/VLAN'}
+    POD_TO_CONF_ID = {'g7-2-vts': 'Tcbr8154g',
+                      'g7-2-vpp': 'Tcbr96912g',
+                      'marahaika-vts': 'Tcbr9367g',
+                      'marahaika-vpp': 'Tcbr114510g',
+                      'c35bot-vts': 'Tcbr115582g',
+                      'c35bot-vpp': 'Tcbr115583g'}
     TOKENS = {'kshileev': '0000003933000000000D450000000000',
               'nfedotov': '26520000006G00005F42000077044G47',
               'dratushn': '000000525F7G007900000000006G4700',
@@ -15,11 +23,19 @@ class Tims(WithLogMixIn, WithConfig):
     _OPERATION_UPDATE = 'update'
     _OPERATION_SEARCH = 'search'
 
-    def __init__(self):
+    def __init__(self, pod):
         import getpass
         import os
 
-        self._jenkins_text = os.getenv('BUILD_URL', None) or 'run manually out of jenkins'
+        self._pod = pod
+        self._conf_id = Tims.POD_TO_CONF_ID[str(self._pod)]
+        self._versions = pod.r_get_version()
+        self._mercury_version = self._versions['gerrit_tag']
+        self._branch = Tims.NAMESPACE_TO_BRANCH[self._versions['container_namespace']]
+        self._topo = Tims.MECHANISM_TO_TOPOLOGY[self._versions['mechanism']]
+        self._dima_common_part_of_logical_id = ':{}-{}:{}'.format(self._branch, self._mercury_version, self._topo)
+
+        self._jenkins_text = os.getenv('BUILD_URL', None) or 'run off jenkins'
         user_token = os.getenv('TIMS_USER_TOKEN', None)  # some Jenkins jobs define this variable in form user-token
         if user_token and user_token.count('-') == 1:
             username, token = user_token.split('-')
@@ -48,7 +64,7 @@ class Tims(WithLogMixIn, WithConfig):
 
         if not self._xml_tims_wrapper:
             self.log('No way to detect the user who is running the test, nothing will be published in TIMS', level='error')
-            return None
+            return False
         else:
             data = self._xml_tims_wrapper.format(body=body)
             response = requests.post("http://tims.cisco.com/xml/{}/{}.svc".format(self.TIMS_PROJECT_ID, operation), data=data)
@@ -67,13 +83,13 @@ class Tims(WithLogMixIn, WithConfig):
         res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
         return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
 
-    def search_result(self, test_cfg_path, mercury_version):
-        body = '''<Search scope="project" root="{}" entity="result" casesensitive="true">
+    def search_result(self, logical_id):
+        body = '''<Search scope="project" root="{proj_id}" entity="result" casesensitive="true">
                     <TextCriterion operator="is">
                         <FieldName><![CDATA[Logical ID]]></FieldName>
-                        <Value><![CDATA[{}:{}]]></Value>
+                        <Value><![CDATA[{logical_id}]]></Value>
                         </TextCriterion>
-                  </Search>'''.format(self.TIMS_PROJECT_ID, test_cfg_path, mercury_version)
+                  </Search>'''.format(proj_id=self.TIMS_PROJECT_ID, logical_id=logical_id)
 
         res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
         return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
@@ -110,18 +126,19 @@ class Tims(WithLogMixIn, WithConfig):
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
         return case_id
 
-    def update_special_dima_result(self, test_cfg_path, mercury_version, status, lab_id, test_case_id):
-        result_id = self.search_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version)
-        if not result_id:
-            return ''
+    def update_pending_result(self, test_cfg_path, test_case_id, desc, status):
+        pending_logical_id = test_cfg_path + self._dima_common_part_of_logical_id
+        pending_result_id = self.search_result(logical_id=pending_logical_id)
 
-        lab_vs_id = {'c24top': 'Tcbr2061g', 'i11tb3': 'Tcbr2062g', 'g7-2-vts': 'Tcbr8154g', 'g7-2-vpp': 'Tcbr96912g', 'marahaika': 'Tcbr9367g', 'c35bot-vpp': 'Tcbr95554g'}
+        if not pending_result_id:
+            return self.create_new_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, desc=desc, status=status)
 
         body = '''
             <Result>
-                <Title><![CDATA[Result for {test_cfg_path}]]></Title>
+                <Title><![CDATA[Result {test_cfg_path}]]></Title>
+                <Description><![CDATA[{desc}]]></Description>
                 <ID xlink:href="http://tims.cisco.com/xml/{result_id}/entity.svc">{result_id}</ID>
-                <LogicalID><![CDATA[{test_cfg_path}:{mercury_version}]]></LogicalID>
+                <LogicalID><![CDATA[{logical_id}]]></LogicalID>
                 <WriteAccess>member</WriteAccess>
                 <ListFieldValue multi-value="true">
                     <FieldName><![CDATA[ Software Version ]]></FieldName>
@@ -131,15 +148,14 @@ class Tims(WithLogMixIn, WithConfig):
                 <ConfigID xlink:href="http://tims.cisco.com/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
                 <CaseID xlink:href="http://tims.cisco.com/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
             </Result>
-        '''.format(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status, result_id=result_id, conf_id=lab_vs_id[lab_id], test_case_id=test_case_id)
+        '''.format(test_cfg_path=test_cfg_path, desc=desc, status=status, mercury_version=self._mercury_version, test_case_id=test_case_id, logical_id=pending_logical_id, result_id=pending_result_id, conf_id=self._conf_id)
 
         ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
-        return ' and for release http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
+        return ' and pending http://tims/warp.cmd?ent={} updated'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
 
-    def publish_result(self, test_cfg_path, mercury_version, lab, results):
+    def publish_result(self, test_cfg_path, results):
 
         test_case_id = self.update_create_test_case(test_cfg_path=test_cfg_path)
-
         desc = self._jenkins_text + '\n'
         status = 'passed'
         for res in results:  # [{'worker name': 'VtsScenario',  'exceptions': [], 'params': '...'}, ...]
@@ -152,9 +168,20 @@ class Tims(WithLogMixIn, WithConfig):
             with self.open_artifact('main-results-for-tims.txt', 'r') as f:
                 desc += 'MAIN RESULTS:\n' + f.read()
 
+        log_msg = '{} {}: {} {} {} '.format(self._pod, self._mercury_version, test_cfg_path, status.upper(), self._jenkins_text)
+
+        result_url = self.update_pending_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, desc=desc, status=status)
+
+        with self.open_artifact('tims.html', 'w') as f:
+            f.write('<a href="{}">TIMS result</a>'.format(result_url))
+        log_msg += result_url
+        self.log_to_slack(log_msg)
+        self.log(log_msg)
+
+    def create_new_result(self, test_cfg_path, test_case_id, desc, status):
         body = '''
         <Result>
-                <Title><![CDATA[Result for {test_cfg_path}]]></Title>
+                <Title><![CDATA[for {test_cfg_path}]]></Title>
                 <Description><![CDATA[{description}]]></Description>
                 <Owner>
                         <UserID>kshileev</UserID>
@@ -163,51 +190,33 @@ class Tims(WithLogMixIn, WithConfig):
                     <FieldName><![CDATA[ Software Version ]]></FieldName>
                     <Value><![CDATA[ {mercury_version} ]]></Value>
                 </ListFieldValue>
-
                 <Status>{status}</Status>
-
-                <CaseLookup>
-                        <TextFieldValue searchoperator="is">
-                                <FieldName>Logical ID</FieldName>
-                                <Value>{test_cfg_path}</Value>
-                        </TextFieldValue>
-                </CaseLookup>
-                <ConfigLookup>
-                        <TextFieldValue searchoperator="is">
-                                <FieldName>Logical ID</FieldName>
-                                <Value>{lab_id}</Value>
-                        </TextFieldValue>
-                </ConfigLookup>
+                <CaseID xlink:href="http://tims.cisco.com/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
+                <ConfigID xlink:href="http://tims.cisco.com/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
+ 
         </Result>
-        '''.format(test_cfg_path=test_cfg_path, description=desc, mercury_version=mercury_version, status=status, lab_id=lab)
+        '''.format(test_cfg_path=test_cfg_path, test_case_id=test_case_id, description=desc, mercury_version=self._mercury_version, status=status, conf_id=self._conf_id)
 
         ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
-        log_msg = '{} {}: {} {} {} '.format(lab, mercury_version, test_cfg_path, status.upper(), self._jenkins_text)
-        if ans:
-            url = 'http://tims/warp.cmd?ent={}'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
-            with self.open_artifact('tims.html', 'w') as f:
-                f.write('<a href="{}">TIMS result</a>'.format(url))
-            log_msg += url
-            log_msg += self.update_special_dima_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, status=status, lab_id=str(lab), test_case_id=test_case_id)
-        else:
-            log_msg += 'and not reported to tims since user not known'
-        self.log_to_slack(log_msg)
-        self.log(log_msg)
 
-    def simulate(self):
-        mercury_version, vts_version = '6773', 'vts'
+        return 'and new http://tims/warp.cmd?ent={} created'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1]) if ans else 'No way to report to TIMS since user is not known'
 
-        available_tc = self.ls_configs(directory='ha')
+    @staticmethod
+    def simulate():
+        from lab.laboratory import Laboratory
 
-        cfgs = ['scale-iperf.yaml']
+        tims_lst = [Tims(Laboratory('g7-2-vts.yaml')), Tims(Laboratory('c35bot-vpp.yaml')), Tims(Laboratory('marahaika-vts.yaml'))  ]
+        # available_tc = tims.ls_configs(directory='ha')
+
+        cfgs = ['perf-csr-0-PVP-1-1k.yaml']
         for test_cfg_path in cfgs:
-            results = [{'worker name': 'FakeScenario', 'params': 'FAKE params', 'exceptions': ['FAKE exception 1', 'FAKE exception 2']},
+            results = [{'worker name': 'FakeScenario', 'params': 'FAKE params', 'exceptions': []},
                        {'worker name': 'FakeMonitor', 'params': 'FAKE params', 'exceptions': []},
                        ]
-            with self.open_artifact('main-results-for-tims.txt', 'w') as f:
-                f.write('main results 1\nmain results 2')
-            self.publish_result(test_cfg_path=test_cfg_path, mercury_version=mercury_version, lab='g7-2', results=results)
+            for tims in tims_lst:
+                with tims.open_artifact('main-results-for-tims.txt', 'w') as f:
+                    f.write('STATUS=passed\nFAKE main results 1\nFAKE main results 2')
+                tims.publish_result(test_cfg_path=test_cfg_path, results=results)
 
 if __name__ == '__main__':
-    t = Tims()
-    t.simulate()
+    Tims.simulate()
