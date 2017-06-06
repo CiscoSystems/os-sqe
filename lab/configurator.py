@@ -11,7 +11,8 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         super(LabConfigurator, self).__init__()
 
         self._nets = {'api':        Network(net_id='a', cidr='10.10.10.0/32', vlan=9999, is_via_tor=True,  lab='', roles_must_present=['CimcDirector', 'CimcController', 'Vtc']),
-                      'management': Network(net_id='m', cidr='11.11.11.0/24', vlan=2011, is_via_tor=False, lab='', roles_must_present=['CimcDirector', 'CimcController', 'CimcCompute', 'CimcCompute', 'Vtc', 'Xrvr', 'VtsHost']),
+                      'management': Network(net_id='m', cidr='11.11.11.0/24', vlan=2011, is_via_tor=False, lab='', roles_must_present=['CimcDirector', 'CimcController', 'CimcCompute', 'CimcCeph', 'CimcCompute',
+                                                                                                                                       'Vtc', 'Xrvr', 'VtsHost']),
                       'tenant':     Network(net_id='t', cidr='22.22.22.0/24', vlan=2022, is_via_tor=False, lab='', roles_must_present=['CimcCompute', 'Xrvr', 'VtsHost']),
                       'storage':    Network(net_id='s', cidr='33.33.33.0/24', vlan=2033, is_via_tor=False, lab='', roles_must_present=['CimcController', 'CimcCompute', 'CimcCeph']),
                       'external':   Network(net_id='e', cidr='44.44.44.0/24', vlan=2044, is_via_tor=False, lab='', roles_must_present=['CimcController']),
@@ -167,7 +168,7 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         virtuals = []
 
         for mercury_role_id, mercury_node_ids in mercury_cfg['ROLES'].items():
-            sqe_role_id = {'control': 'CimcController', 'compute': 'CimcCompute', 'block_storage': 'CimcCeph'}[mercury_role_id]
+            sqe_role_id = {'control': 'CimcController', 'compute': 'CimcCompute', 'block_storage': 'CimcCeph', 'vts': 'VtsHost'}[mercury_role_id]
 
             nets_for_this_role = {mercury_net_id: net for mercury_net_id, net in self._nets.items() if sqe_role_id in net.get_roles()}
 
