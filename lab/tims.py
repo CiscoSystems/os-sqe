@@ -131,7 +131,7 @@ class Tims(WithLogMixIn, WithConfig):
         pending_result_id = self.search_result(logical_id=pending_logical_id)
 
         if not pending_result_id:
-            return self.create_new_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, desc=desc, status=status)
+            return self.create_new_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, logical_id=pending_logical_id, desc=desc, status=status)
 
         body = '''
             <Result>
@@ -152,6 +152,30 @@ class Tims(WithLogMixIn, WithConfig):
 
         ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
         return ' and pending http://tims/warp.cmd?ent={} updated'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
+
+    def create_new_result(self, test_cfg_path, test_case_id, logical_id, desc, status):
+        body = '''
+        <Result>
+                <Title><![CDATA[for {test_cfg_path}]]></Title>
+                <Description><![CDATA[{description}]]></Description>
+                <LogicalID><![CDATA[{logical_id}]]></LogicalID>
+                <Owner>
+                        <UserID>kshileev</UserID>
+                </Owner>
+                <ListFieldValue multi-value="true">
+                    <FieldName><![CDATA[ Software Version ]]></FieldName>
+                    <Value><![CDATA[ {mercury_version} ]]></Value>
+                </ListFieldValue>
+                <Status>{status}</Status>
+                <CaseID xlink:href="http://tims.cisco.com/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
+                <ConfigID xlink:href="http://tims.cisco.com/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
+
+        </Result>
+        '''.format(test_cfg_path=test_cfg_path, test_case_id=test_case_id, logical_id=logical_id, description=desc, mercury_version=self._mercury_version, status=status, conf_id=self._conf_id)
+
+        ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
+
+        return 'and new http://tims/warp.cmd?ent={} created'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1]) if ans else 'No way to report to TIMS since user is not known'
 
     def publish_result(self, test_cfg_path, results):
 
@@ -177,29 +201,6 @@ class Tims(WithLogMixIn, WithConfig):
         log_msg += result_url
         self.log_to_slack(log_msg)
         self.log(log_msg)
-
-    def create_new_result(self, test_cfg_path, test_case_id, desc, status):
-        body = '''
-        <Result>
-                <Title><![CDATA[for {test_cfg_path}]]></Title>
-                <Description><![CDATA[{description}]]></Description>
-                <Owner>
-                        <UserID>kshileev</UserID>
-                </Owner>
-                <ListFieldValue multi-value="true">
-                    <FieldName><![CDATA[ Software Version ]]></FieldName>
-                    <Value><![CDATA[ {mercury_version} ]]></Value>
-                </ListFieldValue>
-                <Status>{status}</Status>
-                <CaseID xlink:href="http://tims.cisco.com/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
-                <ConfigID xlink:href="http://tims.cisco.com/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
- 
-        </Result>
-        '''.format(test_cfg_path=test_cfg_path, test_case_id=test_case_id, description=desc, mercury_version=self._mercury_version, status=status, conf_id=self._conf_id)
-
-        ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
-
-        return 'and new http://tims/warp.cmd?ent={} created'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1]) if ans else 'No way to report to TIMS since user is not known'
 
     @staticmethod
     def simulate():
