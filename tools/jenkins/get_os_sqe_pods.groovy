@@ -9,8 +9,7 @@ def shell(String command)
 
 def pods = []
 
-def url = 'http://gitlab.cisco.com/openstack-cisco-dev/osqe-configs/tree/master/lab_configs'
-ans = shell('curl ' + url)
+ans = shell('curl https://wwwin-gitlab-sjc.cisco.com/mercury/configs/tree/master')
 
 def regex = /title="[\w-]+\.yaml"/  // match things like title="marahaika-vts.yaml"
 def find_names = (ans =~ /$regex/)
