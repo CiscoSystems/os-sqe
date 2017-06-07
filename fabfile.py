@@ -207,7 +207,7 @@ def info(lab_config_path=None, regex=None):
         cloud.r_collect_information(regex=regex, comment='')
     except RuntimeError:
         pass  # it's ok if cloud is not yet deployed in the lab
-    l.r_collect_information(regex=regex, comment='')
+    l.r_collect_information(regex=regex, comment=regex)
 
 
 def get_user_input(options_lst, owner=None):

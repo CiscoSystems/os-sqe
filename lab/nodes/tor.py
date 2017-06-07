@@ -3,15 +3,17 @@ from lab.nodes.n9k import Nexus
 
 
 class Tor(Nexus):
-    ROLE_OCTET = 'XX'
-
+    def n9_show_running_config(self):
+        return ''
 
 class Oob(Nexus):
-    ROLE_OCTET = 'XX'
+    def n9_show_running_config(self):
+        return ''
 
 
 class Pxe(Nexus):
-    ROLE_OCTET = 'XX'
+    def n9_show_running_config(self):
+        return ''
 
 
 class Terminal(LabNode):
