@@ -59,6 +59,7 @@ class Server(object):
         from fabric.api import run, settings, cd
         from fabric.exceptions import NetworkError
 
+        command += ' # in ~' if in_directory == '.' else ' # in ' + in_directory
         if str(self._ips[0]) in ['localhost', '127.0.0.1']:
             return self._exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
 
@@ -164,42 +165,33 @@ class Server(object):
                     body = sudo('cat {0}'.format(file_name))
                     return body
 
-    def r_get_remote_file(self, url, to_directory='/var/tmp'):
-        import requests
+    def r_curl(self, url, size, checksum, loc_abs_path):
         from os import path
 
-        if not to_directory.startswith('/'):
-            raise ValueError('to_directory needs to be full path')
+        if loc_abs_path[0] not in ['/', '~']:
+            raise ValueError('loc_abs_path needs to be full path')
         url = url.strip().strip('\'')
         info_url = url + '.txt'
-        r = requests.get(info_url)
-        try:
-            checksum, loc, size, username, password = r.text.split()
-        except ValueError:
-            raise ValueError('File {} has wrong body: "{}"'.format(info_url, r.text))
 
-        loc_path = path.join(to_directory, path.basename(loc))
-        cache_dir = '/var/tmp/cache'
-        cache_path = path.join(cache_dir, path.basename(loc))
+        cache_abs_path = path.join('/tmp', path.basename(loc_abs_path))
 
-        self.exe('mkdir -p {0}'.format(to_directory))
-        self.exe('mkdir -p ' + cache_dir)
+        if path.dirname(loc_abs_path) not in ['~', '/tmp', '/var/tmp']:
+            self.exe('mkdir -p {0}'.format(path.dirname(loc_abs_path)))
 
         while True:
-            self.exe(command='test -e {c} || curl --silent --remote-time {url} -o {c}'.format(c=cache_path, url=url))  # download to cache directory and use as cache
-            actual_checksum = self.exe(command='{} {}'.format('sha256sum' if len(checksum) == 64 else 'md5sum', cache_path)).split()[0]
+            self.exe(command='test -e {c} || curl --silent --remote-time {url} -o {c}'.format(c=cache_abs_path, url=url))  # download to cache directory and use as cache
+            actual_checksum = self.exe(command='{} {}'.format('sha256sum' if len(checksum) == 64 else 'md5sum', cache_abs_path)).split()[0]
             if actual_checksum == checksum:
                 break
             else:
-                actual_size = self.exe('ls -la {}'.format(cache_path)).split()[4]
+                actual_size = self.exe('ls -la {}'.format(cache_abs_path)).split()[4]
                 if int(size) - int(actual_size) > 0:  # probably curl fails to download up to the end, repeat it
-                    self.exe(command='rm -f {}'.format(cache_path))
+                    self.exe(command='rm -f {}'.format(cache_abs_path))
                     continue
                 else:
                     raise RuntimeError('image described here {} has wrong checksum. Check it manually'.format(info_url))
 
-        self.exe('rm -f {l} && cp {c} {l}'.format(l=loc_path, c=cache_path), in_directory=to_directory)
-        return loc_path, checksum, username, password
+        self.exe('rm -f {l} && cp {c} {l}'.format(l=loc_abs_path, c=cache_abs_path))
 
     def check_or_install_packages(self, package_names):
         pm = self.get_package_manager()

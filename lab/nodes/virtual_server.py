@@ -6,7 +6,7 @@ class VirtualServer(LabServer):
         kwargs['model'] = 'virtual'
         kwargs['ru'] = 'virtual'
         super(VirtualServer, self).__init__(**kwargs)
-        self._hard_server = self.lab().get_node_by_id(kwargs['virtual-on'])
+        self._hard_server = self.pod.get_node_by_id(kwargs['virtual-on'])
         self._hard_server.add_virtual_server(self)
 
     def cmd(self, cmd):
@@ -22,7 +22,7 @@ class VirtualServer(LabServer):
         ans = self._hard_server.exe('virsh vncdisplay {}'.format(name))
         port = 5900 + int(ans.strip(':'))
         vts_host_ip = self._hard_server.get_ip_mx()
-        mgmt_ip = self.lab().get_director().get_ip_api()
+        mgmt_ip = self.pod.get_director().get_ip_api()
         os.system('ssh -2NfL {port}:{vts}:{port} root@{mgmt}'.format(port=port, vts=vts_host_ip, mgmt=mgmt_ip))
 
     def get_hard_node_id(self):

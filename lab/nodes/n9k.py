@@ -543,7 +543,7 @@ class Nexus(LabNode):
 
     def n9_show_nve_peers(self):
         r = self.cmd('sh nve peers')
-        return r['result'] if r['result'] else {}
+        return r['result']['body']['TABLE_nve_peers']['ROW_nve_peers'] if r['result'] else {}
 
     def r_collect_config(self):
         return self._format_single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())
@@ -552,7 +552,7 @@ class Nexus(LabNode):
 class VimTor(Nexus):
     def r_border_leaf(self):
         vlans = self._requested_topology['vlans']
-        tenant_vlan_ids = [vlan_id for vlan_id, name_and_others in vlans.items() if name_and_others['name'] == '{}-t'.format(self.lab())]
+        tenant_vlan_ids = [vlan_id for vlan_id, name_and_others in vlans.items() if name_and_others['name'] == '{}-t'.format(self.pod)]
         if not tenant_vlan_ids:
             return  # this switch has no tenant vlan so do not configure border leaf on it
 

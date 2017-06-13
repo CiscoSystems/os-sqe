@@ -28,10 +28,10 @@ class Vtc(VirtualServer):
     def get_vtf(self):
         from lab.nodes.vtf import Vtf
 
-        return self.lab().get_nodes_by_class(Vtf)
+        return self.pod.get_nodes_by_class(Vtf)
 
     def get_xrvr_names(self):
-        return map(lambda x: x.get_id(), self.lab().get_xrvr())
+        return map(lambda x: x.get_id(), self.pod.get_xrvr())
 
     def r_vtc_get_vtfs(self):
         ans = self.cmd().get(url='/api/running/cisco-vts')
@@ -43,7 +43,7 @@ class Vtc(VirtualServer):
         return vtf_nodes
 
     def r_vtc_get_xrvrs(self):
-        xrvr_nodes = self.lab().get_xrvr()
+        xrvr_nodes = self.pod.get_xrvr()
         devices = self.r_vtc_show_devices_device()
         if 'collection' not in devices:
             return []
@@ -54,13 +54,13 @@ class Vtc(VirtualServer):
         return xrvr_nodes
 
     def xrvr_restart_dl(self):
-        return map(lambda xrvr: xrvr.xrvr_restart_dl(), self.lab().get_xrvr())
+        return map(lambda xrvr: xrvr.xrvr_restart_dl(), self.pod.get_xrvr())
 
     def show_connections_xrvr_vtf(self):
-        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.get_vtf()) + map(lambda xrvr: xrvr.xrvr_show_connections_xrvr_vtf(), self.lab().get_xrvr())
+        return map(lambda vtf: vtf.show_connections_xrvr_vtf(), self.get_vtf()) + map(lambda xrvr: xrvr.xrvr_show_connections_xrvr_vtf(), self.pod.get_xrvr())
 
     def show_vxlan_tunnel(self):
-        return map(lambda vtf: vtf.show_vxlan_tunnel(), self.lab().get_vft())
+        return map(lambda vtf: vtf.show_vxlan_tunnel(), self.pod.get_vft())
 
     def disrupt(self, method_to_disrupt, downtime):
         import time
@@ -94,8 +94,8 @@ class Vtc(VirtualServer):
         cfg_tmpl = with_config.read_config_from_file(config_path='vtc-vm-config.txt', directory='vts', is_as_string=True)
         net_part_tmpl = with_config.read_config_from_file(config_path='vtc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
-        dns_ip, ntp_ip = self.lab().get_dns()[0], self.lab().get_ntp()[0]
-        hostname = '{id}-{lab}'.format(lab=self.lab(), id=self.get_node_id())
+        dns_ip, ntp_ip = self.pod.get_dns()[0], self.pod.get_ntp()[0]
+        hostname = '{id}-{lab}'.format(lab=self.pod, id=self.get_node_id())
 
         _, ssh_username, ssh_password = self._server.get_ssh()
 
@@ -122,13 +122,13 @@ class Vtc(VirtualServer):
         mx_ip = []
         mx_gw = None
         for node_id in ['bld', 'vtc1', 'vtc2']:
-            a_ip.append(self.lab().get_node_by_id(node_id=node_id).get_nic('a').get_ip_and_mask()[0])
-            mx_nic = self.lab().get_node_by_id(node_id=node_id).get_nic('mx')
+            a_ip.append(self.pod.get_node_by_id(node_id=node_id).get_nic('a').get_ip_and_mask()[0])
+            mx_nic = self.pod.get_node_by_id(node_id=node_id).get_nic('mx')
             mx_gw = mx_nic.get_gw()
 
             mx_ip.append(mx_nic.get_ip_and_mask()[0])
         cfg_tmpl = with_config.read_config_from_file(config_path='cluster.conf.template', directory='vts', is_as_string=True)
-        cfg_body = cfg_tmpl.format(lab_name=self.lab(), vip_a=vip_a, vip_mx=vip_mx, vtc1_a_ip=a_ip[1], vtc2_a_ip=a_ip[2], vtc1_mx_ip=mx_ip[1], vtc2_mx_ip=mx_ip[2], special_ip=a_ip[0], mx_gw=mx_gw)
+        cfg_body = cfg_tmpl.format(lab_name=self.pod, vip_a=vip_a, vip_mx=vip_mx, vtc1_a_ip=a_ip[1], vtc2_a_ip=a_ip[2], vtc1_mx_ip=mx_ip[1], vtc2_mx_ip=mx_ip[2], special_ip=a_ip[0], mx_gw=mx_gw)
         with with_config.WithConfig.open_artifact('cluster.conf', 'w') as f:
             f.write(cfg_body)
         return cfg_body
@@ -189,7 +189,7 @@ class Vtc(VirtualServer):
     def r_vtc_wait_cluster_formed(self, n_retries=1):
         import requests.exceptions
 
-        nodes = self.lab().get_nodes_by_class(Vtc)
+        nodes = self.pod.get_nodes_by_class(Vtc)
         while True:
             try:
                 cluster = self.r_vtc_show_ha_cluster_members()
@@ -209,7 +209,7 @@ class Vtc(VirtualServer):
 
     def r_collect_logs(self, regex):
         body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex=regex), 'cat /var/log/ncs/localhost\:8888.access']:
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex=regex), self._form_log_grep_cmd(log_files='/var/log/ncs/localhost\:8888.access', regex='40')]:
             ans = self.exe(cmd, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
@@ -259,11 +259,11 @@ class Vtc(VirtualServer):
             request devices device {{ name }} sync-from
             {% endfor %}''')
 
-        map(lambda y: y.r_xrvr_day0_config(), self.lab().get_xrvr())
+        map(lambda y: y.r_xrvr_day0_config(), self.pod.get_xrvr())
         self.r_vtc_ncs_cli(command=domain.render(domain_group='D1'))
         self.r_vtc_ncs_cli(command=xrvr.render(xrvr_names=self.get_xrvr_names(), domain_group='D1', bgp_asn=23))
 
-        switches = [{'id': x.get_id(), 'ip': x.get_oob()[0], 'username': x.get_oob()[1], 'password': x.get_oob()[2]}for x in [self.lab().get_node_by_id('n91'), self.lab().get_node_by_id('n92')]]
+        switches = [{'id': x.get_id(), 'ip': x.get_oob()[0], 'username': x.get_oob()[1], 'password': x.get_oob()[2]} for x in self.pod.tors]
         self.r_vtc_ncs_cli(command=tmpl_switches.render(switches=switches, domain_group='D1', bgp_asn=23))
 
         self.r_vtc_ncs_cli(command=sync.render(names=self.get_xrvr_names() + ['n91', 'n92']))
@@ -272,7 +272,7 @@ class Vtc(VirtualServer):
         members = self.r_vtc_show_ha_cluster_members()
         master_name = [x['name'] for x in members if x['status'] == 'master'][0]
 
-        master = self.lab().get_node_by_id(master_name)
+        master = self.pod.get_node_by_id(master_name)
         if is_via_ncs:
             master.r_vtc_ncs_cli('delete openstack port\ndelete openstack subnet\ndelete openstack network')
         else:
@@ -370,7 +370,7 @@ class Vtc(VirtualServer):
         vlan_start, vlan_end = self.r_vtc_show_vlan_pool()
 
         vlan = (vlan_start + vlan_end) / 2
-        mgmt_srv = [srv for srv in self.r_vtc_show_uuid_servers() if 'baremetal' in srv['server-type']][0]
+        mgmt_srv = [srv for srv in self.r_vtc_show_uuid_servers() if 'baremetal' in srv['server-type'] and 'nfvbench' not in srv['server-id']][0]
         tenant = 'admin'
 
         for network in os_networks:
@@ -399,17 +399,21 @@ class Vtc(VirtualServer):
         import time
 
         ports = self.r_vtc_show_port()
+        if len(ports) == 0:
+            return
+
+        baremetal_host_ids = [srv for srv in self.r_vtc_show_uuid_servers() if 'baremetal' in srv['server-type']]
 
         for port in ports:
-            if 'name' not in port:
-                self.cmd().delete(url='/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/{}'.format(port['id']))
-                time.sleep(20)  # if try to delete 2 ports without delay, one may have TOR out of switch
+            if port['biding-host-id'] in baremetal_host_ids:
+                self.cmd().delete(url=port['operations']['un-deploy'])
+                time.sleep(15)  # if try to delete 2 ports without delay, one may have TOR out of switch
 
     def r_vtc_validate(self):
         self.r_vtc_show_configuration_xrvr_groups()
 
     def r_xrvr_show_evpn(self):
-        return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.lab().get_xrvr())
+        return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.pod.get_xrvr())
 
 
 class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
@@ -479,9 +483,8 @@ class CurlExecutor(RestExecutor):
                 except ValueError:  # something like ValueError: Unterminated string starting at: line 65 column 11 (char 4086)
                     continue
 
-    def process_errors(self, ans):
-        import inspect
-
+    @staticmethod
+    def process_errors(ans):
         if 'errors' in ans:
             if 'out of sync' in ans:
                 return

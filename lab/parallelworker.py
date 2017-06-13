@@ -65,14 +65,17 @@ class ParallelWorker(WithLogMixIn):
         except KeyError as ex:
             raise ValueError('{} section {}: no required parameter "{}"'.format(self._yaml_path, self, ex))
 
-    def get_lab(self):
+    @property
+    def pod(self):
         return self._kwargs['lab']
 
-    def get_cloud(self):
+    @property
+    def cloud(self):
         return self._kwargs['cloud']
 
-    def get_mgmt(self):
-        return self.get_lab().get_director()
+    @property
+    def mgmt(self):
+        return self.pod.mgmt
 
     def is_debug(self):
         return self._kwargs['is-debug']
@@ -171,7 +174,7 @@ class ParallelWorker(WithLogMixIn):
                 try:
                     self.teardown_worker()
                 except Exception as ex:
-                    with self.get_lab().open_artifact('exception-in-teardown.txt'.format(), 'w') as f:
+                    with self.pod.open_artifact('exception-in-teardown.txt'.format(), 'w') as f:
                         f.write(ex)
 
             return {'worker name': self._name, 'exceptions': exceptions, 'params': worker_parameters}

@@ -5,45 +5,60 @@ from lab.decorators import section
 class VtsScenario(ParallelWorker):
 
     def check_config(self):
-        return 'n. of nets={} n. servers={} uptime={} run={}'.format(self._n_nets, self._n_servers, self._uptime, self._runner)
+        return 'n. of nets={} n. servers={} uptime={} run={}'.format(self.n_nets, self.n_servers, self._uptime, self.run_cmd)
 
     @property
-    def _n_nets(self):
+    def n_nets(self):
         return self._kwargs['how-many-networks']
 
     @property
-    def _n_servers(self):
+    def n_servers(self):
         return self._kwargs['how-many-servers']
+
+    @property
+    def servers(self):
+        return self._kwargs['servers']
+
+    @servers.setter
+    def servers(self, servers):
+        self._kwargs['servers'] = servers
 
     @property
     def _uptime(self):
         return self._kwargs['uptime']
 
     @property
-    def _runner(self):
+    def run_cmd(self):
         return self._kwargs['what-to-run-inside']
 
     @property
-    def _vtc(self):
-        return self.get_lab().get_vtc()[0]
+    def vtc(self):
+        return self.pod.get_vtc()[0]
 
     @property
-    def _image(self):
+    def image(self):
         return self._kwargs['image']
+
+    @property
+    def _is_border_leaf_attached(self):
+        return self._kwargs.get('is-border-leaf-attached', False)
 
     @section('Setup')
     def setup_worker(self):
+        from lab.cloud.cloud_flavor import CloudFlavor
+        from lab.cloud.cloud_image import CloudImage
+
         self.cleanup()
-        self.get_cloud().os_keypair_create()
-        self._kwargs['image'] = self.get_cloud().os_image_create('sqe-iperf')
-        self.get_cloud().os_flavor_create('vts')
+        self.cloud.os_keypair_create()
+        self._kwargs['image'] = CloudImage.create(cloud=self.cloud, image_name=CloudImage.SQE_PERF)
+        self._kwargs['flavor'] = CloudFlavor.create(variant=CloudFlavor.TYPE_VTS)
 
     @section('Creating networks')
     def _network_part(self):
-        from lab.cloud import CloudNetwork
+        from lab.cloud.cloud_network import CloudNetwork
 
-        nets = CloudNetwork.create(common_part_of_name='internal', class_a=1, how_many=self._n_nets, is_dhcp=False, cloud=self.get_cloud())
-        if self.get_lab().is_with_vts():
+        nets = CloudNetwork.create(common_part_of_name='int', how_many=self.n_nets, cloud=self.cloud)
+        if self.pod.is_with_vts():
             self._wait_for_vtc_networks(nets=nets)
         return nets
 
@@ -51,9 +66,9 @@ class VtsScenario(ParallelWorker):
     def _wait_for_vtc_networks(self, nets):
         import time
 
-        required = [(x.get_net_id(), str(x.get_segmentation_id())) for x in nets]
+        required = [(x.net_id, str(x.segmentation_id)) for x in nets]
         for i in range(10):
-            vtc_nets = self._vtc.r_vtc_show_openstack_network()
+            vtc_nets = self.vtc.r_vtc_show_openstack_network()
             actual = [(x['id'], x['provider-segmentation-id']) for x in vtc_nets]
             if set(required) <= (set(actual)):
                 break
@@ -63,16 +78,16 @@ class VtsScenario(ParallelWorker):
 
     @section('Create servers')
     def create_servers(self, on_nets):
-        from lab.cloud import CloudServer
+        from lab.cloud.cloud_server import CloudServer
 
-        self._kwargs['servers'] = CloudServer.create(how_many=self._n_servers, flavor_name='sqe-vts', image=self._image, on_nets=on_nets, timeout=self._timeout, cloud=self.get_cloud())
+        self._kwargs['servers'] = CloudServer.create(how_many=self.n_servers, flavor_name='sqe-vts', image=self.image, on_nets=on_nets, timeout=self._timeout, cloud=self.cloud)
 
     @section('Ping servers')
     def ping_servers(self):
         for server in self._kwargs['servers']:
             n_packets = 50
             for ip in server.get_ssh_ip():
-                ans = self.get_mgmt().exe('ping -c {} {}'.format(n_packets, ip), is_warn_only=True)
+                ans = self.mgmt.exe('ping -c {} {}'.format(n_packets, ip), is_warn_only=True)
                 if '{0} packets transmitted, {0} received, 0% packet loss'.format(n_packets) not in ans:
                     raise RuntimeError(ans)
 
@@ -84,9 +99,9 @@ class VtsScenario(ParallelWorker):
 
         ip = server_passive.get_ssh_ip()
         server_passive.exe('iperf -s -p 1111 &')  # run iperf in listening mode on first server of first compute host
-        a = [x.exe('{} -c {} -p 1111'.format(self._runner, ip)) for x in [server_same, server_other]]
+        a = [x.exe('{} -c {} -p 1111'.format(self.run_cmd, ip)) for x in [server_same, server_other]]
 
-        with self.get_lab().open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
+        with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
             f.write(a)
 
     @section('Running test')
@@ -96,13 +111,13 @@ class VtsScenario(ParallelWorker):
         nets = self._network_part()
 
         self.create_servers(on_nets=nets)
-        if self.get_lab().is_with_vts():
+        if self.pod.is_with_vts():
             self.attach_border_leaf(nets=nets)
 
         start_time = time.time()
 
         while time.time() - start_time < self._uptime:
-            if self._runner.startswith('iperf'):
+            if self.run_cmd.startswith('iperf'):
                 return self.iperf_servers()
             else:
                 self.ping_servers()
@@ -111,45 +126,49 @@ class VtsScenario(ParallelWorker):
     @section('Deleting servers')
     def delete_servers(self):
         if 'servers' in self._kwargs:
-            self.get_cloud().os_server_delete(servers=self._kwargs['servers'])
+            self.cloud.os_server_delete(servers=self._kwargs['servers'])
 
     @section('Cleaning all objects observed in cloud')
     def cleanup(self):
-        if self.get_lab().is_with_vts():
+        if self.pod.is_with_vts():
             self.detach_border_leaf()
-        self.get_cloud().os_cleanup(is_all=True)
-        if self.get_lab().is_with_vts():
+        self.cloud.os_cleanup(is_all=True)
+        if self.pod.is_with_vts():
             self.check_vts_networks()
 
     @section(message='Assert no network in VTC')
     def check_vts_networks(self):
-        vtc_networks = self._vtc.r_vtc_show_openstack_network()
+        vtc_networks = self.vtc.r_vtc_show_openstack_network()
         if vtc_networks:
             raise RuntimeError('Networks are not deleted in VTC: {}'.format(vtc_networks))
 
     @section(message='Detach border leaf')
     def detach_border_leaf(self):
-        self._vtc.r_vtc_delete_border_leaf_port()
-        self.check_nve(is_empty=True)  # after detaching border leaf, there should be no nve ifaces on N9Ks
+        self.vtc.r_vtc_delete_border_leaf_port()
 
     @section(message='Attach border leaf', estimated_time=10)
     def attach_border_leaf(self, nets):
         import time
 
-        self._vtc.r_vtc_create_border_leaf_port(nets)
-        self.check_nve(is_empty=False)  # attaching border leaf should create nve ifaces on N9Ks
-        self.get_mgmt().r_create_access_points(nets)
-        time.sleep(30)
+        self.check_nve()
+        self.vtc.r_vtc_create_border_leaf_port(nets)
+        time.sleep(10)
+        self.mgmt.r_create_access_points(nets)
+        self.check_nve()
 
     def teardown_worker(self):
         self.cleanup()
 
-    def check_nve(self, is_empty):
-        for n9 in self.get_lab().get_n9k():
-            r = n9.n9_show_nve_peers()
-            if is_empty and len(r):
-                raise RuntimeError('{}: nve is not empty {}'.format(n9, r))
-            else:
+    def check_nve(self, servers):
+        comp_names = set([x.compute.id for x in servers])
+        comp_t_ips = [self.pod.get_node_by_id(x).get for x in comp_names]
+
+        for n9 in self.pod.get_tors():
+            nve_ips = [x['peer-ip'] for x in n9.n9_show_nve_peers()]
+            if self._is_border_leaf_attached: # attaching border leaf should create additional peer to mgm node
+                for comp_name in comp_names:
+                    raise RuntimeError('{}: nve is not empty {}'.format(n9, nve_ips))
+            else:  # there should be nve peers connected to all computes where some instances run and no peer for mgm
                 continue
 
 

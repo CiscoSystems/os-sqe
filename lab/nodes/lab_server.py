@@ -171,8 +171,8 @@ class LabServer(LabNode):
             self.exe(command='rm -f {}'.format(local_path))
         self.exe('yum install -q -y expect')
 
-    def r_get_remote_file(self, url, to_directory='.'):
-        return self._server.r_get_remote_file(url, to_directory=to_directory)
+    def r_curl(self, url, size, checksum, loc_abs_path):
+        return self._server.r_curl(url=url, size=size, checksum=checksum, loc_abs_path=loc_abs_path)
 
     def r_get_file_from_dir(self, file_name, in_directory='.', local_path=None):
         return self._server.r_get_file_from_dir(file_name=file_name, in_directory=in_directory, local_path=local_path)

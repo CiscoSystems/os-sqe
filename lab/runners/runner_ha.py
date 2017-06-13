@@ -27,7 +27,7 @@ class RunnerHA(LabWorker):
         status_dict = manager.dict()
 
         self._common_config['cloud'] = cloud
-        self._common_config['lab'] = cloud.get_lab()
+        self._common_config['lab'] = cloud.pod
 
         names_already_seen = []
         for desc in self._task_body:  # first path to check that all workers have unique names
@@ -57,7 +57,7 @@ class RunnerHA(LabWorker):
             desc.update(self._common_config)
             workers.append(klass(status_dict=status_dict, args_dict=desc))
 
-        if str(cloud.get_lab()) == 'fake':  # do not run, this is just a config validity check
+        if str(cloud.pod) == 'fake':  # do not run, this is just a config validity check
             return []
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
         time.sleep(2)
@@ -87,10 +87,10 @@ class RunnerHA(LabWorker):
 
         deployer = DeployerExisting(config={'hardware-lab-config': lab_cfg_path})
         cloud = deployer.execute([])
-        if len(cloud.get_computes()) < 2:
+        if len(cloud.computes) < 2:
             raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(lab_cfg_path))
 
-        tims = Tims(pod=cloud.get_lab())
+        tims = Tims(pod=cloud.pod)
         exceptions = []
 
         for tst in tests:
@@ -99,12 +99,12 @@ class RunnerHA(LabWorker):
             runner = RunnerHA(config=common_config)
             results = runner.execute(cloud)
 
-            elk = Elk(proxy=cloud.get_mediator())
+            elk = Elk(proxy=cloud.mediator)
             elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
             tims.publish_result(test_cfg_path=tst, results=results)
             exceptions = reduce(lambda l, x: l + x['exceptions'], results, exceptions)
 
-        cloud.get_lab().r_collect_information(regex='error', comment=test_regex)
+        cloud.pod.r_collect_information(regex='error', comment=test_regex)
 
         if exceptions:
             raise RuntimeError('Possible reason: {}'.format(exceptions))
@@ -113,9 +113,8 @@ class RunnerHA(LabWorker):
     def check_config(tests, common_config):
 
         class FakeCloud(object):
-            @staticmethod
-            def get_lab():
-                return 'fake'
+            def __init__(self):
+                self.pod = 'fake'
 
         cloud = FakeCloud()
 

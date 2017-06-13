@@ -9,6 +9,7 @@ if '.' not in sys.path:
 def cmd():
     """fab cmd\t\t\t\tRun single command on lab device
     """
+    import inspect
     from fabric.operations import prompt
     import time
     from lab.laboratory import Laboratory
@@ -29,23 +30,26 @@ def cmd():
         return d, [x for x in dir(d) if not (x.startswith('_') or x[0].isupper())]
 
     def execute(d, name):
-        d.log('executing method {} {}'.format(name, 10*':'))
-        time.sleep(1)
-        method_to_execute = getattr(d, name)
-        parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
-        arguments = []
-        for parameter in parameters:
-            argument = prompt(text='{p}=? '.format(p=parameter))
-            if argument.startswith('['):
-                argument = argument.strip('[]').split(',')
-            elif argument in ['True', 'true', 'yes']:
-                argument = True
-            elif argument in ['False', 'false', 'no']:
-                argument = False
-            arguments.append(argument)
         try:
-            results = method_to_execute(*arguments) if arguments else method_to_execute()
-            d.log('{}() returns:\n\n {}\n'.format(name, results))
+            method_to_execute = getattr(d, name)
+            if inspect.ismethod(method_to_execute):
+                d.log('executing method {} {}'.format(name, 10 * ':'))
+                time.sleep(1)
+                parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
+                arguments = []
+                for parameter in parameters:
+                    argument = prompt(text='{p}=? '.format(p=parameter))
+                    if argument.startswith('['):
+                        argument = argument.strip('[]').split(',')
+                    elif argument in ['True', 'true', 'yes']:
+                        argument = True
+                    elif argument in ['False', 'false', 'no']:
+                        argument = False
+                    arguments.append(argument)
+                results = method_to_execute(*arguments) if arguments else method_to_execute()
+                d.log('{}() returns:\n\n {}\n'.format(name, results))
+            else:
+                d.log('property {}={}\n\n'.format(name, method_to_execute))
         except Exception as ex:
             lab_logger.exception('\n Exception: {0}'.format(ex))
 
@@ -214,9 +218,14 @@ def get_user_input(options_lst, owner=None):
     from fabric.operations import prompt
     import sys
 
+    def chunks(l, n):
+        for i in range(0, len(l), n):
+            yield ' * '.join(l[i:i + n])
+
     sub_list = options_lst
     while True:
-        choice = prompt('choose one of:\n{}\nq to quit{}>'.format('\n'.join(sorted(sub_list)), '\nu to level up\nfor {}'.format(owner) if owner else ''))
+        sub_list_str = '\n'.join(chunks(l=sub_list, n=14))
+        choice = prompt(text='choose one of:\n\n{}\n\nq to quit {}>'.format(sub_list_str, 'u to level up for {}'.format(owner) if owner else ''))
         if choice == 'q':
             sys.exit(2)
         if owner and choice == 'u':

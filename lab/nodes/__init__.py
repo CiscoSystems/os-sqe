@@ -10,8 +10,8 @@ class LabNode(WithLogMixIn, WithConfig):
     _ROLE_VS_COUNT = {}
 
     def __init__(self, **kwargs):
-        self._lab = kwargs.pop('lab')                     # link to parent Laboratory object
-        self._id = kwargs['node-id'].strip()              # some id which unique in the given role, usually role + some small integer
+        self.pod = kwargs.pop('lab')                      # link to parent Laboratory object
+        self.id = kwargs['node-id'].strip()               # some id which unique in the given role, usually role + some small integer
         self._role = kwargs['role'].strip().lower()       # which role this node plays, possible roles are defined in get_role_class()
         self._proxy_node_id = kwargs['proxy-id']          # external ssh access via this node id or None
         if self._proxy_node_id is not None:
@@ -37,7 +37,7 @@ class LabNode(WithLogMixIn, WithConfig):
     def _proxy(self):  # lazy initialisation, keep node id until the first use, then convert it to node reference
         if self.__proxy is None:
             try:
-                self.__proxy = self._lab.get_node_by_id(self._proxy_node_id)
+                self.__proxy = self.pod.get_node_by_id(self._proxy_node_id)
             except ValueError:
                 self.__proxy = None
         return self.__proxy
@@ -71,10 +71,10 @@ class LabNode(WithLogMixIn, WithConfig):
         self._wires.append(wire)
 
     def get_node_id(self):
-        return self._id
+        return self.id
 
     def get_lab_id(self):
-        return str(self.lab())
+        return str(self.pod)
 
     def get_role(self):
         return self._role
@@ -90,9 +90,6 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def get_n_in_role(self):
         return self._n
-
-    def lab(self):
-        return self._lab
 
     def get_oob(self):
         return self._oob_ip, self._oob_username, self._oob_password
@@ -206,7 +203,7 @@ class LabNode(WithLogMixIn, WithConfig):
                 o3 = 'F5'
             else:
                 return None
-            mac = '{}0:{:02}:{}:{}:{:02}:CA'.format('1' if port_id == 'MLOM/1' else '0', self.lab().get_id(), o2, o3, self._n)
+            mac = '{}0:{:02}:{}:{}:{:02}:CA'.format('1' if port_id == 'MLOM/1' else '0', self.pod.get_id(), o2, o3, self._n)
         return mac
 
     def r_verify_oob(self):

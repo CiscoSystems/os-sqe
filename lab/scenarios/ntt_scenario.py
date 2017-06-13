@@ -8,43 +8,43 @@ class NttScenario(ParallelWorker):
         possible_modes = ['csr', 'nfvbench', 'both']
         if self._what_to_run not in possible_modes:
             raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
-        return 'run {}, # CSR {}, sleep {},  nfvbench {}'.format(self._what_to_run, self._csr_per_compute, self._csr_sleep, self._nfvbench_args)
+        return 'run {}, CSR {}, nfvbench {}'.format(self._what_to_run, self.csr_args, self.nfvbench_args)
 
     @property
     def _what_to_run(self):
         return self._kwargs['what-to-run']
 
     @property
-    def _csr_per_compute(self):
-        return self._kwargs['csr-per-compute']
+    def csr_args(self):
+        return self._kwargs['csr-args']
 
     @property
-    def _csr_sleep(self):
-        return self._kwargs['csr-sleep']
-
-    @property
-    def _tmp_dir(self):
-        return self._kwargs['tmp-dir']
-
-    @property
-    def _nfvbench_args(self):
+    def nfvbench_args(self):
         return self._kwargs['nfvbench-args'] + (' --no-cleanup' if self.is_noclean else '')
+
+    @property
+    def tmp_dir(self):
+        return self._kwargs.setdefault('tmp-dir', '/var/tmp/os-sqe-tmp/')
 
     @section(message='Setting up', estimated_time=100)
     def setup_worker(self):
-        self._kwargs['tmp-dir'] = '/var/tmp/os-sqe-tmp/'
+        from os import path
+        from lab.cloud.cloud_image import CloudImage
 
-        self.get_mgmt().exe('rm -rf {}'.format(self._tmp_dir))
-        self.get_mgmt().r_configure_mx_and_nat()
+        self.pod.mgmt.exe('rm -rf {}'.format(self.tmp_dir))
+        self.pod.mgmt.r_configure_mx_and_nat()
         if self._what_to_run in ['both', 'csr']:
-            self.get_mgmt().r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self._tmp_dir + 'nfvi-test')
-            self.get_mgmt().r_get_remote_file(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', to_directory=self._tmp_dir + 'nfvi-test')
+            self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.tmp_dir + 'nfvi-test')
+            url, checksum, size, _, _, loc_abs_path = CloudImage.read_image_properties(name='CSR1KV')
+
+            corrected_loc_bas_path = path.join(self.tmp_dir, 'nfvi-test', path.basename(loc_abs_path))
+            self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=corrected_loc_bas_path)
         if self._what_to_run in ['both', 'nfvbench']:
-            self.get_mgmt().r_check_intel_nics()
+            self.pod.mgmt.r_check_intel_nics()
             # self.get_lab().get_vtc()[0].vtc_create_nfvbench_tg()
 
-        self.get_cloud().os_cleanup(is_all=True)
-        self.get_cloud().os_quota_set()
+        self.cloud.os_cleanup(is_all=True)
+        self.cloud.os_quota_set()
 
     def loop_worker(self):
         if self._what_to_run in ['csr', 'both']:
@@ -54,12 +54,12 @@ class NttScenario(ParallelWorker):
             self.nfvbench_run()
 
     def csr_run(self):
+        from lab.cloud.cloud_server import CloudServer
 
-        n_csr = self._csr_per_compute if int(self._csr_per_compute) == 1 else int(self._csr_per_compute) * len(self.get_cloud().get_computes())
-        cmd = 'source $HOME/openstack-configs/openrc && ./csr_create.sh  {} {} {}'.format(n_csr, self._csr_per_compute, self._csr_sleep)
-        ans = self.get_mgmt().exe(cmd, in_directory=self._tmp_dir + 'nfvi-test')
+        cmd = 'source $HOME/openstack-configs/openrc && ./{} # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot'.format(self.csr_args)
+        ans = self.pod.mgmt.exe(cmd, in_directory=self.tmp_dir + 'nfvi-test')
 
-        with self.get_lab().open_artifact('csr_create_output.txt', 'w') as f:
+        with self.pod.open_artifact('csr_create_output.txt', 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
         if 'ERROR' in ans:
@@ -68,18 +68,21 @@ class NttScenario(ParallelWorker):
             if errors:
                 raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
 
+        servers = CloudServer.list(cloud=self.cloud)
+        CloudServer.wait_servers_ready(cloud=self.cloud, servers=servers, status='ACTIVE')
+
     def nfvbench_run(self):
-        self.get_mgmt().exe('rm -f *', 'nfvbench')
-        cmd = 'nfvbench ' + self._nfvbench_args + ' --std-json /tmp/nfvbench'
-        ans = self.get_mgmt().exe(cmd, is_warn_only=True)
-        with self.get_lab().open_artifact('nfvbench_output_{}.txt'.format(self._nfvbench_args.replace(' ', '_')), 'w') as f:
+        self.pod.mgmt.exe('rm -f nvfbench/*')
+        cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench'
+        ans = self.pod.mgmt().exe(cmd, is_warn_only=True)
+        with self.pod.open_artifact('nfvbench_output_{}.txt'.format(self.nfvbench_args.replace(' ', '_')), 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
 
         if 'ERROR' in ans:
             raise RuntimeError(ans.split('ERROR')[1][:200])
         else:
-            res_json_body = self.get_mgmt().r_get_file_from_dir(file_name='*.json', in_directory='nfvbench')
+            res_json_body = self.pod.mgmt.r_get_file_from_dir(file_name='*.json', in_directory='nfvbench')
             self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):
@@ -87,7 +90,7 @@ class NttScenario(ParallelWorker):
 
         j = json.loads(res_json_body)
 
-        with self.get_lab().open_artifact('{}-{}-{}-{}.json'.format(j['openstack_spec']['vswitch'], j['config']['service_chain'], j['config']['service_chain_count'], j['config']['flow_count']), 'w') as f:
+        with self.pod.open_artifact('{}-{}-{}-{}.json'.format(j['openstack_spec']['vswitch'], j['config']['service_chain'], j['config']['service_chain_count'], j['config']['flow_count']), 'w') as f:
             f.write(res_json_body)
 
         res = []
@@ -102,14 +105,14 @@ class NttScenario(ParallelWorker):
                 gbps = (di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']) / 1e9
                 res.append('size={} rate={} Gbps'.format(mtu, gbps))
 
-        with self.get_lab().open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
-            f.write(self._nfvbench_args + '\n' + '; '.join(res))
+        with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
+            f.write(self.nfvbench_args + '\n' + '; '.join(res))
 
     @section(message='Tearing down', estimated_time=30)
     def teardown_worker(self):
         if not self.is_noclean:
-            self.get_cloud().os_cleanup()
-            self.get_mgmt().exe('rm -rf ' + self._tmp_dir)
+            self.cloud.os_cleanup()
+            self.pod.mgmt.exe('rm -rf ' + self.tmp_dir)
 
 """
 #!/bin/bash

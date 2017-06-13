@@ -7,8 +7,5 @@
   name: NttScenario
   n_repeats: 1
   what-to-run: both  # might by nfvbench, csr, both
-  csr-per-compute: 1  # special value 1 means just a single CSR, starting from 2 it will be considered as number of CRSs per compute node
-  csr-sleep: 5  # seconds between 2 successive openstack server create requests
-  chain-type: EXT # possible values EXT PVP PVVP
-  chain-count: 1  # number of concurrent chains
-  flow-count: 1000
+  csr-args: csr_create.sh 1 1 5 # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot
+  nfvbench-args: --rate ndr_pdr --service-chain EXT --service-chain-count 1 --flow-count 1000 --frame-size 64 --frame-size IMIX --frame-size 1518

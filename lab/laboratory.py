@@ -120,11 +120,12 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
         else:
             raise ValueError('Something strange with node_id={0}, list of nodes with this id: {1}'.format(node_id, nodes))
 
-    def get_director(self):
+    @property
+    def mgmt(self):
         from lab.nodes.cimc_server import CimcDirector
         from lab.nodes.fi import FiDirector
 
-        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self._nodes)[0] or self.get_controllers()[0]
+        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self._nodes)[0] or self.controls[0]  # if no specialized mamangment node, use first contorl node
 
     def get_cobbler(self):
         from lab.nodes.cobbler import CobblerServer
@@ -154,10 +155,15 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
 
         return filter(lambda x: type(x) is Vtf, self._nodes)
 
-    def get_n9k(self):
-        from lab.nodes.n9k import Nexus
+    def get_tors(self):
+        from lab.nodes.n9k import VimTor
 
-        return filter(lambda x: type(x) is Nexus, self._nodes)
+        return filter(lambda x: type(x) is VimTor, self._nodes)
+
+    def get_catalist(self):
+        from lab.nodes.n9k import VimCatalist
+
+        return filter(lambda x: type(x) is VimCatalist, self._nodes)
 
     def get_oob(self):
         from lab.nodes.tor import Oob
@@ -170,15 +176,17 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
         return filter(lambda x: type(x) is Tor, self._nodes)[0]
 
     def get_switches(self):
-        return [self.get_tor()] + [self.get_oob()] + self.get_n9k()
+        return [self.get_tor()] + [self.get_oob()] + self.get_tors()
 
-    def get_controllers(self):
+    @property
+    def controls(self):
         from lab.nodes.cimc_server import CimcController
         from lab.nodes.fi import FiController
 
         return filter(lambda x: type(x) in [CimcController, FiController], self._nodes)
 
-    def get_computes(self):
+    @property
+    def computes(self):
         from lab.nodes.cimc_server import CimcCompute
         from lab.nodes.fi import FiCompute
 
@@ -243,12 +251,12 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
             ip, xrvr_username, xrvr_password = node.get_xrvr_ip_user_pass()
             xrvr_ips.append(ip)
 
-        for node in [self.get_director()] + self.get_vts_hosts():
+        for node in [self.mgmt] + self.get_vts_hosts():
             ip, username, _ = node.get_ssh()
-            inventory[node.get_id()] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': KEY_PRIVATE_PATH,
-                                                                'xrvr_ip_mx': xrvr_ips, 'xrvr_username': xrvr_username, 'xrvr_password': xrvr_password}}
+            inventory[node.id] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': KEY_PRIVATE_PATH,
+                                                          'xrvr_ip_mx': xrvr_ips, 'xrvr_username': xrvr_username, 'xrvr_password': xrvr_password}}
 
-        for node in self.get_n9k():
+        for node in self.get_tors():
             ip, username, password = node.get_oob()
             inventory[node.get_id()] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_pass': password}}
 
@@ -256,15 +264,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
 
     def lab_validate(self):
         map(lambda x: x.r_verify_oob(), self.get_nodes_by_class())
-        map(lambda x: x.n9_validate(), self.get_n9k())
+        map(lambda x: x.n9_validate(), self.get_tors() + self.get_catalist())
 
     def r_deploy_ssh_public(self):
-        for node in self.get_director() + self.get_vts_hosts():
+        for node in self.mgmt + self.get_vts_hosts():
             node.r_deploy_ssh_key()
-
-    def r_border_leaf(self):
-        for node in self.get_n9k() + self.get_xrvr():
-            node.r_border_leaf()
 
     def r_collect_information(self, regex, comment):
         import json
@@ -279,7 +283,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
         self.log_to_artifact(name=comment.replace(' ', '-') + '.txt', body=body)
 
     def r_get_version(self):
-        versions = self.get_director().r_get_version()
+        versions = self.mgmt.r_get_version()
         if versions['mechanism'] == 'vts':
             versions['vts'] = self.get_vtc()[0].r_vtc_get_version()
         else:

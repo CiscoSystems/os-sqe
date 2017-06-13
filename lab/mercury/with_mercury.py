@@ -32,7 +32,7 @@ class WithMercuryMixIn(object):
         _, vtc_username, vtc_password = vtc.get_oob()
 
         controllers_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_controllers()))
-        computes_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_computes()))
+        computes_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.computes()))
         vts_hosts_part = '\n     - '.join(map(lambda x: x.get_hostname(), lab.get_vts_hosts()))
 
         roles_part = '   control:\n     - {}\n   compute:\n     - {}\n'.format(controllers_part, computes_part)
@@ -40,7 +40,7 @@ class WithMercuryMixIn(object):
             roles_part += '   vts:\n     - {}\n'.format(vts_hosts_part)
 
         servers_part = ''
-        nodes = lab.get_controllers() + lab.get_computes()
+        nodes = lab.get_controllers() + lab.computes()
         if is_add_vts_role:
             nodes += lab.get_vts_hosts()
 

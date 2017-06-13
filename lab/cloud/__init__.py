@@ -1,0 +1,1 @@
+UNIQUE_PATTERN_IN_NAME = 'sqe-'

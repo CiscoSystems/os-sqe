@@ -30,13 +30,13 @@ class DeployerExisting(LabWorker):
 
     def deploy_cloud(self, list_of_servers):
         from lab.laboratory import Laboratory
-        from lab.cloud import Cloud
+        from lab.cloud.openstack import OS
 
         if not list_of_servers:
-            lab = Laboratory(config_path=self._lab_cfg_path)
-            list_of_servers.append(lab.get_director())
-            list_of_servers.extend(lab.get_controllers())
-            list_of_servers.extend(lab.get_computes())
+            pod = Laboratory(config_path=self._lab_cfg_path)
+            list_of_servers.append(pod.mgmt)
+            list_of_servers.extend(pod.controls)
+            list_of_servers.extend(pod.computes)
 
         director = list_of_servers[0]
 
@@ -52,7 +52,7 @@ class DeployerExisting(LabWorker):
         if openrc_path is None:
             raise RuntimeError('{}: lab {} does not contain any valid cloud'.format(self, self._lab_cfg_path))
 
-        return Cloud(name=self._lab_cfg_path.replace('.yaml', ''), mediator=director, openrc_path=openrc_path, openrc_body=openrc_body)
+        return OS(name=self._lab_cfg_path.replace('.yaml', ''), mediator=director, openrc_path=openrc_path, openrc_body=openrc_body)
 
     def execute(self, servers):
         cloud = self.deploy_cloud(servers)
