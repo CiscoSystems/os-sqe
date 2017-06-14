@@ -9,6 +9,9 @@ class CloudServer(Server):
         self._dic = server_dic if 'compute' in server_dic else self.cloud.os_server_show(name_or_id=server_dic.get('ID', server_dic.get('id')))
         super(CloudServer, self).__init__(ip=self.ips, username=self.image.username, password=self.image.password)
 
+    def __repr__(self):
+        return self.name
+
     @property
     def compute(self):
         if 'compute' not in self._dic:
@@ -65,7 +68,7 @@ class CloudServer(Server):
         start_time = time.time()
         srv_ids = map(lambda x: x.id, servers)
         while True:
-            our = filter(lambda x: x['ID'] in srv_ids, cloud.os_cmd(cmd='openstack server list -f json'))
+            our = filter(lambda x: x.id in srv_ids, CloudServer.list(cloud=cloud))
             in_error = filter(lambda x: x.status == 'ERROR', our)
             in_status = filter(lambda x: x.status == status, our) if status != 'DELETED' else our
             if len(in_status) == required_n_servers:
@@ -118,7 +121,7 @@ class CloudServer(Server):
 
         lst = CloudServer.list(cloud=cloud)
         if not is_all:
-            lst = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], lst)
+            lst = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x.name, lst)
         if len(lst):
             ids = [s.id for s in lst]
             names = [s.name for s in lst]

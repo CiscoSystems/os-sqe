@@ -209,7 +209,7 @@ class Vtc(VirtualServer):
 
     def r_collect_logs(self, regex):
         body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex=regex), self._form_log_grep_cmd(log_files='/var/log/ncs/localhost\:8888.access', regex='40')]:
+        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex=regex), self._form_log_grep_cmd(log_files='/var/log/ncs/localhost\:8888.access', regex='HTTP/1.1" 40')]:
             ans = self.exe(cmd, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
