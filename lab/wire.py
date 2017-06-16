@@ -65,51 +65,51 @@ class Wire(object):
         return self._pc_id
 
     def is_n9_n9(self):
-        from lab.nodes.n9k import Nexus
+        from lab.nodes.n9 import N9
 
-        return type(self._from['node']) is Nexus and type(self._to['node']) is Nexus
+        return type(self._from['node']) is N9 and type(self._to['node']) is N9
 
     def is_n9_tor(self):
-        from lab.nodes.n9k import Nexus
+        from lab.nodes.n9 import N9
         from lab.nodes.tor import Tor
 
         types = [type(self._from['node']), type(self._to['node'])]
-        return Nexus in types and Tor in types
+        return N9 in types and Tor in types
 
     def is_n9_oob(self):
-        from lab.nodes.n9k import Nexus
+        from lab.nodes.n9 import N9
         from lab.nodes.tor import Oob
 
         types = [type(self._from), type(self._to)]
-        return Nexus in types and Oob in types
+        return N9 in types and Oob in types
 
     def is_n9_pxe(self):
-        from lab.nodes.n9k import Nexus
+        from lab.nodes.n9 import N9
         from lab.nodes.tor import Pxe
 
         types = [type(self._from), type(self._to)]
-        return Nexus in types and Pxe in types
+        return N9 in types and Pxe in types
 
     def is_n9_asr(self):
-        from lab.nodes.n9k import Nexus
+        from lab.nodes.n9 import N9
         from lab.nodes.asr import Asr
 
         types = [type(self._from), type(self._to)]
-        return Nexus in types and Asr in types
+        return N9 in types and Asr in types
 
     def is_n9_fi(self):
-        from lab.nodes.n9k import Nexus
+        from lab.nodes.n9 import N9
         from lab.nodes.fi import FI
 
         types = [type(self._from), type(self._to)]
-        return Nexus in types and FI in types
+        return N9 in types and FI in types
 
     def is_n9_ucs(self):
-        from lab.nodes.n9k import Nexus
+        from lab.nodes.n9 import N9
         from lab.nodes.cimc_server import CimcServer
 
         types = [type(self._from), type(self._to)]
-        return Nexus in types and CimcServer in types
+        return N9 in types and CimcServer in types
 
     def is_fi_ucs(self):
         from lab.nodes.fi import FI, FiServer
@@ -118,11 +118,11 @@ class Wire(object):
         return FI in types and FiServer in types
 
     def is_n9_cobbler(self):
-        from lab.nodes.n9k import Nexus
+        from lab.nodes.n9 import N9
         from lab.nodes.cobbler import CobblerServer
 
         types = [type(self._from), type(self._to)]
-        return Nexus in types and CobblerServer in types
+        return N9 in types and CobblerServer in types
 
     def get_from_mac(self):
         return self._from['mac']

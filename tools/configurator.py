@@ -2,13 +2,25 @@ from lab.with_config import WithConfig
 from lab.with_log import WithLogMixIn
 
 
-class LabConfigurator(WithConfig, WithLogMixIn):
+class Configurator(WithConfig, WithLogMixIn):
+    KNOWN_EXT_VLANS = {
+        6:    '172.31.230.0/24',     # ipmi cobbler
+        112:  '10.30.117.0/28',      # i13 mx
+        157:  '10.23.228.224/27',    # marahaika a
+        319:  '10.23.221.128/26',    # g7-2 a
+        690:  '172.29.68.224/28',    # g7-2 e
+        860:  '172.29.86.0/26',      # i13 api
+        1735: '44.44.44.0/24',       # marahaika e
+        2301: '172.26.232.192/28',   # c35bot a
+        2302: '172.26.232.208/28'    # c35bot e
+        }
+
     def sample_config(self):
         pass
 
     def __init__(self):
         from lab.network import Network
-        super(LabConfigurator, self).__init__()
+        super(Configurator, self).__init__()
 
         self._nets = {'api':        Network(net_id='a', cidr='10.10.10.0/32', vlan=9999, is_via_tor=True,  lab='', roles_must_present=['CimcDirector', 'CimcController', 'Vtc']),
                       'management': Network(net_id='m', cidr='11.11.11.0/24', vlan=2011, is_via_tor=False, lab='', roles_must_present=['CimcDirector', 'CimcController', 'CimcCompute', 'CimcCeph', 'CimcCompute',
@@ -24,78 +36,89 @@ class LabConfigurator(WithConfig, WithLogMixIn):
 
         mercury_cfg = self.ask_mercury_setup_data()
         nets_cfg = self.process_mercury_nets(mercury_cfg=mercury_cfg)
-        switches_cfg = self.process_mercury_switches(mercury_cfg=mercury_cfg)
+        switches_cfg = self.process_switches(mercury_cfg=mercury_cfg)
         nodes_cfg, virtuals_cfg = self.process_mercury_nodes(mercury_cfg=mercury_cfg)
-        sqe_cfg = {'lab-name': mercury_cfg['TESTING_TESTBED_NAME'] + '-' + mercury_cfg['MECHANISM_DRIVERS'].lower(), 'lab-id': 99, 'lab-type': 'MERCURY-' + mercury_cfg['MECHANISM_DRIVERS'].upper(),
-                   'dns': ['171.70.168.183'], 'ntp': ['171.68.38.66'],
-                   'special-creds': {'neutron_username': 'admin', 'neutron_password': 'new123'},
-                   'networks': nets_cfg, 'switches': switches_cfg, 'nodes': nodes_cfg, 'virtuals': virtuals_cfg, 'wires': []}
-        lab = Laboratory(sqe_cfg)
+        cfg = {'name': mercury_cfg['TESTING_TESTBED_NAME'], 'type': 'TYPE-MERCURY-' + mercury_cfg['MECHANISM_DRIVERS'].upper(),
+               'special-creds': {'neutron_username': 'admin', 'neutron_password': 'new123'},
+               'networks': nets_cfg, 'switches': switches_cfg, 'nodes': nodes_cfg, 'virtuals': virtuals_cfg, 'wires': [], 'setup-data': mercury_cfg}
+        pod = Laboratory(cfg)
 
-        sqe_cfg['wires'] = self.process_connections(lab=lab)
-        sqe_cfg['switches'][0]['oob-ip'] = lab.get_oob().get_oob()[0]
-        sqe_cfg['switches'][1]['oob-ip'] = lab.get_tor().get_oob()[0]
+        cfg['wires'] = self.process_connections(pod=pod)
 
-        lab = Laboratory(sqe_cfg)
+        lab = Laboratory(cfg)
 
         lab.save_self_config()
-
-    @staticmethod
-    def does_mercury_dir_exists(lab_name):
-        import os
-
-        mercury_testbed_dir = os.path.expanduser('~/repo/mercury/testbeds/' + lab_name + '/')
-        if os.path.exists(mercury_testbed_dir):
-            return mercury_testbed_dir
-        else:
-            raise Exception('The lab {} is not found'.format(mercury_testbed_dir))
 
     def ask_mercury_setup_data(self):
         import os
         from fabric.operations import prompt
 
-        mercury_testbed_dir = prompt(text='Enter lab name:', validate=self.does_mercury_dir_exists)
-        names = os.listdir(mercury_testbed_dir)
-        name = prompt(text='you have {} Which yaml to use? '.format(' '.join(names)), default=names[0])
+        def chunks(l, n):
+            for i in range(0, len(l), n):
+                yield ' * '.join(l[i:i + n])
 
-        return self.read_config_from_file(mercury_testbed_dir + name)
+        repo_dir = os.path.expanduser('~/repo/mercury/testbeds')
+        pods = filter(lambda x: not x.startswith('.'), os.listdir(repo_dir))
+
+        pods_str = '\n'.join(chunks(pods, 10))
+
+        def is_pod(n):
+            if n in pods:
+                return os.path.join(repo_dir, n)
+            else:
+                raise Exception('pod {} not found'.format(n))
+
+        pod_dir = prompt(text='Choose one of\n' + pods_str + ' > ', validate=is_pod)
+        yaml_names = os.listdir(pod_dir)
+        yaml_name = prompt(text='Chosse one of\n{} >'.format(' '.join(yaml_names)), default=yaml_names[-1])
+        return self.read_config_from_file(os.path.join(pod_dir, yaml_name))
 
     @staticmethod
-    def ask_ip_u_p(msg):
+    def ask_ip_u_p(msg, default):
         from fabric.operations import prompt
         import validators
 
-        while True:
-            ip4 = prompt(text=msg + ' enter IP or none > ')
-            if ip4 == 'none':
-                return None, None, None
-            if validators.ipv4(ip4):
-                break
+        def is_ipv4(ip):
+            if ip is not None and validators.ipv4(ip):
+                return ip
+            else:
+                raise Exception('{} is not valid ipv4'.format(ip))
+
+        ipv4 = prompt(text=msg + ' enter IP> ', default=default, validate=is_ipv4)
+        if ipv4 is None:
+            return None, None, None
         username = prompt(text=msg + ' enter username > ', default='admin')
         password = prompt(text=msg + ' enter password > ')
-        return ip4, username, password
+        return ipv4, username, password
 
-    def process_connections(self, lab):
-        n9_statuses = [n9.n9_show_all() for n9 in lab.get_n9k()]
+    @staticmethod
+    def process_connections(pod):
+        import yaml
 
-        cimc_port_id_mac_lst = []
-        for cimc in lab.get_cimc_servers():
-            r = cimc.cimc_list_all_nics()
-            for port_id, mac in r.items():
-                cimc_port_id_mac_lst.append({'cimc-node': cimc, 'cimc-port-id': port_id, 'cimc-mac': mac})
+        cimc_info_yaml = Configurator.get_artifact_file_path('{}-cimc-info.yaml'.format(pod))
+        try:
+            cimc_info_lst = Configurator.read_config_from_file(config_path=cimc_info_yaml)
+        except ValueError:
+            cimc_info_lst = []
+            for cimc in pod.get_cimc_servers():
+                r = cimc.cimc_list_all_nics()
+                for port_id, mac in r.items():
+                    cimc_info_lst.append({'node-id': cimc.node_id, 'port-id': port_id, 'mac': mac})
+            with Configurator.open_artifact(name=cimc_info_yaml, mode='w') as f:
+                yaml.dump(cimc_info_lst, f)
 
         wires_cfg = []
-        for cimc_port_id_mac in cimc_port_id_mac_lst:
-            cimc_node = cimc_port_id_mac['cimc-node']
-            cimc_port_id = cimc_port_id_mac['cimc-port-id']
-            cimc_mac = cimc_port_id_mac['cimc-mac']
+        for cimc_info in cimc_info_lst:
+            cimc_node_id = cimc_info['node-id']
+            cimc_port_id = cimc_info['port-id']
+            cimc_mac = cimc_info['mac']
 
-            for n9st in n9_statuses:
-                nei = n9st.find_mac(mac=cimc_mac)
-                n9_node_id = n9st.get_n9_node_id() if nei else 'not_connected'
-                n9_port_id = nei.get_n9_port_id() if nei else 'not_connected'
-                n9_pc_id = n9st.get_n9_pc_id(n9_port_id) if nei else 'not_connected'
-                wires_cfg.append({'from-node-id': cimc_node.get_node_id(), 'from-port-id': cimc_port_id, 'from-mac': cimc_mac, 'to-node-id': n9_node_id, 'to-port-id': n9_port_id, 'to-mac': 'unknown', 'pc-id': n9_pc_id})
+            for n9 in pod.vim_tors:
+                nei = n9.find_neighbour_with_mac(mac=cimc_mac)
+                n9_node_id = n9.id if nei else 'not_connected'
+                n9_port_id = nei.port.port_id if nei else 'not_connected'
+                n9_pc_id = nei.port.pc_id if nei else 'not_connected'
+                wires_cfg.append({'from-node-id': cimc_node_id, 'from-port-id': cimc_port_id, 'from-mac': cimc_mac, 'to-node-id': n9_node_id, 'to-port-id': n9_port_id, 'to-mac': 'unknown', 'pc-id': n9_pc_id})
 
                 # global_vlans = filter(lambda net: net.is_via_tor(), lab.get_all_nets().values())
                 # a = n9.n9_cmd('sh spanning-tree vlan {}'.format(global_vlans[0].get_vlan_id()))
@@ -125,7 +148,6 @@ class LabConfigurator(WithConfig, WithLogMixIn):
         return sorted(wires_cfg, key=lambda e: e['from-node-id'])
 
     def process_mercury_nets(self, mercury_cfg):
-
         for mercury_net_id, net in self._nets.items():
             net_mercury_cfg = filter(lambda k: k['segments'][0] == mercury_net_id, mercury_cfg['NETWORKING']['networks'])
             if net_mercury_cfg:
@@ -135,22 +157,30 @@ class LabConfigurator(WithConfig, WithLogMixIn):
                 if cidr:
                     net.set_cidr(cidr)
                     net.set_via_tor(cidr[:2] not in ['11', '22', '33', '44', '55'])
+                elif vlan_id in self.KNOWN_EXT_VLANS:
+                    net.set_cidr(self.KNOWN_EXT_VLANS[vlan_id])
 
         return [{'net-id': x.get_net_id(), 'vlan': x.get_vlan_id(), 'cidr': x.get_cidr(), 'should-be': x.get_roles(), 'is-via-tor': x.is_via_tor()} for x in self._nets.values()]
 
     @staticmethod
-    def process_mercury_switches(mercury_cfg):
+    def process_switches(mercury_cfg):
 
-        switches = [{'node-id': 'oob', 'role': 'oob', 'oob-ip': '1.1.1.1', 'oob-username': 'openstack-read', 'oob-password': 'CTO1234!', 'ssh-username': None, 'ssh-password': None, 'proxy-id': None},
-                    {'node-id': 'tor', 'role': 'tor', 'oob-ip': '1.1.1.2', 'oob-username': 'openstack-read', 'oob-password': 'CTO1234!', 'ssh-username': None, 'ssh-password': None, 'proxy-id': None}]
+        pod_name = mercury_cfg['TESTING_TESTBED_NAME']
+        catalyst = {'g7-2': '10.23.223.176'}
 
-        for i, sw in enumerate(mercury_cfg['TORSWITCHINFO']['SWITCHDETAILS'], start=97):
-            switches.append({'node-id': 'n' + chr(i), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'oob-username': sw['username'], 'oob-password': sw['password'], 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
+        switches = []
+        username, password = None, None
+        for sw in mercury_cfg['TORSWITCHINFO']['SWITCHDETAILS']:
+            username, password = sw['username'], sw['password']
+            switches.append({'node-id': 'n' + sw['hostname'][-1].lower(), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'proxy-id': None,
+                             'oob-username': username, 'oob-password': password,
+                             'ssh-username': None, 'ssh-password': None})
 
-        ip, username, password = LabConfigurator.ask_ip_u_p(msg='Mercury usually has the third switch used to connect MGM node to outer world')
+        if pod_name in catalyst:
+            switches.append({'node-id': 'nc', 'role': 'VimCat', 'oob-ip': catalyst[pod_name], 'oob-username': username, 'oob-password': password, 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
 
-        if ip:
-            switches.append({'node-id': 'nc', 'role': 'VimCatalist', 'oob-ip': ip, 'oob-username': username, 'oob-password': password, 'ssh-username': 'None', 'ssh-password': 'None', 'proxy-id': None})
+        switches.append({'node-id': 'oob', 'role': 'oob', 'oob-ip': '1.1.1.1', 'oob-username': 'openstack-read', 'oob-password': password, 'ssh-username': None, 'ssh-password': None, 'proxy-id': None})
+        switches.append({'node-id': 'tor', 'role': 'tor', 'oob-ip': '1.1.1.2', 'oob-username': 'openstack-read', 'oob-password': password, 'ssh-username': None, 'ssh-password': None, 'proxy-id': None})
 
         return switches
 
@@ -203,3 +233,6 @@ class LabConfigurator(WithConfig, WithLogMixIn):
                     raise KeyError('{}: no {}'.format(node_id, ex))
         return nodes, virtuals
 
+
+if __name__ == '__main__':
+    c = Configurator()

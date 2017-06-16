@@ -1,17 +1,17 @@
 from lab.nodes import LabNode
-from lab.nodes.n9k import Nexus
+from lab.nodes.n9 import N9
 
 
-class Tor(Nexus):
+class Tor(N9):
     def n9_show_running_config(self):
         return ''
 
-class Oob(Nexus):
+class Oob(N9):
     def n9_show_running_config(self):
         return ''
 
 
-class Pxe(Nexus):
+class Pxe(N9):
     def n9_show_running_config(self):
         return ''
 

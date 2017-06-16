@@ -227,7 +227,9 @@ class LabNode(WithLogMixIn, WithConfig):
     @staticmethod
     def get_role_class(role):
         from lab.nodes.fi import FI, FiDirector, FiController, FiCompute, FiCeph
-        from lab.nodes.n9k import Nexus, VimTor, VimCatalist
+        from lab.nodes.n9 import VimCat
+        from lab.nodes.n9.vim_tor import VimTor
+        from lab.nodes.n9 import N9
         from lab.nodes.asr import Asr
         from lab.nodes.tor import Tor, Oob, Pxe, Terminal
         from lab.nodes.cimc_server import CimcDirector, CimcController, CimcCompute, CimcCeph
@@ -238,7 +240,7 @@ class LabNode(WithLogMixIn, WithConfig):
 
         role = role.lower()
 
-        classes = [Tor, Oob, Pxe, Terminal, Nexus, VimTor, VimCatalist, CimcDirector, CimcController, CimcCompute, CimcCeph, VtsHost, Vtc, Vtf, Xrvr, Asr, FI, FiDirector, FiController, FiCompute, FiCeph]
+        classes = [Tor, Oob, Pxe, Terminal, N9, VimTor, VimCat, CimcDirector, CimcController, CimcCompute, CimcCeph, VtsHost, Vtc, Vtf, Xrvr, Asr, FI, FiDirector, FiController, FiCompute, FiCeph]
         for klass in classes:
             if str(klass).split('.')[-1][:-2].lower() == role:
                 return klass

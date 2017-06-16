@@ -1,5 +1,6 @@
-from fabric.api import task
 import sys
+
+from fabric.api import task
 
 if '.' not in sys.path:
     sys.path.append('.')
@@ -131,16 +132,6 @@ def run(config_path, version):
 
     l = BaseLab(yaml_name=config_path, version=version)
     return l.run()
-
-
-@task
-def conf():
-    """fab conf\t\t\t\tTries to create lab configuration yaml
-    """
-    from lab.configurator import LabConfigurator
-
-    LabConfigurator()
-
 
 @task
 def ansible():

@@ -88,7 +88,7 @@ class Nic(object):
     def __init__(self, nic_id, node, ip, is_ssh):
 
         try:
-            self._net = node.pod.get_net(nic_id)    # valid lab.network.Network
+            self._net = node.pod.networks[nic_id]    # valid lab.network.Network
         except KeyError:
             raise ValueError('{}: trying to create NIC on network "{}" which does not exeist'.format(node, nic_id))
         # self._net.check_ip_correct(msg='{}: nic "{}" has problem: '.format(node, nic_id), ip=ip) TODO remove when fix the problem in c25bot

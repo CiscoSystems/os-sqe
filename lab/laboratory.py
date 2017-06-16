@@ -6,51 +6,43 @@ from lab.mixins.with_save_lab_config import WithSaveLabConfigMixin
 
 
 class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSaveLabConfigMixin):
-    MERCURY_VTS = 'MERCURY-VTS'
-    MERCURY_VPP = 'MERCURY-VPP'
-    OSPD = 'OSPD'
-    SUPPORTED_TYPES = [MERCURY_VTS, MERCURY_VPP, OSPD]
+    TYPE_MERCURY_VTS = 'TYPE-MERCURY-VTS'
+    TYPE_MERCURY_VPP = 'TYPE-MERCURY-VPP'
+    TYPE_RH_OSPD = 'TYPE-RH-OSPD'
+    SUPPORTED_TYPES = [TYPE_MERCURY_VTS, TYPE_MERCURY_VPP, TYPE_RH_OSPD]
 
     def __repr__(self):
-        return self._lab_name
+        return self.name
 
     @staticmethod
     def sample_config():
         return 'path to lab config'
 
-    def __init__(self, config_path):
+    def __init__(self, cfg_or_path):
         from lab import with_config
         from lab.nodes.virtual_server import VirtualServer
         from lab.network import Network
         from lab.nodes import LabNode
         from lab.wire import Wire
 
-        self._supported_lab_types = [self.MERCURY_VTS, self.MERCURY_VPP, self.OSPD]
-        self._unique_dict = dict()  # to make sure that all needed objects are unique
-        if config_path is None:
+        if cfg_or_path is None:
             return
-        if type(config_path) is dict:
-            self._cfg = config_path
+        elif type(cfg_or_path) is dict:
+            self._cfg = cfg_or_path
         else:
-            self._cfg = with_config.read_config_from_file(config_path=config_path)
-        self._id = self._cfg['lab-id']
-        self._lab_name = self._cfg['lab-name']
+            self._cfg = with_config.read_config_from_file(config_path=cfg_or_path)
+        self.name = self._cfg['name']
+        self.type = self._cfg['type']
+        if self.type not in self.SUPPORTED_TYPES:
+            raise ValueError('"{}" is not one of supported types: {}'.format(self.type, self.SUPPORTED_TYPES))
 
-        self._lab_type = self._cfg['lab-type']
-        if self._lab_type not in [self.MERCURY_VPP, self.MERCURY_VTS, self.OSPD]:
-            raise ValueError('"{}" is not one of supported types: {}'.format(self._lab_type, self._supported_lab_types))
-        self._is_sriov = self._cfg.get('use-sr-iov', False)
+        self.setup_data = self._cfg.get('setup-data')
+        self._unique_dict = dict()  # to make sure that all needed objects are unique
 
-        self._dns, self._ntp = self._cfg['dns'], self._cfg['ntp']
+        self.dns, self.ntp = self._cfg['setup-data']['NETWORKING']['domain_name_servers'], self._cfg['setup-data']['NETWORKING']['ntp_servers']
         self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
-        self._nets = {net_desc['net-id']: Network.add_network(lab=self, net_id=net_desc['net-id'], net_desc=net_desc) for net_desc in self._cfg['networks']}
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_vlan_id(), obj_type='vlan', owner=n), self._nets.values())  # make sure that all nets have unique VLAN ID
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_cidr(), obj_type='cidr', owner=n), self._nets.values())  # make sure that all nets have unique CIDR
-
-        required_networks = {'a', 'm', 't', 's', 'e', 'p'}
-        if set(self._nets.keys()) != required_networks:
-            raise ValueError('{}: not all networks specified: "{}" is missing '.format(self, required_networks - set(self._nets.keys())))
+        self.networks = {net_desc['net-id']: Network.add_network(lab=self, net_id=net_desc['net-id'], net_desc=net_desc) for net_desc in self._cfg['networks']}
 
         self._nodes = LabNode.add_nodes(lab=self, nodes_cfg=self._cfg['switches'])  # first pass - just create nodes
         self._nodes.extend(LabNode.add_nodes(lab=self, nodes_cfg=self._cfg['nodes']))
@@ -59,9 +51,19 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
 
         map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_node_id(), obj_type='node_id', owner=self), self._nodes)  # make sure that all nodes have unique ids
 
-        self._wires = Wire.add_wires(lab=self, wires_cfg=self._cfg['wires'])  # second pass - process wires and nics section to connect node to peers
+        self.wires = Wire.add_wires(lab=self, wires_cfg=self._cfg['wires'])  # second pass - process wires to connect nodes to peers
 
+        self._validate_config()
+
+    def _validate_config(self):
         map(lambda n: self.get_node_by_id(node_id=n['node-id'].strip()).add_nics(nics_cfg=n['nics']), self._cfg['nodes'] + self._cfg.get('virtuals', []))    # third pass - process all nics
+
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_vlan_id(), obj_type='vlan', owner=n), self.networks.values())  # make sure that all nets have unique VLAN ID
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_cidr(), obj_type='cidr', owner=n), self.networks.values())  # make sure that all nets have unique CIDR
+
+        required_networks = {'a', 'm', 't', 's', 'e', 'p'}
+        if set(self.networks.keys()) != required_networks:
+            raise ValueError('{}: not all networks specified: "{}" is missing '.format(self, required_networks - set(self.networks.keys())))
 
         role_vs_nets = {}
         for net in self._cfg['networks']:
@@ -88,21 +90,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
             #     peer_port_id = wire.get_peer_port(node)
             #     self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), owner=node.get_node_id())  # check that this peer_node-peer_port is unique
 
-    def is_sriov(self):
-        return self._is_sriov
-
-    def get_all_wires(self):
-        return self._wires
-
-    def get_id(self):
-        return self._id
-
-    def get_all_nets(self):
-        return self._nets
-
-    def get_net(self, net_id):
-        return self._nets[net_id]
-
     def get_nodes_by_class(self, klass=None):
         if klass:
             classes = klass if type(klass) is list else [klass]
@@ -125,7 +112,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
         from lab.nodes.cimc_server import CimcDirector
         from lab.nodes.fi import FiDirector
 
-        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self._nodes)[0] or self.controls[0]  # if no specialized mamangment node, use first contorl node
+        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self._nodes)[0] or self.controls[0]  # if no specialized managment node, use first control node
 
     def get_cobbler(self):
         from lab.nodes.cobbler import CobblerServer
@@ -155,28 +142,33 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
 
         return filter(lambda x: type(x) is Vtf, self._nodes)
 
-    def get_tors(self):
-        from lab.nodes.n9k import VimTor
+    @property
+    def vim_tors(self):
+        from lab.nodes.n9.vim_tor import VimTor
 
         return filter(lambda x: type(x) is VimTor, self._nodes)
 
-    def get_catalist(self):
-        from lab.nodes.n9k import VimCatalist
+    @property
+    def vim_catalist(self):
+        from lab.nodes.n9 import VimCat
 
-        return filter(lambda x: type(x) is VimCatalist, self._nodes)
+        return filter(lambda x: type(x) is VimCat, self._nodes)
 
-    def get_oob(self):
+    @property
+    def oob(self):
         from lab.nodes.tor import Oob
 
         return filter(lambda x: type(x) is Oob, self._nodes)[0]
 
-    def get_tor(self):
+    @property
+    def tor(self):
         from lab.nodes.tor import Tor
 
         return filter(lambda x: type(x) is Tor, self._nodes)[0]
 
-    def get_switches(self):
-        return [self.get_tor()] + [self.get_oob()] + self.get_tors()
+    @property
+    def switches(self):
+        return [self.tor] + [self.oob] + self.vim_tors + self.vim_catalist
 
     @property
     def controls(self):
@@ -256,7 +248,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
             inventory[node.id] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': KEY_PRIVATE_PATH,
                                                           'xrvr_ip_mx': xrvr_ips, 'xrvr_username': xrvr_username, 'xrvr_password': xrvr_password}}
 
-        for node in self.get_tors():
+        for node in self.vim_tors:
             ip, username, password = node.get_oob()
             inventory[node.get_id()] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_pass': password}}
 
@@ -264,7 +256,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
 
     def lab_validate(self):
         map(lambda x: x.r_verify_oob(), self.get_nodes_by_class())
-        map(lambda x: x.n9_validate(), self.get_tors() + self.get_catalist())
+        map(lambda x: x.n9_validate(), self.vim_tors + self.vim_catalist)
 
     def r_deploy_ssh_public(self):
         for node in self.mgmt + self.get_vts_hosts():

@@ -22,7 +22,7 @@ class WithOspd7(object):
         from lab.with_config import read_config_from_file
         from lab.nodes.cimc_server import CimcServer
         from lab.nodes.fi import FI
-        from lab.nodes.n9k import Nexus
+        from lab.nodes.n9 import N9
 
         lab_logger.info('Creating config for osp7_bootstrap')
         osp7_install_template = read_config_from_file(config_path='./configs/osp7/osp7-install.yaml', is_as_string=True)
@@ -69,7 +69,7 @@ class WithOspd7(object):
 
         nexus_section = []
         switch_tempest_section = []
-        for n9 in self.get_nodes_by_class(Nexus):
+        for n9 in self.get_nodes_by_class(N9):
             common_pcs_part = ': {"ports": "port-channel:' + str(n9.get_peer_link_id())  # all pcs n9k-n9k and n9k-fi
             fi_pc_part = ',port-channel:' + ',port-channel:'.join(n9.get_pcs_to_fi())
             mac_port_lines = []

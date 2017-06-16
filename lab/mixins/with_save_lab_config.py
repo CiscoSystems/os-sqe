@@ -51,25 +51,21 @@ class WithSaveLabConfigMixin(object):
                                                                                                                                                                  wire._pc_id) + comment
 
         with open('saved_lab_config.yaml', 'w') as f:
-            f.write('lab-id: {} # integer in ranage (0,99). supposed to be unique in current L2 domain since used in MAC pools\n'.format(self.get_id()))
             f.write('lab-name: {} # any string to be used on logging\n'.format(self))
-            f.write('lab-type: {} # supported types: {}\n'.format(self.get_type(), ' '.join(self.SUPPORTED_TYPES)))
+            f.write('lab-type: {} # supported types: {}\n'.format(self.type, ' '.join(self.SUPPORTED_TYPES)))
             f.write('description-url: "{}"\n'.format(self))
-            f.write('\n')
-            f.write('dns: {}\n'.format(self.get_dns()))
-            f.write('ntp: {}\n'.format(self.get_ntp()))
             f.write('\n')
             f.write('# special creds to be used by OS neutron services\n')
             f.write('special-creds: {{neutron_username: {}, neutron_password: {}}}\n'.format(self._neutron_username, self._neutron_password))
             f.write('\n')
     
             f.write('networks: [\n')
-            net_bodies = [net_yaml_body(net=x) for x in self.get_all_nets().values()]
+            net_bodies = [net_yaml_body(net=x) for x in self.networks.values()]
             f.write(',\n'.join(net_bodies))
             f.write('\n]\n\n')
     
             f.write('switches: [\n')
-            node_bodies = [node_yaml_body(node=x, tp=switch) for x in self.get_switches()]
+            node_bodies = [node_yaml_body(node=x, tp=switch) for x in self.switches]
             f.write(',\n'.join(node_bodies))
             f.write('\n]\n\n')
     
@@ -84,6 +80,9 @@ class WithSaveLabConfigMixin(object):
             f.write('\n]\n\n')
     
             f.write('wires: [\n')
-            wires_body = [wire_yaml_body(wire=x) for x in self.get_all_wires() if x]
+            wires_body = [wire_yaml_body(wire=x) for x in self.wires if x]
             f.write(',\n'.join(wires_body))
             f.write('\n]\n')
+
+            if self.setup_data:
+                f.write('setup-data: {}'.format(self.setup_data))

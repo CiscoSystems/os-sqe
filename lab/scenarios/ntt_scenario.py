@@ -30,6 +30,7 @@ class NttScenario(ParallelWorker):
     def setup_worker(self):
         from os import path
         from lab.cloud.cloud_image import CloudImage
+        from lab.nodes.n9.vim_tor import VimTor
 
         self.pod.mgmt.exe('rm -rf {}'.format(self.tmp_dir))
         self.pod.mgmt.r_configure_mx_and_nat()
@@ -41,7 +42,8 @@ class NttScenario(ParallelWorker):
             self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=corrected_loc_bas_path)
         if self._what_to_run in ['both', 'nfvbench']:
             self.pod.mgmt.r_check_intel_nics()
-            # self.get_lab().get_vtc()[0].vtc_create_nfvbench_tg()
+            trex_mode = VimTor.TREX_MODE_CSR if self._what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
+            [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
 
         self.cloud.os_cleanup(is_all=True)
         self.cloud.os_quota_set()

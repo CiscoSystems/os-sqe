@@ -1,6 +1,8 @@
+import lab.nodes.n9
+
+
 def start(lab, log, args):
     import validators
-    from lab.nodes import n9k
 
     name_or_ip = args.get('name_or_ip', 'from_lab')
     is_show_details = args.get('is_show_details', False)
@@ -12,7 +14,7 @@ def start(lab, log, args):
     else:
         n9k_ip, _, n9k_username, n9k_password = lab.n9k_creds()
 
-    nx = n9k.Nexus(n9k_ip, n9k_username, n9k_password)
+    nx = lab.nodes.n9.Nexus(n9k_ip, n9k_username, n9k_password)
 
     port_channels = nx.show_port_channel_summary()
 
