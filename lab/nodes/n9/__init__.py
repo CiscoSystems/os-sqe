@@ -8,7 +8,8 @@ class N9(LabNode):
         self._ports = None
         self._port_channels = None
         self._vlans = None
-        self._neighbours = None
+        self._neighbours_lldp = None
+        self._neighbours_cdp = None
         self._vpc_domain = None
 
     @property
@@ -24,10 +25,16 @@ class N9(LabNode):
         return self._port_channels
 
     @property
-    def neighbours(self):
-        if not self._neighbours:
+    def neighbours_lldp(self):
+        if not self._neighbours_lldp:
             self.n9_get_status()
-        return self._neighbours
+        return self._neighbours_lldp
+
+    @property
+    def neighbours_cdp(self):
+        if not self._neighbours_cdp:
+            self.n9_get_status()
+        return self._neighbours_cdp
 
     @property
     def vlans(self):
@@ -125,10 +132,10 @@ class N9(LabNode):
                 raise NameError('{cmd} : {msg}'.format(msg=x['error']['data']['msg'].strip('%\n'), cmd=commands[i]))
         return dict(results[0])
 
-    def find_neighbour_with_mac(self, mac):
-        from lab.nodes.n9.n9_neighbour import N9neighbour
+    def find_neighbour_with_mac(self, mac, cimc_port_id):
+        from lab.nodes.n9.n9_neighbour import N9neighbourLLDP
 
-        return N9neighbour.find_with_mac(mac=mac, neighbours=self.neighbours)
+        return N9neighbourLLDP.find_with_mac(mac=mac, cimc_port_id=cimc_port_id, neighbours=self.neighbours_lldp)
 
     def n9_change_port_state(self, port_no, port_state="no shut"):
         """
@@ -139,14 +146,14 @@ class N9(LabNode):
         self.cmd(['conf t', 'int {}'.format(port_no), port_state])
 
     def n9_get_status(self):
-        from lab.nodes.n9.n9_neighbour import N9neighbour
+        from lab.nodes.n9.n9_neighbour import N9neighbourLLDP, N9neighbourCDP
         from lab.nodes.n9.n9_port import N9Port
         from lab.nodes.n9.n9_port_channel import N9PortChannel
         from lab.nodes.n9.n9_vpc_domain import N9VpcDomain
         from lab.nodes.n9.n9_vlan import N9Vlan
         from lab.nodes.n9.n9_vlan_port import N9VlanPort
 
-        a = self.n9_cmd(['sh port-channel summary', 'sh int st', 'sh int br', 'sh vlan', 'sh cdp nei det', 'sh lldp nei det'] + (['sh vpc'] if self.id != 'n9n' else []), timeout=30)
+        a = self.n9_cmd(['sh port-channel summary', 'sh int st', 'sh int br', 'sh vlan', 'sh cdp nei det', 'sh lldp nei det'] + (['sh vpc'] if self.id != 'nc' else []), timeout=30)
 
         self._port_channels = N9PortChannel.process_n9_answer(n9=self, answer=a['sh port-channel summary'])
         vpc_domain, vpc_dic = N9VpcDomain.process_n9_answer(n9=self, answer=a['sh vpc']) if 'sh vpc' in a else None, {}
@@ -164,8 +171,8 @@ class N9(LabNode):
                 self._ports[port_id] = N9Port(n9=self, n9_dic=st, pc_dic=self._port_channels)
             else:
                 continue
-        self._neighbours = N9neighbour.process_n9_answer(n9=self, answer=a['sh lldp nei det'])
-        self._neighbours.extend(N9neighbour.process_n9_answer(n9=self, answer=a['sh cdp nei det']))
+        self._neighbours_lldp = N9neighbourLLDP.process_n9_answer(n9=self, answer=a['sh lldp nei det'])
+        self._neighbours_cdp = N9neighbourCDP.process_n9_answer(n9=self, answer=a['sh cdp nei det'])
         self._vlans = N9Vlan.process_n9_answer(n9=self, answer=a['sh vlan'])
 
     def n9_validate(self):
@@ -188,7 +195,7 @@ class N9(LabNode):
     def n9_configure_vxlan(self, asr_port):
         import re
 
-        number_in_node_id = map(int, re.findall(r'\d+', self.get_node_id()))[0]
+        number_in_node_id = map(int, re.findall(r'\d+', self.id))[0]
         lo1_ip = '1.1.1.{0}'.format(number_in_node_id)
         lo2_ip = '2.2.2.{0}'.format(number_in_node_id)
         router_ospf = '111'

@@ -8,6 +8,9 @@ class N9Port(object):
             self.pc = pc_dic['port-channel' + str(n9_dic['portchan'])]
             self.pc.add_port(self)
 
+    def __repr__(self):
+        return self.port_id
+
     @property
     def port_id(self):
         return self._dic['interface']

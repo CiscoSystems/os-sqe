@@ -29,7 +29,7 @@ class Tims(WithLogMixIn, WithConfig):
 
         self._pod = pod
         self._conf_id = Tims.POD_TO_CONF_ID[str(self._pod)]
-        self._versions = pod.r_get_version()
+        self._versions = pod.mgmt.r_get_version()
         self._mercury_version = self._versions['gerrit_tag']
         self._branch = Tims.NAMESPACE_TO_BRANCH[self._versions['container_namespace']]
         self._topo = Tims.MECHANISM_TO_TOPOLOGY[self._versions['mechanism']]

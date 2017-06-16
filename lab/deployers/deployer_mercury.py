@@ -21,7 +21,7 @@ class DeployerMercury(LabWorker):
 
     def deploy_cloud(self, list_of_servers):
         from lab.cloud import Cloud
-        from lab.nodes.cimc_server import CimcDirector
+        from lab.nodes.mgmt_server import CimcDirector
         from fabric.operations import prompt
         from lab.laboratory import Laboratory
 

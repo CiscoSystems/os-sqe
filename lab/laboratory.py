@@ -2,13 +2,12 @@ from lab.mercury.with_mercury import WithMercuryMixIn
 from lab.ospd.with_osdp7 import WithOspd7
 from lab.with_config import WithConfig
 from lab.with_log import WithLogMixIn
-from lab.mixins.with_save_lab_config import WithSaveLabConfigMixin
 
 
-class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSaveLabConfigMixin):
-    TYPE_MERCURY_VTS = 'TYPE-MERCURY-VTS'
-    TYPE_MERCURY_VPP = 'TYPE-MERCURY-VPP'
-    TYPE_RH_OSPD = 'TYPE-RH-OSPD'
+class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
+    TYPE_MERCURY_VTS = 'vts'
+    TYPE_MERCURY_VPP = 'vpp'
+    TYPE_RH_OSPD = 'ospd'
     SUPPORTED_TYPES = [TYPE_MERCURY_VTS, TYPE_MERCURY_VPP, TYPE_RH_OSPD]
 
     def __repr__(self):
@@ -40,23 +39,27 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
         self._unique_dict = dict()  # to make sure that all needed objects are unique
 
         self.dns, self.ntp = self._cfg['setup-data']['NETWORKING']['domain_name_servers'], self._cfg['setup-data']['NETWORKING']['ntp_servers']
-        self._neutron_username, self._neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
+        self.neutron_username, self.neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
 
         self.networks = {net_desc['net-id']: Network.add_network(lab=self, net_id=net_desc['net-id'], net_desc=net_desc) for net_desc in self._cfg['networks']}
 
-        self._nodes = LabNode.add_nodes(lab=self, nodes_cfg=self._cfg['switches'])  # first pass - just create nodes
-        self._nodes.extend(LabNode.add_nodes(lab=self, nodes_cfg=self._cfg['nodes']))
+        self.nodes = LabNode.add_nodes(pod=self, nodes_cfg=self._cfg['switches'])  # first pass - just create nodes
+        self.nodes.update(LabNode.add_nodes(pod=self, nodes_cfg=self._cfg['specials']))
+        self.nodes.update(LabNode.add_nodes(pod=self, nodes_cfg=self._cfg['nodes']))
         if 'virtuals' in self._cfg:
-            self._nodes.extend(VirtualServer.add_nodes(lab=self, nodes_cfg=self._cfg['virtuals']))
+            self.nodes.update(VirtualServer.add_nodes(pod=self, nodes_cfg=self._cfg['virtuals']))
 
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_node_id(), obj_type='node_id', owner=self), self._nodes)  # make sure that all nodes have unique ids
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.id, obj_type='node_id', owner=self), self.nodes.values())  # make sure that all nodes have unique ids
 
-        self.wires = Wire.add_wires(lab=self, wires_cfg=self._cfg['wires'])  # second pass - process wires to connect nodes to peers
+        if self._cfg['wires']:
+            self.wires = Wire.add_wires(pod=self, wires_cfg=self._cfg['wires'])  # second pass - process wires to connect nodes to peers
 
         self._validate_config()
 
     def _validate_config(self):
-        map(lambda n: self.get_node_by_id(node_id=n['node-id'].strip()).add_nics(nics_cfg=n['nics']), self._cfg['nodes'] + self._cfg.get('virtuals', []))    # third pass - process all nics
+        from lab.nodes.lab_server import LabServer
+
+        map(lambda n: self.nodes[n['node']].add_nics(nics_cfg=n['nics']), self._cfg['nodes'] + self._cfg.get('virtuals', []))    # third pass - process all nics
 
         map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_vlan_id(), obj_type='vlan', owner=n), self.networks.values())  # make sure that all nets have unique VLAN ID
         map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_cidr(), obj_type='cidr', owner=n), self.networks.values())  # make sure that all nets have unique CIDR
@@ -72,9 +75,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
                 role_vs_nets.setdefault(role, set())
                 role_vs_nets[role].add(net['net-id'])
 
-        for node in self.get_servers_with_nics():
+        for node in self.nodes.values():
+            if not isinstance(node, LabServer):
+                continue
             actual_nets = set(node.get_nics().keys())
-            req_nets = role_vs_nets[node.get_role()]
+            req_nets = role_vs_nets[node.role]
             if actual_nets != req_nets:
                 raise ValueError('{}: should be on nets {} while actually on {} (section nics)'.format(node, req_nets, actual_nets))
             # for nic in node.get_nics().values():
@@ -95,116 +100,73 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
             classes = klass if type(klass) is list else [klass]
             nodes = []
             for klass in classes:
-                nodes += filter(lambda x: isinstance(x, klass), self._nodes)
+                nodes += filter(lambda x: isinstance(x, klass), self.nodes.values())
             return nodes
         else:
-            return self._nodes
-
-    def get_node_by_id(self, node_id):
-        nodes = list(filter(lambda x: x.get_node_id() == node_id.strip(), self._nodes))
-        if len(nodes) == 1:
-            return nodes[0]
-        else:
-            raise ValueError('Something strange with node_id={0}, list of nodes with this id: {1}'.format(node_id, nodes))
+            return self.nodes.values()
 
     @property
     def mgmt(self):
-        from lab.nodes.cimc_server import CimcDirector
+        from lab.nodes.mgmt_server import CimcDirector
         from lab.nodes.fi import FiDirector
 
-        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self._nodes)[0] or self.controls[0]  # if no specialized managment node, use first control node
+        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self.nodes.values())[0] or self.controls[0]  # if no specialized managment node, use first control node
 
-    def get_cobbler(self):
+    @property
+    def cobbler(self):
         from lab.nodes.cobbler import CobblerServer
 
-        return filter(lambda x: type(x) in [CobblerServer], self._nodes)[0]
-
-    def get_vts_hosts(self):
-        from lab.nodes.vtc import VtsHost
-
-        return filter(lambda x: type(x) is VtsHost, self._nodes)
-
-    def get_vtc(self):
-        from lab.nodes.vtc import Vtc
-
-        return filter(lambda x: type(x) is Vtc, self._nodes)
-
-    def is_with_vts(self):
-        return len(self.get_vtc()) > 1
-
-    def get_xrvr(self):
-        from lab.nodes.xrvr import Xrvr
-
-        return filter(lambda x: type(x) is Xrvr, self._nodes)
-
-    def get_vft(self):
-        from lab.nodes.vtf import Vtf
-
-        return filter(lambda x: type(x) is Vtf, self._nodes)
+        return filter(lambda x: type(x) in [CobblerServer], self.nodes.values())[0]
 
     @property
     def vim_tors(self):
         from lab.nodes.n9.vim_tor import VimTor
 
-        return filter(lambda x: type(x) is VimTor, self._nodes)
+        return filter(lambda x: type(x) is VimTor, self.nodes.values())
 
     @property
-    def vim_catalist(self):
+    def vim_cat(self):
         from lab.nodes.n9 import VimCat
 
-        return filter(lambda x: type(x) is VimCat, self._nodes)
+        return filter(lambda x: type(x) is VimCat, self.nodes.values())
 
     @property
     def oob(self):
         from lab.nodes.tor import Oob
 
-        return filter(lambda x: type(x) is Oob, self._nodes)[0]
+        return filter(lambda x: type(x) is Oob, self.nodes.values())
 
     @property
     def tor(self):
         from lab.nodes.tor import Tor
 
-        return filter(lambda x: type(x) is Tor, self._nodes)[0]
-
-    @property
-    def switches(self):
-        return [self.tor] + [self.oob] + self.vim_tors + self.vim_catalist
+        return filter(lambda x: type(x) is Tor, self.nodes.values())
 
     @property
     def controls(self):
         from lab.nodes.cimc_server import CimcController
         from lab.nodes.fi import FiController
 
-        return filter(lambda x: type(x) in [CimcController, FiController], self._nodes)
+        return filter(lambda x: type(x) in [CimcController, FiController], self.nodes.values())
 
     @property
     def computes(self):
         from lab.nodes.cimc_server import CimcCompute
         from lab.nodes.fi import FiCompute
 
-        return filter(lambda x: type(x) in [CimcCompute, FiCompute], self._nodes)
+        return filter(lambda x: type(x) in [CimcCompute, FiCompute], self.nodes.values())
 
-    def get_cimc_servers(self):
+    @property
+    def cimc_servers(self):
         from lab.nodes.cimc_server import CimcServer
 
         return self.get_nodes_by_class(klass=CimcServer)
-
-    def get_servers_with_nics(self):
-        from lab.nodes.cimc_server import LabServer
-
-        return self.get_nodes_by_class(klass=LabServer)
-
-    def get_neutron_creds(self):
-        return self._neutron_username, self._neutron_password
 
     def get_ucsm_nets_with_pxe(self):
         return [x for x in self._cfg['nets'].keys() if 'pxe' in x]
 
     def get_vlan_range(self):
         return self._cfg['vlan_range']
-
-    def count_role(self, role_name):
-        return len([x for x in self._nodes if role_name in x.role()])
 
     def logstash_creds(self):
         return self._cfg['logstash']
@@ -239,11 +201,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
 
         xrvr_username, xrvr_password = None, None
         xrvr_ips = []
-        for node in self.get_xrvr():
+        for node in self.xrvr:
             ip, xrvr_username, xrvr_password = node.get_xrvr_ip_user_pass()
             xrvr_ips.append(ip)
 
-        for node in [self.mgmt] + self.get_vts_hosts():
+        for node in [self.mgmt] + self.vts:
             ip, username, _ = node.get_ssh()
             inventory[node.id] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': KEY_PRIVATE_PATH,
                                                           'xrvr_ip_mx': xrvr_ips, 'xrvr_username': xrvr_username, 'xrvr_password': xrvr_password}}
@@ -256,31 +218,19 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig, WithSave
 
     def lab_validate(self):
         map(lambda x: x.r_verify_oob(), self.get_nodes_by_class())
-        map(lambda x: x.n9_validate(), self.vim_tors + self.vim_catalist)
-
-    def r_deploy_ssh_public(self):
-        for node in self.mgmt + self.get_vts_hosts():
-            node.r_deploy_ssh_key()
+        map(lambda x: x.n9_validate(), self.vim_tors + [self.vim_cat])
 
     def r_collect_information(self, regex, comment):
         import json
 
-        version_dic = self.r_get_version()
+        version_dic = self.mgmt.r_get_version()
         body = json.dumps(version_dic) + '\n'
-        for node in self.get_nodes_by_class():
+        for node in self.nodes.values():
             if hasattr(node, 'r_collect_logs'):
                 body += node.r_collect_logs(regex=regex)
             if hasattr(node, 'r_collect_config'):
                 body += node.r_collect_config()
         self.log_to_artifact(name=comment.replace(' ', '-') + '.txt', body=body)
-
-    def r_get_version(self):
-        versions = self.mgmt.r_get_version()
-        if versions['mechanism'] == 'vts':
-            versions['vts'] = self.get_vtc()[0].r_vtc_get_version()
-        else:
-            versions['vpp'] = 'nont known'
-        return versions
 
     def exe(self, cmd):
         from lab.nodes.lab_server import LabServer
