@@ -8,5 +8,4 @@
   n_repeats: 1
   what-to-run: csr  # might be nfvbench, csr, both
   csr-args: csr_create.sh 20 10 5 # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot
-  csr-sleep: 5   # seconds between 2 successive openstack server create requests
   nfvbench-args: no-used

@@ -7,7 +7,6 @@
   name: NttScenario
   n_repeats: 1
   what-to-run: nfvbench  # might by nfvbench, csr, both
-  csr-per-compute: not-used # special value 1 means just a single CSR, starting from 2 it will be considered as number of CRSs per compute node
-  csr-sleep: not-used  # seconds between 2 successive openstack server create requests
+  csr-args: not-used
   nfvbench-args: --rate ndr_pdr --service-chain PVVP --service-chain-count 10 --inter-node --flow-count 1000
 

@@ -7,5 +7,5 @@
   name: NttScenario
   n_repeats: 1
   what-to-run: nfvbench  # might by nfvbench, csr, both
-  csr-args: not-used # special value 1 means just a single CSR, starting from 2 it will be considered as number of CRSs per compute node
+  csr-args: not-used
   nfvbench-args: --rate 1Mpps --duration 10

@@ -76,7 +76,7 @@ class NttScenario(ParallelWorker):
     def nfvbench_run(self):
         self.pod.mgmt.exe('rm -f nvfbench/*')
         cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench'
-        ans = self.pod.mgmt.exe(cmd, is_warn_only=True)
+        ans = self.pod.mgmt.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10
         with self.pod.open_artifact('nfvbench_output_{}.txt'.format(self.nfvbench_args.replace(' ', '_')), 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)

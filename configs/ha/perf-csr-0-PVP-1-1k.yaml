@@ -6,6 +6,5 @@
 - class: lab.scenarios.ntt_scenario.NttScenario
   name: NttScenario
   n_repeats: 1
-  what-to-run: nfvbench  # might by nfvbench, csr, both
   csr-args: not-used
   nfvbench-args: --rate ndr_pdr --service-chain PVP --service-chain-count 1 --flow-count 1000 --frame-size 64 --frame-size IMIX --frame-size 1518
