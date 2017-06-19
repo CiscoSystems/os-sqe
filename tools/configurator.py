@@ -19,12 +19,11 @@ class Configurator(WithConfig, WithLogMixIn):
         'g7-2': [{'node': 'term', 'role': 'terminal', 'oob-ip': '172.31.229.55', 'oob-username': 'openstack-read'},
                  {'node': 'pxe', 'role': 'pxe', 'oob-ip': '172.31.230.170', 'oob-username': 'openstack-read'},
                  {'node': 'oob', 'role': 'oob', 'oob-ip': '172.31.230.158', 'oob-username': 'openstack-read'},
-                 {'node': 'tor', 'role': 'tor', 'oob-ip': '172.31.230.235', 'oob-username': 'openstack-read'}
-                 ],
-        'c35bottom': [ {'node': 'oob', 'role': 'oob', 'oob-ip': '172.26.232.132', 'oob-username': "admin"},
-                       {'node': 'tor', 'role': 'tor', 'oob-ip': '172.26.232.132', 'oob-username': "admin"}
-        ]
-
+                 {'node': 'tor', 'role': 'tor', 'oob-ip': '172.31.230.235', 'oob-username': 'openstack-read'}],
+        'c35bottom': [{'node': 'oob', 'role': 'oob', 'oob-ip': '172.26.232.132', 'oob-username': "admin"},
+                      {'node': 'tor', 'role': 'tor', 'oob-ip': '172.26.232.132', 'oob-username': "admin"}],
+        'marahaika': [{'node': 'oob', 'role': 'oob', 'oob-ip': '172.31.229.56', 'oob-username': "admin"},
+                      {'node': 'tor', 'role': 'tor', 'oob-ip': '172.31.229.56', 'oob-username': "admin"}]
     }
 
     def sample_config(self):
@@ -155,7 +154,7 @@ class Configurator(WithConfig, WithLogMixIn):
                 if nei.port_id == 'mgmt0':
                     wires_cfg.append({'node1': n9.id, 'port1': nei.port_id, 'mac': 'unknown', 'node2': pod.oob[0].id, 'port2': nei.peer_port_id, 'pc-id': nei.pc_id})
                 else:
-                    s = filter(lambda x: x.get_oob()[0] == nei.ipv4, pod.tor + pod.vim_tors)
+                    s = filter(lambda y: y.get_oob()[0] == nei.ipv4, pod.tor + pod.vim_tors)
                     if s:
                         sw = s[0]
                         wires_cfg.append({'node1': n9.id, 'port1': nei.port_id, 'mac': 'unknown', 'node2': sw.id, 'port2': nei.peer_port_id, 'pc-id': nei.pc_id})
