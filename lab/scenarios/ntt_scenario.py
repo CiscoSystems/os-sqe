@@ -33,7 +33,7 @@ class NttScenario(ParallelWorker):
         from lab.nodes.n9.vim_tor import VimTor
 
         self.pod.mgmt.exe('rm -rf {}'.format(self.tmp_dir))
-        self.pod.mgmt.r_configure_mx_and_nat()
+        # self.pod.mgmt.r_configure_mx_and_nat()
         if self._what_to_run in ['both', 'csr']:
             self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.tmp_dir + 'nfvi-test')
             url, checksum, size, _, _, loc_abs_path = CloudImage.read_image_properties(name='CSR1KV')

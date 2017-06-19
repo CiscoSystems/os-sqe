@@ -167,12 +167,8 @@ def ansible():
     variable_manager.set_inventory(inventory)
 
     # create play with tasks
-    play_source = dict(name="Ansible Play", hosts='10.23.221.142', gather_facts='no', tasks=[
-                            dict(action=dict(module='shell', args='ls'), register='shell_out'),
-                            dict(action=dict(module='debug', args=dict(msg='{{shell_out.stdout}}')))
-                            ]
-                       )
-
+    play_source = dict(name="Ansible Play", hosts='10.23.221.142', gather_facts='no', tasks=[dict(action=dict(module='shell', args='ls'), register='shell_out'),
+                                                                                             dict(action=dict(module='debug', args=dict(msg='{{shell_out.stdout}}')))])
     play = Play().load(play_source, variable_manager=variable_manager, loader=loader)
 
     tqm = None
@@ -244,8 +240,8 @@ def bash():
     for node in l.get_nodes_by_class():
         cmds = node.get_ssh_for_bash()
         if type(cmds) is tuple:
-            local('echo \'alias {}="{}"\' >> {}'.format(node.get_node_id(), cmds[0], file_name))
-            local('echo \'alias cimc_{}="{}"\' >> {}'.format(node.get_node_id(), cmds[1], file_name))
+            local('echo \'alias {}="{}"\' >> {}'.format(node.id, cmds[0], file_name))
+            local('echo \'alias cimc_{}="{}"\' >> {}'.format(node.id, cmds[1], file_name))
         else:
-            local('echo \'alias {}="{}"\' >> {}'.format(node.get_node_id(), cmds, file_name))
+            local('echo \'alias {}="{}"\' >> {}'.format(node.id, cmds, file_name))
     local('echo \'PS1="({}) $PS1 "\' >> {}'.format(l, file_name))

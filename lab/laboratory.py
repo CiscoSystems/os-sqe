@@ -157,6 +157,13 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         return filter(lambda x: type(x) in [CimcCompute, FiCompute], self.nodes.values())
 
     @property
+    def vtc(self):
+        from lab.nodes.vtc import Vtc
+
+        return filter(lambda x: type(x) is Vtc, self.nodes.values())
+
+
+    @property
     def cimc_servers(self):
         from lab.nodes.cimc_server import CimcServer
 
@@ -164,12 +171,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     def get_ucsm_nets_with_pxe(self):
         return [x for x in self._cfg['nets'].keys() if 'pxe' in x]
-
-    def get_vlan_range(self):
-        return self._cfg['vlan_range']
-
-    def logstash_creds(self):
-        return self._cfg['logstash']
 
     def make_sure_that_object_is_unique(self, obj, obj_type, owner):
         """check that given object is unique

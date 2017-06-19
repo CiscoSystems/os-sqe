@@ -67,7 +67,7 @@ class LabServer(LabNode):
     def get_ssh_for_bash(self):
         ip, u, p = self.get_ssh()
         command = 'sshpass -p {} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {}@{}'.format(p, u, ip)
-        if self._proxy:
+        if self.proxy:
             command = self._proxy.get_ssh_for_bash()[0].replace('ssh ', 'ssh -t ') + ' ' + command
         return command, super(LabServer, self).get_ssh_for_bash()
 
@@ -119,7 +119,7 @@ class LabServer(LabNode):
         if estimated_time:
             self.log('Running {}... (usually it takes {} secs)'.format(command, estimated_time))
         started_at = time.time()
-        if self._proxy:
+        if self.proxy:
             while True:
                 ans = self._proxy.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # run on {}".format(password, username, ip, command, self.get_node_id()), in_directory=in_directory, is_warn_only=True)
                 if 'No route to host' in ans:
@@ -137,7 +137,7 @@ class LabServer(LabNode):
         return ans
 
     def file_append(self, file_path, data, in_directory='.', is_warn_only=False, connection_attempts=100):
-        if self._proxy:
+        if self.proxy:
             raise NotImplemented
         else:
             ans = self._server.file_append(file_path=file_path, data=data, in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
@@ -166,7 +166,7 @@ class LabServer(LabNode):
 
     def r_install_sshpass_openvswitch_expect(self):
         for rpm, checksum in ['sshpass-1.06-1.el7.rf.x86_64.rpm', 'openvswitch-2.5.0-1.el7.centos.x86_64.rpm']:
-            local_path, _ = self.r_get_remote_file(url='http://172.29.173.233/redhat/{}'.format(rpm))
+            local_path, _ = self.r_curl(url='http://172.29.173.233/redhat/{}'.format(rpm))
             self.exe(command='rpm -i {}'.format(local_path), is_warn_only=True)
             self.exe(command='rm -f {}'.format(local_path))
         self.exe('yum install -q -y expect')

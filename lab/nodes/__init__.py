@@ -13,7 +13,7 @@ class LabNode(WithLogMixIn, WithConfig):
         self.pod = kwargs.pop('lab')                      # link to parent Laboratory object
         self.id = kwargs['node']                          # some id which unique in the given role, usually role + some small integer
         self.role = kwargs['role'].strip().lower()        # which role this node plays, possible roles are defined in get_role_class()
-        self._proxy = kwargs.get('proxy')                 # instance of class LabNode, will be used as proxy node to this node
+        self._proxy = kwargs['proxy']                     # LabNode object or node id (lazy init), will be used as proxy node to this node
         self._oob_ip, self._oob_username, self._oob_password = kwargs['oob-ip'], kwargs['oob-username'], kwargs['oob-password']
         self._ssh_username, self._ssh_password = kwargs.get('ssh-username', self._oob_username), kwargs.get('ssh-password', self._oob_password)
 
@@ -33,7 +33,7 @@ class LabNode(WithLogMixIn, WithConfig):
     @property
     def proxy(self):  # lazy initialisation, node_id until the first use, then convert it to node reference
         if type(self._proxy) is str:
-            self._proxy = self.pod.nodes[self._proxy]
+            self._proxy = self.pod.nodes[self._proxy] if self._proxy in self.pod.nodes else None
         return self._proxy
 
     @staticmethod
