@@ -18,8 +18,8 @@ def cmd():
     from lab.with_log import lab_logger
 
     def get_lab_nodes(cfg_path):
-        l = Laboratory(config_path=cfg_path)
-        return l, sorted(map(lambda node: node.get_node_id(), l.get_nodes_by_class()))
+        l = Laboratory(cfg_or_path=cfg_path)
+        return l, sorted(map(lambda node: node.id, l.get_nodes_by_class()))
 
     def get_node_methodes(l, name):
         if name == 'cloud':
@@ -27,7 +27,7 @@ def cmd():
         elif device_name == 'lab':
             d = l
         else:
-            d = l.get_node_by_id(name)
+            d = l.nodes[name]
         return d, [x for x in dir(d) if not (x.startswith('_') or x[0].isupper())]
 
     def execute(d, name):

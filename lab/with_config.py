@@ -73,7 +73,7 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
     """ Trying to read a configuration file in the following order:
         1. try to interpret config_path as local file system full path
         2. try to interpret config_path as short file name with respect to CONFIG_DIR + directory
-        2. the same as in 2 but in a local clone of osqe-configs repo
+        2. the same as in 2 but in a local clone of configs repo
         5. if all fail, try to get it from remote osqe-configs
         :param config_path: path to the config file or just a name of the config file
         :param directory: sub-directory of CONFIG_DIR
@@ -92,7 +92,7 @@ def read_config_from_file(config_path, directory='', is_as_string=False):
         actual_path = os.path.abspath(os.path.expanduser(config_path))  # path to existing local file
     else:
         actual_path = None
-        for conf_dir in [WithConfig.CONFIG_DIR, os.path.expanduser('~/repo/osqe-configs/lab_configs')]:
+        for conf_dir in [WithConfig.CONFIG_DIR, os.path.expanduser('~/repo/mercury/configs')]:
             try_this_path = os.path.abspath(os.path.join(conf_dir, directory, config_path))
             if os.path.isfile(try_this_path):
                 actual_path = try_this_path
