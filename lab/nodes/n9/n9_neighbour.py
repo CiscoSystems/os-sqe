@@ -32,12 +32,16 @@ class N9neighbourLLDP(object):
     def find_with_mac(mac, cimc_port_id, neighbours):
         """ adaptor-MLOM/ext-eth-0  with mac '54:A2:74:CC:A9:70' reported by lldp as 54a2.74cc.a970       Eth1/4          120                    54a2.74cc.a974
             adaptor-MLOM/ext-eth-1  with mac '54:A2:74:CC:A9:71' reported by lldp as 54a2.74cc.a970       Eth1/4          120                    54a2.74cc.a978
-            so lldp mac is ahead of cimc mac by 4 in first case and 7 in second 
-            lldp chassis_id conincides with cimc mac in first case and the same but one in the second 
-            this function does this shift
+            sys/rack-unit-1/network-adapter-1/eth-3: '3c:fd:fe:a5:fd:90' reported by lddp as 3cfd.fea5.fd90       Eth1/12         121                    3cfd.fea5.fd90 
         """
-        n9_mac = N9neighbourLLDP.shift_mac_by(mac=mac, shift=4 if 'ext-eth-0' in cimc_port_id else 7)
-        chassis_id = N9neighbourLLDP.shift_mac_by(mac=mac, shift=0 if 'ext-eth-0' in cimc_port_id else -1)
+        if '-MLOM/ext-eth-0' in cimc_port_id:
+            shift = 4
+        elif 'MLOM/ext-eth-1' in cimc_port_id:
+            shift = 7
+        else:
+            shift = 0
+        n9_mac = N9neighbourLLDP.shift_mac_by(mac=mac, shift=shift)
+        chassis_id = N9neighbourLLDP.shift_mac_by(mac=mac, shift=-1 if 'MLOM/ext-eth-1' in cimc_port_id else 0)
 
         found = [x for x in neighbours if n9_mac == x.mac and chassis_id == x.chassis_id]
         assert len(found) <= 1, 'More then 1 neighbour with the same MAC on {}'.format(found[0].n9)
@@ -54,7 +58,7 @@ class N9neighbourCDP(object):
 
     @property
     def ipv4(self):
-        return self._dic['v4mgmtaddr']
+        return self._dic.get('v4mgmtaddr', 'NoIP')
 
     @property
     def port_id(self):

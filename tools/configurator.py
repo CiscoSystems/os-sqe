@@ -20,7 +20,10 @@ class Configurator(WithConfig, WithLogMixIn):
                  {'node': 'pxe', 'role': 'pxe', 'oob-ip': '172.31.230.170', 'oob-username': 'openstack-read'},
                  {'node': 'oob', 'role': 'oob', 'oob-ip': '172.31.230.158', 'oob-username': 'openstack-read'},
                  {'node': 'tor', 'role': 'tor', 'oob-ip': '172.31.230.235', 'oob-username': 'openstack-read'}
-                 ]
+                 ],
+        'c35bottom': [ {'node': 'oob', 'role': 'oob', 'oob-ip': '172.26.232.132', 'oob-username': "admin"},
+                       {'node': 'tor', 'role': 'tor', 'oob-ip': '172.26.232.132', 'oob-username': "admin"}
+        ]
 
     }
 
@@ -87,7 +90,7 @@ class Configurator(WithConfig, WithLogMixIn):
             for i in range(0, len(l), n):
                 yield ' * '.join(l[i:i + n])
 
-        repo_dir = os.path.expanduser('~/repo/mercury/testbeds')
+        repo_dir = os.path.expanduser('~/repo/mercury/mercury/testbeds')
         pods = filter(lambda x: not x.startswith('.'), os.listdir(repo_dir))
 
         pods_str = '\n'.join(chunks(pods, 10))
@@ -254,8 +257,6 @@ class Configurator(WithConfig, WithLogMixIn):
             else:
                 ssh_u, ssh_p = node.get_ssh_u_p()
             a = ' {{node: {:5}, role: {:10}, proxy: {:5}, ssh-username: {:15}, ssh-password: {:9}, oob-ip: {:15},  oob-username: {:15}, oob-password: {:9}'.format(n_id, role, pn_id, ssh_u, ssh_p, oob_ip, oob_u, oob_p)
-            if tp == switch:
-                a += ', hostname: {:23}'.format(node.get_hostname())
             if tp == virtual:
                 a += ', virtual-on: {:5}'.format(node.hard.id)
             if type(node) is Vtc:
@@ -269,8 +270,8 @@ class Configurator(WithConfig, WithLogMixIn):
 
         def wire_yaml_body(wire):
             a1 = 'pc-id: {:>15}, '.format(wire.pc_id)
-            a2 = 'node1: {:>5}, port1: {:>40}, mac: "{:17}", '.format(wire.n1, wire.port_id1, wire.mac)
-            a3 = 'node2: {:>5}, port2: {:>15}'.format(wire.n2, wire.port_id2)
+            a2 = 'node1: {:>5}, port1: {:>45}, mac: "{:17}", '.format(wire.n1, wire.port_id1, wire.mac)
+            a3 = 'node2: {:>5}, port2: {:>20}'.format(wire.n2, wire.port_id2)
             return '{' + a1 + a2 + a3 + ' }'
 
         with open('{}.yaml'.format(pod), 'w') as f:
