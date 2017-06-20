@@ -6,12 +6,12 @@ class NttScenario(ParallelWorker):
 
     def check_config(self):
         possible_modes = ['csr', 'nfvbench', 'both']
-        if self._what_to_run not in possible_modes:
+        if self.what_to_run not in possible_modes:
             raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
-        return 'run {}, CSR {}, nfvbench {}'.format(self._what_to_run, self.csr_args, self.nfvbench_args)
+        return 'run {}, CSR {}, nfvbench {}'.format(self.what_to_run, self.csr_args, self.nfvbench_args)
 
     @property
-    def _what_to_run(self):
+    def what_to_run(self):
         return self._kwargs['what-to-run']
 
     @property
@@ -34,25 +34,25 @@ class NttScenario(ParallelWorker):
 
         self.pod.mgmt.exe('rm -rf {}'.format(self.tmp_dir))
         # self.pod.mgmt.r_configure_mx_and_nat()
-        if self._what_to_run in ['both', 'csr']:
+        if self.what_to_run in ['both', 'csr']:
             self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.tmp_dir + 'nfvi-test')
             url, checksum, size, _, _, loc_abs_path = CloudImage.read_image_properties(name='CSR1KV')
 
             corrected_loc_bas_path = path.join(self.tmp_dir, 'nfvi-test', path.basename(loc_abs_path))
             self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=corrected_loc_bas_path)
-        if self._what_to_run in ['both', 'nfvbench']:
+        if self.what_to_run in ['both', 'nfvbench']:
             self.pod.mgmt.r_check_intel_nics()
-            trex_mode = VimTor.TREX_MODE_CSR if self._what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
+            trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
             [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
 
         self.cloud.os_cleanup(is_all=True)
         self.cloud.os_quota_set()
 
     def loop_worker(self):
-        if self._what_to_run in ['csr', 'both']:
+        if self.what_to_run in ['csr', 'both']:
             self.csr_run()
 
-        if self._what_to_run in ['nfvbench', 'both']:
+        if self.what_to_run in ['nfvbench', 'both']:
             self.nfvbench_run()
 
     def csr_run(self):
