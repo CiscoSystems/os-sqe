@@ -10,8 +10,8 @@ class Tims(WithLogMixIn, WithConfig):
                       'g7-2-vpp': 'Tcbr96912g',
                       'marahaika-vts': 'Tcbr9367g',
                       'marahaika-vpp': 'Tcbr114510g',
-                      'c35bot-vts': 'Tcbr115582g',
-                      'c35bot-vpp': 'Tcbr115583g'}
+                      'c35bottom-vts': 'Tcbr115582g',
+                      'c35bottom-vpp': 'Tcbr115583g'}
     TOKENS = {'kshileev': '0000003933000000000D450000000000',
               'nfedotov': '26520000006G00005F42000077044G47',
               'dratushn': '000000525F7G007900000000006G4700',
