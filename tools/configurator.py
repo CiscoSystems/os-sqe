@@ -23,7 +23,9 @@ class Configurator(WithConfig, WithLogMixIn):
         'c35bottom': [{'node': 'oob', 'role': 'oob', 'oob-ip': '172.26.232.132', 'oob-username': "admin"},
                       {'node': 'tor', 'role': 'tor', 'oob-ip': '172.26.232.132', 'oob-username': "admin"}],
         'marahaika': [{'node': 'oob', 'role': 'oob', 'oob-ip': '172.31.229.56', 'oob-username': "admin"},
-                      {'node': 'tor', 'role': 'tor', 'oob-ip': '172.31.229.56', 'oob-username': "admin"}]
+                      {'node': 'tor', 'role': 'tor', 'oob-ip': '172.31.229.56', 'oob-username': "admin"}],
+        'i11tb3':    [{'node': 'oob', 'role': 'oob', 'oob-ip': '172.31.230.165', 'oob-username': "openstack-read"},
+                      {'node': 'tor', 'role': 'tor', 'oob-ip': '172.31.230.225', 'oob-username': "openstack-read"}]
     }
 
     def sample_config(self):
