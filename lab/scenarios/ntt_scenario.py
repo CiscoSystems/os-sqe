@@ -26,7 +26,7 @@ class NttScenario(ParallelWorker):
     def tmp_dir(self):
         return self._kwargs.setdefault('tmp-dir', '/var/tmp/os-sqe-tmp/')
 
-    @section(message='Setting up', estimated_time=100)
+    @section(message='Setting up (estimate 100 secs)')
     def setup_worker(self):
         from os import path
         from lab.cloud.cloud_image import CloudImage
@@ -71,10 +71,12 @@ class NttScenario(ParallelWorker):
                 raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
 
         servers = CloudServer.list(cloud=self.cloud)
-        CloudServer.wait_servers_ready(cloud=self.cloud, servers=servers, status='ACTIVE')
+        CloudServer.wait(servers=servers, status='ACTIVE')
 
     def nfvbench_run(self):
-        self.pod.mgmt.exe('rm -f nvfbench/*')
+        from os import path
+
+        self.pod.mgmt.exe(command='rm -rf *', in_directory='nfvbench')
         cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench'
         ans = self.pod.mgmt.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10
         with self.pod.open_artifact('nfvbench_output_{}.txt'.format(self.nfvbench_args.replace(' ', '_')), 'w') as f:
@@ -82,9 +84,10 @@ class NttScenario(ParallelWorker):
             f.write(ans)
 
         if 'ERROR' in ans:
-            raise RuntimeError(ans.split('ERROR')[1][:200])
+            raise RuntimeError(ans.split('ERROR')[-1][:200])
         else:
-            res_json_body = self.pod.mgmt.r_get_file_from_dir(file_name='*.json', in_directory='nfvbench')
+            json_file_name = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
+            res_json_body = self.pod.mgmt.r_get_file_from_dir(file_name=json_file_name, in_directory='nfvbench')
             self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):
@@ -110,7 +113,7 @@ class NttScenario(ParallelWorker):
         with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
             f.write(self.nfvbench_args + '\n' + '; '.join(res))
 
-    @section(message='Tearing down', estimated_time=30)
+    @section(message='Tearing down (estimate 100 sec)')
     def teardown_worker(self):
         if not self.is_noclean:
             self.cloud.os_cleanup(is_all=True)
@@ -162,5 +165,17 @@ lsmod | grep igb_uio
 cd /opt/trex/v2.18
 ./t-rex-64 -i --no-scapy-server
 cat /tmp/trex
+
+docker pull cloud-docker.cisco.com/nfvbench
+        par = '--privileged --net host ' \
+              '-v {cfg}:/tmp/nfvbench -v /etc/hosts:/etc/hosts -v /root/.ssh:/root/.ssh -v /dev:/dev -v /root/openstack-configs:/tmp/nfvbench/openstack ' \
+              '-v /lib/modules/{ker}:/lib/modules/{ker} -v /usr/src/kernels/{ker}:/usr/src/kernels/{ker} '.format(cfg=self._nfv_config_dir, ker=ker.strip())
+        alias = "sed -i '/sqe_nfv/d' /root/.bashrc && echo \"alias sqe_nfv=\'docker run -d {} --name nfvbench_{}  cloud-docker.cisco.com/nfvbench\'\" >> /root/.bashrc".format(par, tag)
+        self.get_mgmt().exe(alias)
+        self._kwargs['nfvbench-cmd'] = 'docker run --rm -it ' + par + '--name nfvbench_sqe_auto cloud-docker.cisco.com/nfvbench nfvbench -c /tmp/nfvbench/{}-config.yaml --json /tmp/nfvbench/results.json'.format(self.get_lab())
+
+
+
+ansible-playbook -e @/root/openstack-configs/setup_data.yaml -e @/root/openstack-configs/docker.yaml -e @/root/openstack-configs/defaults.yaml /root/installer-8449/bootstrap/playbooks/nfvbench-install.yaml
 
 """

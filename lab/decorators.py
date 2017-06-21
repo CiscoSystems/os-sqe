@@ -1,17 +1,17 @@
-def section(message, estimated_time=None):
+def section(message):
     """Log message before and after decorated function"""
     import functools
     import time
     from lab.with_log import lab_logger
 
-    def decorator(function):
-        @functools.wraps(function)
+    def decorator(fun):
+        @functools.wraps(fun)
         def decorated_func(*args, **kwargs):
             time.sleep(2)
-            lab_logger.section_start(message=message + (' usually it takes {} secs'.format(estimated_time) if estimated_time else ''))
+            lab_logger.section_start(message=message)
             time.sleep(2)  # sleep to allow printing comes first
             start_time = time.time()
-            result = function(*args, **kwargs)
+            result = fun(*args, **kwargs)
             time.sleep(2)
             lab_logger.section_end(message=message + ' (actually it took {} secs)'.format(int(time.time() - start_time)))
             time.sleep(2)
@@ -25,11 +25,11 @@ def repeat_until_not_false(n_repetitions, time_between_repetitions):
     import functools
     import time
 
-    def decorator(function):
-        @functools.wraps(function)
+    def decorator(fun):
+        @functools.wraps(fun)
         def decorated_func(*args, **kwargs):
             for i in range(n_repetitions):
-                result = function(*args, **kwargs)
+                result = fun(*args, **kwargs)
                 if result:
                     return result
                 else:

@@ -4,9 +4,9 @@ from lab.decorators import section
 
 class CloudServer(Server):
 
-    def __init__(self, cloud, server_dic):
+    def __init__(self, cloud, dic):
         self.cloud = cloud
-        self._dic = server_dic if 'compute' in server_dic else self.cloud.os_server_show(name_or_id=server_dic.get('ID', server_dic.get('id')))
+        self._dic = dic if 'compute' in dic else self.os_show(name_or_id=dic.get('ID', dic.get('id')))
         super(CloudServer, self).__init__(ip=self.ips, username=self.image.username, password=self.image.password)
 
     def __repr__(self):
@@ -33,37 +33,43 @@ class CloudServer(Server):
 
     @property
     def id(self):
-        return self._dic.get('id', self._dic.get('ID', None))
+        return self._dic.get('id') or self._dic['ID']
 
     @property
     def name(self):
-        return self._dic.get('name', self._dic.get('Name', None))
+        return self._dic.get('name') or self._dic['Name']
 
     @property
     def status(self):
-        return self._dic.get('status', self._dic.get('Status', None))
+        return self._dic.get('status') or self._dic['Status']
 
     def os_server_reboot(self, hard=False):
         flags = '--hard ' if hard else '--soft '
         self.cloud.os_cmd('openstack server reboot ' + flags + self.id, comment=self.name)
-        self.wait_servers_ready(cloud=self.cloud, servers=[self], status='ACTIVE')
+        self.wait(servers=[self], status='ACTIVE')
 
     def os_server_rebuild(self, image):
         self.cloud.os_cmd('openstack server rebuild ' + self.id + ' --image ' + image.name, comment=self.name)
-        self.wait_servers_ready(cloud=self.cloud, servers=[self], status='ACTIVE')
+        self.wait(servers=[self], status='ACTIVE')
 
     def os_server_suspend(self):
         self.cloud.os_cmd('openstack server suspend ' + self.id, comment=self.name)
-        CloudServer.wait_servers_ready(cloud=self.cloud, servers=[self], status='SUSPENDED')
+        CloudServer.wait(servers=[self], status='SUSPENDED')
 
     def os_server_resume(self):
         self.cloud.os_cmd('openstack server resume ' + self.id, comment=self.name)
-        CloudServer.wait_servers_ready(cloud=self.cloud, servers=[self], status='ACTIVE')
+        CloudServer.wait(servers=[self], status='ACTIVE')
+
+    def os_show(self, name_or_id):
+        return self.cloud.os_cmd('openstack server show -f json {}'.format(name_or_id))
 
     @staticmethod
-    def wait_servers_ready(cloud, servers, status, timeout=300):
+    def wait(servers, status, timeout=300):
         import time
 
+        if not servers:
+            return
+        cloud = servers[0].cloud
         required_n_servers = 0 if status == 'DELETED' else len(servers)
         start_time = time.time()
         srv_ids = map(lambda x: x.id, servers)
@@ -90,6 +96,7 @@ class CloudServer(Server):
             cloud.pod.r_collect_information(regex=status['id'], comment='fail-of-' + status['name'])
 
     @staticmethod
+    @section(message='create servers (estimate 60 secs)')
     def create(how_many, flavor_name, image, on_nets, timeout, cloud):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
 
@@ -104,7 +111,7 @@ class CloudServer(Server):
                 ips.append(ip)
             port_ids = [x['id'] for x in ports]
             server_dic = cloud.os_server_create(srv_name=UNIQUE_PATTERN_IN_NAME + '-' + str(n), flavor_name=flavor_name, image_name=image.name, zone_name=comp.id, port_ids=port_ids)
-            server = CloudServer(cloud=cloud, server_dic=server_dic)
+            server = CloudServer(cloud=cloud, dic=server_dic)
             servers.append(server)
         cloud.wait_instances_ready(servers, timeout=timeout)
 
@@ -112,18 +119,25 @@ class CloudServer(Server):
 
     @staticmethod
     def list(cloud):
-        return [CloudServer(cloud=cloud, server_dic=x) for x in cloud.os_cmd('openstack server list -f json')]
+        return [CloudServer(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack server list -f json')]
 
     @staticmethod
-    @section(message='cleanup servers', estimated_time=10)
+    @section(message='cleanup servers (estimate 10 secs)')
     def cleanup(cloud, is_all):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
 
         lst = CloudServer.list(cloud=cloud)
         if not is_all:
             lst = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x.name, lst)
-        if len(lst):
-            ids = [s.id for s in lst]
-            names = [s.name for s in lst]
-            cloud.os_cmd('openstack server delete ' + ' '.join(ids), comment=' '.join(names))
-            CloudServer.wait_servers_ready(cloud=cloud, servers=lst, status='DELETED')
+        CloudServer.delete(servers=lst)
+
+    @staticmethod
+    def delete(servers):
+        import time
+
+        if len(servers):
+            ids = [s.id for s in servers]
+            names = [s.name for s in servers]
+            servers[0].cloud.os_cmd('openstack server delete ' + ' '.join(ids), comment=' '.join(names))
+            time.sleep(5)
+            CloudServer.wait(servers=servers, status='DELETED')

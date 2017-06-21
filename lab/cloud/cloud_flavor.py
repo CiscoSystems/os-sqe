@@ -37,7 +37,7 @@ class CloudFlavor(object):
         self.cloud.os_cmd(cmd='openstack flavor delete ' + self.id, comment=self.name)
 
     @staticmethod
-    @section(message='cleanup flavors', estimated_time=3)
+    @section(message='cleanup flavors (estimate 5 secs)')
     def cleanup(cloud, is_all):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
 

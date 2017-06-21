@@ -76,7 +76,6 @@ class VtsScenario(ParallelWorker):
         else:
             raise RuntimeError('{}: VTC failed to register networks'.format(self))
 
-    @section('Create servers')
     def create_servers(self, on_nets):
         from lab.cloud.cloud_server import CloudServer
 
@@ -146,7 +145,7 @@ class VtsScenario(ParallelWorker):
     def detach_border_leaf(self):
         self.vtc.r_vtc_delete_border_leaf_port()
 
-    @section(message='Attach border leaf', estimated_time=10)
+    @section(message='Attach border leaf')
     def attach_border_leaf(self, nets):
         import time
 

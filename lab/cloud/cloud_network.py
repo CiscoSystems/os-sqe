@@ -2,17 +2,17 @@ from lab.decorators import section
 
 
 class CloudNetwork(object):
-    def __init__(self, cloud, net_dic):
+    def __init__(self, cloud, dic):
         self.cloud = cloud
-        self._dic = net_dic
+        self._dic = dic
 
     @property
     def net_id(self):
-        return self._dic['id']
+        return self._dic.get('id') or self._dic['ID']
 
     @property
     def net_name(self):
-        return self._dic['name']
+        return self._dic.get('name') or self._dic['Name']
 
     @property
     def subnet_id(self):
@@ -65,18 +65,38 @@ class CloudNetwork(object):
                 del d2[key]
             d1.update(d2)
             d1['network'] = network
-            nets.append(CloudNetwork(cloud=cloud, net_dic=d1))
+            nets.append(CloudNetwork(cloud=cloud, dic=d1))
         return nets
 
     @staticmethod
-    @section(message='cleanup networks', estimated_time=10)
+    @section(message='cleanup networks (estimate 10 secs)')
     def cleanup(cloud, is_all):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
 
-        lst = cloud.os_cmd('openstack network list -f json')
+        lst = CloudNetwork.list(cloud=cloud)
         if not is_all:
             lst = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], lst)
-        if len(lst):
-            ids = [s['ID'] for s in lst]
-            names = [s['Name'] for s in lst]
-            cloud.os_cmd('openstack network delete ' + ' '.join(ids), comment=' '.join(names))
+        CloudNetwork.delete(networks=lst)
+
+    @staticmethod
+    def delete(networks):
+        import re
+        import time
+
+        if len(networks):
+            ids = [s.net_id for s in networks]
+            names = [s.net_name for s in networks]
+            for i in range(10):
+                ans = networks[0].cloud.os_cmd(cmd='openstack network delete ' + ' '.join(ids), comment=' '.join(names), is_warn_only=True)
+                if ans:
+                    ids = re.findall("Failed .*ID '(?P<id>.*)':.*", ans)
+                    names = ['attempt ' + str(i)]
+                    time.sleep(2)
+                else:
+                    return
+            else:
+                raise RuntimeError('Failed to cleanup networks after 10 attempts')
+
+    @staticmethod
+    def list(cloud):
+        return [CloudNetwork(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack network list -f json')]

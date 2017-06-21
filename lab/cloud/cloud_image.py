@@ -4,7 +4,7 @@ from lab.decorators import section
 class CloudImage(object):
     IMAGES = {'sqe-iperf': 'http://172.29.173.233/cloud-images/os-sqe-localadmin-ubuntu.qcow2',
               'CSR1KV': 'http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2',
-              'nfvbench': 'http://172.29.173.233/cloud-images/testpmdvm-latest.qcow2'}
+              'nfvbenchvm': 'http://172.29.173.233/cloud-images/testpmdvm-latest.qcow2'}
 
     SQE_PERF = 'sqe-perf'
     FOR_CSR = 'sqe-csr'
@@ -69,7 +69,7 @@ class CloudImage(object):
         try:
             url = CloudImage.IMAGES[name]
         except KeyError:
-            raise ValueError('Image "{}" is not known'.format(name))
+            return 'fake', 'fake', 'fake', 'fake'
 
         try:
             r = requests.get(url=url + '.txt')
@@ -83,7 +83,7 @@ class CloudImage(object):
         self._dic['url'], self._dic['checksum'], self._dic['size'], self._dic['username'], self._dic['password'], self._dic['loc_abs_path'] = self.read_image_properties(name=self.name)
 
     @staticmethod
-    @section('Creating custom image')
+    @section('Creating custom image (estimate 30 sec)')
     def create(image_name, cloud):
         image = CloudImage(cloud=cloud, image_dic={'name': image_name})
 
@@ -97,7 +97,7 @@ class CloudImage(object):
         return image.wait()
 
     def show(self):
-        return self.cloud.os_cmd('openstack image show -f json ' + self.name, is_warn_only=True)
+        return self.cloud.os_cmd(cmd='openstack image show -f json ' + self.name,  is_warn_only=True)
 
     def wait(self):
         import time
@@ -116,7 +116,7 @@ class CloudImage(object):
         raise RuntimeError('image ' + self.name + ' failed')
 
     @staticmethod
-    @section(message='cleanup images', estimated_time=10)
+    @section(message='cleanup images (estimate 10 secs)')
     def cleanup(cloud, is_all):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
 
