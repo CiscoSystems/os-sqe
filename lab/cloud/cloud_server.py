@@ -15,7 +15,7 @@ class CloudServer(Server):
     @property
     def compute(self):
         if 'compute' not in self._dic:
-            self._dic['compute'] = next(filter(lambda x: x.get_node_id() == self._dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes))
+            self._dic['compute'] = next(filter(lambda x: x.id == self._dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes))
         return self._dic['compute']
 
     @property
@@ -43,6 +43,10 @@ class CloudServer(Server):
     def status(self):
         return self._dic.get('status') or self._dic['Status']
 
+    @property
+    def libvirt_name(self):
+        return self._dic['OS-EXT-SRV-ATTR:instance_name']
+
     def os_server_reboot(self, hard=False):
         flags = '--hard ' if hard else '--soft '
         self.cloud.os_cmd('openstack server reboot ' + flags + self.id, comment=self.name)
@@ -64,7 +68,7 @@ class CloudServer(Server):
         return self.cloud.os_cmd('openstack server show -f json {}'.format(name_or_id))
 
     @staticmethod
-    def wait(servers, status, timeout=300):
+    def wait(servers, status, timeout=100):
         import time
 
         if not servers:
@@ -80,20 +84,18 @@ class CloudServer(Server):
             if len(in_status) == required_n_servers:
                 return in_status  # all successfully reached the status
             if in_error:
-                CloudServer.analyse_servers_problems(cloud=cloud, servers=in_error)
+                CloudServer.analyse_servers_problems(servers=in_error)
                 raise RuntimeError('These instances failed: {0}'.format(in_error))
             if time.time() > start_time + timeout:
-                CloudServer.analyse_servers_problems(cloud=cloud, servers=our)
+                CloudServer.analyse_servers_problems(servers=our)
                 raise RuntimeError('Instances {} are not {} after {} secs'.format(our, status, timeout))
             time.sleep(30)
 
     @staticmethod
-    def analyse_servers_problems(cloud, servers):
+    def analyse_servers_problems(servers):
         for srv in servers:
-            status = cloud.os_server_show(name_or_id=srv.id)
-            comp = cloud.pod.get_node_by_id(status['OS-EXT-SRV-ATTR:host'])
-            comp.exe('pkill -f {}'.format((status['OS-EXT-SRV-ATTR:instance_name'])))
-            cloud.pod.r_collect_information(regex=status['id'], comment='fail-of-' + status['name'])
+            srv.compute.exe('pkill -f ' + srv.libvirt_name)
+            srv.pod.r_collect_information(regex=srv.id, comment='fail-of-' + srv.name)
 
     @staticmethod
     @section(message='create servers (estimate 60 secs)')
