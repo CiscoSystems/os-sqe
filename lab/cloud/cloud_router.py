@@ -43,6 +43,11 @@ class CloudRouter(object):
         if len(routers):
             ids = [s.id for s in routers]
             names = [s.name for s in routers]
+            for r_id, name in zip(ids, names):
+                routers[0].cloud.os_cmd('neutron router-gateway-clear ' + r_id, comment=name)
+                ans = routers[0].cloud.os_cmd('neutron router-port-list {} -f json'.format(r_id), comment=name)
+                subnet_ids = [x['fixed_ips'].split(',')[0].split(':')[-1] for x in ans]
+                map(lambda subnet_id: routers[0].cloud.os_cmd('neutron router-interface-delete {} {}'.format(r_id, subnet_id), comment=name), subnet_ids)
             for i in range(10):
                 ans = routers[0].cloud.os_cmd(cmd='openstack router delete ' + ' '.join(ids), comment=' '.join(names), is_warn_only=True)
                 if ans:
@@ -53,10 +58,6 @@ class CloudRouter(object):
                     return
             else:
                 raise RuntimeError('Failed to cleanup routers after 10 attempts')
-            # cloud.os_cmd('neutron router-gateway-clear ' + r['id'], comment=r['name'])
-            # ans = cloud.os_cmd('neutron router-port-list {} -f json'.format(r['id']), comment=r['name'])
-            # subnet_ids = [x['fixed_ips'].split(',')[0].split(':')[-1] for x in ans]
-            # map(lambda subnet_id: cloud.os_cmd('neutron router-interface-delete {} {}'.format(r['id'], subnet_id), comment=r['name']), subnet_ids)
             # cloud.os_cmd('neutron router-delete ' + r['id'], comment=r['name'])
 
     @staticmethod

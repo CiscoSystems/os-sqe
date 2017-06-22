@@ -77,7 +77,9 @@ export OS_AUTH_URL={end_point}
         server = server or self.mediator
         cmd = 'source {} && {} {}'.format(self._openrc_path, cmd, '# ' + comment if comment else '')
         ans = server.exe(command=cmd, is_warn_only=is_warn_only)
-        if '-f csv' in cmd:
+        if ans.failed:
+            return ans
+        elif '-f csv' in cmd:
             return self._process_csv_output(ans)
         elif '-f json' in cmd:
             return self._process_json_output(ans)
