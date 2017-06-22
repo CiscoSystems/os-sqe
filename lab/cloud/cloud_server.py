@@ -15,7 +15,7 @@ class CloudServer(Server):
     @property
     def compute(self):
         if 'compute' not in self._dic:
-            self._dic['compute'] = next(filter(lambda x: x.id == self._dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes))
+            self._dic['compute'] = filter(lambda x: x.id == self._dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)[0]
         return self._dic['compute']
 
     @property

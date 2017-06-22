@@ -121,7 +121,7 @@ class LabServer(LabNode):
         started_at = time.time()
         if self.proxy:
             while True:
-                ans = self._proxy.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # run on {}".format(password, username, ip, command, self.get_node_id()), in_directory=in_directory, is_warn_only=True)
+                ans = self._proxy.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # run on {}".format(password, username, ip, command, self.id), in_directory=in_directory, is_warn_only=True)
                 if 'No route to host' in ans:
                     if connection_attempts == 0:
                         raise RuntimeError('Can not execute {} since {}'.format(command, ans))
