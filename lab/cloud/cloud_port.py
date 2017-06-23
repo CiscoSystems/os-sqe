@@ -42,16 +42,7 @@ class CloudPort(object):
         if len(ports):
             ids = [p.id for p in ports]
             names = [p.name for p in ports]
-            for i in range(10):
-                ans = ports[0].cloud.os_cmd(cmd='openstack port delete ' + ' '.join(ids), comment=' '.join(names), is_warn_only=True)
-                if ans:
-                    ids = re.findall("Failed .*ID '(?P<id>.*)':.*", ans)
-                    names = ['attempt ' + str(i)]
-                    time.sleep(2)
-                else:
-                    return
-            else:
-                raise RuntimeError('Failed to cleanup networks after 10 attempts')
+            ports[0].cloud.os_cmd(cmd='openstack port delete ' + ' '.join(ids), comment=' '.join(names), is_warn_only=True)
 
     @staticmethod
     def list(cloud):

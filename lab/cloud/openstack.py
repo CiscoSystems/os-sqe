@@ -250,6 +250,7 @@ export OS_AUTH_URL={end_point}
 
         CloudServer.cleanup(cloud=self, is_all=is_all)
 
+        CloudPort.cleanup(cloud=self, is_all=is_all)
         CloudRouter.cleanup(cloud=self, is_all=is_all)
         CloudPort.cleanup(cloud=self, is_all=is_all)
         CloudNetwork.cleanup(cloud=self, is_all=is_all)
