@@ -203,7 +203,7 @@ class Server(object):
     def clone_repo(self, repo_url, local_repo_dir=None, tags=None, patch=None):
         local_repo_dir = local_repo_dir or repo_url.split('/')[-1].strip('.git')
 
-        self.check_or_install_packages(package_names='git')
+        # self.check_or_install_packages(package_names='git')
         self.exe(command='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url))
         self.exe(command='git pull -q', in_directory=local_repo_dir)
         if patch:
