@@ -16,7 +16,7 @@ class LabWorker(WithConfig, WithLogMixIn):
 class BaseLab(WithStatusMixIn):
     sample_config = 'Try to provide at least section {provider: {ProviderClassName: {}}'
 
-    def __init__(self, yaml_name, version):
+    def __init__(self, yaml_name):
         import importlib
         import os
         from lab.with_config import read_config_from_file
@@ -33,8 +33,8 @@ class BaseLab(WithStatusMixIn):
             module_class_path, class_config = class_path_vs_config.items()[0]
             module_path, class_name = module_class_path.rsplit('.', 1)
             try:
-                module = importlib.import_module(module_path)
-                klass = getattr(module, class_name)
+                modul = importlib.import_module(module_path)
+                klass = getattr(modul, class_name)
             except ImportError:
                 section_name_no_digits = section_name.strip('0123456789')
                 section_dir = 'lab/' + section_name_no_digits + 's'
@@ -42,7 +42,7 @@ class BaseLab(WithStatusMixIn):
                 raise ValueError('yaml {y} section {l}: Module "{mp}" is not defined! Use one of:\n {c}'.format(y=yaml_name, l=section_name, mp=module_path, c=classes))
             except AttributeError:
                 raise ValueError('in yaml {y}: class {k} is not in {p}'.format(y=yaml_name, k=class_name, p=module_path))
-            class_instance = klass(config=class_config, version=version)
+            class_instance = klass(config=class_config)
             if type(class_instance).__name__.startswith('Provider'):
                 self.providers.append(class_instance)
             elif type(class_instance).__name__.startswith('Deployer'):

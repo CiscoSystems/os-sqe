@@ -15,7 +15,7 @@ class FiServer(LabServer):
             raise ValueError('server_port should ends with /a or /b, while provided: {0}'.format(server_port))
         server_id = server_port[:-2]
         self._server_id = str(server_id)
-        self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.lab(), i='-'.join(self._server_id.split('/')), n=self.get_node_id(), bc='B' if '/' in self._server_id else 'C')
+        self._service_profile_name = '{l}-{bc}{i}-{n}'.format(l=self.pod, i='-'.join(self._server_id.split('/')), n=self.id, bc='B' if '/' in self._server_id else 'C')
 
     def get_ucsm_info(self):
         return self._server_id, self._service_profile_name
@@ -55,7 +55,7 @@ class FI(LabNode):
         # https://communities.cisco.com/docs/DOC-51816
         self._vip = 'Not set in FI ctor'
         self._is_sriov = False
-        super(FI, self).__init__(node_id=node_id, role=self.ROLE, lab=lab)
+        super(FI, self).__init__(node_id=node_id, role=self.role, lab=lab)
 
     def set_vip(self, vip):
         self._vip = vip
@@ -72,8 +72,7 @@ class FI(LabNode):
     def cmd(self, command):
         from fabric.api import settings, run
 
-        _, username, password = self.get_oob()
-        with settings(host_string='{user}@{ip}'.format(user=username, ip=self._vip), password=password, connection_attempts=50, warn_only=False):
+        with settings(host_string=self.oob_password + '@' + self._vip, password=self.oob_password, connection_attempts=50, warn_only=False):
             return run(command, shell=False)
 
     def service_profiles(self):
@@ -192,7 +191,6 @@ class FI(LabNode):
         if platform.system() == 'Windows':
             raise RuntimeError('expect does not work on Windows!')
 
-        ip, oob_username, oob_password = self.get_oob()
         create_user_script = """#!/usr/bin/expect
 set admin_user {admin_user}
 set admin_password {admin_password}
@@ -214,7 +212,7 @@ expect "/security/local-user* #" {{send "commit-buffer\r"}}
 expect "/security/local-user #"
 sleep 5
 exit
-        """.format(admin_user=oob_username, admin_password=oob_password, ucsm_ip=ip, username=username, password=password)
+        """.format(admin_user=self.oob_username, admin_password=self.oob_password, ucsm_ip=self.oob_ip, username=username, password=password)
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(create_user_script)
         local('expect {0}'.format(f.name))
@@ -235,15 +233,15 @@ exit
 
         self.cleanup()
 
-        n_servers = len(self.lab().get_nodes_by_class(FiServer))  # how many servers UCSM currently sees
+        n_servers = len(self.pod.get_nodes_by_class(FiServer))  # how many servers UCSM currently sees
 
-        neutron_username, neutron_password = self.lab().get_neutron_creds()
+        neutron_username, neutron_password = self.pod.get_neutron_creds()
         self.create_user(username=neutron_username, password=neutron_password)  # special user to be used by neutron services
-        self.create_uplink(wires=self._upstream_wires)
+        # self.create_uplink(wires=self._upstream_wires)
         self.create_uuid_pool(pool_name=uuid_pool_name, n_uuids=n_servers)
-        self.create_boot_policies(vnics=self._lab.get_ucsm_nets_with_pxe())
+        self.create_boot_policies(vnics=self.pod.get_ucsm_nets_with_pxe())
         self.create_dynamic_vnic_connection_policy(policy_name=dynamic_vnic_policy_name)
-        self.create_vlans(vlans=self.lab().get_all_vlans())
+        self.create_vlans(vlans=self.pod.get_all_vlans())
         self.create_server_pool(name=server_pool_name)
 
         # MAC pools
@@ -256,12 +254,12 @@ exit
         # last=str(ipmi_net[config['mgmt-net']['end']]), gw=str(ipmi_net[1]), mask=str(ipmi_net.netmask))
         # run('scope org; scope ip-pool ext-mgmt; set assignment-order sequential; create block {0}; commit-buffer'.format(ipmi_pool), shell=False)
 
-        for wire in self._downstream_wires:
+        for wire in self._wires:
             server = wire.get_peer_node(self)
             server_id, service_profile_name = server.get_ucsm_info()
-            is_sriov = self.lab().is_sriov()
+            is_sriov = self.pod.is_sriov()
             ipmi_ip, _, _ = server.get_ipmi()
-            ipmi_net = self.lab().get_ipmi_net()
+            ipmi_net = self.pod.get_ipmi_net()
             ipmi_gw, ipmi_netmask = str(ipmi_net[1]), ipmi_net.netmask
             self.create_ipmi_static(server_id=server_id, ip=ipmi_ip, gw=ipmi_gw, netmask=ipmi_netmask)
             self.add_server_to_pool(server_id, server_pool_name)
@@ -269,7 +267,7 @@ exit
             self.create_service_profile(service_profile_name, is_sriov)
 
             for order, vnic in enumerate(server.get_nics(), start=1):
-                vlans = self.lab().get_net_vlans(vnic.get_net_id())
+                vlans = self.pod.get_net_vlans(vnic.get_net_id())
                 self.create_vnic_with_vlans(profile=service_profile_name, vnic=vnic.get_net_id(), mac=vnic.get_mac(), order=order, vlans=vlans)
 
                 if is_sriov and 'compute' in service_profile_name and vnic.get_net_id() in ['eth1']:
@@ -301,14 +299,13 @@ exit
             split = profile.split()
             profile_name = split[0]
             server_id = split[2]
-            ipmi_ip = self.cmd('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_id))
+            # ipmi_ip = self.cmd('scope org; scope server {}; scope cimc; sh mgmt-if | egrep [1-9] | cut -f 5 -d " "'.format(server_id))
             if_mac = {}
-            for line in self.cmd('scope org; scope service-profile {0}; sh vnic | i {1}:'.format(profile_name, self.lab().id)).split('\n'):
+            for line in self.cmd('scope org; scope service-profile {0}; sh vnic | i {1}:'.format(profile_name, self.pod.id)).split('\n'):
                 split = line.split()
                 if_mac[split[0]] = split[3]
-            server = FiController(lab=self.lab(), node_id=if_mac, role=FiController.ROLE)
+            server = FiController(lab=self.pod, node_id=if_mac)
             server.set_ucsm_id(server_port=server_id + '/a')
-            server.set_oob_creds(ip=ipmi_ip, username='cobbler', password='cobbler')
             servers[profile_name] = server
         return servers
 

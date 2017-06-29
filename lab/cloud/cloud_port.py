@@ -36,9 +36,6 @@ class CloudPort(object):
 
     @staticmethod
     def delete(ports):
-        import re
-        import time
-
         if len(ports):
             ids = [p.id for p in ports]
             names = [p.name for p in ports]

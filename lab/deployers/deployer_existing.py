@@ -28,17 +28,17 @@ class DeployerExisting(LabWorker):
                 ip = re_ip.findall(ip_a_ans)
                 filter(lambda srv: srv.ip() == ip, list_of_servers)
 
-    def deploy_cloud(self, list_of_servers):
+    def deploy_cloud(self, clouds_and_servers):
         from lab.laboratory import Laboratory
         from lab.cloud.openstack import OS
 
-        if not list_of_servers:
+        if not clouds_and_servers['servers']:
             pod = Laboratory(cfg_or_path=self._lab_cfg_path)
-            list_of_servers.append(pod.mgmt)
-            list_of_servers.extend(pod.controls)
-            list_of_servers.extend(pod.computes)
+            clouds_and_servers['servers'].append(pod.mgmt)
+            clouds_and_servers['servers'].extend(pod.controls)
+            clouds_and_servers['servers'].extend(pod.computes)
 
-        director = list_of_servers[0]
+        director = clouds_and_servers['servers'][0]
 
         openrc_path = None
         openrc_body = None

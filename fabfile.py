@@ -123,14 +123,14 @@ def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openst
 
 
 @task
-def run(config_path, version):
+def run(config_path):
     """fab run:bxb-run-rally\t\tGeneral: run any job specified by yaml
         :param config_path: path to valid run specification, usually one of yaml from $REPO/configs/run
         :param version: specify a version of the product
     """
     from lab.base_lab import BaseLab
 
-    l = BaseLab(yaml_name=config_path, version=version)
+    l = BaseLab(yaml_name=config_path)
     return l.run()
 
 @task

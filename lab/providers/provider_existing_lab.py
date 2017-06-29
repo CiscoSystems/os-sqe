@@ -2,25 +2,20 @@ from lab.providers import Provider
 
 
 class ProviderExistingLab(Provider):
-    """Creates servers from base hardware lab config
+    """Creates a list of servers from base hardware lab config
     """
-
-    def sample_config(self):
-        return {'hardware-lab-config': 'g10.yaml'}
+    @staticmethod
+    def sample_config():
+        return {'hardware-lab-config': 'some pod from gitlab'}
 
     def __init__(self, config):
         from lab.laboratory import Laboratory
 
-        super(ProviderExistingLab, self).__init__(config=config)
+        super(ProviderExistingLab, self).__init__()
 
-        self._lab = Laboratory(config_path=config['hardware-lab-config']).get_director()
+        self.pod = Laboratory(cfg_or_path=config['hardware-lab-config'])
 
-    def create_servers(self):
-        return self._lab.get_nodes_by_class()
-
-    def wait_for_servers(self):
-
-        servers = self.create_servers()
-        for server in servers:
-            server.actuate_hostname()
-        return servers
+    def execute(self, servers_and_clouds):
+        servers_and_clouds['servers'] = self.pod.nodes.values()
+        exceptions = []
+        return exceptions
