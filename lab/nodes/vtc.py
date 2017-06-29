@@ -65,20 +65,20 @@ class Vtc(VirtualServer):
     def disrupt(self, method_to_disrupt, downtime):
         import time
 
-        vts_host = self.get_hardware_server()
+        vts_host = self.hard
 
         if method_to_disrupt == 'vm-shutdown':
-            vts_host.exe(command='virsh suspend {}'.format(self.get_node_id()))
+            vts_host.exe(command='virsh suspend {}'.format(self.id))
             time.sleep(downtime)
-            vts_host.exe(command='virsh resume {}'.format(self.get_node_id()))
+            vts_host.exe(command='virsh resume {}'.format(self.id))
         elif method_to_disrupt == 'isolate-from-mx':
-            ans = vts_host.exe('ip l | grep mgmt | grep {0}'.format(self.get_node_id()))
+            ans = vts_host.exe('ip l | grep mgmt | grep {0}'.format(self.id))
             if_name = ans.split()[1][:-1]
             vts_host.exe('ip l s dev {} down'.format(if_name))
             time.sleep(downtime)
             vts_host.exe('ip l s dev {} up'.format(if_name))
         elif method_to_disrupt == 'isolate-from-api':
-            ans = vts_host.exe('ip l | grep api | grep {0}'.format(self.get_node_id()))
+            ans = vts_host.exe('ip l | grep api | grep {0}'.format(self.id))
             if_name = ans.split()[1][:-1]
             vts_host.exe('ip l s dev {} down'.format(if_name))
             time.sleep(downtime)
@@ -95,7 +95,7 @@ class Vtc(VirtualServer):
         net_part_tmpl = with_config.read_config_from_file(config_path='vtc-net-part-of-libvirt-domain.template', directory='vts', is_as_string=True)
 
         dns_ip, ntp_ip = self.pod.get_dns()[0], self.pod.get_ntp()[0]
-        hostname = '{id}-{lab}'.format(lab=self.pod, id=self.get_node_id())
+        hostname = '{id}-{lab}'.format(lab=self.pod, id=self.id)
 
         _, ssh_username, ssh_password = self._server.get_ssh()
 
@@ -140,10 +140,9 @@ class Vtc(VirtualServer):
         from time import sleep
 
         vtc_ip, _, _ = self._server.get_ssh()
-        _, username, password = self.get_oob()
         default_username, default_password = 'admin', 'admin'
 
-        if default_username != username:
+        if default_username != self.oob_username:
             raise ValueError
 
         api_security_check = 'https://{}:8443/VTS/j_spring_security_check'.format(vtc_ip)
@@ -173,7 +172,7 @@ class Vtc(VirtualServer):
         owasp_csrftoken = ''.join(re.findall(r'OWASP_CSRFTOKEN", "(.*?)", requestPageTokens', java_script_servlet.text))
 
         response = session.put(api_update_password,
-                               data=json.dumps({'resource': {'user': {'user_name': username, 'password': password, 'currentPassword': default_password}}}),
+                               data=json.dumps({'resource': {'user': {'user_name': self.oob_username, 'password': self.oob_password, 'currentPassword': default_password}}}),
                                headers={'OWASP_CSRFTOKEN': owasp_csrftoken,
                                         'X-Requested-With': 'OWASP CSRFGuard Project',
                                         'Accept': 'application/json, text/plain, */*',
@@ -423,7 +422,7 @@ class VtsHost(CimcServer):  # this class is needed just to make sure that the no
 class RestExecutor(object):
     def __init__(self, vtc_object):
         self._vtc = vtc_object
-        _, self._uname, self._pwd = vtc_object.get_oob()
+        self._uname, self._pwd = vtc_object.oob_username, vtc_object.oob_password
         self._delete_hdr = "'Accept: application/vnd.yang.data+json'"
         self._put_hdr = "'Content-Type: application/vnd.yang.data+json'"
         self._get_hdr = "'Accept: application/vnd.yang.collection+json'"

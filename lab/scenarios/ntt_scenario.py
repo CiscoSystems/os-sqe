@@ -23,8 +23,12 @@ class NttScenario(ParallelWorker):
         return self._kwargs['nfvbench-args'] + (' --no-cleanup' if self.is_noclean else '')
 
     @property
-    def tmp_dir(self):
-        return self._kwargs.setdefault('tmp-dir', '/var/tmp/os-sqe-tmp/')
+    def perf_reports_repo_dir(self):
+        return 'reports_repo'
+
+    @property
+    def csr_repo_dir(self):
+        return 'csr_repo'
 
     @section(message='Setting up (estimate 100 secs)')
     def setup_worker(self):
@@ -32,15 +36,16 @@ class NttScenario(ParallelWorker):
         from lab.cloud.cloud_image import CloudImage
         from lab.nodes.n9.vim_tor import VimTor
 
-        self.pod.mgmt.exe('rm -rf {}'.format(self.tmp_dir))
+        self.pod.mgmt.r_new_user()
         # self.pod.mgmt.r_configure_mx_and_nat()
         if self.what_to_run in ['both', 'csr']:
-            self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.tmp_dir + 'nfvi-test')
-            url, checksum, size, _, _, loc_abs_path = CloudImage.read_image_properties(name='CSR1KV')
+            self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.csr_repo_dir)
 
-            corrected_loc_bas_path = path.join(self.tmp_dir, 'nfvi-test', path.basename(loc_abs_path))
+            url, checksum, size, _, _, loc_abs_path = CloudImage.read_image_properties(name='CSR1KV')
+            corrected_loc_bas_path = path.join(self.csr_repo_dir, path.basename(loc_abs_path))
             self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=corrected_loc_bas_path)
         if self.what_to_run in ['both', 'nfvbench']:
+            self.pod.mgmt.r_clone_repo(repo_url='https://wwwin-gitlab-sjc.cisco.com/mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             self.pod.mgmt.r_check_intel_nics()
             trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
             [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
@@ -59,7 +64,7 @@ class NttScenario(ParallelWorker):
         from lab.cloud.cloud_server import CloudServer
 
         cmd = 'source $HOME/openstack-configs/openrc && ./{} # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot'.format(self.csr_args)
-        ans = self.pod.mgmt.exe(cmd, in_directory=self.tmp_dir + 'nfvi-test')
+        ans = self.pod.mgmt.exe(cmd, in_directory=self.csr_repo_dir)
 
         with self.pod.open_artifact('csr_create_output.txt', 'w') as f:
             f.write(cmd + '\n')
@@ -88,6 +93,7 @@ class NttScenario(ParallelWorker):
         else:
             json_file_name = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             res_json_body = self.pod.mgmt.r_get_file_from_dir(file_name=json_file_name, in_directory='nfvbench')
+            self.pod.mgmt.exe(command='mv ~/nfvbench/{} . && git add . && git commit -m "report on $(hostname)" && git push kshileev'.format(json_file_name), in_directory=self.perf_reports_repo_dir)
             self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):
@@ -117,7 +123,7 @@ class NttScenario(ParallelWorker):
     def teardown_worker(self):
         if not self.is_noclean:
             self.cloud.os_cleanup(is_all=True)
-            self.pod.mgmt.exe('rm -rf ' + self.tmp_dir)
+            self.pod.mgmt.exe('rm -rf *')
 
 """
 #!/bin/bash

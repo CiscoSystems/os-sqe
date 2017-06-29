@@ -5,21 +5,9 @@ class Server(object):
     def __init__(self, ip, username, password):
         self._tmp_dir_exists = False
         self._package_manager = None
-        self._mac_server_part = None
-        self._username, self._password, self._hostname = username, password, None
-        self._ips = ip if type(ip) is list else [ip]
-
-    def get_ssh_ip(self):
-        return self._ips
-
-    def get_ssh(self):
-        return self._ips[0], self._username, self._password
-
-    def set_hostname(self, hostname):
-        self._hostname = hostname
-
-    def get_hostname(self):
-        return self._hostname
+        self.username, self.password, self.hostname = username, password, None
+        self.ip = ip if type(ip) is not list else ip[0]
+        self.via_proxy = ''
 
     def get_package_manager(self):
         if not self._package_manager:
@@ -33,16 +21,14 @@ class Server(object):
         return self._package_manager
 
     def construct_settings(self, is_warn_only, connection_attempts):
-        from lab import with_config
-
-        kwargs = {'host_string': '{user}@{ip}'.format(user=self._username, ip=self._ips[0]),
+        kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
                   'disable_known_hosts': True,
                   'connection_attempts': connection_attempts,
                   'warn_only': is_warn_only}
-        if self._password == 'ssh_key':
-            kwargs['key_filename'] = with_config.KEY_PRIVATE_PATH
+        if self.password == 'ssh_key':
+            kwargs['key_filename'] = self.KEY_PRIVATE_PATH
         else:
-            kwargs['password'] = self._password
+            kwargs['password'] = self.password
         return kwargs
 
     @staticmethod
@@ -59,8 +45,11 @@ class Server(object):
         from fabric.api import run, settings, cd
         from fabric.exceptions import NetworkError
 
-        command += ' # in ~' if in_directory == '.' else ' # in ' + in_directory
-        if str(self._ips[0]) in ['localhost', '127.0.0.1']:
+        if 'sudo' in command and 'sudo -p "" -S ' not in command:
+            command = command.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.password))
+
+        command = self.via_proxy + ' "' + command + '" # in ' + in_directory
+        if str(self.ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
 
         # with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
@@ -92,9 +81,6 @@ class Server(object):
                         return ''
                     else:
                         raise
-
-    def as_proxy(self, host, command, is_warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
-        return self.exe("ssh -o StrictHostKeyChecking=no {} '{}'".format(host, command), is_warn_only=is_warn_only, connection_attempts=connection_attempts)
 
     def reboot(self, wait=300):
         """Reboot this server
@@ -135,7 +121,7 @@ class Server(object):
         if in_directory != '.':
             self.exe(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
 
-        if str(self._ips[0]) in ['localhost', '127.0.0.1']:
+        if str(self.ip) in ['localhost', '127.0.0.1']:
             with lcd(in_directory):
                 local('echo "{0}" > {1}'.format(string_to_put, file_name))
                 return os.path.abspath(os.path.join(in_directory, file_name))
@@ -175,7 +161,7 @@ class Server(object):
 
         cache_abs_path = path.join('/tmp', path.basename(loc_abs_path))
 
-        if path.dirname(loc_abs_path) not in ['~', '/tmp', '/var/tmp']:
+        if path.dirname(loc_abs_path) not in ['~', '.', '/tmp', '/var/tmp', '/var', '/root']:
             self.exe('mkdir -p {0}'.format(path.dirname(loc_abs_path)))
 
         while True:
@@ -212,31 +198,13 @@ class Server(object):
             self.exe(command='git checkout tags/{0}'.format(tags), in_directory=local_repo_dir)
         return self.exe(command='pwd', in_directory=local_repo_dir)
 
-    def r_create_user(self, new_username):
-        tmp_password = 'cisco123'
-        if not self.exe(command='grep {0} /etc/passwd'.format(new_username), is_warn_only=True):
-            encrypted_password = self.exe(command='openssl passwd -crypt {0}'.format(tmp_password))
-            self.exe(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
-            self.exe(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
-            self.exe(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
-        self._username, self._password = new_username, tmp_password
-        self.r_deploy_ssh_key()
-        self._password = 'ssh_key'
-
-    def r_deploy_ssh_key(self):
-        from lab import with_config
-        with open(with_config.KEY_PUBLIC_PATH) as f:
-            self.put_string_as_file_in_dir(string_to_put=f.read(), file_name='authorized_keys', in_directory='.ssh')
-        self.exe(command='chmod 700 .ssh')
-        self.exe(command='chmod 600 .ssh/authorized_keys')
-
     def r_ping(self, port=22):
         import socket
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
         try:
-            s.connect((str(self._ips[0]), port))
+            s.connect((str(self.ip), port))
             res = True
         except (socket.timeout, socket.error):
             res = False
@@ -246,8 +214,8 @@ class Server(object):
 
     def actuate_hostname(self, refresh=True):
         if not hasattr(self, '_hostname') or refresh:
-            self._hostname = self.exe('hostname').stdout.strip()
-        return self._hostname
+            self.hostname = self.exe('hostname').stdout.strip()
+        return self.hostname
 
     def r_list_ip_info(self, connection_attempts=100):
         ans_a = self.exe('ip -o a', connection_attempts=connection_attempts, is_warn_only=True)

@@ -6,6 +6,8 @@ class WithConfig(object):
     ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
     CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
     REMOTE_FILE_STORE_IP = '172.29.173.233'
+    KEY_PUBLIC_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'public'))
+    KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'private'))
 
     def verify_config(self, sample_config, config):
         from lab.config_verificator import verify_config
@@ -63,10 +65,6 @@ class WithConfig(object):
         if resp.status_code != 200:
             raise ValueError('Something wrong with repo: {}'.format(repo_tree_url))
         return re.findall('.*title="(.*)" href=.*yaml', resp.text)
-
-
-KEY_PUBLIC_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'public'))
-KEY_PRIVATE_PATH = os.path.abspath(os.path.join(WithConfig.REPO_DIR, 'configs', 'keys', 'private'))
 
 
 def read_config_from_file(config_path, directory='', is_as_string=False):

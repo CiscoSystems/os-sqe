@@ -14,8 +14,8 @@ class LabNode(WithLogMixIn, WithConfig):
         self.id = kwargs['node']                          # some id which unique in the given role, usually role + some small integer
         self.role = kwargs['role'].strip().lower()        # which role this node plays, possible roles are defined in get_role_class()
         self._proxy = kwargs.get('proxy')                 # LabNode object or node id (lazy init), will be used as proxy node to this node
-        self._oob_ip, self._oob_username, self._oob_password = kwargs['oob-ip'], kwargs['oob-username'], kwargs['oob-password']
-        self._ssh_username, self._ssh_password = kwargs.get('ssh-username', self._oob_username), kwargs.get('ssh-password', self._oob_password)
+        self.oob_ip, self.oob_username, self.oob_password = kwargs['oob-ip'], kwargs['oob-username'], kwargs['oob-password']
+        self.ssh_username, self.ssh_password = kwargs.get('ssh-username', self.oob_username), kwargs.get('ssh-password', self.oob_password)
 
         self._nics = dict()                  # list of NICs, will be filled in connect_node via class Wire
         self._ru, self._model = kwargs.get('ru', 'ruXX'), kwargs.get('model', 'XX')
@@ -53,10 +53,10 @@ class LabNode(WithLogMixIn, WithConfig):
         return {x['node']: LabNode.add_node(pod=pod, node_cfg=x) for x in nodes_cfg}
 
     def get_ssh_for_bash(self):
-        return 'sshpass -p {} ssh {}@{}'.format(self._oob_password, self._oob_username, self._oob_ip)
+        return 'sshpass -p {} ssh {}@{}'.format(self.oob_password, self.oob_username, self.oob_ip)
 
     def get_ssh_u_p(self):
-        return self._ssh_username, self._ssh_password
+        return self.ssh_username, self.ssh_password
 
     def attach_wire(self, wire):
         self._wires.append(wire)
@@ -75,12 +75,6 @@ class LabNode(WithLogMixIn, WithConfig):
 
     def get_n_in_role(self):
         return self._n
-
-    def get_oob(self):
-        return self._oob_ip, self._oob_username, self._oob_password
-
-    def set_oob_creds(self, ip, username, password):
-        self._oob_ip, self._oob_username, self._oob_password = ip, username, password
 
     def get_all_wires(self):
         """Returns all wires"""
@@ -194,19 +188,18 @@ class LabNode(WithLogMixIn, WithConfig):
     def r_verify_oob(self):
         import socket
 
-        ip, _, _ = self.get_oob()
-        if ip == 'MatchSSH':  # it's a virtual node no OOB
+        if self.oob_ip == 'MatchSSH':  # it's a virtual node no OOB
             return
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         ok = None
         s.settimeout(2)
         try:
-            s.connect((ip, 22))
+            s.connect((self.oob_ip, 22))
             ok = 'ok'
         except (socket.timeout, socket.error):
             ok = 'FAILED'
         finally:
-            self.log('OOB ({}) is {}'.format(ip, ok))
+            self.log('OOB ({}) is {}'.format(self.oob_ip, ok))
             s.close()
 
     @staticmethod

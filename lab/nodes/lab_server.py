@@ -6,21 +6,24 @@ class LabServer(LabNode):
     def __init__(self, **kwargs):
         super(LabServer, self).__init__(**kwargs)
 
-        self._tmp_dir_exists = False
         self._package_manager = None
-        self._mac_server_part = None
-        self.__server = None
-        self._virtual_servers = set()  # virtual servers running on this hardware server
+        self.__server = None  # lazzy intialization to lab.server.Server instance
+        self.virtual_servers = set()  # virtual servers running on this hardware server
 
     def add_virtual_server(self, server):
-        self._virtual_servers.add(server)
+        self.virtual_servers.add(server)
 
     @property
     def _server(self):
         from lab.server import Server
 
         if self.__server is None:
-            self.__server = Server(ip=self.get_ssh_ip(), username=self._ssh_username, password=self._ssh_password)
+            if self.proxy:
+                self.__server = Server(ip=self.proxy.get_ssh_ip(), username=self.proxy.ssh_username, password=self.proxy.ssh_password)
+                self.__server.via_proxy = 'ssh -o StrictHostKeyChecking=no ' + self.id
+            else:
+                self.__server = Server(ip=self.get_ssh_ip(), username=self.ssh_username, password=self.ssh_password)
+
         return self.__server
 
     def cmd(self, cmd):
@@ -30,7 +33,7 @@ class LabServer(LabNode):
         try:
             return self._nics[nic]
         except KeyError:
-            return RuntimeError('{}: is not on {} network'.format(self.get_node_id(), nic))
+            return RuntimeError('{}: is not on {} network'.format(self.id, nic))
 
     def add_nics(self, nics_cfg):
         from lab.network import Nic
@@ -65,8 +68,7 @@ class LabServer(LabNode):
         return self.get_nic('t').get_ip_with_prefix()
 
     def get_ssh_for_bash(self):
-        ip, u, p = self.get_ssh()
-        command = 'sshpass -p {} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {}@{}'.format(p, u, ip)
+        command = 'sshpass -p {} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {}@{}'.format(self._server.password, self._server.username, self._server.ip)
         if self.proxy:
             command = self._proxy.get_ssh_for_bash()[0].replace('ssh ', 'ssh -t ') + ' ' + command
         return command, super(LabServer, self).get_ssh_for_bash()
@@ -76,9 +78,6 @@ class LabServer(LabNode):
 
     def r_get_hostname(self):
         return self._server.r_get_hostname()
-
-    def get_ssh(self):
-        return self._server.get_ssh()
 
     def r_is_nics_correct(self):
         actual_nics = self._server.r_list_ip_info(connection_attempts=1)
@@ -112,26 +111,10 @@ class LabServer(LabNode):
     def exe(self, command, in_directory='.', is_warn_only=False, connection_attempts=100, estimated_time=None):
         import time
 
-        ip, username, password = self._server.get_ssh()
-        if 'sudo' in command and 'sudo -p "" -S ' not in command:
-            command = command.replace('sudo ', 'echo {} | sudo -p "" -S '.format(password))
-
         if estimated_time:
             self.log('Running {}... (usually it takes {} secs)'.format(command, estimated_time))
         started_at = time.time()
-        if self.proxy:
-            while True:
-                ans = self._proxy.exe(command="sshpass -p {} ssh -o StrictHostKeyChecking=no {}@{} '{}' # run on {}".format(password, username, ip, command, self.id), in_directory=in_directory, is_warn_only=True)
-                if 'No route to host' in ans:
-                    if connection_attempts == 0:
-                        raise RuntimeError('Can not execute {} since {}'.format(command, ans))
-                    connection_attempts -= 1
-                    time.sleep(10)
-                    continue
-                else:
-                    break
-        else:
-            ans = self._server.exe(command=command, in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+        ans = self._server.exe(command=command, in_directory=in_directory, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
         if estimated_time:
             self.log('{} finished and actually took {} secs'.format(command, time.time() - started_at))
         return ans
@@ -171,7 +154,7 @@ class LabServer(LabNode):
             self.exe(command='rm -f {}'.format(local_path))
         self.exe('yum install -q -y expect')
 
-    def r_curl(self, url, size, checksum, loc_abs_path):
+    def r_curl(self, url, checksum, loc_abs_path, size=100000000):
         return self._server.r_curl(url=url, size=size, checksum=checksum, loc_abs_path=loc_abs_path)
 
     def r_get_file_from_dir(self, file_name, in_directory='.', local_path=None):
