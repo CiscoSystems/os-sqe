@@ -48,7 +48,9 @@ class Server(object):
         if 'sudo' in command and 'sudo -p "" -S ' not in command:
             command = command.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.password))
 
-        command = self.via_proxy + ' "' + command + '" # in ' + in_directory
+        if self.via_proxy:
+            command = self.via_proxy + ' "' + command + '"'
+        command += ' # in ' + in_directory
         if str(self.ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
 
