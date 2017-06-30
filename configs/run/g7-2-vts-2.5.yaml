@@ -1,0 +1,2 @@
+deployer1: {lab.providers.provider_existing_lab.ProviderExistingLab: {hardware-lab-config: g7-2-vts.yaml }}
+deployer2: {lab.deployers.deployer_vts_25.DeployerVts25: {'vts-images-url': 'http://wwwin-nfv-orch.cisco.com/mercury/vts2.5/vts2.5-images/'}}
