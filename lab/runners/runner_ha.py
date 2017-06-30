@@ -86,7 +86,7 @@ class RunnerHA(LabWorker):
         RunnerHA.check_config(tests=tests, common_config=common_config)
 
         deployer = DeployerExisting(config={'hardware-lab-config': lab_cfg_path})
-        cloud = deployer.execute([])
+        cloud = deployer.execute({'clouds': [], 'servers': []})
         if len(cloud.computes) < 2:
             raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(lab_cfg_path))
 
