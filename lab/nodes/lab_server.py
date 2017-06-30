@@ -33,7 +33,7 @@ class LabServer(LabNode):
         try:
             return self._nics[nic]
         except KeyError:
-            return RuntimeError('{}: is not on {} network'.format(self.id, nic))
+            raise RuntimeError('{}: is not on network "{}"'.format(self.id, nic))
 
     def add_nics(self, nics_cfg):
         from lab.network import Nic
@@ -146,13 +146,6 @@ class LabServer(LabNode):
         self.exe(command='subscription-manager attach --pool={}'.format(rhel_pool_id))
         self.exe(command='subscription-manager repos --disable=*')
         self.exe(command='subscription-manager repos {}'.format(repos_to_enable))
-
-    def r_install_sshpass_openvswitch_expect(self):
-        for rpm, checksum in ['sshpass-1.06-1.el7.rf.x86_64.rpm', 'openvswitch-2.5.0-1.el7.centos.x86_64.rpm']:
-            local_path, _ = self.r_curl(url='http://172.29.173.233/redhat/{}'.format(rpm))
-            self.exe(command='rpm -i {}'.format(local_path), is_warn_only=True)
-            self.exe(command='rm -f {}'.format(local_path))
-        self.exe('yum install -q -y expect')
 
     def r_curl(self, url, checksum, loc_abs_path, size=100000000):
         return self._server.r_curl(url=url, size=size, checksum=checksum, loc_abs_path=loc_abs_path)
