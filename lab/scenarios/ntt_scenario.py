@@ -93,7 +93,7 @@ class NttScenario(ParallelWorker):
         else:
             json_file_name = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             res_json_body = self.pod.mgmt.r_get_file_from_dir(file_name=json_file_name, in_directory='nfvbench')
-            self.pod.mgmt.exe(command='mv ~/nfvbench/{} . && git add . && git commit -m "report on $(hostname)" && git push kshileev'.format(json_file_name), in_directory=self.perf_reports_repo_dir)
+            # self.pod.mgmt.exe(command='mv ~/nfvbench/{} . && git add . && git commit -m "report on $(hostname)" && git push kshileev'.format(json_file_name), in_directory=self.perf_reports_repo_dir)
             self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):
