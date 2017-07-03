@@ -70,8 +70,7 @@ class N9(LabNode):
     def n9_allow_feature_nxapi(self):
         from fabric.api import settings, run
 
-        oob_ip, oob_u, oob_p = self.get_oob()
-        with settings(host_string='{user}@{ip}'.format(user=oob_u, ip=oob_ip), password=oob_p):
+        with settings(host_string='{user}@{ip}'.format(user=self.oob_username, ip=self.oob_ip), password=self.oob_password):
             if 'disabled'in run('sh feature | i nxapi', shell=False):
                 run('conf t ; feature nxapi', shell=False)
 
@@ -79,12 +78,11 @@ class N9(LabNode):
         import requests
         import json
 
-        oob_ip, oob_u, oob_p = self.get_oob()
         body = [{"jsonrpc": "2.0", "method": method, "params": {"cmd": x, "version": 1}, "id": i} for i, x in enumerate(commands, start=1)]
-        url = 'http://{0}/ins'.format(oob_ip)
+        url = 'http://{0}/ins'.format(self.oob_ip)
         try:
             data = json.dumps(body)
-            result = requests.post(url, auth=(oob_u, oob_p), headers={'content-type': 'application/json-rpc'}, data=data, timeout=timeout)
+            result = requests.post(url, auth=(self.oob_username, self.oob_password), headers={'content-type': 'application/json-rpc'}, data=data, timeout=timeout)
             if result.ok:
                 return result.json()
             else:

@@ -3,12 +3,15 @@ from lab.nodes import LabNode
 
 class LabServer(LabNode):
 
-    def __init__(self, **kwargs):
-        super(LabServer, self).__init__(**kwargs)
+    def __init__(self, pod, dic):
+        from lab.network import Nic
+
+        super(LabServer, self).__init__(pod=pod, dic=dic)
 
         self._package_manager = None
-        self.__server = None  # lazzy intialization to lab.server.Server instance
+        self.__server = None  # lazy initialisation to lab.server.Server instance
         self.virtual_servers = set()  # virtual servers running on this hardware server
+        self.nics = Nic.add_nics(node=self, nics_cfg=dic['nics'])
 
     def add_virtual_server(self, server):
         self.virtual_servers.add(server)
@@ -31,20 +34,13 @@ class LabServer(LabNode):
 
     def get_nic(self, nic):
         try:
-            return self._nics[nic]
+            return self.nics[nic]
         except KeyError:
             raise RuntimeError('{}: is not on network "{}"'.format(self.id, nic))
 
-    def add_nics(self, nics_cfg):
-        from lab.network import Nic
-
-        self._nics = Nic.add_nics(node=self, nics_cfg=nics_cfg)
-
-    def get_ssh_ip(self):
-        return [x for x in self._nics.values() if x.is_ssh()][0].get_ip_and_mask()[0]
-
-    def get_nics(self):
-        return self._nics
+    @property
+    def ssh_ip(self):
+        return [x for x in self.nics.values() if x.is_ssh][0].ip
 
     def get_ip_api(self):
         return self.get_nic('a').get_ip_and_mask()[0]

@@ -9,17 +9,13 @@ class LabNode(WithLogMixIn, WithConfig):
 
     _ROLE_VS_COUNT = {}
 
-    def __init__(self, **kwargs):
-        self.pod = kwargs.pop('lab')                      # link to parent Laboratory object
-        self.id = kwargs['node']                          # some id which unique in the given role, usually role + some small integer
-        self.role = kwargs['role'].strip().lower()        # which role this node plays, possible roles are defined in get_role_class()
-        self._proxy = kwargs.get('proxy')                 # LabNode object or node id (lazy init), will be used as proxy node to this node
-        self.oob_ip, self.oob_username, self.oob_password = kwargs['oob-ip'], kwargs['oob-username'], kwargs['oob-password']
-        self.ssh_username, self.ssh_password = kwargs.get('ssh-username', self.oob_username), kwargs.get('ssh-password', self.oob_password)
-
-        self._nics = dict()                  # list of NICs, will be filled in connect_node via class Wire
-        self._ru, self._model = kwargs.get('ru', 'ruXX'), kwargs.get('model', 'XX')
-        self._hostname = kwargs.get('hostname', 'XX')
+    def __init__(self, pod, dic):
+        self.pod = pod                                 # link to parent Laboratory object
+        self.id = dic['id']                            # some id which unique in the given role, usually role + some small integer
+        self.role = dic['role'].strip().lower()        # which role this node plays, possible roles are defined in get_role_class()
+        self._proxy = dic.get('proxy')                 # LabNode object or node id (lazy init), will be used as proxy node to this node
+        self.oob_ip, self.oob_username, self.oob_password = dic['oob-ip'], dic['oob-username'], dic['oob-password']
+        self.ssh_username, self.ssh_password = dic.get('ssh-username', self.oob_username), dic.get('ssh-password', self.oob_password)
 
         role = self.role.split('-')[0]      # e.g. control-fi and control-cimc are the same for counting
         self._ROLE_VS_COUNT.setdefault(role, 0)
@@ -41,37 +37,19 @@ class LabNode(WithLogMixIn, WithConfig):
         try:
             role = node_cfg['role']
             klass = LabNode.get_role_class(role)
-            node_cfg['lab'] = pod
-            return klass(**node_cfg)  # call class ctor
+            return klass(pod=pod, dic=node_cfg)  # call class ctor
         except KeyError as ex:
-            raise ValueError('"{}"\nmust have parameter "{}"'.format(node_cfg['node'], ex))
-        except TypeError as ex:
-            raise TypeError('{} for the node "{}" of role "{}"'.format(ex, node_cfg.get('node'), node_cfg.get('role')))
+            raise ValueError('Node "id: {}" must have key "{}"'.format(node_cfg.get('id', node_cfg), ex))
 
     @staticmethod
     def add_nodes(pod, nodes_cfg):
-        return {x['node']: LabNode.add_node(pod=pod, node_cfg=x) for x in nodes_cfg}
+        return {x['id']: LabNode.add_node(pod=pod, node_cfg=x) for x in nodes_cfg}
 
     def get_ssh_for_bash(self):
         return 'sshpass -p {} ssh {}@{}'.format(self.oob_password, self.oob_username, self.oob_ip)
 
-    def get_ssh_u_p(self):
-        return self.ssh_username, self.ssh_password
-
     def attach_wire(self, wire):
         self._wires.append(wire)
-
-    def get_lab_id(self):
-        return str(self.pod)
-
-    def get_hostname(self):
-        return self._hostname
-
-    def get_model(self):
-        return self._model
-
-    def get_ru(self):
-        return self._ru
 
     def get_n_in_role(self):
         return self._n
@@ -87,12 +65,6 @@ class LabNode(WithLogMixIn, WithConfig):
     @abc.abstractmethod
     def cmd(self, cmd):
         pass  # this method allows to do OOB commands like e.g. CIMC or NXAPI
-
-    def set_hardware_info(self, ru, model):
-        self._ru, self._model = ru, model
-
-    def get_hardware_info(self):
-        return self._ru, self._model
 
     def is_cimc_server(self):
         from lab.nodes.cimc_server import CimcServer

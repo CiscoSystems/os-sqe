@@ -2,11 +2,9 @@ from lab.nodes.lab_server import LabServer
 
 
 class VirtualServer(LabServer):
-    def __init__(self, **kwargs):
-        kwargs['model'] = 'virtual'
-        kwargs['ru'] = 'virtual'
-        super(VirtualServer, self).__init__(**kwargs)
-        self.hard = self.pod.nodes[kwargs['virtual-on']]
+    def __init__(self, pod, dic):
+        super(VirtualServer, self).__init__(pod=pod, dic=dic)
+        self.hard = self.pod.nodes[dic['virtual-on']]
         self.hard.add_virtual_server(self)
 
     def cmd(self, cmd):

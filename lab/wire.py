@@ -26,7 +26,7 @@ class Wire(object):
     def add_wire(pod, wire_cfg):
         """Fabric to create a class Wire instance
         :param pod: the instance of class Laboratory
-        :param wire_cfg: a dicts like {node-id1: XXX, port-id1: XXX, mac1: XXX, node-id2 XXX, port-id2: XXX mac2: XXX, pc-id: XXX}
+        :param wire_cfg: a dicts like {node1: XXX, port1: XXX, mac1: XXX, node2 :XXX, port2: XXX mac2: XXX, pc-id: XXX}
         :returns class Wire instance
         """
         try:

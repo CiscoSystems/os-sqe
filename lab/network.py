@@ -1,74 +1,36 @@
 class Network(object):
-    def __init__(self, lab, net_id, cidr, vlan, roles_must_present, is_via_tor):
+    def __init__(self, pod, net_id, cidr, vlan, is_via_tor, roles_must_present):
         from netaddr import IPNetwork
 
-        self._lab = lab
-        self._net = IPNetwork(cidr)
-        self._net_id = net_id
-        self._vlan = vlan  # single network needs to sit on single vlan
-        self._is_via_tor = is_via_tor  # this network if supposed to go out of lab's TOR
-        self._roles_on_this_net = roles_must_present  # list of node's roles which should sit on this network
+        self.pod = pod
+        self.net = IPNetwork(cidr)
+        self.id = net_id
+        self.vlan = vlan  # single network needs to sit on single vlan
+        self.is_via_tor = is_via_tor  # this network if supposed to go out of lab's TOR
+        self.roles_must_present = roles_must_present  # list of node's roles which should sit on this network
 
     def __repr__(self):
-        return u'net: {} {} {}'.format(self._net_id, self._net, self._vlan)
-
-    def set_vlan(self, vlan_id):
-        self._vlan = vlan_id
-
-    def set_cidr(self, cidr):
-        from netaddr import IPNetwork
-
-        self._net = IPNetwork(cidr)
-
-    def set_via_tor(self, is_via_tor):
-        self._is_via_tor = is_via_tor
+        return u'net: {} {} {}'.format(self.id, self.net, self.vlan)
 
     @staticmethod
-    def add_network(lab, net_id, net_desc):
+    def add_network(pod, dic):
         """Fabric to create a class Nic instance
-        :param lab: class Laboratory instance
-        :param net_id: short string id of this network, also see nic_id in class Nic
-        :param net_desc: dictionary e.g. {vlan: 319,  mac-pattern: AA, cidr: 10.23.221.128/26, is-via-tor: True }
+        :param pod: object of lab.laboratory.Laboratory
+        :param dic: dictionary e.g. {id: a, vlan: 319,  cidr: 10.23.221.128/26, is-via-tor: True }
         :returns class Network instance
         """
 
         try:
-            return Network(lab=lab, net_id=net_id, cidr=net_desc['cidr'], vlan=str(net_desc['vlan']), roles_must_present=net_desc['should-be'], is_via_tor=net_desc['is-via-tor'])
+            return Network(pod=pod, net_id=dic['id'], cidr=dic['cidr'], vlan=dic['vlan'], is_via_tor=dic['is-via-tor'], roles_must_present=dic['roles'])
         except KeyError as ex:
-            raise ValueError('network {} does not specify {}'.format(net_id, ex))
+            raise ValueError('Network "id: {}" does not specify key {}'.format(dic.get('id', dic), ex))
 
-    def get_net_id(self):
-        return self._net_id
-
-    def get_vlan_id(self):
-        return self._vlan
-
-    def get_mac_pattern(self):
-        return self._mac_pattern
-
-    def get_gw(self):
-        return self._net[1]
-
-    def is_via_tor(self):
-        return self._is_via_tor
+    @staticmethod
+    def add_networks(pod, nets_cfg):
+        return {x['id']: Network.add_network(pod=pod, dic=x) for x in nets_cfg}
 
     def get_ip_for_index(self, index):
-        return self._net[index]
-
-    def get_size(self):
-        return self._net.size
-
-    def get_prefix_len(self):
-        return self._net.prefixlen
-
-    def get_netmask(self):
-        return self._net.netmask
-
-    def get_cidr(self):
-        return self._net.cidr
-
-    def get_roles(self):
-        return self._roles_on_this_net
+        return self.net[index]
 
     def check_ip_correct(self, msg, ip):
         import netaddr
@@ -88,15 +50,15 @@ class Nic(object):
     def __init__(self, nic_id, node, ip, is_ssh):
 
         try:
-            self._net = node.pod.networks[nic_id]    # valid lab.network.Network
+            self.net = node.pod.networks[nic_id]    # valid lab.network.Network
         except KeyError:
             raise ValueError('{}: trying to create NIC on network "{}" which does not exeist'.format(node, nic_id))
         # self._net.check_ip_correct(msg='{}: nic "{}" has problem: '.format(node, nic_id), ip=ip) TODO remove when fix the problem in c25bot
 
-        self._node = node  # nic belongs to the node
-        self._nic_id = nic_id  # this is NIC name which coincides with network name
-        self._ip = ip  # might be also not int but a sting which says that ip for this NIC is not yet available
-        self._is_ssh = is_ssh
+        self.node = node  # nic belongs to the node
+        self.id = nic_id  # this is NIC name which coincides with network name
+        self.ip = ip  # might be also not int but a string which says that ip for this NIC is not yet available
+        self.is_ssh = is_ssh
 
     # def associate_with_wires(self, wires):
     #     for wire in wires:
@@ -114,7 +76,7 @@ class Nic(object):
     #             self._names.append(nic_id + ('0' if own_port_id in ['MLOM/0', 'LOM-1'] else '1'))
 
     def __repr__(self):
-        return u'{} {}'.format(self.get_ip_with_prefix(), self._nic_id)
+        return u'{} {}'.format(self.ip_with_prefix, self.id)
 
     @staticmethod
     def add_nic(node, nic_cfg):
@@ -124,37 +86,30 @@ class Nic(object):
         :returns class Nic instance
         """
         try:
-            return Nic(nic_id=nic_cfg['nic-id'], node=node, ip=nic_cfg['ip'], is_ssh=nic_cfg['is-ssh'])
+            return Nic(nic_id=nic_cfg['id'], node=node, ip=nic_cfg['ip'], is_ssh=nic_cfg['is-ssh'])
         except KeyError as ex:
             raise ValueError('{}: nic "{}" does not specify {}'.format(node, nic_cfg, ex))
 
     @staticmethod
     def add_nics(node, nics_cfg):
-        return {nic_cfg['nic-id']: Nic.add_nic(node=node, nic_cfg=nic_cfg) for nic_cfg in nics_cfg}
+        return {nic_cfg['id']: Nic.add_nic(node=node, nic_cfg=nic_cfg) for nic_cfg in nics_cfg}
 
-    def is_ssh(self):
-        return self._is_ssh
+    @property
+    def ip_and_mask(self):
+        return str(self.ip), str(self.net.get_netmask())
 
-    def get_ip_and_mask(self):
-        return str(self.get_ip()), str(self._net.get_netmask())
+    @property
+    def ip_with_prefix(self):
+        return self.ip + '/' + self.net.net.size
 
-    def get_ip(self):
-        return self._ip
+    @property
+    def gw(self):
+        return self.net.gw
 
-    def get_ip_with_prefix(self):
-        return '{}/{}'.format(self.get_ip(), self._net.get_prefix_len())
+    @property
+    def gw_with_prefix(self):
+        return self.gw + '/' + self.net.net.size
 
-    def get_net(self):
-        return self._net
-
-    def get_gw(self):
-        return self._net.get_gw()
-
-    def get_gw_with_prefix(self):
-        return '{}/{}'.format(self.get_gw(), self._net.get_prefix_len())
-
-    def get_vlan_id(self):
-        return self._net.get_vlan_id()
-
-    def get_nic_id(self):
-        return self._nic_id
+    @property
+    def vlan_id(self):
+        return self.net.vlan_id

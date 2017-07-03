@@ -4,8 +4,8 @@ from lab.nodes.lab_server import LabServer
 class CimcServer(LabServer):
     RAID_0, RAID_1, RAID_10 = '0', '1', '10'
 
-    def __init__(self, **kwargs):
-        super(CimcServer, self).__init__(**kwargs)
+    def __init__(self, pod, dic):
+        super(CimcServer, self).__init__(pod=pod, dic=dic)
         self.__handle = None
         self._dump_xml = False
         self._logout_on_each_command = False
@@ -21,8 +21,7 @@ class CimcServer(LabServer):
             if self._dump_xml:
                 self.logger('logging in')
             self.__handle = ImcSdk.ImcHandle()
-            oob_ip, oob_username, oob_password = self.get_oob()
-            self._handle.login(name=oob_ip, username=oob_username, password=self._oob_password, dump_xml=self._dump_xml)
+            self._handle.login(name=self.oob_ip, username=self.oob_username, password=self.oob_password, dump_xml=self._dump_xml)
         return self.__handle
 
     def _logout(self):

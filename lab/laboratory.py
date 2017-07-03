@@ -24,6 +24,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.nodes import LabNode
         from lab.wire import Wire
 
+        self._unique_dict = dict()  # to make sure that all needed objects are unique
         if cfg_or_path is None:
             return
         elif type(cfg_or_path) is dict:
@@ -31,17 +32,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         else:
             self._cfg = with_config.read_config_from_file(config_path=cfg_or_path)
         self.name = self._cfg['name']
-        self.type = self._cfg['type']
-        if self.type not in self.SUPPORTED_TYPES:
-            raise ValueError('"{}" is not one of supported types: {}'.format(self.type, self.SUPPORTED_TYPES))
 
         self.setup_data = self._cfg.get('setup-data')
-        self._unique_dict = dict()  # to make sure that all needed objects are unique
+        self.dns, self.ntp = self.setup_data['NETWORKING']['domain_name_servers'], self.setup_data['NETWORKING']['ntp_servers']
 
-        self.dns, self.ntp = self._cfg['setup-data']['NETWORKING']['domain_name_servers'], self._cfg['setup-data']['NETWORKING']['ntp_servers']
-        self.neutron_username, self.neutron_password = self._cfg['special-creds']['neutron_username'], self._cfg['special-creds']['neutron_password']
-
-        self.networks = {net_desc['net-id']: Network.add_network(lab=self, net_id=net_desc['net-id'], net_desc=net_desc) for net_desc in self._cfg['networks']}
+        self.networks = Network.add_networks(pod=self, nets_cfg=self._cfg['networks'])
 
         self.nodes = LabNode.add_nodes(pod=self, nodes_cfg=self._cfg['switches'])  # first pass - just create nodes
         self.nodes.update(LabNode.add_nodes(pod=self, nodes_cfg=self._cfg['specials']))
@@ -49,36 +44,33 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         if 'virtuals' in self._cfg:
             self.nodes.update(VirtualServer.add_nodes(pod=self, nodes_cfg=self._cfg['virtuals']))
 
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.id, obj_type='node_id', owner=self), self.nodes.values())  # make sure that all nodes have unique ids
-
         if self._cfg['wires']:
             self.wires = Wire.add_wires(pod=self, wires_cfg=self._cfg['wires'])  # second pass - process wires to connect nodes to peers
 
-        self._validate_config()
+        self.validate_config()
 
-    def _validate_config(self):
+    def validate_config(self):
         from lab.nodes.lab_server import LabServer
 
-        map(lambda n: self.nodes[n['node']].add_nics(nics_cfg=n['nics']), self._cfg['nodes'] + self._cfg.get('virtuals', []))    # third pass - process all nics
-
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_vlan_id(), obj_type='vlan', owner=n), self.networks.values())  # make sure that all nets have unique VLAN ID
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.get_cidr(), obj_type='cidr', owner=n), self.networks.values())  # make sure that all nets have unique CIDR
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.id, obj_type='node_id', owner=self), self.nodes.values())  # make sure that all nodes have unique ids
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.vlan, obj_type='vlan', owner=n), self.networks.values())  # make sure that all nets have unique VLAN ID
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.net.cidr, obj_type='cidr', owner=n), self.networks.values())  # make sure that all nets have unique CIDR
 
         required_networks = {'a', 'm', 't', 's', 'e', 'p'}
         if set(self.networks.keys()) != required_networks:
             raise ValueError('{}: not all networks specified: "{}" is missing '.format(self, required_networks - set(self.networks.keys())))
 
         role_vs_nets = {}
-        for net in self._cfg['networks']:
-            for role in net['should-be']:
+        for net in self.networks.values():
+            for role in net.roles_must_present:
                 role = role.lower()
                 role_vs_nets.setdefault(role, set())
-                role_vs_nets[role].add(net['net-id'])
+                role_vs_nets[role].add(net.id)
 
         for node in self.nodes.values():
             if not isinstance(node, LabServer):
                 continue
-            actual_nets = set(node.get_nics().keys())
+            actual_nets = set(node.nics.keys())
             req_nets = role_vs_nets[node.role]
             if actual_nets != req_nets:
                 raise ValueError('{}: should be on nets {} while actually on {} (section nics)'.format(node, req_nets, actual_nets))
@@ -87,7 +79,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             #     for mac in nic.get_macs():
             #         self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_node_id())  # check that all MAC are unique
             try:
-                node.get_ssh_ip()
+                self.make_sure_that_object_is_unique(obj=node.ssh_ip, obj_type='ssh_ip', owner=node)
             except IndexError:
                 raise ValueError('{}: no NIC is marked as is_ssh'.format(node))
             # for wire in node.get_all_wires():
@@ -196,8 +188,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         return self._ntp
 
     def get_ansible_inventory(self):
-        from lab.with_config import KEY_PRIVATE_PATH
-
         inventory = {}
 
         xrvr_username, xrvr_password = None, None
@@ -208,7 +198,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         for node in [self.mgmt] + self.vts:
             ip, username, _ = node.get_ssh()
-            inventory[node.id] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': KEY_PRIVATE_PATH,
+            inventory[node.id] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': self.KEY_PRIVATE_PATH,
                                                           'xrvr_ip_mx': xrvr_ips, 'xrvr_username': xrvr_username, 'xrvr_password': xrvr_password}}
 
         for node in self.vim_tors:

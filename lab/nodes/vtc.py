@@ -8,9 +8,9 @@ class Vtc(VirtualServer):
     EXECUTOR_REST = 'rest'
     EXECUTOR_NCS = 'ncs'
 
-    def __init__(self, **kwargs):
-        super(Vtc, self).__init__(**kwargs)
-        self._vip_a, self._vip_m = kwargs['vip_a'], kwargs['vip_m']
+    def __init__(self, pod, dic):
+        super(Vtc, self).__init__(pod=pod, dic=dic)
+        self._vip_a, self._vip_m = dic['vip_a'], dic['vip_m']
         self._is_api_via_vip = True
         self._curl_executor = CurlExecutor(vtc_object=self)
         self._ncs_executor = NcsCliExecutor(vtc_object=self)
