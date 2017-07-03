@@ -22,10 +22,10 @@ class LabServer(LabNode):
 
         if self.__server is None:
             if self.proxy:
-                self.__server = Server(ip=self.proxy.get_ssh_ip(), username=self.proxy.ssh_username, password=self.proxy.ssh_password)
+                self.__server = Server(ip=self.proxy.ssh_ip, username=self.proxy.ssh_username, password=self.proxy.ssh_password)
                 self.__server.via_proxy = 'ssh -o StrictHostKeyChecking=no ' + self.id
             else:
-                self.__server = Server(ip=self.get_ssh_ip(), username=self.ssh_username, password=self.ssh_password)
+                self.__server = Server(ip=self.ssh_ip, username=self.ssh_username, password=self.ssh_password)
 
         return self.__server
 

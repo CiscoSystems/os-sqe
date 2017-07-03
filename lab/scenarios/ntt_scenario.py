@@ -47,8 +47,8 @@ class NttScenario(ParallelWorker):
         if self.what_to_run in ['both', 'nfvbench']:
             self.pod.mgmt.r_clone_repo(repo_url='https://wwwin-gitlab-sjc.cisco.com/mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             self.pod.mgmt.r_check_intel_nics()
-            trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
-            [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
+            # trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
+            # [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
 
         self.cloud.os_cleanup(is_all=True)
         self.cloud.os_quota_set()

@@ -11,7 +11,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     SUPPORTED_TYPES = [TYPE_MERCURY_VTS, TYPE_MERCURY_VPP, TYPE_RH_OSPD]
 
     def __repr__(self):
-        return self.name
+        return self.name + '-' + self.driver
 
     @staticmethod
     def sample_config():
@@ -98,6 +98,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             return self.nodes.values()
 
     @property
+    def driver(self):
+        return self.setup_data['MECHANISM_DRIVERS']
+
+    @property
     def mgmt(self):
         from lab.nodes.mgmt_server import CimcDirector
         from lab.nodes.fi import FiDirector
@@ -177,15 +181,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             raise ValueError('{} tries to own {} {} which is already in use by {}'.format(owner, obj_type, key, self._unique_dict[key]))
         else:
             self._unique_dict[key] = owner
-
-    def get_type(self):
-        return self._lab_type
-
-    def get_dns(self):
-        return self._dns
-
-    def get_ntp(self):
-        return self._ntp
 
     def get_ansible_inventory(self):
         inventory = {}

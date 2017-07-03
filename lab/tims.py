@@ -28,8 +28,8 @@ class Tims(WithLogMixIn, WithConfig):
         import getpass
         import os
 
-        self._pod = pod
-        self._conf_id = Tims.POD_TO_CONF_ID[str(self._pod)]
+        self.pod = pod
+        self._conf_id = Tims.POD_TO_CONF_ID[str(self.pod)]
         self._versions = pod.mgmt.r_get_version()
         self._mercury_version = self._versions['gerrit_tag']
         self._branch = Tims.NAMESPACE_TO_BRANCH[self._versions['container_namespace']]
@@ -193,7 +193,7 @@ class Tims(WithLogMixIn, WithConfig):
             with self.open_artifact('main-results-for-tims.txt', 'r') as f:
                 desc += 'MAIN RESULTS:\n' + f.read()
 
-        log_msg = '{} {}: {} {} {} '.format(self._pod, self._mercury_version, test_cfg_path, status.upper(), self._jenkins_text)
+        log_msg = '{} {}: {} {} {} '.format(self.pod, self._mercury_version, test_cfg_path, status.upper(), self._jenkins_text)
 
         result_url = self.update_pending_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, desc=desc, status=status)
 
@@ -207,7 +207,7 @@ class Tims(WithLogMixIn, WithConfig):
     def simulate():
         from lab.laboratory import Laboratory
 
-        tims_lst = [Tims(Laboratory('g7-2-vts.yaml')), Tims(Laboratory('c35bot-vpp.yaml')), Tims(Laboratory('marahaika-vts.yaml'))  ]
+        tims_lst = [Tims(Laboratory('g7-2-vts.yaml')), Tims(Laboratory('c35bot-vpp.yaml')), Tims(Laboratory('marahaika-vts.yaml'))]
         # available_tc = tims.ls_configs(directory='ha')
 
         cfgs = ['perf-csr-0-PVP-1-1k.yaml']
