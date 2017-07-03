@@ -123,7 +123,7 @@ class NttScenario(ParallelWorker):
     def teardown_worker(self):
         if not self.is_noclean:
             self.cloud.os_cleanup(is_all=True)
-            self.pod.mgmt.exe('rm -rf *')
+            # self.pod.mgmt.exe('rm -rf *')
 
 """
 #!/bin/bash
