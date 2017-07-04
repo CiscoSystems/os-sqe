@@ -44,9 +44,6 @@ class LabNode(WithLogMixIn, WithConfig):
     def add_nodes(pod, nodes_cfg):
         return {x['id']: LabNode.add_node(pod=pod, node_cfg=x) for x in nodes_cfg}
 
-    def get_ssh_for_bash(self):
-        return 'sshpass -p {} ssh {}@{}'.format(self.oob_password, self.oob_username, self.oob_ip)
-
     def attach_wire(self, wire):
         self._wires.append(wire)
 

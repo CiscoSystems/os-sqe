@@ -5,10 +5,17 @@ class DeployerExisting(LabWorker):
 
     @staticmethod
     def sample_config():
-        return {'hardware-lab-config': 'path to yaml which describes the lab'}
+        return '1.2.3.4'
 
-    def __init__(self, config):
-        self._lab_cfg_path = config['hardware-lab-config']
+    def __init__(self, ip):
+        from lab.laboratory import Laboratory
+
+        name_to_ip = {'g7-2': '10.23.221.142', 'marahaika': '10.23.228.228', 'c35bottom': '172.26.232.151', 'i11tb3': '10.30.117.6',
+                      'i13-tb1': '10.30.116.206',  'c42-mid': '172.28.165.31', 'mdc2': '172.29.86.38', 'skullcrusher': '10.23.229.126', 'c43-bot': '172.26.233.230', 'c42top': '172.28.165.111',
+                      'hiccup': '172.31.228.196',  'rcdn-nfvi-c': '10.201.36.50', 'j10-tb1': '10.30.117.238', 'sjc04-c38': '172.26.229.46', 'c33-tb2-mpod': '172.26.232.144', 'sjc-i13-tb4': '172.29.87.100',
+                      'c43-nfvi': '172.26.233.230', 'c42-ucsd': '172.28.165.85', 'c44-bot': '172.26.233.80', 'merc-reg-tb1': '172.29.84.228', 'J11': '10.23.220.150'}
+
+        self.pod = Laboratory.create_from_remote(ip=name_to_ip.get(ip, ip))
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):
@@ -29,30 +36,26 @@ class DeployerExisting(LabWorker):
                 filter(lambda srv: srv.ip() == ip, list_of_servers)
 
     def deploy_cloud(self, clouds_and_servers):
-        from lab.laboratory import Laboratory
         from lab.cloud.openstack import OS
 
         if not clouds_and_servers['servers']:
-            pod = Laboratory(cfg_or_path=self._lab_cfg_path)
-            clouds_and_servers['servers'].append(pod.mgmt)
-            clouds_and_servers['servers'].extend(pod.controls)
-            clouds_and_servers['servers'].extend(pod.computes)
+            clouds_and_servers['servers'].append(self.pod.mgmt)
+            clouds_and_servers['servers'].extend(self.pod.controls)
+            clouds_and_servers['servers'].extend(self.pod.computes)
 
-        director = clouds_and_servers['servers'][0]
-
+        mgm = clouds_and_servers['servers'][0]
         openrc_path = None
-        openrc_body = None
         for path in ['/root/openstack-configs/openrc', '/home/stack/overcloudrc', '/root/keystonerc_admin']:
-            ans = director.exe(command='cat {}'.format(path), is_warn_only=True)
+            ans = mgm.exe(command='sudo ls {}'.format(path), is_warn_only=True)
             if 'No such file or directory' not in ans:
-                openrc_body = ans
                 openrc_path = path
                 break
 
         if openrc_path is None:
-            raise RuntimeError('{}: lab {} does not contain any valid cloud'.format(self, self._lab_cfg_path))
-
-        return OS(name=self._lab_cfg_path.replace('.yaml', ''), mediator=director, openrc_path=openrc_path, openrc_body=openrc_body)
+            raise RuntimeError('{}: "{}" does not contain any valid cloud'.format(self, self.pod))
+        mgm.r_create_sqe_user()
+        mgm.exe('rm -f openrc && sudo cp {} openrc && sudo chown sqe.sqe openrc'.format(openrc_path))
+        return OS(name=self.pod, mediator=mgm, openrc_path='openrc')
 
     def execute(self, servers):
         cloud = self.deploy_cloud(servers)

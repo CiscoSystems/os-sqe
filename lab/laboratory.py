@@ -17,37 +17,54 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def sample_config():
         return 'path to lab config'
 
-    def __init__(self, cfg_or_path):
-        from lab import with_config
+    def __init__(self):
+        self._unique_dict = dict()  # to make sure that all needed objects are unique
+        self.name = None
+        self.setup_data = None
+        self.dns = []
+        self.ntp = []
+        self.networks = {}
+        self.nodes = {}
+        self.wires = []
+
+    @staticmethod
+    def create_from_remote(ip):
+        from tools.configurator import Configurator
+
+        c = Configurator()
+        return c.create_from_remote(ip=ip)
+
+    @staticmethod
+    def create_from_config(cfg):
         from lab.nodes.virtual_server import VirtualServer
         from lab.network import Network
         from lab.nodes import LabNode
         from lab.wire import Wire
 
-        self._unique_dict = dict()  # to make sure that all needed objects are unique
-        if cfg_or_path is None:
-            return
-        elif type(cfg_or_path) is dict:
-            self._cfg = cfg_or_path
-        else:
-            self._cfg = with_config.read_config_from_file(config_path=cfg_or_path)
-        self.name = self._cfg['name']
+        pod = Laboratory()
+        pod.name = cfg['name']
 
-        self.setup_data = self._cfg.get('setup-data')
-        self.dns, self.ntp = self.setup_data['NETWORKING']['domain_name_servers'], self.setup_data['NETWORKING']['ntp_servers']
+        pod.setup_data = cfg.get('setup-data')
+        pod.dns.extend(pod.setup_data['NETWORKING']['domain_name_servers'])
+        pod.ntp.extend(pod.setup_data['NETWORKING']['ntp_servers'])
 
-        self.networks = Network.add_networks(pod=self, nets_cfg=self._cfg['networks'])
+        pod.networks.update(Network.add_networks(pod=pod, nets_cfg=cfg['networks']))
 
-        self.nodes = LabNode.add_nodes(pod=self, nodes_cfg=self._cfg['switches'])  # first pass - just create nodes
-        self.nodes.update(LabNode.add_nodes(pod=self, nodes_cfg=self._cfg['specials']))
-        self.nodes.update(LabNode.add_nodes(pod=self, nodes_cfg=self._cfg['nodes']))
-        if 'virtuals' in self._cfg:
-            self.nodes.update(VirtualServer.add_nodes(pod=self, nodes_cfg=self._cfg['virtuals']))
+        pod.nodes.update(LabNode.add_nodes(pod=pod, nodes_cfg=cfg['switches']))  # first pass - just create nodes
+        pod.nodes.update(LabNode.add_nodes(pod=pod, nodes_cfg=cfg['specials']))
+        pod.nodes.update(LabNode.add_nodes(pod=pod, nodes_cfg=cfg['nodes']))
+        if 'virtuals' in cfg:
+            pod.nodes.update(VirtualServer.add_nodes(pod=pod, nodes_cfg=cfg['virtuals']))
 
-        if self._cfg['wires']:
-            self.wires = Wire.add_wires(pod=self, wires_cfg=self._cfg['wires'])  # second pass - process wires to connect nodes to peers
+        if cfg['wires']:
+            pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=cfg['wires']))  # second pass - process wires to connect nodes to peers
+        pod.validate_config()
+        return pod
 
-        self.validate_config()
+    @staticmethod
+    def create_from_path(cfg_path):
+        cfg = Laboratory.read_config_from_file(config_path=cfg_path)
+        return Laboratory.create_from_config(cfg=cfg)
 
     def validate_config(self):
         from lab.nodes.lab_server import LabServer

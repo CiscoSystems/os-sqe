@@ -8,15 +8,14 @@ class OS(WithLogMixIn):
     ROLE_COMPUTE = 'compute'
     ROLE_MEDIATOR = 'mediator'
 
-    def __init__(self, name, mediator, openrc_path, openrc_body):
+    def __init__(self, name, mediator, openrc_path):
         self._provider_physical_network = 'Default Value Set In Cloud.__init__()'
 
         self._openstackclient_version = None
         self.name = name
-        self._openrc_path = openrc_path
+        self.openrc_path = openrc_path
         self._os_sqe_password = 'os-sqe'
-        self._username,  self._tenant, self._password, self._end_point = self.process_openrc(openrc_as_string=openrc_body)
-        self.mediator = mediator    # special server to be used to execute CLI commands for this cloud
+        self.mediator = mediator    # Instance of LabServer child to be used to execute CLI commands for this cloud
         self.pod = mediator.pod     # Instance of class Laboratory (sigleton)
         self._instance_counter = 0  # this counter is used to count how many instances are created via this class
         services_lst = self.os_host_list()
@@ -63,19 +62,9 @@ class OS(WithLogMixIn):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
         return '{}-{}'.format(UNIQUE_PATTERN_IN_NAME, name)
 
-    def create_open_rc(self):
-        """ Creates open_rc for the given cloud"""
-        open_rc = """
-export OS_USERNAME={user}
-export OS_TENANT_NAME={tenant}
-export OS_PASSWORD={password}
-export OS_AUTH_URL={end_point}
-"""
-        return open_rc.format(user=self._username, tenant=self._tenant, password=self._password, end_point=self._end_point)
-
     def os_cmd(self, cmd, comment='', server=None, is_warn_only=False):
         server = server or self.mediator
-        cmd = 'source {} && {} {}'.format(self._openrc_path, cmd, '# ' + comment if comment else '')
+        cmd = 'source {} && {} {}'.format(self.openrc_path, cmd, '# ' + comment if comment else '')
         ans = server.exe(command=cmd, is_warn_only=is_warn_only)
         if ans.failed:
             return ans

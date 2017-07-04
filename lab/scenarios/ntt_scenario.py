@@ -34,9 +34,7 @@ class NttScenario(ParallelWorker):
     def setup_worker(self):
         from os import path
         from lab.cloud.cloud_image import CloudImage
-        from lab.nodes.n9.vim_tor import VimTor
 
-        # self.pod.mgmt.r_new_user()
         # self.pod.mgmt.r_configure_mx_and_nat()
         if self.what_to_run in ['both', 'csr']:
             self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.csr_repo_dir)
@@ -81,7 +79,6 @@ class NttScenario(ParallelWorker):
     def nfvbench_run(self):
         from os import path
 
-        self.pod.mgmt.exe(command='rm -rf *', in_directory='nfvbench')
         cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench'
         ans = self.pod.mgmt.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
         with self.pod.open_artifact('nfvbench_output_{}.txt'.format(self.nfvbench_args.replace(' ', '_')), 'w') as f:
@@ -91,13 +88,14 @@ class NttScenario(ParallelWorker):
         with self.pod.open_artifact('final_report.txt', 'a') as f:
             f.write('csr: ' + self.csr_args + ' nfvbench ' + self.nfvbench_args + '\n')
             f.write(ans.split('Run Summary:')[-1])
+            f.write('\n' + 80*'=' + '\n\n')
 
         if 'ERROR' in ans:
             raise RuntimeError(ans.split('ERROR')[-1][:200])
         else:
             json_file_name = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             res_json_body = self.pod.mgmt.r_get_file_from_dir(file_name=json_file_name, in_directory='nfvbench')
-            # self.pod.mgmt.exe(command='mv ~/nfvbench/{} . && git add . && git commit -m "report on $(hostname)" && git push kshileev'.format(json_file_name), in_directory=self.perf_reports_repo_dir)
+            self.pod.mgmt.exe(command='sudo mv /root/nfvbench/{} . && git add . && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_file_name), in_directory=self.perf_reports_repo_dir)
             self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):
@@ -188,5 +186,7 @@ docker pull cloud-docker.cisco.com/nfvbench
 
 
 ansible-playbook -e @/root/openstack-configs/setup_data.yaml -e @/root/openstack-configs/docker.yaml -e @/root/openstack-configs/defaults.yaml /root/installer-8449/bootstrap/playbooks/nfvbench-install.yaml
+
+nfvbench --show-config
 
 """

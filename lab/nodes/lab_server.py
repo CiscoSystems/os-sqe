@@ -67,12 +67,6 @@ class LabServer(LabNode):
     def get_ip_t_with_prefix(self):
         return self.get_nic('t').get_ip_with_prefix()
 
-    def get_ssh_for_bash(self):
-        command = 'sshpass -p {} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {}@{}'.format(self._server.password, self._server.username, self._server.ip)
-        if self.proxy:
-            command = self._proxy.get_ssh_for_bash()[0].replace('ssh ', 'ssh -t ') + ' ' + command
-        return command, super(LabServer, self).get_ssh_for_bash()
-
     def set_hostname(self, hostname):
         self._server.set_hostname(hostname=hostname)
 

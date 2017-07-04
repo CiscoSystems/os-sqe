@@ -42,24 +42,27 @@ class Server(object):
             with lcd(in_directory):
                 return local(command=command, capture=True)
 
+    def form_cmd_string(self, cmd, in_dir):
+        if 'sudo' in cmd and 'sudo -p "" -S ' not in cmd:
+            cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.password))
+
+        if self.via_proxy:
+            cmd = self.via_proxy + ' "' + cmd + '"'
+        return cmd + ' # in ' + in_dir + ' pass: ' + str(self.password)
+
     def exe(self, command, in_directory='.', is_warn_only=False, connection_attempts=N_CONNECTION_ATTEMPTS):
         from fabric.api import run, settings, cd
         from fabric.exceptions import NetworkError
 
-        if 'sudo' in command and 'sudo -p "" -S ' not in command:
-            command = command.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.password))
-
-        if self.via_proxy:
-            command = self.via_proxy + ' "' + command + '"'
-        command += ' # in ' + in_directory + ' pass: ' + str(self.password)
+        cmd = self.form_cmd_string(cmd=command, in_dir=in_directory)
         if str(self.ip) in ['localhost', '127.0.0.1']:
-            return self._exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
+            return self._exe_local(cmd, in_directory=in_directory, warn_only=is_warn_only)
 
         # with settings(**self.construct_settings(is_warn_only=is_warn_only, connection_attempts=connection_attempts)):
         with settings(**self.construct_settings(is_warn_only=True, connection_attempts=connection_attempts)):
             with cd(in_directory):
                 try:
-                    res = run(command)
+                    res = run(cmd)
                 except NetworkError:
                     if is_warn_only:
                         return ''

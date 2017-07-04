@@ -72,16 +72,16 @@ def cmd():
 
 
 @task
-def ha(lab_cfg_path, test_regex, is_noclean=False, is_debug=False):
+def ha(pod_mgm_ip, test_regex, is_noclean=False, is_debug=False):
     """fab ha:g10,str\t\t\tRun all tests with 'str' in name on g10
-        :param lab_cfg_path: which lab
+        :param pod_mgm_ip: IP to ssh to managment node
         :param test_regex: regex to match some tc in $REPO/configs/ha
         :param is_debug: if True debug parallel infrastructure
         :param is_noclean: if True, do not cleanup objects created during test, leave them from post analysis
     """
     from lab.runners.runner_ha import RunnerHA
 
-    RunnerHA.run({'lab-cfg-path': lab_cfg_path, 'test-regex': test_regex, 'is-debug': str(is_debug) in ['true', 'True', 'yes', 'Yes'], 'is-noclean': str(is_noclean) in ['true', 'True', 'yes', 'Yes']})
+    RunnerHA.run({'pod-mgm-ip': pod_mgm_ip, 'test-regex': test_regex, 'is-debug': str(is_debug) in ['true', 'True', 'yes', 'Yes'], 'is-noclean': str(is_noclean) in ['true', 'True', 'yes', 'Yes']})
 
 
 @task
@@ -122,12 +122,12 @@ def rally(lab, concurrency, max_vlans, task_yaml, rally_repo='https://git.openst
 def run(config_path):
     """fab run:bxb-run-rally\t\tGeneral: run any job specified by yaml
         :param config_path: path to valid run specification, usually one of yaml from $REPO/configs/run
-        :param version: specify a version of the product
     """
     from lab.base_lab import BaseLab
 
     l = BaseLab(yaml_name=config_path)
     return l.run()
+
 
 @task
 def ansible():
@@ -187,7 +187,7 @@ def info(lab_config_path=None, regex=None):
     lab_config_path = lab_config_path or get_user_input(options_lst=Laboratory.get_list_of_pods())
     regex = regex or get_user_input(options_lst=['ERROR', 'error'])
 
-    l = Laboratory(lab_config_path)
+    l = Laboratory.create_from_path(cfg_path=lab_config_path)
     d = DeployerExisting({'hardware-lab-config': lab_config_path})
     try:
         cloud = d.execute([])
@@ -227,17 +227,19 @@ def get_user_input(options_lst, owner=None):
 def bash():
     """fab bash\t\t\t\tDefine bash aliases for lab"""
     from lab.laboratory import Laboratory
-    from fabric.api import local
+    from lab.nodes.lab_server import LabServer
+    from lab.nodes.virtual_server import VirtualServer
 
     lab_cfg_path = get_user_input(options_lst=Laboratory.get_list_of_pods())
-    l = Laboratory(lab_cfg_path)
-    file_name = 'tmp.aliases'
-    local('rm -f ' + file_name)
-    for node in l.get_nodes_by_class():
-        cmds = node.get_ssh_for_bash()
-        if type(cmds) is tuple:
-            local('echo \'alias {}="{}"\' >> {}'.format(node.id, cmds[0], file_name))
-            local('echo \'alias cimc_{}="{}"\' >> {}'.format(node.id, cmds[1], file_name))
-        else:
-            local('echo \'alias {}="{}"\' >> {}'.format(node.id, cmds, file_name))
-    local('echo \'PS1="({}) $PS1 "\' >> {}'.format(l, file_name))
+    pod = Laboratory.create_from_path(cfg_path=lab_cfg_path)
+    aliases = []
+    for node in pod.get_nodes_by_class():
+        if not isinstance(node, VirtualServer):
+            aliases.append('alias z{n}="sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}"'.format(n=node.id, p=node.oob_password, u=node.oob_username, ip=node.oob_ip))
+        if isinstance(node, LabServer):
+            cmd = node._server.form_cmd_string(cmd='', in_dir='.').replace('"', '')
+            aliases.append('alias {n}="ssh -t -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip} {c}"'.format(n=node.id, u=node.ssh_username, ip=node.ssh_ip, c=cmd))
+
+    with open('tmp.aliases', 'w') as f:
+        f.write('\n'.join(sorted(aliases)))
+        f.write('\nPS1="({}) $PS1 "\n'.format(pod))
