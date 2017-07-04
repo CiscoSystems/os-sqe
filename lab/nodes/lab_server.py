@@ -8,6 +8,7 @@ class LabServer(LabNode):
 
         super(LabServer, self).__init__(pod=pod, dic=dic)
 
+        self.ssh_username, self.ssh_password = dic['ssh-username'], dic.get('ssh-password', None)  # if password is None - use sqe ssh key
         self._package_manager = None
         self.__server = None  # lazy initialisation to lab.server.Server instance
         self.virtual_servers = set()  # virtual servers running on this hardware server
@@ -42,14 +43,17 @@ class LabServer(LabNode):
     def ssh_ip(self):
         return [x for x in self.nics.values() if x.is_ssh][0].ip
 
-    def get_ip_api(self):
-        return self.get_nic('a').get_ip_and_mask()[0]
+    @property
+    def api_ip(self):
+        return self.get_nic('a').ip
 
-    def get_ip_api_with_prefix(self):
-        return self.get_nic('a').get_ip_with_prefix()
+    @property
+    def api_ip_with_prefix(self):
+        return self.get_nic('a').ip_with_prefix
 
-    def get_ip_mx(self):
-        return self.get_nic('m').get_ip_and_mask()[0]
+    @property
+    def mx_ip(self):
+        return self.get_nic('m').ip
 
     def get_ip_mx_with_prefix(self):
         return self.get_nic('m').get_ip_with_prefix()
@@ -81,7 +85,7 @@ class LabServer(LabNode):
             return False
 
         status = True
-        for main_name, nic in self.get_nics().items():
+        for main_name, nic in self.nics.items():
             requested_mac = nic.get_macs()[0].lower()
             requested_ip = nic.get_ip_with_prefix()
             if len(nic.get_names()) > 1:

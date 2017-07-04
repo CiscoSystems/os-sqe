@@ -1,6 +1,5 @@
 class Server(object):
     N_CONNECTION_ATTEMPTS = 200
-    USE_SSH_KEY = 'ssh_key'
 
     def __init__(self, ip, username, password):
         self._tmp_dir_exists = False
@@ -21,12 +20,14 @@ class Server(object):
         return self._package_manager
 
     def construct_settings(self, is_warn_only, connection_attempts):
+        from lab.with_config import WithConfig
+
         kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
                   'disable_known_hosts': True,
                   'connection_attempts': connection_attempts,
                   'warn_only': is_warn_only}
-        if self.password == 'ssh_key':
-            kwargs['key_filename'] = self.KEY_PRIVATE_PATH
+        if self.password is None:
+            kwargs['key_filename'] = WithConfig.KEY_PRIVATE_PATH
         else:
             kwargs['password'] = self.password
         return kwargs
@@ -50,7 +51,7 @@ class Server(object):
 
         if self.via_proxy:
             command = self.via_proxy + ' "' + command + '"'
-        command += ' # in ' + in_directory
+        command += ' # in ' + in_directory + ' pass: ' + str(self.password)
         if str(self.ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(command, in_directory=in_directory, warn_only=is_warn_only)
 

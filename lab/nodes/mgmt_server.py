@@ -59,22 +59,23 @@ class CimcDirector(CimcServer):
 
     def r_resolve_power_failure(self):
         ver = self.r_get_version()
-        self.exe('python openstack/hw_validations.py --resolve-failures power', in_directory='installer-' + ver)
+        self.exe('python openstack/hw_validations.py --resolve-failures power', in_directory='installer-' + ver['gerrit_tag'])
 
-    def r_new_user(self):
-        new_username = 'sqe'
-        if not self.exe(command='grep {0} /etc/passwd'.format(new_username), is_warn_only=True):
+    def r_create_sqe_user(self):
+        sqe_username = 'sqe'
+        if not self.exe(command='grep {} /etc/passwd'.format(sqe_username), is_warn_only=True):
             tmp_password = 'cisco123tmp'
-            encrypted_password = self.exe(command='openssl passwd -crypt {0}'.format(tmp_password))
-            self.exe(command='sudo adduser -p {0} {1}'.format(encrypted_password.split()[-1], new_username))  # encrypted password may contain Warning
-            self.exe(command='sudo echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(new_username))
-            self.exe(command='sudo chmod 0440 /etc/sudoers.d/{0}'.format(new_username))
-            self._username, self._password = new_username, tmp_password
+            encrypted_password = self.exe(command='openssl passwd -crypt ' + tmp_password).split()[-1]  # encrypted password may contain Warning
+            self.exe(command='adduser -p ' + encrypted_password + ' ' + sqe_username)
+            self.exe(command='echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(sqe_username))
+            self.exe(command='chmod 0440 /etc/sudoers.d/' + sqe_username)
 
+            self._server.username, self._server.password = sqe_username, tmp_password  # start using sqe user with tmp password
             with open(self.KEY_PRIVATE_PATH) as f:
-                self._server.put_string_as_file_in_dir(string_to_put=f.read(), file_name='os-sqe-private', in_directory='.ssh')
-                self.exe(command='chmod 700 .ssh && chmod 600 .ssh/authorized_keys && chmod 600 .ssh/os-sqe-private')
-                self.exe(command='echo Host {}')
+                self._server.put_string_as_file_in_dir(string_to_put=f.read(), file_name='id_rsa', in_directory='.ssh')
+            with open(self.KEY_PUBLIC_PATH) as f:
+                self._server.put_string_as_file_in_dir(string_to_put=f.read(), file_name='id_rsa.pub', in_directory='.ssh')
+            self.exe(command='cp .ssh/id_rsa.pub .ssh/authorized_keys && chmod 700 .ssh && chmod 600 .ssh/*')
 
-        self._password = 'ssh_key'
+        self._server.username, self._server.password = sqe_username, None  # start using sqe user with ssh key
         self.exe(command='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple')

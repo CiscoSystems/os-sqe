@@ -15,7 +15,6 @@ class LabNode(WithLogMixIn, WithConfig):
         self.role = dic['role'].strip().lower()        # which role this node plays, possible roles are defined in get_role_class()
         self._proxy = dic.get('proxy')                 # LabNode object or node id (lazy init), will be used as proxy node to this node
         self.oob_ip, self.oob_username, self.oob_password = dic['oob-ip'], dic['oob-username'], dic['oob-password']
-        self.ssh_username, self.ssh_password = dic.get('ssh-username', self.oob_username), dic.get('ssh-password', self.oob_password)
 
         role = self.role.split('-')[0]      # e.g. control-fi and control-cimc are the same for counting
         self._ROLE_VS_COUNT.setdefault(role, 0)
