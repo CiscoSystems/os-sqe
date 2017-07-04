@@ -7,7 +7,7 @@ class CimcDirector(CimcServer):
 
     @decorators.section('Getting VIM version tag')
     def r_get_version(self):
-        ans = self.exe('sudo grep -E "image_tag|namespace" /root/openstack-configs/defaults.yaml')
+        ans = self.exe_as_sqe('sudo grep -E "image_tag|namespace" /root/openstack-configs/defaults.yaml')
         a = {'gerrit_tag': ans.split('\r\n')[0].split(':')[-1].strip(), 'container_namespace': ans.split('\r\n')[-1].split(':')[-1].strip(), 'mechanism': self.pod.driver}
         if a['mechanism'] == 'vts':
             a['mech_ver'] = self.pod.vtc[0].r_vtc_get_version()
@@ -76,6 +76,4 @@ class CimcDirector(CimcServer):
             with open(self.KEY_PUBLIC_PATH) as f:
                 self._server.put_string_as_file_in_dir(string_to_put=f.read(), file_name='id_rsa.pub', in_directory='.ssh')
             self.exe(command='cp .ssh/id_rsa.pub .ssh/authorized_keys && chmod 700 .ssh && chmod 600 .ssh/*')
-
-        self._server.username, self._server.password = sqe_username, None  # start using sqe user with ssh key
-        self.exe(command='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple')
+            self._server.username, self._server.password = self.ssh_username, self.ssh_password  # restore to preevious settings

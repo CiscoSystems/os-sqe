@@ -108,34 +108,6 @@ class Server(object):
         with settings(**self.construct_settings(is_warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
             return put(local_path=local_path, remote_path=remote_path, use_sudo=is_sudo)
 
-    def put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
-        """Put given string as file to remote server
-        :param string_to_put:
-        :param file_name:
-        :param in_directory:
-        :return:
-        """
-        from fabric.api import put, settings, cd, lcd, local
-        import os
-        from StringIO import StringIO
-
-        if '/' in file_name:
-            raise SyntaxError('file_name can not contain /, use in_directory instead')
-
-        use_sudo = True if in_directory.startswith('/') else False
-
-        if in_directory != '.':
-            self.exe(command='{0} mkdir -p {1}'.format('sudo' if use_sudo else '', in_directory))
-
-        if str(self.ip) in ['localhost', '127.0.0.1']:
-            with lcd(in_directory):
-                local('echo "{0}" > {1}'.format(string_to_put, file_name))
-                return os.path.abspath(os.path.join(in_directory, file_name))
-        else:
-            with settings(**self.construct_settings(is_warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
-                with cd(in_directory):
-                    return put(local_path=StringIO(string_to_put), remote_path=file_name, use_sudo=use_sudo)[0]
-
     def r_get_file_from_dir(self, file_name, in_directory='.', local_path=None):
         """Get remote file as string or local file if local_path is specified
         :param file_name:
@@ -157,52 +129,12 @@ class Server(object):
                     body = sudo('cat {0}'.format(file_name))
                     return body
 
-    def r_curl(self, url, size, checksum, loc_abs_path):
-        from os import path
-
-        if loc_abs_path[0] not in ['/', '~']:
-            raise ValueError('loc_abs_path needs to be full path')
-        url = url.strip().strip('\'')
-        info_url = url + '.txt'
-
-        cache_abs_path = path.join('/tmp', path.basename(loc_abs_path))
-
-        if path.dirname(loc_abs_path) not in ['~', '.', '/tmp', '/var/tmp', '/var', '/root']:
-            self.exe('mkdir -p {0}'.format(path.dirname(loc_abs_path)))
-
-        while True:
-            self.exe(command='test -e {c} || curl --silent --remote-time {url} -o {c}'.format(c=cache_abs_path, url=url))  # download to cache directory and use as cache
-            actual_checksum = self.exe(command='{} {}'.format('sha256sum' if len(checksum) == 64 else 'md5sum', cache_abs_path)).split()[0]
-            if actual_checksum == checksum:
-                break
-            else:
-                actual_size = self.exe('ls -la {}'.format(cache_abs_path)).split()[4]
-                if int(size) - int(actual_size) > 0:  # probably curl fails to download up to the end, repeat it
-                    self.exe(command='rm -f {}'.format(cache_abs_path))
-                    continue
-                else:
-                    raise RuntimeError('image described here {} has wrong checksum. Check it manually'.format(info_url))
-
-        self.exe('rm -f {l} && cp {c} {l}'.format(l=loc_abs_path, c=cache_abs_path))
-
     def check_or_install_packages(self, package_names):
         pm = self.get_package_manager()
 
         for package_name in package_names.split():
             if self.exe(command='whereis {0}'.format(package_name)) == package_name + ':':
                 self.exe(command='sudo {0} install -y {1}'.format(pm, package_names))
-
-    def clone_repo(self, repo_url, local_repo_dir=None, tags=None, patch=None):
-        local_repo_dir = local_repo_dir or repo_url.split('/')[-1].strip('.git')
-
-        # self.check_or_install_packages(package_names='git')
-        self.exe(command='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url))
-        self.exe(command='git pull -q', in_directory=local_repo_dir)
-        if patch:
-            self.exe(command='git fetch {0} && git checkout FETCH_HEAD'.format(patch))
-        elif tags:
-            self.exe(command='git checkout tags/{0}'.format(tags), in_directory=local_repo_dir)
-        return self.exe(command='pwd', in_directory=local_repo_dir)
 
     def r_ping(self, port=22):
         import socket

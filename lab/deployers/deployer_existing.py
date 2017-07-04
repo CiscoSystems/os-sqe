@@ -54,7 +54,7 @@ class DeployerExisting(LabWorker):
         if openrc_path is None:
             raise RuntimeError('{}: "{}" does not contain any valid cloud'.format(self, self.pod))
         mgm.r_create_sqe_user()
-        mgm.exe('rm -f openrc && sudo cp {} openrc && sudo chown sqe.sqe openrc'.format(openrc_path))
+        mgm.exe_as_sqe('rm -f openrc && sudo cp {} openrc && sudo chown sqe.sqe openrc'.format(openrc_path))
         return OS(name=self.pod, mediator=mgm, openrc_path='openrc')
 
     def execute(self, servers):

@@ -199,7 +199,7 @@ class Configurator(WithConfig, WithLogMixIn):
         cimc_username = self.pod.setup_data['CIMC-COMMON']['cimc_username']
         cimc_password = self.pod.setup_data['CIMC-COMMON']['cimc_password']
         ssh_username = self.pod.setup_data['COBBLER']['admin_username']
-        ssh_password = 'cisco123'
+        ssh_password = None
 
         nodes = [{'id': 'mgm', 'role': 'CimcDirector',
                   'oob-ip': self.pod.setup_data['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': self.pod.setup_data['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': self.pod.setup_data['TESTING_MGMT_CIMC_PASSWORD'],

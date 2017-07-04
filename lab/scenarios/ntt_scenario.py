@@ -35,6 +35,8 @@ class NttScenario(ParallelWorker):
         from os import path
         from lab.cloud.cloud_image import CloudImage
 
+        self.pod.mgmt.exe_as_sqe('git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple')
+
         # self.pod.mgmt.r_configure_mx_and_nat()
         if self.what_to_run in ['both', 'csr']:
             self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.csr_repo_dir)
@@ -61,8 +63,8 @@ class NttScenario(ParallelWorker):
     def csr_run(self):
         from lab.cloud.cloud_server import CloudServer
 
-        cmd = 'source $HOME/openstack-configs/openrc && ./{} # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot'.format(self.csr_args)
-        ans = self.pod.mgmt.exe(cmd, in_directory=self.csr_repo_dir)
+        cmd = 'source openrc && ./{} # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot'.format(self.csr_args)
+        ans = self.pod.mgmt.exe_as_sqe(cmd, in_directory=self.csr_repo_dir)
 
         with self.pod.open_artifact('csr_create_output.txt', 'w') as f:
             f.write(cmd + '\n')
@@ -94,8 +96,8 @@ class NttScenario(ParallelWorker):
             raise RuntimeError(ans.split('ERROR')[-1][:200])
         else:
             json_file_name = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
+            self.pod.mgmt.exe_as_sqe('sudo mv /root/nfvbench/{} . && git add . && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_file_name), in_directory=self.perf_reports_repo_dir)
             res_json_body = self.pod.mgmt.r_get_file_from_dir(file_name=json_file_name, in_directory='nfvbench')
-            self.pod.mgmt.exe(command='sudo mv /root/nfvbench/{} . && git add . && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_file_name), in_directory=self.perf_reports_repo_dir)
             self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):

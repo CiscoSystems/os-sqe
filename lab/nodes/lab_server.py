@@ -113,6 +113,19 @@ class LabServer(LabNode):
             self.log('{} finished and actually took {} secs'.format(command, time.time() - started_at))
         return ans
 
+    def exe_as_sqe(self, cmd, in_dir='.', is_warn_only=False, connection_attempts=100, estimated_time=None):
+        from lab.server import Server
+
+        import time
+
+        if estimated_time:
+            self.log('Running {} as sqe user... (usually it takes {} secs)'.format(cmd, estimated_time))
+        started_at = time.time()
+        ans = Server(ip=self.ssh_ip, username='sqe', password=None).exe(command=cmd, in_directory=in_dir, is_warn_only=is_warn_only, connection_attempts=connection_attempts)
+        if estimated_time:
+            self.log('{} finished and actually took {} secs'.format(cmd, time.time() - started_at))
+        return ans
+
     def file_append(self, file_path, data, in_directory='.', is_warn_only=False, connection_attempts=100):
         if self.proxy:
             raise NotImplemented
@@ -141,17 +154,58 @@ class LabServer(LabNode):
         self.exe(command='subscription-manager repos --disable=*')
         self.exe(command='subscription-manager repos {}'.format(repos_to_enable))
 
-    def r_curl(self, url, checksum, loc_abs_path, size=100000000):
-        return self._server.r_curl(url=url, size=size, checksum=checksum, loc_abs_path=loc_abs_path)
+    def r_curl(self, url, size, checksum, loc_abs_path):
+        from os import path
+
+        if loc_abs_path[0] not in ['/', '~']:
+            raise ValueError('loc_abs_path needs to be full path')
+        url = url.strip().strip('\'')
+        info_url = url + '.txt'
+
+        cache_abs_path = path.join('/tmp', path.basename(loc_abs_path))
+
+        if path.dirname(loc_abs_path) not in ['~', '.', '/tmp', '/var/tmp', '/var', '/root']:
+            self.exe_as_sqe('mkdir -p {0}'.format(path.dirname(loc_abs_path)))
+
+        while True:
+            self.exe_as_sqe('test -e {c} || curl --silent --remote-time {url} -o {c}'.format(c=cache_abs_path, url=url))  # download to cache directory and use as cache
+            actual_checksum = self.exe_as_sqe('{} {}'.format('sha256sum' if len(checksum) == 64 else 'md5sum', cache_abs_path)).split()[0]
+            if actual_checksum == checksum:
+                break
+            else:
+                actual_size = self.exe_as_sqe('ls -la {}'.format(cache_abs_path)).split()[4]
+                if int(size) - int(actual_size) > 0:  # probably curl fails to download up to the end, repeat it
+                    self.exe_as_sqe('rm -f {}'.format(cache_abs_path))
+                    continue
+                else:
+                    raise RuntimeError('image described here {} has wrong checksum. Check it manually'.format(info_url))
+
+        self.exe_as_sqe('rm -f {l} && cp {c} {l}'.format(l=loc_abs_path, c=cache_abs_path))
 
     def r_get_file_from_dir(self, file_name, in_directory='.', local_path=None):
         return self._server.r_get_file_from_dir(file_name=file_name, in_directory=in_directory, local_path=local_path)
 
     def r_clone_repo(self, repo_url, local_repo_dir=None, tags=None, patch=None):
-        return self._server.clone_repo(repo_url, local_repo_dir, tags, patch)
+        local_repo_dir = local_repo_dir or repo_url.split('/')[-1].strip('.git')
 
-    def r_put_string_as_file_in_dir(self, string_to_put, file_name, in_directory='.'):
-        return self._server.put_string_as_file_in_dir(string_to_put, file_name, in_directory=in_directory)
+        # self.check_or_install_packages(package_names='git')
+        self.exe_as_sqe(cmd='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url))
+        self.exe_as_sqe(cmd='git pull -q', in_dir=local_repo_dir)
+        if patch:
+            self.exe_as_sqe(cmd='git fetch {0} && git checkout FETCH_HEAD'.format(patch))
+        elif tags:
+            self.exe_as_sqe(cmd='git checkout tags/{0}'.format(tags), in_dir=local_repo_dir)
+        return self.exe_as_sqe(cmd='pwd', in_dir=local_repo_dir)
+
+    def r_put_string_as_file_in_dir(self, string_to_put, file_name, in_dir='.'):
+        if '/' in file_name:
+            raise SyntaxError('file_name can not contain /, use in_directory instead')
+
+        sudo = 'sudo ' if in_dir.startswith('/') else ''
+
+        if in_dir not in ['.', '~', '/var', '/tmp', '/var/tmp']:
+            self.exe_as_sqe(cmd=sudo + 'mkdir -p ' + in_dir)
+        self.exe_as_sqe(cmd=sudo + 'echo ' + string_to_put + ' > ' + file_name, in_dir=in_dir)
 
     def r_is_online(self):
         if self._proxy:
