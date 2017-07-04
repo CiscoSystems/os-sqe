@@ -88,6 +88,10 @@ class NttScenario(ParallelWorker):
             f.write(cmd + '\n')
             f.write(ans)
 
+        with self.pod.open_artifact('final_report.txt', 'a') as f:
+            f.write('csr: ' + self.csr_args + ' nfvbench ' + self.nfvbench_args + '\n')
+            f.write(ans.split('Run Summary:')[-1])
+
         if 'ERROR' in ans:
             raise RuntimeError(ans.split('ERROR')[-1][:200])
         else:
@@ -118,6 +122,7 @@ class NttScenario(ParallelWorker):
 
         with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
             f.write(self.nfvbench_args + '\n' + '; '.join(res))
+
 
     @section(message='Tearing down (estimate 100 sec)')
     def teardown_worker(self):
