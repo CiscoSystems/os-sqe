@@ -38,7 +38,7 @@ class CimcDirector(CimcServer):
             self.exe(cmd)
 
     def r_check_intel_nics(self):
-        ans = self.exe('lspci | grep Intel | grep SFP+', is_warn_only=True)
+        ans = self.exe_as_sqe('lspci | grep Intel | grep SFP+', is_warn_only=True)
         if not ans:
             raise RuntimeError('{}: there is no Intel NIC'.format(self))
         # pci_addrs = [x.split()[0] for x in ans.split('\r\n')]
@@ -62,6 +62,8 @@ class CimcDirector(CimcServer):
         self.exe('python openstack/hw_validations.py --resolve-failures power', in_directory='installer-' + ver['gerrit_tag'])
 
     def r_create_sqe_user(self):
+        from os import path
+
         sqe_username = 'sqe'
         if not self.exe(command='grep {} /etc/passwd'.format(sqe_username), is_warn_only=True):
             tmp_password = 'cisco123tmp'
@@ -71,9 +73,10 @@ class CimcDirector(CimcServer):
             self.exe(command='chmod 0440 /etc/sudoers.d/' + sqe_username)
 
             self._server.username, self._server.password = sqe_username, tmp_password  # start using sqe user with tmp password
-            with open(self.KEY_PRIVATE_PATH) as f:
-                self._server.put_string_as_file_in_dir(string_to_put=f.read(), file_name='id_rsa', in_directory='.ssh')
-            with open(self.KEY_PUBLIC_PATH) as f:
-                self._server.put_string_as_file_in_dir(string_to_put=f.read(), file_name='id_rsa.pub', in_directory='.ssh')
-            self.exe(command='cp .ssh/id_rsa.pub .ssh/authorized_keys && chmod 700 .ssh && chmod 600 .ssh/*')
-            self._server.username, self._server.password = self.ssh_username, self.ssh_password  # restore to preevious settings
+            self.exe('git clone -q https://github.com/CiscoSystems/os-sqe.git')
+            self.exe('mkdir -p .ssh && chmod 700 .ssh')
+            self.exe('cp {} .ssh/id_rsa && chmod 600 .ssh/id_rsa'.format(path.join('os-sqe', 'configs', 'keys', 'private')))
+            self.exe('cp {} .ssh/id_rsa.pub && cp .ssh/id_rsa.pub .ssh/authorized_keys && chmod 600 .ssh/authorized_keys'.format(path.join('os-sqe', 'configs', 'keys', 'public')))
+            gitlab_public = 'wwwin-gitlab-sjc.cisco.com,10.22.31.77 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJZlfIFWs5/EaXGnR9oXp6mCtShpvO2zKGqJxNMvMJmixdkdW4oPjxYEYP+2tXKPorvh3Wweol82V3KOkB6VhLk='
+            self.exe('echo {} > .ssh/known_hosts'.format(gitlab_public))
+            self._server.username, self._server.password = self.ssh_username, self.ssh_password  # restore to previous settings

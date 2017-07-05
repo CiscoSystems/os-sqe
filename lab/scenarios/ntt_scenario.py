@@ -24,11 +24,19 @@ class NttScenario(ParallelWorker):
 
     @property
     def perf_reports_repo_dir(self):
-        return 'reports_repo'
+        return 'perf-reports'
 
     @property
     def csr_repo_dir(self):
         return 'csr_repo'
+
+    @property
+    def is_sriov(self):
+        return self._kwargs['is-sriov']
+
+    @property
+    def pod_dir_in_repo(self):
+        return self.perf_reports_repo_dir + '/' + str(self.pod)
 
     @section(message='Setting up (estimate 100 secs)')
     def setup_worker(self):
@@ -45,8 +53,14 @@ class NttScenario(ParallelWorker):
             corrected_loc_bas_path = path.join(self.csr_repo_dir, path.basename(loc_abs_path))
             self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=corrected_loc_bas_path)
         if self.what_to_run in ['both', 'nfvbench']:
-            self.pod.mgmt.r_clone_repo(repo_url='https://wwwin-gitlab-sjc.cisco.com/mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
+            sriov= [x.r_get_n_sriov() for x in self.pod.computes]
+            if len(set(sriov)) != 1:
+                raise RuntimeError('SRIOV not all nodes have the same number of virtual functions')
+            self._kwargs['is-sriov'] = sriov[0] >= 8
+            self.pod.mgmt.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
+            self.pod.mgmt.exe_as_sqe('mkdir -p ' + self.pod_dir_in_repo)
             self.pod.mgmt.r_check_intel_nics()
+
             # trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
             # [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
 
@@ -58,7 +72,9 @@ class NttScenario(ParallelWorker):
             self.csr_run()
 
         if self.what_to_run in ['nfvbench', 'both']:
-            self.nfvbench_run()
+            self.nfvbench_run(sriov='')
+            if self.is_sriov:
+                self.nfvbench_run(sriov='--sriov')
 
     def csr_run(self):
         from lab.cloud.cloud_server import CloudServer
@@ -78,26 +94,27 @@ class NttScenario(ParallelWorker):
         servers = CloudServer.list(cloud=self.cloud)
         CloudServer.wait(servers=servers, status='ACTIVE')
 
-    def nfvbench_run(self):
+    def nfvbench_run(self, sriov):
         from os import path
 
-        cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench'
+        cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench ' + sriov
         ans = self.pod.mgmt.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
         with self.pod.open_artifact('nfvbench_output_{}.txt'.format(self.nfvbench_args.replace(' ', '_')), 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
 
-        with self.pod.open_artifact('final_report.txt', 'a') as f:
-            f.write('csr: ' + self.csr_args + ' nfvbench ' + self.nfvbench_args + '\n')
-            f.write(ans.split('Run Summary:')[-1])
-            f.write('\n' + 80*'=' + '\n\n')
-
         if 'ERROR' in ans:
             raise RuntimeError(ans.split('ERROR')[-1][:200])
         else:
-            json_file_name = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
-            self.pod.mgmt.exe_as_sqe('sudo mv /root/nfvbench/{} . && git add . && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_file_name), in_directory=self.perf_reports_repo_dir)
-            res_json_body = self.pod.mgmt.r_get_file_from_dir(file_name=json_file_name, in_directory='nfvbench')
+            with self.pod.open_artifact('final_report.txt', 'a') as f:
+                f.write('csr: ' + self.csr_args + ' nfvbench ' + self.nfvbench_args + '\n')
+                f.write(ans.split('Run Summary:')[-1])
+                f.write('\n' + 80 * '=' + '\n\n')
+            json_name1 = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
+            date = ans.split('Date: ')[-1][:19].replace(' ', '-').replace(':', '-')
+            json_name2 = sriov + date + '.' + json_name1
+            self.pod.mgmt.exe_as_sqe('sudo mv /root/nfvbench/{0} {1} && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.pod_dir_in_repo)
+            res_json_body = self.pod.mgmt.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.pod_dir_in_repo)
             self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):
@@ -122,7 +139,6 @@ class NttScenario(ParallelWorker):
 
         with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
             f.write(self.nfvbench_args + '\n' + '; '.join(res))
-
 
     @section(message='Tearing down (estimate 100 sec)')
     def teardown_worker(self):

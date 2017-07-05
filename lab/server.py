@@ -108,27 +108,6 @@ class Server(object):
         with settings(**self.construct_settings(is_warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
             return put(local_path=local_path, remote_path=remote_path, use_sudo=is_sudo)
 
-    def r_get_file_from_dir(self, file_name, in_directory='.', local_path=None):
-        """Get remote file as string or local file if local_path is specified
-        :param file_name:
-        :param in_directory:
-        :param local_path:
-        :return:
-        """
-        from fabric.api import sudo, settings, cd, get
-
-        if '/' in file_name:
-            raise SyntaxError('file_name can not contain /, use in_directory instead')
-
-        with settings(**self.construct_settings(is_warn_only=False, connection_attempts=self.N_CONNECTION_ATTEMPTS)):
-            with cd(in_directory):
-                if local_path:
-                    local_path = get(remote_path=file_name, local_path=local_path)
-                    return local_path
-                else:
-                    body = sudo('cat {0}'.format(file_name))
-                    return body
-
     def check_or_install_packages(self, package_names):
         pm = self.get_package_manager()
 

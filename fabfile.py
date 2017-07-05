@@ -18,7 +18,7 @@ def cmd():
     from lab.with_log import lab_logger
 
     def get_lab_nodes(cfg_path):
-        l = Laboratory(cfg_or_path=cfg_path)
+        l = Laboratory.create_from_path(cfg_path=cfg_path)
         return l, sorted(map(lambda node: node.id, l.get_nodes_by_class()))
 
     def get_node_methodes(l, name):

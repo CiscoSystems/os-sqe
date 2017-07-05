@@ -65,7 +65,7 @@ class OS(WithLogMixIn):
     def os_cmd(self, cmd, comment='', server=None, is_warn_only=False):
         server = server or self.mediator
         cmd = 'source {} && {} {}'.format(self.openrc_path, cmd, '# ' + comment if comment else '')
-        ans = server.exe(command=cmd, is_warn_only=is_warn_only)
+        ans = server.exe_as_sqe(cmd=cmd, is_warn_only=is_warn_only)
         if ans.failed:
             return ans
         elif '-f csv' in cmd:
