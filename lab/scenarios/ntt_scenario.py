@@ -99,12 +99,12 @@ class NttScenario(ParallelWorker):
 
         cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench ' + sriov
         ans = self.pod.mgmt.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
-        with self.pod.open_artifact('nfvbench_output_{}.txt'.format(self.nfvbench_args.replace(' ', '_')), 'w') as f:
+        with self.pod.open_artifact('nfvbench_output_{}.txt'.format(cmd.replace(' ', '_')), 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
 
         if 'ERROR' in ans:
-            raise RuntimeError(ans.split('ERROR')[-1][:200])
+            raise RuntimeError(ans.split('ERROR')[-1][-200:])
         else:
             with self.pod.open_artifact('final_report.txt', 'a') as f:
                 f.write('csr: ' + self.csr_args + ' nfvbench ' + self.nfvbench_args + '\n')
@@ -115,7 +115,9 @@ class NttScenario(ParallelWorker):
             json_name2 = sriov + date + '.' + json_name1
             self.pod.mgmt.exe_as_sqe('sudo mv /root/nfvbench/{0} {1} && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.pod_dir_in_repo)
             res_json_body = self.pod.mgmt.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.pod_dir_in_repo)
-            self.process_nfvbench_json(res_json_body=res_json_body)
+            ans = self.process_nfvbench_json(res_json_body=res_json_body)
+            with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'a') as f:
+                f.write(cmd + '\n' + ans + '\n')
 
     def process_nfvbench_json(self, res_json_body):
         import json
@@ -136,9 +138,7 @@ class NttScenario(ParallelWorker):
             else:
                 gbps = (di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']) / 1e9
                 res.append('size={} rate={} Gbps'.format(mtu, gbps))
-
-        with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
-            f.write(self.nfvbench_args + '\n' + '; '.join(res))
+        return '; '.join(res)
 
     @section(message='Tearing down (estimate 100 sec)')
     def teardown_worker(self):

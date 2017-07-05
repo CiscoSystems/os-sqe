@@ -224,10 +224,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         map(lambda x: x.n9_validate(), self.vim_tors + [self.vim_cat])
 
     def r_collect_information(self, regex, comment):
-        import json
-
-        version_dic = self.mgmt.r_get_version()
-        body = json.dumps(version_dic) + '\n'
+        body = ''
         for node in self.nodes.values():
             if hasattr(node, 'r_collect_logs'):
                 body += node.r_collect_logs(regex=regex)
