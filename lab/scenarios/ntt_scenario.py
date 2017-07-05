@@ -99,7 +99,7 @@ class NttScenario(ParallelWorker):
 
         cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench ' + sriov
         ans = self.pod.mgmt.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
-        with self.pod.open_artifact('nfvbench_output_{}.txt'.format(cmd.replace(' ', '_')), 'w') as f:
+        with self.pod.open_artifact(cmd.replace(' ', '_').replace('/','_') + '.txt', 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
 
