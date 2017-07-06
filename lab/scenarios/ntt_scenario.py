@@ -24,11 +24,11 @@ class NttScenario(ParallelWorker):
 
     @property
     def perf_reports_repo_dir(self):
-        return 'perf-reports'
+        return '~/reports_repo'
 
     @property
     def csr_repo_dir(self):
-        return 'csr_repo'
+        return '~/csr_repo'
 
     @property
     def is_sriov(self):
@@ -49,9 +49,9 @@ class NttScenario(ParallelWorker):
         if self.what_to_run in ['both', 'csr']:
             self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.csr_repo_dir)
 
-            url, checksum, size, _, _, loc_abs_path = CloudImage.read_image_properties(name='CSR1KV')
-            corrected_loc_bas_path = path.join(self.csr_repo_dir, path.basename(loc_abs_path))
-            self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=corrected_loc_bas_path)
+            url, checksum, size, _, _, loc_rel_path = CloudImage.read_image_properties(name='CSR1KV')
+            loc_abs_path = path.join(self.csr_repo_dir, path.basename(loc_rel_path))
+            self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=loc_abs_path)
         if self.what_to_run in ['both', 'nfvbench']:
             sriov= [x.r_get_n_sriov() for x in self.pod.computes]
             if len(set(sriov)) != 1:
@@ -79,10 +79,10 @@ class NttScenario(ParallelWorker):
     def csr_run(self):
         from lab.cloud.cloud_server import CloudServer
 
-        cmd = 'source openrc && ./{} # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot'.format(self.csr_args)
-        ans = self.pod.mgmt.exe_as_sqe(cmd, in_directory=self.csr_repo_dir)
+        cmd = 'source ~/openrc && ./{} # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot'.format(self.csr_args)
+        ans = self.pod.mgmt.exe_as_sqe(cmd=cmd, in_dir=self.csr_repo_dir)
 
-        with self.pod.open_artifact('csr_create_output.txt', 'w') as f:
+        with self.pod.open_artifact('csr_script_output.txt', 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
         if 'ERROR' in ans:

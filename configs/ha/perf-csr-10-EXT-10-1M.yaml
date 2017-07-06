@@ -8,4 +8,4 @@
   n_repeats: 1
   what-to-run: both  # might by nfvbench, csr, both
   csr-args: csr_create.sh 10 1 5 # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot
-  nfvbench-args: --rate ndr_pdr --service-chain EXT --service-chain-count 10 --flow-count 1m --frame-size IMIX
+  nfvbench-args: --rate ndr_pdr --service-chain EXT --service-chain-count 10 --flow-count 1000000 --frame-size IMIX

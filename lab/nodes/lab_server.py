@@ -164,12 +164,12 @@ class LabServer(LabNode):
 
         # self.check_or_install_packages(package_names='git')
         self.exe_as_sqe(cmd='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url))
-        self.exe_as_sqe(cmd='git pull -q', in_dir=local_repo_dir)
+        repo_abs_path = self.exe_as_sqe(cmd='git pull -q && pwd', in_dir=local_repo_dir)
         if patch:
             self.exe_as_sqe(cmd='git fetch {0} && git checkout FETCH_HEAD'.format(patch))
         elif tags:
             self.exe_as_sqe(cmd='git checkout tags/{0}'.format(tags), in_dir=local_repo_dir)
-        return self.exe_as_sqe(cmd='pwd', in_dir=local_repo_dir)
+        return repo_abs_path
 
     def r_curl(self, url, size, checksum, loc_abs_path):
         from os import path
@@ -195,7 +195,7 @@ class LabServer(LabNode):
                     self.exe_as_sqe('rm -f {}'.format(cache_abs_path))
                     continue
                 else:
-                    raise RuntimeError('image described here {} has wrong checksum. Check it manually'.format(info_url))
+                    raise RuntimeError('image described here {}.txt has wrong checksum. Check it manually'.format(url))
 
         self.exe_as_sqe('rm -f {l} && cp {c} {l}'.format(l=loc_abs_path, c=cache_abs_path))
 

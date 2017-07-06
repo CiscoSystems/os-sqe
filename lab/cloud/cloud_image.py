@@ -68,16 +68,18 @@ class CloudImage(object):
 
         try:
             url = CloudImage.IMAGES[name]
+            url_txt = url + '.txt'
         except KeyError:
             return 'fake', 'fake', 'fake', 'fake'
 
         try:
-            r = requests.get(url=url + '.txt')
+            r = requests.get(url=url_txt)
+            if not r.ok:
+                raise RuntimeError(r.url + ': ' + r.reason)
             checksum, _, size, username, password = r.text.split()
-            loc_abs_path = path.join('~', path.basename(url))
-            return url, checksum, size, username, password, loc_abs_path
+            return url, checksum, size, username, password, path.basename(url)
         except ValueError:
-            raise ValueError('File {} has wrong body: structure'.format(url))
+            raise ValueError(url_txt + ' has wrong body, expected checksum file_name size username password')
 
     def _read_image_properties(self):
         self._dic['url'], self._dic['checksum'], self._dic['size'], self._dic['username'], self._dic['password'], self._dic['loc_abs_path'] = self.read_image_properties(name=self.name)
