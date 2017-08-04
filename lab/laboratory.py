@@ -2,6 +2,7 @@ from lab.mercury.with_mercury import WithMercuryMixIn
 from lab.ospd.with_osdp7 import WithOspd7
 from lab.with_config import WithConfig
 from lab.with_log import WithLogMixIn
+from lab import decorators
 
 
 class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
@@ -28,6 +29,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         self.wires = []
 
     @staticmethod
+    @decorators.section('Create config from remote setup_data.xml')
     def create_from_remote(ip):
         from tools.configurator import Configurator
 

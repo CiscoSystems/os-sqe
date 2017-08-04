@@ -8,6 +8,7 @@ class DeployerExisting(LabWorker):
         return '1.2.3.4'
 
     def __init__(self, ip):
+        import validators
         from lab.laboratory import Laboratory
 
         name_to_ip = {'g7-2': '10.23.221.142', 'marahaika': '10.23.228.228', 'c35bottom': '172.26.232.151', 'i11tb3': '10.30.117.6',
@@ -15,7 +16,10 @@ class DeployerExisting(LabWorker):
                       'hiccup': '172.31.228.196',  'rcdn-nfvi-c': '10.201.36.50', 'j10-tb1': '10.30.117.238', 'sjc04-c38': '172.26.229.46', 'c33-tb2-mpod': '172.26.232.144', 'sjc-i13-tb4': '172.29.87.100',
                       'c43-nfvi': '172.26.233.230', 'c42-ucsd': '172.28.165.85', 'c44-bot': '172.26.233.80', 'merc-reg-tb1': '172.29.84.228', 'J11': '10.23.220.150'}
 
-        self.pod = Laboratory.create_from_remote(ip=name_to_ip.get(ip, ip))
+        ip = name_to_ip.get(ip, ip)
+        if not validators.ipv4(ip):
+            raise ValueError('"{}" is not resolved'.format(ip))
+        self.pod = Laboratory.create_from_remote(ip=ip)
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):
@@ -57,6 +61,10 @@ class DeployerExisting(LabWorker):
         mgm.exe_as_sqe('rm -f openrc && sudo cp {} openrc && sudo chown sqe.sqe openrc'.format(openrc_path))
         return OS(name=self.pod, mediator=mgm, openrc_path='openrc')
 
-    def execute(self, servers):
-        cloud = self.deploy_cloud(servers)
+    def execute(self, clouds_and_servers):
+        cloud = self.deploy_cloud(clouds_and_servers=clouds_and_servers)
         return cloud
+
+if __name__ == '__main__':
+    d = DeployerExisting('c35bottom')
+    d.execute({'clouds': [], 'servers': []})

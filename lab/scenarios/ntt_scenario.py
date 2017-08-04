@@ -53,7 +53,7 @@ class NttScenario(ParallelWorker):
             loc_abs_path = path.join(self.csr_repo_dir, path.basename(loc_rel_path))
             self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=loc_abs_path)
         if self.what_to_run in ['both', 'nfvbench']:
-            sriov= [x.r_get_n_sriov() for x in self.pod.computes]
+            sriov = [x.r_get_n_sriov() for x in self.pod.computes]
             if len(set(sriov)) != 1:
                 raise RuntimeError('SRIOV not all nodes have the same number of virtual functions')
             self._kwargs['is-sriov'] = sriov[0] >= 8
@@ -99,7 +99,7 @@ class NttScenario(ParallelWorker):
 
         cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench ' + sriov
         ans = self.pod.mgmt.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
-        with self.pod.open_artifact(cmd.replace(' ', '_').replace('/','_') + '.txt', 'w') as f:
+        with self.pod.open_artifact(cmd.replace(' ', '_').replace('/', '_') + '.txt', 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
 

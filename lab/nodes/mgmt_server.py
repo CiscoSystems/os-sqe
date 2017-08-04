@@ -61,6 +61,7 @@ class CimcDirector(CimcServer):
         ver = self.r_get_version()
         self.exe('python openstack/hw_validations.py --resolve-failures power', in_directory='installer-' + ver['gerrit_tag'])
 
+    @decorators.section('Creating/activating sqe user')
     def r_create_sqe_user(self):
         from os import path
 
@@ -73,10 +74,9 @@ class CimcDirector(CimcServer):
             self.exe(command='chmod 0440 /etc/sudoers.d/' + sqe_username)
 
             self._server.username, self._server.password = sqe_username, tmp_password  # start using sqe user with tmp password
-            self.exe('git clone -q https://github.com/CiscoSystems/os-sqe.git')
             self.exe('mkdir -p .ssh && chmod 700 .ssh')
-            self.exe('cp {} .ssh/id_rsa && chmod 600 .ssh/id_rsa'.format(path.join('os-sqe', 'configs', 'keys', 'private')))
-            self.exe('cp {} .ssh/id_rsa.pub && cp .ssh/id_rsa.pub .ssh/authorized_keys && chmod 600 .ssh/authorized_keys'.format(path.join('os-sqe', 'configs', 'keys', 'public')))
+            self.exe('echo "{}" > .ssh/id_rsa && chmod 600 .ssh/id_rsa'.format(self.PRIVATE_KEY))
+            self.exe('echo "{}" > .ssh/id_rsa.pub && cp .ssh/id_rsa.pub .ssh/authorized_keys && chmod 600 .ssh/authorized_keys'.format(self.PUBLIC_KEY))
             gitlab_public = 'wwwin-gitlab-sjc.cisco.com,10.22.31.77 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJZlfIFWs5/EaXGnR9oXp6mCtShpvO2zKGqJxNMvMJmixdkdW4oPjxYEYP+2tXKPorvh3Wweol82V3KOkB6VhLk='
             self.exe('echo {} > .ssh/known_hosts'.format(gitlab_public))
             self._server.username, self._server.password = self.ssh_username, self.ssh_password  # restore to previous settings

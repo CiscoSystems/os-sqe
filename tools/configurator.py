@@ -283,8 +283,7 @@ class Configurator(WithConfig, WithLogMixIn):
             a3 = 'node2: {:>5}, port2: {:>20}'.format(wire.n2, wire.port_id2)
             return '{' + a1 + a2 + a3 + ' }'
 
-        path_for_save = '{}.yaml'.format(pod)
-        with open(path_for_save, 'w') as f:
+        with Configurator.open_artifact('{}.yaml'.format(pod), 'w') as f:
             f.write('name: {} # any string to be used on logging\n'.format(pod))
             f.write('description-url: "{}"\n'.format(pod))
             f.write('\n')
@@ -326,13 +325,11 @@ class Configurator(WithConfig, WithLogMixIn):
 
             if pod.setup_data:
                 f.write('\nsetup-data: {}'.format(pod.setup_data))
-        return path_for_save
 
 if __name__ == '__main__':
     from lab.laboratory import Laboratory
 
     c = Configurator()
     pod = c.create_from_local_mercury_repo()
-    cfg_path = c.save_self_config(pod=pod)
-
-    Laboratory.create_from_path(cfg_path=cfg_path)
+    c.save_self_config(pod=pod)
+    Laboratory.create_from_path(cfg_path=Laboratory.get_artifact_file_path(pod.name + '.yaml'))
