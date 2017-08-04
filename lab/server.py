@@ -1,4 +1,7 @@
-class Server(object):
+from lab.with_config import WithConfig
+
+
+class Server(WithConfig):
     N_CONNECTION_ATTEMPTS = 200
 
     def __init__(self, ip, username, password):
@@ -20,14 +23,12 @@ class Server(object):
         return self._package_manager
 
     def construct_settings(self, is_warn_only, connection_attempts):
-        from lab.with_config import WithConfig
-
         kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
                   'disable_known_hosts': True,
                   'connection_attempts': connection_attempts,
                   'warn_only': is_warn_only}
         if self.password is None:
-            kwargs['key_filename'] = WithConfig.KEY_PRIVATE_PATH
+            kwargs['key'] = self.PRIVATE_KEY
         else:
             kwargs['password'] = self.password
         return kwargs

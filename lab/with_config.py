@@ -1,13 +1,16 @@
 import os
+import requests
 
 
 class WithConfig(object):
     REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
     CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
+    CONFIGS_REPO_URL = 'https://wwwin-gitlab-sjc.cisco.com/mercury/configs/raw/master'
+
     REMOTE_FILE_STORE_IP = '172.29.173.233'
-    KEY_PUBLIC_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'public'))
-    KEY_PRIVATE_PATH = os.path.abspath(os.path.join(REPO_DIR, 'configs', 'keys', 'private'))
+    PRIVATE_KEY = requests.get(url=CONFIGS_REPO_URL + '/' + 'private.key').text
+    PUBLIC_KEY = requests.get(url=CONFIGS_REPO_URL + '/' + 'public.key').text
 
     def verify_config(self, sample_config, config):
         from lab.config_verificator import verify_config
@@ -16,7 +19,7 @@ class WithConfig(object):
 
     @staticmethod
     def read_config_from_file(config_path, directory='', is_as_string=False):
-        return read_config_from_file(config_path=config_path, directory=directory, is_as_string=is_as_string)
+        return read_config_from_file(cfg_path=config_path, folder=directory, is_as_string=is_as_string)
 
     @staticmethod
     def get_log_file_names():
@@ -60,52 +63,46 @@ class WithConfig(object):
         import requests
         import re
 
-        repo_tree_url = 'https://wwwin-gitlab-sjc.cisco.com/mercury/configs/tree/master'
-        resp = requests.get('https://wwwin-gitlab-sjc.cisco.com/mercury/configs/tree/master')
+        resp = requests.get(url=WithConfig.CONFIGS_REPO_URL.replace('raw', 'tree'))
         if resp.status_code != 200:
-            raise ValueError('Something wrong with repo: {}'.format(repo_tree_url))
+            raise ValueError('Something wrong with repo: {}'.format(WithConfig.CONFIGS_REPO_URL))
         return re.findall('.*title="(.*)" href=.*yaml', resp.text)
 
 
-def read_config_from_file(config_path, directory='', is_as_string=False):
+def read_config_from_file(cfg_path, folder='', is_as_string=False):
     """ Trying to read a configuration file in the following order:
-        1. try to interpret config_path as local file system full path
-        2. try to interpret config_path as short file name with respect to CONFIG_DIR + directory
+        1. try to interpret config_path as local fs path
+        2. try to interpret config_path as local fs relative to repo/configs/directory
         2. the same as in 2 but in a local clone of configs repo
-        5. if all fail, try to get it from remote osqe-configs
-        :param config_path: path to the config file or just a name of the config file
-        :param directory: sub-directory of CONFIG_DIR
+        5. if all fail, try to get it from remote WithConfig.CONFIGS_REPO_URL
+        :param cfg_path: path to the config file or just a name of the config file
+        :param folder: sub-folder of WirConfig.CONFIG_DIR
         :param is_as_string: if True return the body of file as a string , if not interpret the file as yaml and return a dictionary
     """
     import yaml
     import requests
-    import validators
     from lab.with_log import lab_logger
-    import os
+    from os import path
 
-    git_reference = os.getenv('SQE_GIT_REF', 'master').split('/')[-1]
-    gitlab_config_repo = 'https://wwwin-gitlab-sjc.cisco.com/mercury/configs/raw/{}/'.format(git_reference)
+    actual_path = None
+    for try_path in [cfg_path, path.join(WithConfig.CONFIG_DIR, folder, cfg_path), path.join('~/repo/mercury/configs', cfg_path)]:
+        try_path = path.expanduser(try_path)
+        if os.path.isfile(try_path):
+            actual_path = try_path
+            break
 
-    if os.path.isfile(os.path.expanduser(config_path)):
-        actual_path = os.path.abspath(os.path.expanduser(config_path))  # path to existing local file
-    else:
-        actual_path = None
-        for conf_dir in [WithConfig.CONFIG_DIR, os.path.expanduser('~/repo/mercury/configs')]:
-            try_this_path = os.path.abspath(os.path.join(conf_dir, directory, config_path))
-            if os.path.isfile(try_this_path):
-                actual_path = try_this_path
-        actual_path = actual_path or gitlab_config_repo + config_path
-
-    lab_logger.debug('Taking config from {0}'.format(actual_path))
-    if validators.url(actual_path):
-        resp = requests.get(actual_path)
+    if actual_path is None:
+        actual_path = WithConfig.CONFIGS_REPO_URL + '/' + cfg_path
+        resp = requests.get(url=actual_path)
         if resp.status_code != 200:
             raise ValueError('File is not available at this URL: {0}'.format(actual_path))
-        body_or_yaml = yaml.load(resp.text)
+        cfg_txt = resp.text
     else:
         with open(actual_path) as f:
-            body_or_yaml = f.read() if is_as_string else yaml.load(f)
-    if not body_or_yaml:
+            cfg_txt = f.read()
+    if not cfg_txt:
         raise ValueError('{0} is empty!'.format(actual_path))
 
-    return body_or_yaml
+    lab_logger.debug('CFG taken from {}'.format(actual_path))
+
+    return cfg_txt if is_as_string else yaml.load(cfg_txt)
