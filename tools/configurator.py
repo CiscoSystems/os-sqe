@@ -42,7 +42,7 @@ class Configurator(WithConfig, WithLogMixIn):
         import yaml
         from lab.server import Server
 
-        s = Server(ip=ip, username='root', password=None)
+        s = Server(ip=ip, username='root', password='cisco123')
         ans = s.exe(command='cat /root/openstack-configs/setup_data.yaml', is_warn_only=True)
         if 'No such file or directory' in ans:
             raise RuntimeError('mgm node {} does not have setup_data.yaml'.format(ip))

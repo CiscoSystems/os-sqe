@@ -66,5 +66,5 @@ class DeployerExisting(LabWorker):
         return cloud
 
 if __name__ == '__main__':
-    d = DeployerExisting('c35bottom')
+    d = DeployerExisting('g7-2')
     d.execute({'clouds': [], 'servers': []})
