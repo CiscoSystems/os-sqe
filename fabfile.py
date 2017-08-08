@@ -18,8 +18,8 @@ def cmd():
     from lab.with_log import lab_logger
 
     def get_lab_nodes(cfg_path):
-        l = Laboratory.create_from_path(cfg_path=cfg_path)
-        return l, sorted(map(lambda node: node.id, l.get_nodes_by_class()))
+        pod = Laboratory.create_from_path(cfg_path=cfg_path)
+        return pod, sorted(map(lambda node: node.id, pod.nodes.values()))
 
     def get_node_methodes(l, name):
         if name == 'cloud':
@@ -237,8 +237,7 @@ def bash():
         if not isinstance(node, VirtualServer):
             aliases.append('alias z{n}="sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}"'.format(n=node.id, p=node.oob_password, u=node.oob_username, ip=node.oob_ip))
         if isinstance(node, LabServer):
-            cmd = node._server.form_cmd_string(cmd='', in_dir='.').replace('"', '')
-            aliases.append('alias {n}="ssh -t -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip} {c}"'.format(n=node.id, u=node.ssh_username, ip=node.ssh_ip, c=cmd))
+            aliases.append('alias {n}="ssh -t -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}"'.format(n=node.id, u=node.ssh_username, ip=node.ssh_ip))
 
     with open('tmp.aliases', 'w') as f:
         f.write('\n'.join(sorted(aliases)))

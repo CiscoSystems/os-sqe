@@ -43,7 +43,7 @@ class NttScenario(ParallelWorker):
         from os import path
         from lab.cloud.cloud_image import CloudImage
 
-        self.pod.mgmt.exe_as_sqe('git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple')
+        self.pod.mgmt.exe(cmd='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple', is_as_sqe=True)
 
         # self.pod.mgmt.r_configure_mx_and_nat()
         if self.what_to_run in ['both', 'csr']:
@@ -58,7 +58,7 @@ class NttScenario(ParallelWorker):
                 raise RuntimeError('SRIOV not all nodes have the same number of virtual functions')
             self._kwargs['is-sriov'] = sriov[0] >= 8
             self.pod.mgmt.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
-            self.pod.mgmt.exe_as_sqe('mkdir -p ' + self.pod_dir_in_repo)
+            self.pod.mgmt.exe(cmd='mkdir -p ' + self.pod_dir_in_repo, is_as_sqe=True)
             self.pod.mgmt.r_check_intel_nics()
 
             # trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
@@ -80,7 +80,7 @@ class NttScenario(ParallelWorker):
         from lab.cloud.cloud_server import CloudServer
 
         cmd = 'source ~/openrc && ./{} # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot'.format(self.csr_args)
-        ans = self.pod.mgmt.exe_as_sqe(cmd=cmd, in_dir=self.csr_repo_dir)
+        ans = self.pod.mgmt.exe(cmd=cmd, in_dir=self.csr_repo_dir, is_as_sqe=True)
 
         with self.pod.open_artifact('csr_script_output.txt', 'w') as f:
             f.write(cmd + '\n')
@@ -113,7 +113,7 @@ class NttScenario(ParallelWorker):
             json_name1 = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             date = ans.split('Date: ')[-1][:19].replace(' ', '-').replace(':', '-')
             json_name2 = sriov + date + '.' + json_name1
-            self.pod.mgmt.exe_as_sqe('sudo mv /root/nfvbench/{0} {1} && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.pod_dir_in_repo)
+            self.pod.mgmt.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.pod_dir_in_repo, is_as_sqe=True)
             res_json_body = self.pod.mgmt.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.pod_dir_in_repo)
             ans = self.process_nfvbench_json(res_json_body=res_json_body)
             with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'a') as f:

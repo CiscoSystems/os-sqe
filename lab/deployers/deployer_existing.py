@@ -40,14 +40,14 @@ class DeployerExisting(LabWorker):
         mgm = clouds_and_servers['servers'][0]
         openrc_path = None
         for path in ['/root/openstack-configs/openrc', '/home/stack/overcloudrc', '/root/keystonerc_admin']:
-            ans = mgm.exe(command='sudo ls {}'.format(path), is_warn_only=True)
+            ans = mgm.exe(cmd='sudo ls {}'.format(path), is_warn_only=True)
             if 'No such file or directory' not in ans:
                 openrc_path = path
                 break
 
         if openrc_path is None:
             raise RuntimeError('{}: "{}" does not contain any valid cloud'.format(self, self.pod))
-        mgm.exe_as_sqe('rm -f openrc && sudo cp {} openrc && sudo chown sqe.sqe openrc'.format(openrc_path))
+        mgm.exe(cmd='rm -f openrc && sudo cp {} openrc && sudo chown sqe.sqe openrc'.format(openrc_path), is_as_sqe=True)
         return OS(name=self.pod, mediator=mgm, openrc_path='openrc')
 
     def execute(self, clouds_and_servers):

@@ -88,7 +88,7 @@ class Configurator(WithConfig, WithLogMixIn):
         if pod_name in catalyst:
             switches.append({'id': 'nc', 'role': 'VimCat', 'oob-ip': catalyst[pod_name], 'oob-username': username, 'oob-password': password})
 
-        tors = VimTor.add_nodes(pod=None, nodes_cfg=switches)
+        tors = VimTor.add_nodes(pod=self.pod, nodes_cfg=switches)
 
         specials = {}
         wires_cfg = []

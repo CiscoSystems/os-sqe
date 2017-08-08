@@ -243,7 +243,7 @@ class LabServer(LabNode):
         import socket
 
         if self.proxy:
-            ans = self.proxy.exe(command='ping -c 1 {}'.format(self.ssh_ip), is_warn_only=True)
+            ans = self.proxy.exe(cmd='ping -c 1 {}'.format(self.ssh_ip), is_warn_only=True)
             return '1 received, 0% packet loss' in ans
         else:
             port = 22
