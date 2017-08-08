@@ -20,6 +20,11 @@ class Configurator(WithConfig, WithLogMixIn):
                  {'id': 'pxe', 'role': 'pxe', 'oob-ip': '172.31.230.170', 'oob-username': 'openstack-read'}]
     }
 
+    KNOWN_LABS = {'g7-2': '10.23.221.142', 'marahaika': '10.23.228.228', 'c35bottom': '172.26.232.151', 'i11tb3': '10.30.117.6',
+                  'i13-tb1': '10.30.116.206', 'c42-mid': '172.28.165.31', 'mdc2': '172.29.86.38', 'skullcrusher': '10.23.229.126', 'c43-bot': '172.26.233.230', 'c42top': '172.28.165.111',
+                  'hiccup': '172.31.228.196', 'rcdn-nfvi-c': '10.201.36.50', 'j10-tb1': '10.30.117.238', 'sjc04-c38': '172.26.229.46', 'c33-tb2-mpod': '172.26.232.144', 'sjc-i13-tb4': '172.29.87.100',
+                  'c43-nfvi': '172.26.233.230', 'c42-ucsd': '172.28.165.85', 'c44-bot': '172.26.233.80', 'merc-reg-tb1': '172.29.84.228', 'J11': '10.23.220.150'}
+
     def sample_config(self):
         pass
 
@@ -39,11 +44,16 @@ class Configurator(WithConfig, WithLogMixIn):
         self.pod = Laboratory()
 
     def create_from_remote(self, ip):
+        import validators
         import yaml
         from lab.server import Server
 
-        s = Server(ip=ip, username='root', password='cisco123')
-        ans = s.exe(command='cat /root/openstack-configs/setup_data.yaml', is_warn_only=True)
+        actual_ip = self.KNOWN_LABS.get(ip, ip)
+        if not validators.ipv4(actual_ip):
+            raise ValueError('"{}" is not resolved as valid IPv4'.format(ip))
+
+        s = Server(ip=actual_ip, username='root', password='cisco123')
+        ans = s.exe(cmd='cat /root/openstack-configs/setup_data.yaml # {} mgm: sshpass -p cisco123 root@{}'.format(ip, actual_ip), is_warn_only=True)
         if 'No such file or directory' in ans:
             raise RuntimeError('mgm node {} does not have setup_data.yaml'.format(ip))
 
@@ -59,7 +69,7 @@ class Configurator(WithConfig, WithLogMixIn):
         self.process_mercury_nodes()
         self.process_connections()
         self.pod.validate_config()
-        self.save_self_config(pod=self.pod)
+        self.save_self_config(p=self.pod)
         return self.pod
 
     def process_switches(self):
@@ -227,8 +237,7 @@ class Configurator(WithConfig, WithLogMixIn):
                         ip = mercury_srv_cfg.get(mercury_net_id + '_ip', str(net.get_ip_for_index(ip_base + i)))
                         nics.append({'id': mercury_net_id[0], 'ip': ip, 'is-ssh': mercury_net_id == 'management'})
 
-                    nodes.append({'id': node_id, 'role': sqe_role_id, 'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username,
-                                  'proxy': 'mgm', 'nics': nics})
+                    nodes.append({'id': node_id, 'role': sqe_role_id, 'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'proxy': 'mgm', 'nics': nics})
 
                     if mercury_role_id == 'vts':
                         vtc_nics = [{'id': 'a', 'ip': self.pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_IPS'][i-1], 'is-ssh': True},
@@ -236,8 +245,9 @@ class Configurator(WithConfig, WithLogMixIn):
                         xrvr_nics = [{'id': 'm', 'ip': self.pod.setup_data['VTS_PARAMETERS']['VTS_XRNC_MGMT_IPS'][i-1], 'is-ssh': True},
                                      {'id': 't', 'ip': self.pod.setup_data['VTS_PARAMETERS']['VTS_XRNC_TENANT_IPS'][i-1], 'is-ssh': False}]
 
-                        virtuals.append({'id': 'vtc' + str(i), 'role': 'vtc', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': self.pod.setup_data['VTS_PARAMETERS']['VTS_PASSWORD'],
-                                         'ssh-username': 'admin', 'ssh-password': ssh_password,
+                        virtuals.append({'id': 'vtc' + str(i), 'role': 'vtc', 'oob-ip': None,
+                                         'oob-username': None, 'oob-password': None,
+                                         'ssh-username': self.pod.setup_data['VTS_PARAMETERS']['VTC_SSH_USERNAME'], 'ssh-password': self.pod.setup_data['VTS_PARAMETERS']['VTC_SSH_PASSWORD'],
                                          'virtual-on': node_id, 'vip_a': self.pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_VIP'], 'vip_m': self.pod.setup_data['VTS_PARAMETERS']['VTS_NCS_IP'], 'proxy': None, 'nics': vtc_nics})
                         virtuals.append({'id': 'xrvr' + str(i), 'role': 'xrvr', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': ssh_password,
                                          'virtual-on': node_id, 'proxy': 'mgm', 'nics': xrvr_nics})
@@ -248,7 +258,7 @@ class Configurator(WithConfig, WithLogMixIn):
         self.pod.nodes.update(VirtualServer.add_nodes(pod=self.pod, nodes_cfg=virtuals))
 
     @staticmethod
-    def save_self_config(pod):
+    def save_self_config(p):
         from lab.nodes.virtual_server import VirtualServer
         from lab.nodes.lab_server import LabServer
         from lab.nodes.vtc import Vtc
@@ -283,53 +293,53 @@ class Configurator(WithConfig, WithLogMixIn):
             a3 = 'node2: {:>5}, port2: {:>20}'.format(wire.n2, wire.port_id2)
             return '{' + a1 + a2 + a3 + ' }'
 
-        with Configurator.open_artifact('{}.yaml'.format(pod), 'w') as f:
-            f.write('name: {} # any string to be used on logging\n'.format(pod))
-            f.write('description-url: "{}"\n'.format(pod))
+        with Configurator.open_artifact('{}.yaml'.format(p), 'w') as f:
+            f.write('name: {} # any string to be used on logging\n'.format(p))
+            f.write('description-url: "{}"\n'.format(p))
             f.write('\n')
 
             f.write('specials: [\n')
-            special_bodies = [node_yaml_body(node=x, tp=switch) for x in pod.oob + pod.tor]
+            special_bodies = [node_yaml_body(node=x, tp=switch) for x in p.oob + p.tor]
             f.write(',\n'.join(special_bodies))
             f.write('\n]\n\n')
 
             f.write('networks: [\n')
-            net_bodies = [net_yaml_body(net=x) for x in pod.networks.values()]
+            net_bodies = [net_yaml_body(net=x) for x in p.networks.values()]
             f.write(',\n'.join(net_bodies))
             f.write('\n]\n\n')
 
             f.write('switches: [\n')
-            switch_bodies = [node_yaml_body(node=x, tp=switch) for x in pod.vim_tors + pod.vim_cat]
+            switch_bodies = [node_yaml_body(node=x, tp=switch) for x in p.vim_tors + p.vim_cat]
             f.write(',\n'.join(switch_bodies))
             f.write('\n]\n\n')
 
             f.write('nodes: [\n')
-            node_bodies = sorted([node_yaml_body(node=x, tp=others) for x in pod.nodes.values() if isinstance(x, LabServer) and not isinstance(x, VirtualServer)])
+            node_bodies = sorted([node_yaml_body(node=x, tp=others) for x in p.nodes.values() if isinstance(x, LabServer) and not isinstance(x, VirtualServer)])
             f.write(',\n\n'.join(node_bodies))
             f.write('\n]\n\n')
 
             f.write('virtuals: [\n')
-            node_bodies = [node_yaml_body(node=x, tp=virtual) for x in pod.nodes.values() if isinstance(x, VirtualServer)]
+            node_bodies = [node_yaml_body(node=x, tp=virtual) for x in p.nodes.values() if isinstance(x, VirtualServer)]
             f.write(',\n\n'.join(node_bodies))
             f.write('\n]\n\n')
 
             f.write('wires: [\n')
 
             n1_id = ''
-            for w in sorted(pod.wires, key=lambda e: e.n1.id + e.port_id1):
+            for w in sorted(p.wires, key=lambda e: e.n1.id + e.port_id1):
                 if w.n1.id != n1_id:
                     n1_id = w.n1.id
                     f.write('\n')
                 f.write(wire_yaml_body(wire=w) + ',\n')
             f.write('\n]\n')
 
-            if pod.setup_data:
-                f.write('\nsetup-data: {}'.format(pod.setup_data))
+            if p.setup_data:
+                f.write('\nsetup-data: {}'.format(p.setup_data))
 
 if __name__ == '__main__':
     from lab.laboratory import Laboratory
 
     c = Configurator()
     pod = c.create_from_local_mercury_repo()
-    c.save_self_config(pod=pod)
+    c.save_self_config(p=pod)
     Laboratory.create_from_path(cfg_path=Laboratory.get_artifact_file_path(pod.name + '.yaml'))

@@ -281,7 +281,7 @@ class Vtc(VirtualServer):
     def r_vtc_ncs_cli(self, command):
         self.exe('ncs_cli << EOF\nconfigure\n{}\ncommit\nexit\nexit\nEOF'.format(command))
 
-    @decorators.section('Getting VTS version')
+    @decorators.section('Get VTS version')
     def r_vtc_get_version(self):
         return self.exe('version_info')
 

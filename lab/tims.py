@@ -65,7 +65,7 @@ class Tims(WithLogMixIn, WithConfig):
         import requests
 
         if not self._xml_tims_wrapper:
-            self.log('No way to detect the user who is running the test, nothing will be published in TIMS', level='error')
+            self.log_error('No way to detect the user who is running the test, nothing will be published in TIMS')
             return False
         else:
             data = self._xml_tims_wrapper.format(body=body)
@@ -175,7 +175,7 @@ class Tims(WithLogMixIn, WithConfig):
         </Result>
         '''.format(test_cfg_path=test_cfg_path, test_case_id=test_case_id, logical_id=logical_id, description=desc, mercury_version=self._mercury_version, status=status, conf_id=self._conf_id)
 
-        ans = self._api_post(operation=self._OPERATION_ENTITY, body=body)
+        ans = str(self._api_post(operation=self._OPERATION_ENTITY, body=body))
 
         return 'and new http://tims/warp.cmd?ent={} created'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1]) if ans else 'No way to report to TIMS since user is not known'
 
@@ -208,7 +208,7 @@ class Tims(WithLogMixIn, WithConfig):
     def simulate():
         from lab.laboratory import Laboratory
 
-        tims_lst = [Tims(Laboratory('g7-2-vts.yaml')), Tims(Laboratory('c35bot-vpp.yaml')), Tims(Laboratory('marahaika-vts.yaml'))]
+        tims_lst = [Tims(Laboratory.create_from_remote('g7-2')), Tims(Laboratory.create_from_remote('c35bottom')), Tims(Laboratory.create_from_remote('i11tb3'))]
         # available_tc = tims.ls_configs(directory='ha')
 
         cfgs = ['perf-csr-0-PVP-1-1k.yaml']

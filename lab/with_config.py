@@ -3,6 +3,7 @@ import requests
 
 
 class WithConfig(object):
+    SQE_USERNAME = 'sqe'
     REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
     CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))

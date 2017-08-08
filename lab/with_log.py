@@ -67,7 +67,7 @@ class WithLogMixIn(object):
 
         destination_dir = '/var/www/artifacts'
         server = Server(ip='172.29.173.233', username='localadmin', password='ubuntu')
-        server.exe(command='mkdir -p {0}'.format(destination_dir))
+        server.exe(cmd='mkdir -p {0}'.format(destination_dir))
         server.put(local_path='*.log', remote_path=destination_dir, is_sudo=False)
         server.put(local_path='artifacts/*', remote_path=destination_dir, is_sudo=False)
 
@@ -81,18 +81,14 @@ class WithLogMixIn(object):
         cmd += 'sed -n "/^$(date +%Y-%m-%d\ %H:%M --date="{min} min ago")/, /^$(date +%Y-%m-%d\ %H:%M)/p" '.format(min=minutes) if minutes else ''
         return cmd
 
-    def log(self, message, level='info'):
-        message = '{}: {}'.format(self, message)
-        if level == 'info':
-            lab_logger.info(message)
-        elif level == 'warning':
-            lab_logger.warning(message)
-        elif level == 'exception':
-            lab_logger.exception(message)
-        elif level == 'error':
-            lab_logger.error(message)
-        else:
-            raise RuntimeError('Specified "{}" logger level is not known'.format(level))
+    def log(self, message):
+        lab_logger.info(str(self) + ': ' + message)
+
+    def log_warning(self, message):
+        lab_logger.warning(str(self) + ': ' + message)
+
+    def log_error(self, message):
+        lab_logger.error(str(self) + ': ' + message)
 
     def log_to_slack(self, message):
         import requests

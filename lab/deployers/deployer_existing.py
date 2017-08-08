@@ -8,24 +8,14 @@ class DeployerExisting(LabWorker):
         return '1.2.3.4'
 
     def __init__(self, ip):
-        import validators
         from lab.laboratory import Laboratory
-
-        name_to_ip = {'g7-2': '10.23.221.142', 'marahaika': '10.23.228.228', 'c35bottom': '172.26.232.151', 'i11tb3': '10.30.117.6',
-                      'i13-tb1': '10.30.116.206',  'c42-mid': '172.28.165.31', 'mdc2': '172.29.86.38', 'skullcrusher': '10.23.229.126', 'c43-bot': '172.26.233.230', 'c42top': '172.28.165.111',
-                      'hiccup': '172.31.228.196',  'rcdn-nfvi-c': '10.201.36.50', 'j10-tb1': '10.30.117.238', 'sjc04-c38': '172.26.229.46', 'c33-tb2-mpod': '172.26.232.144', 'sjc-i13-tb4': '172.29.87.100',
-                      'c43-nfvi': '172.26.233.230', 'c42-ucsd': '172.28.165.85', 'c44-bot': '172.26.233.80', 'merc-reg-tb1': '172.29.84.228', 'J11': '10.23.220.150'}
-
-        ip = name_to_ip.get(ip, ip)
-        if not validators.ipv4(ip):
-            raise ValueError('"{}" is not resolved'.format(ip))
         self.pod = Laboratory.create_from_remote(ip=ip)
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):
         import re
 
-        director = lab.get_director()
+        director = lab.mgm
 
         net = lab.get_ssh_net()
         ssh_ip_pattern = '({0}.*)/{1}'.format(str(net).rsplit('.', 1)[0], net.prefixlen)
@@ -57,7 +47,6 @@ class DeployerExisting(LabWorker):
 
         if openrc_path is None:
             raise RuntimeError('{}: "{}" does not contain any valid cloud'.format(self, self.pod))
-        mgm.r_create_sqe_user()
         mgm.exe_as_sqe('rm -f openrc && sudo cp {} openrc && sudo chown sqe.sqe openrc'.format(openrc_path))
         return OS(name=self.pod, mediator=mgm, openrc_path='openrc')
 

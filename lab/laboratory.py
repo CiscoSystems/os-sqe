@@ -6,11 +6,6 @@ from lab import decorators
 
 
 class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
-    TYPE_MERCURY_VTS = 'vts'
-    TYPE_MERCURY_VPP = 'vpp'
-    TYPE_RH_OSPD = 'ospd'
-    SUPPORTED_TYPES = [TYPE_MERCURY_VTS, TYPE_MERCURY_VPP, TYPE_RH_OSPD]
-
     def __repr__(self):
         return self.name + '-' + self.driver
 
@@ -27,14 +22,20 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         self.networks = {}
         self.nodes = {}
         self.wires = []
+        self.is_sqe_user_created = False
 
     @staticmethod
-    @decorators.section('Create config from remote setup_data.xml')
+    @decorators.section('Create pod from actual remote setup_data.xml')
     def create_from_remote(ip):
         from tools.configurator import Configurator
 
         c = Configurator()
         return c.create_from_remote(ip=ip)
+
+    @staticmethod
+    def create_from_path(cfg_path):
+        cfg = Laboratory.read_config_from_file(config_path=cfg_path)
+        return Laboratory.create_from_config(cfg=cfg)
 
     @staticmethod
     def create_from_config(cfg):
@@ -62,11 +63,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=cfg['wires']))  # second pass - process wires to connect nodes to peers
         pod.validate_config()
         return pod
-
-    @staticmethod
-    def create_from_path(cfg_path):
-        cfg = Laboratory.read_config_from_file(config_path=cfg_path)
-        return Laboratory.create_from_config(cfg=cfg)
 
     def validate_config(self):
         from lab.nodes.lab_server import LabServer
@@ -106,16 +102,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             #     peer_port_id = wire.get_peer_port(node)
             #     self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), owner=node.get_node_id())  # check that this peer_node-peer_port is unique
 
-    def get_nodes_by_class(self, klass=None):
-        if klass:
-            classes = klass if type(klass) is list else [klass]
-            nodes = []
-            for klass in classes:
-                nodes += filter(lambda x: isinstance(x, klass), self.nodes.values())
-            return nodes
-        else:
-            return self.nodes.values()
-
     @property
     def driver(self):
         return self.setup_data['MECHANISM_DRIVERS']
@@ -125,7 +111,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.nodes.mgmt_server import CimcDirector
         from lab.nodes.fi import FiDirector
 
-        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self.nodes.values())[0] or self.controls[0]  # if no specialized managment node, use first control node
+        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self.nodes.values())[0] or self.controls[0]  # if no specialized management node, use first control node
 
     @property
     def cobbler(self):
@@ -177,15 +163,17 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         return filter(lambda x: type(x) is Vtc, self.nodes.values())
 
+    @property
+    def vts(self):
+        from lab.nodes.vtc import VtsHost
+
+        return filter(lambda x: type(x) is VtsHost, self.nodes.values())
 
     @property
     def cimc_servers(self):
         from lab.nodes.cimc_server import CimcServer
 
-        return self.get_nodes_by_class(klass=CimcServer)
-
-    def get_ucsm_nets_with_pxe(self):
-        return [x for x in self._cfg['nets'].keys() if 'pxe' in x]
+        return filter(lambda x: isinstance(x, CimcServer), self.nodes.values())
 
     def make_sure_that_object_is_unique(self, obj, obj_type, owner):
         """check that given object is unique
@@ -201,28 +189,8 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         else:
             self._unique_dict[key] = owner
 
-    def get_ansible_inventory(self):
-        inventory = {}
-
-        xrvr_username, xrvr_password = None, None
-        xrvr_ips = []
-        for node in self.xrvr:
-            ip, xrvr_username, xrvr_password = node.get_xrvr_ip_user_pass()
-            xrvr_ips.append(ip)
-
-        for node in [self.mgmt] + self.vts:
-            ip, username, _ = node.get_ssh()
-            inventory[node.id] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_private_key_file': self.KEY_PRIVATE_PATH,
-                                                          'xrvr_ip_mx': xrvr_ips, 'xrvr_username': xrvr_username, 'xrvr_password': xrvr_password}}
-
-        for node in self.vim_tors:
-            ip, username, password = node.get_oob()
-            inventory[node.get_id()] = {'hosts': [ip], 'vars': {'ansible_ssh_user': username, 'ansible_ssh_pass': password}}
-
-        return inventory
-
     def lab_validate(self):
-        map(lambda x: x.r_verify_oob(), self.get_nodes_by_class())
+        map(lambda x: x.r_verify_oob(), self.nodes.values())
         map(lambda x: x.n9_validate(), self.vim_tors + [self.vim_cat])
 
     def r_collect_information(self, regex, comment):
@@ -237,4 +205,9 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def exe(self, cmd):
         from lab.nodes.lab_server import LabServer
 
-        return {node.get_id(): node.exe(cmd) for node in self.get_nodes_by_class(LabServer)}
+        return {node.id: node.exe(cmd) for node in self.nodes.values() if isinstance(node, LabServer)}
+
+    def check_create_sqe_user(self):
+        if not self.is_sqe_user_created:
+            self.mgmt.r_create_sqe_user()
+            self.is_sqe_user_created = True

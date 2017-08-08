@@ -5,20 +5,42 @@ from lab.nodes.cimc_server import CimcServer
 class CimcDirector(CimcServer):
     ROLE = 'director-n9'
 
-    @decorators.section('Getting VIM version tag')
+    RELEASE_NAMES = {'2.1': 'master', '2.0': 'newton', '1.0': 'liberty'}
+
+    @decorators.section('Get VIM version')
     def r_get_version(self):
-        ans = self.exe_as_sqe('sudo grep -E "image_tag|namespace" /root/openstack-configs/defaults.yaml')
-        a = {'gerrit_tag': ans.split('\r\n')[0].split(':')[-1].strip(), 'container_namespace': ans.split('\r\n')[-1].split(':')[-1].strip(), 'mechanism': self.pod.driver}
+        import json
+        import yaml
+
+        ans = self.exe(cmd='sudo grep -E "image_tag|namespace|RELEASE_TAG" /root/openstack-configs/defaults.yaml', is_as_sqe=True)
+        release_tag = ans.split('\r\n')[0].split(':')[-1].strip()
+
+        a = {'gerrit_tag': ans.split('\r\n')[1].split(':')[-1].strip(),
+             'container_namespace': ans.split('\r\n')[2].split(':')[-1].strip(),
+             'mechanism': self.pod.driver,
+             'release_tag': release_tag,
+             'release_name': self.RELEASE_NAMES[release_tag.rsplit('.', 1)[0]]}
         if a['mechanism'] == 'vts':
+            ans = self.exe('sudo cat /root/vts_config.yaml', is_as_sqe=True)
+            active_vtc_ips = [x['vtc']['api_ip'] for x in yaml.load(ans)['vts_hosts'].values()]
+            for vtc in self.pod.vtc:
+                if vtc.api_ip not in active_vtc_ips:
+                    self.log_warning('"{}" deleted since is not active according to /root/vts_config.yaml'.format(vtc))
+                    del self.pod.nodes[vtc.id]
+            if not len(self.pod.vtc):
+                raise RuntimeError('Not VTC is activated on this lab')
             a['mech_ver'] = self.pod.vtc[0].r_vtc_get_version()
         else:
             a['mech_ver'] = 'vpp XXXX'
+        with self.open_artifact('{}-versions.txt'.format(self.pod), 'w') as f:
+            f.write(json.dumps(a, sort_keys=True, indent=4, separators=(',', ': ')))
+
         return a
     
     def r_collect_logs(self, regex):
         body = ''
         for cmd in [self._form_log_grep_cmd(log_files='/var/log/mercury/installer/*', regex=regex)]:
-            ans = self.exe(command=cmd, is_warn_only=True)
+            ans = self.exe(cmd=cmd, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
 
@@ -38,7 +60,7 @@ class CimcDirector(CimcServer):
             self.exe(cmd)
 
     def r_check_intel_nics(self):
-        ans = self.exe_as_sqe('lspci | grep Intel | grep SFP+', is_warn_only=True)
+        ans = self.exe(cmd='lspci | grep Intel | grep SFP+', is_warn_only=True, is_as_sqe=True)
         if not ans:
             raise RuntimeError('{}: there is no Intel NIC'.format(self))
         # pci_addrs = [x.split()[0] for x in ans.split('\r\n')]
@@ -59,24 +81,22 @@ class CimcDirector(CimcServer):
 
     def r_resolve_power_failure(self):
         ver = self.r_get_version()
-        self.exe('python openstack/hw_validations.py --resolve-failures power', in_directory='installer-' + ver['gerrit_tag'])
+        self.exe('python openstack/hw_validations.py --resolve-failures power', in_dir='installer-' + ver['gerrit_tag'])
 
-    @decorators.section('Creating/activating sqe user')
+    @decorators.section('Create/activate sqe user')
     def r_create_sqe_user(self):
-        from os import path
+        from lab.server import Server
 
-        sqe_username = 'sqe'
-        if not self.exe(command='grep {} /etc/passwd'.format(sqe_username), is_warn_only=True):
+        if not self.exe(cmd='grep {} /etc/passwd'.format(self.SQE_USERNAME), is_warn_only=True):
             tmp_password = 'cisco123tmp'
-            encrypted_password = self.exe(command='openssl passwd -crypt ' + tmp_password).split()[-1]  # encrypted password may contain Warning
-            self.exe(command='adduser -p ' + encrypted_password + ' ' + sqe_username)
-            self.exe(command='echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(sqe_username))
-            self.exe(command='chmod 0440 /etc/sudoers.d/' + sqe_username)
+            encrypted_password = self.exe(cmd='openssl passwd -crypt ' + tmp_password).split()[-1]  # encrypted password may contain Warning
+            self.exe(cmd='adduser -p ' + encrypted_password + ' ' + self.SQE_USERNAME)
+            self.exe(cmd='echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(self.SQE_USERNAME))
+            self.exe(cmd='chmod 0440 /etc/sudoers.d/' + self.SQE_USERNAME)
 
-            self._server.username, self._server.password = sqe_username, tmp_password  # start using sqe user with tmp password
-            self.exe('mkdir -p .ssh && chmod 700 .ssh')
-            self.exe('echo "{}" > .ssh/id_rsa && chmod 600 .ssh/id_rsa'.format(self.PRIVATE_KEY))
-            self.exe('echo "{}" > .ssh/id_rsa.pub && cp .ssh/id_rsa.pub .ssh/authorized_keys && chmod 600 .ssh/authorized_keys'.format(self.PUBLIC_KEY))
+            server = Server(ip=self.ssh_ip, username=self.SQE_USERNAME, password=tmp_password)
+            server.exe('mkdir -p .ssh && chmod 700 .ssh')
+            server.exe('echo "{}" > .ssh/id_rsa && chmod 600 .ssh/id_rsa'.format(self.PRIVATE_KEY))
+            server.exe('echo "{}" > .ssh/id_rsa.pub && cp .ssh/id_rsa.pub .ssh/authorized_keys && chmod 600 .ssh/authorized_keys'.format(self.PUBLIC_KEY))
             gitlab_public = 'wwwin-gitlab-sjc.cisco.com,10.22.31.77 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJZlfIFWs5/EaXGnR9oXp6mCtShpvO2zKGqJxNMvMJmixdkdW4oPjxYEYP+2tXKPorvh3Wweol82V3KOkB6VhLk='
-            self.exe('echo {} > .ssh/known_hosts'.format(gitlab_public))
-            self._server.username, self._server.password = self.ssh_username, self.ssh_password  # restore to previous settings
+            server.exe('echo {} > .ssh/known_hosts'.format(gitlab_public))
