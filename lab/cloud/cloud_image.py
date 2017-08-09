@@ -66,11 +66,8 @@ class CloudImage(object):
         from os import path
         import requests
 
-        try:
-            url = CloudImage.IMAGES[name]
-            url_txt = url + '.txt'
-        except KeyError:
-            return 'fake', 'fake', 'fake', 'fake'
+        url = CloudImage.IMAGES[name]
+        url_txt = url + '.txt'
 
         try:
             r = requests.get(url=url_txt)
@@ -82,7 +79,7 @@ class CloudImage(object):
             raise ValueError(url_txt + ' has wrong body, expected checksum file_name size username password')
 
     def _read_image_properties(self):
-        self._dic['url'], self._dic['checksum'], self._dic['size'], self._dic['username'], self._dic['password'], self._dic['loc_abs_path'] = self.read_image_properties(name=self.name)
+        self._dic['url'], self._dic['checksum'], self._dic['size'], self._dic['username'], self._dic['password'], self._dic['loc_abs_path'] = self.read_image_properties(name=self.name) if self.name in self.IMAGES else 6 * ['fake']
 
     @staticmethod
     @section('Creating custom image (estimate 30 sec)')
