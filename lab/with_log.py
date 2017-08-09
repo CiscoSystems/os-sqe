@@ -90,6 +90,9 @@ class WithLogMixIn(object):
     def log_error(self, message):
         lab_logger.error(str(self) + ': ' + message)
 
+    def log_exception(self):
+        lab_logger.exception(str(self) + ': EXCEPTION')
+
     def log_to_slack(self, message):
         import requests
         import json
