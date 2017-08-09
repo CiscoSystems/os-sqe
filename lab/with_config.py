@@ -4,6 +4,7 @@ import requests
 
 class WithConfig(object):
     SQE_USERNAME = 'sqe'
+    DEFAULT_PASSWORD = 'cisco123'
     REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
     CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
@@ -58,16 +59,6 @@ class WithConfig(object):
         loc = path.split('/')[-1]
         local('test -e {a}/{l} || curl -s -R http://{ip}/{p} -o {a}/{l}'.format(a=WithConfig.ARTIFACTS_DIR, l=loc, ip=WithConfig.REMOTE_FILE_STORE_IP, p=path))
         return os.path.join(WithConfig.ARTIFACTS_DIR, loc)
-
-    @staticmethod
-    def get_list_of_pods():
-        import requests
-        import re
-
-        resp = requests.get(url=WithConfig.CONFIGS_REPO_URL.replace('raw', 'tree'))
-        if resp.status_code != 200:
-            raise ValueError('Something wrong with repo: {}'.format(WithConfig.CONFIGS_REPO_URL))
-        return re.findall('.*title="(.*)" href=.*yaml', resp.text)
 
 
 def read_config_from_file(cfg_path, folder='', is_as_string=False):

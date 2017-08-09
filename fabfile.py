@@ -1,10 +1,10 @@
 import sys
-
 from fabric.api import task
 
 if '.' not in sys.path:
     sys.path.append('.')
 
+from tools.fabric_test import test
 
 @task
 def cmd():
@@ -16,14 +16,12 @@ def cmd():
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.with_log import lab_logger
-
-    def get_lab_nodes(cfg_path):
-        pod = Laboratory.create_from_path(cfg_path=cfg_path)
-        return pod, sorted(map(lambda node: node.id, pod.nodes.values()))
+    from tools.configurator import Configurator
 
     def get_node_methodes(l, name):
         if name == 'cloud':
-            d = DeployerExisting({'hardware-lab-config': lab_cfg_path}).execute([])
+            deployer = DeployerExisting(ip=l.mgmt.ssh_ip)
+            d = deployer.execute({'clouds': [], 'servers': []})
         elif device_name == 'lab':
             d = l
         else:
@@ -55,10 +53,9 @@ def cmd():
             lab_logger.exception('\n Exception: {0}'.format(ex))
 
     while True:
-        lab_cfg_path = get_user_input(options_lst=Laboratory.get_list_of_pods())
-        lab, nodes = get_lab_nodes(lab_cfg_path)
+        lab = Laboratory.create_from_remote(ip=get_user_input(options_lst=Configurator.KNOWN_LABS.keys()))
         while True:
-            device_name = get_user_input(owner=lab, options_lst=['lab', 'cloud'] + nodes)
+            device_name = get_user_input(owner=lab, options_lst=['lab', 'cloud'] + lab.nodes.keys())
             if device_name == 'level_up':
                 break
             device, method_names = get_node_methodes(l=lab, name=device_name)
@@ -229,15 +226,17 @@ def bash():
     from lab.laboratory import Laboratory
     from lab.nodes.lab_server import LabServer
     from lab.nodes.virtual_server import VirtualServer
+    from tools.configurator import Configurator
 
-    lab_cfg_path = get_user_input(options_lst=Laboratory.get_list_of_pods())
-    pod = Laboratory.create_from_path(cfg_path=lab_cfg_path)
+    pod = Laboratory.create_from_remote(ip=get_user_input(options_lst=Configurator.KNOWN_LABS.keys()))
     aliases = []
-    for node in pod.get_nodes_by_class():
+    for node in pod.nodes.values():
         if not isinstance(node, VirtualServer):
-            aliases.append('alias z{n}="sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}"'.format(n=node.id, p=node.oob_password, u=node.oob_username, ip=node.oob_ip))
+            aliases.append('alias z{n}="sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}"'.format(n=node.id, p=node.oob_password, u=node.oob_username, ip=node.oob_ip))  # cimc
         if isinstance(node, LabServer):
-            aliases.append('alias {n}="ssh -t -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}"'.format(n=node.id, u=node.ssh_username, ip=node.ssh_ip))
+            ip, username, password = (node.proxy.ssh_ip + ' ' + 'ssh -o StrictHostKeyChecking=no ' + node.id, node.proxy.ssh_username, node.proxy.ssh_password) if node.proxy else (node.ssh_ip, node.ssh_username, node.ssh_password)
+            password = ' sshpass -p ' + password + ' ' if password else ''  # if password is None use the key pair to ssh
+            aliases.append('alias {n}="{p}ssh -t -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}"'.format(p=password, n=node.id, u=username, ip=ip))  # ssh
 
     with open('tmp.aliases', 'w') as f:
         f.write('\n'.join(sorted(aliases)))

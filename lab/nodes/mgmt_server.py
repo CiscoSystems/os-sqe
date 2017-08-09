@@ -88,7 +88,7 @@ class CimcDirector(CimcServer):
         from lab.server import Server
 
         if not self.exe(cmd='grep {} /etc/passwd'.format(self.SQE_USERNAME), is_warn_only=True):
-            tmp_password = 'cisco123tmp'
+            tmp_password = 'tmp-password'
             encrypted_password = self.exe(cmd='openssl passwd -crypt ' + tmp_password).split()[-1]  # encrypted password may contain Warning
             self.exe(cmd='adduser -p ' + encrypted_password + ' ' + self.SQE_USERNAME)
             self.exe(cmd='echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(self.SQE_USERNAME))

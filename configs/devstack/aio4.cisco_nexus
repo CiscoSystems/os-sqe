@@ -25,5 +25,5 @@ managed_physical_network = physnet1
 [ml2_mech_cisco_nexus:172.22.191.18]
 compute-1=1/31 #arbitrary name used on switch only
 compute-2=1/32 #arbitrary name used on switch only
-username=admin
-password=cisco123
+username={username}
+password={password}

@@ -11,35 +11,24 @@ class Server(WithConfig):
 
     def exe(self, cmd, in_dir='.', is_warn_only=False, n_attempts=N_CONNECTION_ATTEMPTS):
         from fabric.api import run, settings, cd
-        from fabric.exceptions import NetworkError
 
         if str(self.ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(cmd, in_directory=in_dir, warn_only=is_warn_only)
 
-        with settings(**self.construct_settings(is_warn_only=is_warn_only, n_attempts=n_attempts)):
-            with cd(in_dir):
-                try:
-                    res = run(cmd)
-                except NetworkError:
-                    if is_warn_only:
-                        return ''
-                    else:
-                        raise
-        if not is_warn_only:
-            if res and res.return_code != 0:
-                raise Exception(res.stderr)
-        return res
+        with settings(**self.construct_settings(is_warn_only=is_warn_only, n_attempts=n_attempts)), cd(in_dir):
+            res = run(cmd)
+            if res.failed and not is_warn_only:
+                raise RuntimeError(res.stderr)
+            return res
 
     def construct_settings(self, is_warn_only, n_attempts):
-        kwargs = {'host_string': '{user}@{ip}'.format(user=self.username, ip=self.ip),
-                  'disable_known_hosts': True,
-                  'connection_attempts': n_attempts,
-                  'warn_only': is_warn_only}
+        env = {'host_string': self.username + '@' + self.ip,
+               'disable_known_hosts': True, 'abort_on_prompts': True, 'connection_attempts': n_attempts, 'warn_only': is_warn_only}
         if self.password is None:
-            kwargs['key'] = self.PRIVATE_KEY
+            env['key'] = self.PRIVATE_KEY
         else:
-            kwargs['password'] = self.password
-        return kwargs
+            env['password'] = self.password
+        return env
 
     def get_package_manager(self):
         if not self._package_manager:
@@ -103,8 +92,3 @@ class Server(WithConfig):
         for package_name in package_names.split():
             if self.exe(cmd='whereis {0}'.format(package_name)) == package_name + ':':
                 self.exe(cmd='sudo {0} install -y {1}'.format(pm, package_names))
-
-    def actuate_hostname(self, refresh=True):
-        if not hasattr(self, '_hostname') or refresh:
-            self.hostname = self.exe('hostname').stdout.strip()
-        return self.hostname

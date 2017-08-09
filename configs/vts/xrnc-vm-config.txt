@@ -29,7 +29,7 @@ MGMT_NETWORK_IP_GATEWAY="{mx_gw}"
 
 # XRNC username and password
 USERNAME='{xrnc_username}'
-# openssl passwd -1 -salt xxx cisco123:
+# openssl passwd -1 -salt xxx password:
 PASSWORD_HASH='$1$xxx$J3aa90XAPYg6HSNUUUD2o1'
 
 # XRVR username ans password

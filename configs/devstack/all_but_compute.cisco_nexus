@@ -27,5 +27,5 @@ managed_physical_network = physnet1
 {}=1/31
 {}=1/32
 ssh_port=22
-username=admin
-password=cisco123
+username={}
+password={}

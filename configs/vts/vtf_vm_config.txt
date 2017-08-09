@@ -19,7 +19,6 @@ NETWORK_IP_GATEWAY="{loc_gw}"
 # VTC/VTF Admin user/password hash
 USERNAME='cisco'
 # Generate with openssl passwd -1 -salt <salt> <password>
-# cisco/cisco123
 PASSWORD_HASH='$1$xxx$J3aa90XAPYg6HSNUUUD2o1'
 
 VTS_REGISTRATION_API="https://{vtc_loc_ip}:8888/api/running/cisco-vts/vtfs/vtf"

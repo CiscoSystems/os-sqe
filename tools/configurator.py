@@ -42,27 +42,36 @@ class Configurator(WithConfig, WithLogMixIn):
                       'external':   Network(net_id='e', cidr='44.44.44.0/24', vlan=2044, is_via_tor=False, pod='', roles_must_present=['CimcController']),
                       'provider':   Network(net_id='p', cidr='55.55.55.0/24', vlan=2055, is_via_tor=False, pod='', roles_must_present=['CimcCompute'])}
         self.pod = Laboratory()
+        self.mgm_ssh_password = None
 
     def create_from_remote(self, ip):
         import validators
         import yaml
+        import time
         from lab.server import Server
 
         actual_ip = self.KNOWN_LABS.get(ip, ip)
         if not validators.ipv4(actual_ip):
             raise ValueError('"{}" is not resolved as valid IPv4'.format(ip))
 
-        s = Server(ip=actual_ip, username='root', password='cisco123')
-        ans = s.exe(cmd='cat /root/openstack-configs/setup_data.yaml # {} mgm: sshpass -p cisco123 root@{}'.format(ip, actual_ip), is_warn_only=True)
-        if 'No such file or directory' in ans:
-            raise RuntimeError('mgm node {} does not have setup_data.yaml'.format(ip))
-
-        setup_data = yaml.load(ans)
-        return self.create_from_setup_data(setup_data=setup_data)
+        s = Server(ip=actual_ip, username='root', password=None)
+        for password in [None, self.DEFAULT_PASSWORD]:  # first try to exe with key pair, if failed, second try with default password
+            try:
+                s.password = password
+                ans = s.exe(cmd='cat /root/openstack-configs/setup_data.yaml # {} mgm with password {}'.format(ip, password), is_warn_only=True)
+                if 'No such file or directory' in ans:
+                    raise RuntimeError('mgm node {} does not have setup_data.yaml'.format(ip))
+                setup_data = yaml.load(ans)
+                self.mgm_ssh_password = password
+                return self.create_from_setup_data(setup_data=setup_data)
+            except SystemExit:
+                time.sleep(1)
+                self.log_warning('It is potentially old release without key pair installed for root@mgm, trying to re-execute with default password')
+                time.sleep(1)
+                continue
 
     def create_from_setup_data(self, setup_data):
         self.pod.setup_data = setup_data
-        self.pod.name = setup_data['TESTING_TESTBED_NAME']
 
         self.process_mercury_nets()
         self.process_switches()
@@ -209,11 +218,10 @@ class Configurator(WithConfig, WithLogMixIn):
         cimc_username = self.pod.setup_data['CIMC-COMMON']['cimc_username']
         cimc_password = self.pod.setup_data['CIMC-COMMON']['cimc_password']
         ssh_username = self.pod.setup_data['COBBLER']['admin_username']
-        ssh_password = None
 
         nodes = [{'id': 'mgm', 'role': 'CimcDirector',
                   'oob-ip': self.pod.setup_data['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': self.pod.setup_data['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': self.pod.setup_data['TESTING_MGMT_CIMC_PASSWORD'],
-                  'ssh-username': ssh_username, 'ssh-password': ssh_password, 'proxy': None,
+                  'ssh-username': ssh_username, 'ssh-password': self.mgm_ssh_password, 'proxy': None,
                   'nics': [{'id': 'a', 'ip': self.pod.setup_data['TESTING_MGMT_NODE_API_IP'].split('/')[0], 'is-ssh': True},
                            {'id': 'm', 'ip': self.pod.setup_data['TESTING_MGMT_NODE_MGMT_IP'].split('/')[0], 'is-ssh': False}]}]
 
@@ -245,11 +253,10 @@ class Configurator(WithConfig, WithLogMixIn):
                         xrvr_nics = [{'id': 'm', 'ip': self.pod.setup_data['VTS_PARAMETERS']['VTS_XRNC_MGMT_IPS'][i-1], 'is-ssh': True},
                                      {'id': 't', 'ip': self.pod.setup_data['VTS_PARAMETERS']['VTS_XRNC_TENANT_IPS'][i-1], 'is-ssh': False}]
 
-                        virtuals.append({'id': 'vtc' + str(i), 'role': 'vtc', 'oob-ip': None,
-                                         'oob-username': None, 'oob-password': None,
+                        virtuals.append({'id': 'vtc' + str(i), 'role': 'vtc', 'oob-ip': None, 'oob-username': None, 'oob-password': None,
                                          'ssh-username': self.pod.setup_data['VTS_PARAMETERS']['VTC_SSH_USERNAME'], 'ssh-password': self.pod.setup_data['VTS_PARAMETERS']['VTC_SSH_PASSWORD'],
                                          'virtual-on': node_id, 'vip_a': self.pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_VIP'], 'vip_m': self.pod.setup_data['VTS_PARAMETERS']['VTS_NCS_IP'], 'proxy': None, 'nics': vtc_nics})
-                        virtuals.append({'id': 'xrvr' + str(i), 'role': 'xrvr', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': ssh_password,
+                        virtuals.append({'id': 'xrvr' + str(i), 'role': 'xrvr', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': self.DEFAULT_PASSWORD,
                                          'virtual-on': node_id, 'proxy': 'mgm', 'nics': xrvr_nics})
                 except KeyError as ex:
                     raise KeyError('{}: no {}'.format(node_id, ex))
@@ -275,7 +282,8 @@ class Configurator(WithConfig, WithLogMixIn):
 
         def node_yaml_body(node, tp):
             pn_id = node.proxy.id if node.proxy is not None else None
-            a = ' {{id: {:8}, role: {:10}, proxy: {:5}, oob-ip: {:15}, oob-username: {:15}, oob-password: {:9}'.format(node.id, node.role, pn_id, node.oob_ip, node.oob_username, node.oob_password)
+            ssh_part = ', ssh-username: {:9}, ssh-password: {:9}'.format(node.ssh_username, node.ssh_password) if isinstance(node, LabServer) else ''
+            a = ' {{id: {:8}, role: {:15}, proxy: {:5}, oob-ip: {:15}, oob-username: {:15}, oob-password: {:9}{}'.format(node.id, node.role, pn_id, node.oob_ip, node.oob_username, node.oob_password, ssh_part)
             if tp == virtual:
                 a += ', virtual-on: {:5}'.format(node.hard.id)
             if type(node) is Vtc:
@@ -340,6 +348,6 @@ if __name__ == '__main__':
     from lab.laboratory import Laboratory
 
     c = Configurator()
-    pod = c.create_from_local_mercury_repo()
-    c.save_self_config(p=pod)
-    Laboratory.create_from_path(cfg_path=Laboratory.get_artifact_file_path(pod.name + '.yaml'))
+    pod = c.create_from_remote(ip='g7-2')
+    pod = Laboratory.create_from_path(cfg_path=Laboratory.get_artifact_file_path(pod.name + '.yaml'))
+    pod.mgmt.r_get_version()

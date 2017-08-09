@@ -7,7 +7,7 @@ from lab import decorators
 
 class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def __repr__(self):
-        return self.name + '-' + self.driver
+        return self.name
 
     @staticmethod
     def sample_config():
@@ -15,7 +15,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     def __init__(self):
         self._unique_dict = dict()  # to make sure that all needed objects are unique
-        self.name = None
+        self._name = None
         self.setup_data = None
         self.dns = []
         self.ntp = []
@@ -45,7 +45,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.wire import Wire
 
         pod = Laboratory()
-        pod.name = cfg['name']
+        pod._name = cfg['name']
 
         pod.setup_data = cfg.get('setup-data')
         pod.dns.extend(pod.setup_data['NETWORKING']['domain_name_servers'])
@@ -105,6 +105,12 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     @property
     def driver(self):
         return self.setup_data['MECHANISM_DRIVERS']
+
+    @property
+    def name(self):
+        if self._name is None:
+            self._name = self.setup_data['TESTING_TESTBED_NAME'] + '-' + self.driver
+        return self._name
 
     @property
     def mgmt(self):

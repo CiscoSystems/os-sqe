@@ -9,8 +9,8 @@ class ProviderLibvirt(Provider):
 
     def sample_config(self):
         return {'lab_id': 'int in range 1-99',
-                'username': 'cisco',
-                'password': 'cisco123',
+                'username': 'some name',
+                'password': 'some password',
                 'networks': [41, 61, 42, 43, 62],
                 'instances': [{'hostname': 'some name', 'image_url': 'http://path.to.image.file', 'image_checksum': 'checksum', 'on_nets': [41, 62]}]}
 

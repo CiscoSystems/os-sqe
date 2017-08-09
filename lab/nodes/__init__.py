@@ -23,7 +23,7 @@ class LabNode(WithLogMixIn, WithConfig):
         self._wires = []
 
     def __repr__(self):
-        return str(self.pod) + ' ' + self.id
+        return self.id
 
     @property
     def proxy(self):  # lazy initialisation, node_id until the first use, then convert it to node reference

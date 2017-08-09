@@ -13,9 +13,6 @@ class LabServer(LabNode):
         self.virtual_servers = set()  # virtual servers running on this hardware server
         self.nics = Nic.add_nics(node=self, nics_cfg=dic['nics'])
 
-    def __repr__(self):
-        return u'{} {}'.format(self.pod, self.id)
-
     def add_virtual_server(self, server):
         self.virtual_servers.add(server)
 
@@ -126,14 +123,15 @@ class LabServer(LabNode):
             self.pod.check_create_sqe_user()
         srv = Server(ip=ip, username=username, password=password)
 
+        comment = ' # ' + self.pod.name + ' ' + self.id + ':'
+        comment += ' sshpass -p ' + password if password else ''
+        comment += ' ssh ' + username + '@' + ip
+
         if 'sudo' in cmd and 'sudo -p "" -S ' not in cmd:
             cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.ssh_password))
         if self.proxy:
             cmd = 'ssh -o StrictHostKeyChecking=no ' + self.id + ' "{}"'.format(cmd)
-
-        comment = ' # ' + str(self) + ':'
-        comment += ' sshpass -p ' + password if password else ''
-        comment += ' ssh ' + username + '@' + self.ssh_ip
+            comment += ' ssh ' + self.id
 
         if estimated_time:
             self.log('Running {}... (usually it takes {} secs)'.format(cmd, estimated_time))
@@ -259,4 +257,4 @@ class LabServer(LabNode):
             return res
 
     def r_get_n_sriov(self):
-        return len([x for x in self.exe('lspci | grep 710').split('\n') if 'Virtual' in x])
+        return len([x for x in self.exe('lspci | grep 710', is_warn_only=True).split('\n') if 'Virtual' in x])

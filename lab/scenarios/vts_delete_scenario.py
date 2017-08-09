@@ -129,19 +129,6 @@ class VtsDeleteScenario(ParallelWorker):
 
         self._cloud.os_cleanup()
 
-        # self._access_point()
-        # all_servers = []
-        # for info in server_info:
-        #     ip = info['addresses'].split('=')[-1]
-        #     zone = info['OS-EXT-SRV-ATTR:host']
-        #     server = Server(ip=ip, username='admin', password='cisco123')
-        #     self._computes[zone].append(server)
-        #     all_servers.append(server)
-
-        # self._ping_part(all_servers)
-
-        # if self._what_to_run_inside.startswith('iperf'):
-        #     return self._iperf_part()
 
     @staticmethod
     def debug_output():
