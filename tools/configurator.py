@@ -3,126 +3,13 @@ from lab.with_log import WithLogMixIn
 
 
 class Configurator(WithConfig, WithLogMixIn):
-    KNOWN_EXT_VLANS = {
-        6:    '172.31.230.0/24',     # ipmi cobbler
-        112:  '10.30.117.0/28',      # i13 mx
-        157:  '10.23.228.224/27',    # marahaika a
-        319:  '10.23.221.128/26',    # g7-2 a
-        690:  '172.29.68.224/28',    # g7-2 e
-        860:  '172.29.86.0/26',      # i13 api
-        1735: '44.44.44.0/24',       # marahaika e
-        2301: '172.26.232.192/28',   # c35bot a
-        2302: '172.26.232.208/28'    # c35bot e
-        }
-
-    KNOWN_SPECIALS = {
-        'g7-2': [{'id': 'term', 'role': 'terminal', 'oob-ip': '172.31.229.55', 'oob-username': 'openstack-read'},
-                 {'id': 'pxe', 'role': 'pxe', 'oob-ip': '172.31.230.170', 'oob-username': 'openstack-read'}]
-    }
-
-    KNOWN_LABS = {'g7-2': '10.23.221.142', 'marahaika': '10.23.228.228', 'c35bottom': '172.26.232.151', 'i11tb3': '10.30.117.6',
-                  'i13-tb1': '10.30.116.206', 'c42-mid': '172.28.165.31', 'mdc2': '172.29.86.38', 'skullcrusher': '10.23.229.126', 'c43-bot': '172.26.233.230', 'c42top': '172.28.165.111',
-                  'hiccup': '172.31.228.196', 'rcdn-nfvi-c': '10.201.36.50', 'j10-tb1': '10.30.117.238', 'sjc04-c38': '172.26.229.46', 'c33-tb2-mpod': '172.26.232.144', 'sjc-i13-tb4': '172.29.87.100',
-                  'c43-nfvi': '172.26.233.230', 'c42-ucsd': '172.28.165.85', 'c44-bot': '172.26.233.80', 'merc-reg-tb1': '172.29.84.228', 'J11': '10.23.220.150'}
-
     def sample_config(self):
         pass
 
     def __init__(self):
-        from lab.network import Network
-        from lab.laboratory import Laboratory
-
         super(Configurator, self).__init__()
 
-        self._nets = {'api':        Network(net_id='a', cidr='10.10.10.0/32', vlan=9999, is_via_tor=True,  pod='', roles_must_present=['CimcDirector', 'CimcController', 'Vtc', 'VtsHost']),
-                      'management': Network(net_id='m', cidr='11.11.11.0/24', vlan=2011, is_via_tor=False, pod='', roles_must_present=['CimcDirector', 'CimcController', 'CimcCompute', 'CimcCeph', 'CimcCompute',
-                                                                                                                                       'Vtc', 'Xrvr', 'VtsHost']),
-                      'tenant':     Network(net_id='t', cidr='22.22.22.0/24', vlan=2022, is_via_tor=False, pod='', roles_must_present=['CimcCompute', 'Xrvr', 'VtsHost']),
-                      'storage':    Network(net_id='s', cidr='33.33.33.0/24', vlan=2033, is_via_tor=False, pod='', roles_must_present=['CimcController', 'CimcCompute', 'CimcCeph']),
-                      'external':   Network(net_id='e', cidr='44.44.44.0/24', vlan=2044, is_via_tor=False, pod='', roles_must_present=['CimcController']),
-                      'provider':   Network(net_id='p', cidr='55.55.55.0/24', vlan=2055, is_via_tor=False, pod='', roles_must_present=['CimcCompute'])}
-        self.pod = Laboratory()
-        self.mgm_ssh_password = None
-
-    def create_from_remote(self, ip):
-        import validators
-        import yaml
-        import time
-        from lab.server import Server
-
-        actual_ip = self.KNOWN_LABS.get(ip, ip)
-        if not validators.ipv4(actual_ip):
-            raise ValueError('"{}" is not resolved as valid IPv4'.format(ip))
-
-        s = Server(ip=actual_ip, username='root', password=None)
-        for password in [None, self.DEFAULT_PASSWORD]:  # first try to exe with key pair, if failed, second try with default password
-            try:
-                s.password = password
-                ans = s.exe(cmd='cat /root/openstack-configs/setup_data.yaml # {} mgm with password {}'.format(ip, password), is_warn_only=True)
-                if 'No such file or directory' in ans:
-                    raise RuntimeError('mgm node {} does not have setup_data.yaml'.format(ip))
-                setup_data = yaml.load(ans)
-                self.mgm_ssh_password = password
-                return self.create_from_setup_data(setup_data=setup_data)
-            except SystemExit:
-                time.sleep(1)
-                self.log_warning('It is potentially old release without key pair installed for root@mgm, trying to re-execute with default password')
-                time.sleep(1)
-                continue
-
-    def create_from_setup_data(self, setup_data):
-        self.pod.setup_data = setup_data
-
-        self.process_mercury_nets()
-        self.process_switches()
-        self.process_mercury_nodes()
-        self.process_connections()
-        self.pod.validate_config()
-        self.save_self_config(p=self.pod)
-        return self.pod
-
-    def process_switches(self):
-        from lab.nodes.n9.vim_tor import VimTor
-        from lab.wire import Wire
-
-        pod_name = self.pod.setup_data['TESTING_TESTBED_NAME']
-        catalyst = {'g7-2': '10.23.223.176'}
-
-        switches = []
-        username, password = None, None
-        for sw in self.pod.setup_data['TORSWITCHINFO']['SWITCHDETAILS']:
-            username, password = sw['username'], sw['password']
-            switches.append({'id': 'n' + sw['hostname'][-1].lower(), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'oob-username': username, 'oob-password': password})
-
-        if pod_name in catalyst:
-            switches.append({'id': 'nc', 'role': 'VimCat', 'oob-ip': catalyst[pod_name], 'oob-username': username, 'oob-password': password})
-
-        tors = VimTor.add_nodes(pod=self.pod, nodes_cfg=switches)
-
-        specials = {}
-        wires_cfg = []
-        for n9 in tors.values():
-            for nei in n9.neighbours_cdp:
-                node2_id = nei.ipv4.split('.')[-1]
-                if nei.port_id == 'mgmt0':
-                    specials[nei.ipv4] = {'id': node2_id, 'role': 'Oob', 'oob-ip': nei.ipv4, 'oob-username': 'XXXXXX', 'oob-password': password}
-                else:
-                    s = filter(lambda y: y.oob_ip == nei.ipv4, tors.values())
-                    if s:
-                        node2_id = s[0].id
-                    else:  # this is unknown connection, one of them is connection to tor
-                        specials[nei.ipv4] = {'id': node2_id, 'role': 'Tor', 'oob-ip': nei.ipv4, 'oob-username': 'XXXXXX', 'oob-password': password}
-                wires_cfg.append({'node1': n9.id, 'port1': nei.port_id, 'mac': 'unknown', 'node2': node2_id, 'port2': nei.peer_port_id, 'pc-id': nei.pc_id})
-
-        for i, x in enumerate(Configurator.KNOWN_SPECIALS.get(pod_name, [])):
-            x['oob-password'] = password
-            specials[i] = x
-
-        self.pod.nodes.update(tors)
-        self.pod.nodes.update(VimTor.add_nodes(pod=self.pod, nodes_cfg=specials.values()))
-        self.pod.wires.extend(Wire.add_wires(pod=self.pod, wires_cfg=wires_cfg))
-
-    def create_from_local_mercury_repo(self):
+    def create(self):
         import os
         from fabric.operations import prompt
 
@@ -147,6 +34,60 @@ class Configurator(WithConfig, WithLogMixIn):
         setup_data = self.read_config_from_file(os.path.join(pod_dir, yaml_name))
         return self.create_from_setup_data(setup_data=setup_data)
 
+    def create_from_setup_data(self, setup_data):
+        pod = Laboratory()
+        pod.setup_data = setup_data
+
+        self.process_mercury_nets(pod=pod)
+        self.process_switches(pod=pod)
+        self.process_mercury_nodes(pod=pod)
+        self.process_connections()
+        pod.validate_config()
+        self.save_self_config(p=pod)
+        return pod
+
+    @staticmethod
+    def process_switches(pod):
+        from lab.nodes.n9.vim_tor import VimTor
+        from lab.wire import Wire
+
+        pod_name = pod.setup_data['TESTING_TESTBED_NAME']
+
+        known_info = Configurator.KNOWN_LABS[pod_name]
+        switches = []
+        username, password = None, None
+        for sw in pod.setup_data['TORSWITCHINFO']['SWITCHDETAILS']:
+            username, password = sw['username'], sw['password']
+            switches.append({'id': 'n' + sw['hostname'][-1].lower(), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'oob-username': username, 'oob-password': password})
+
+        if 'nc' in known_info:
+            switches.append({'id': 'nc', 'role': 'VimCat', 'oob-ip': known_info['nc'], 'oob-username': username, 'oob-password': password})
+
+        tors = VimTor.add_nodes(pod=pod, nodes_cfg=switches)
+
+        specials = {}
+        wires_cfg = []
+        for n9 in tors.values():
+            for nei in n9.neighbours_cdp:
+                node2_id = nei.ipv4.split('.')[-1]
+                if nei.port_id == 'mgmt0':
+                    specials[nei.ipv4] = {'id': node2_id, 'role': 'Oob', 'oob-ip': nei.ipv4, 'oob-username': 'XXXXXX', 'oob-password': password}
+                else:
+                    s = filter(lambda y: y.oob_ip == nei.ipv4, tors.values())
+                    if s:
+                        node2_id = s[0].id
+                    else:  # this is unknown connection, one of them is connection to tor
+                        specials[nei.ipv4] = {'id': node2_id, 'role': 'Tor', 'oob-ip': nei.ipv4, 'oob-username': 'XXXXXX', 'oob-password': password}
+                wires_cfg.append({'node1': n9.id, 'port1': nei.port_id, 'mac': 'unknown', 'node2': node2_id, 'port2': nei.peer_port_id, 'pc-id': nei.pc_id})
+
+        for i, x in enumerate(known_info.get('specials', [])):
+            x['oob-password'] = password
+            specials[i] = x
+
+        pod.nodes.update(tors)
+        pod.nodes.update(VimTor.add_nodes(pod=pod, nodes_cfg=specials.values()))
+        pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=wires_cfg))
+
     @staticmethod
     def ask_ip_u_p(msg, default):
         from fabric.operations import prompt
@@ -165,16 +106,17 @@ class Configurator(WithConfig, WithLogMixIn):
         password = prompt(text=msg + ' enter password > ')
         return ipv4, username, password
 
-    def process_connections(self):
+    @staticmethod
+    def process_connections(pod):
         import yaml
         from lab.wire import Wire
 
-        cimc_info_yaml = Configurator.get_artifact_file_path('{}-cimc-info.yaml'.format(self.pod))
+        cimc_info_yaml = Configurator.get_artifact_file_path('{}-cimc-info.yaml'.format(pod))
         try:
             cimc_info_dic = Configurator.read_config_from_file(config_path=cimc_info_yaml)
         except ValueError:
             cimc_info_dic = {}
-            for cimc in self.pod.cimc_servers:
+            for cimc in pod.cimc_servers:
                 cimc_info_dic[cimc.id] = cimc.cimc_list_all_nics()  # returns dic of {port_id: mac}
             with Configurator.open_artifact(name=cimc_info_yaml, mode='w') as f:
                 yaml.dump(cimc_info_dic, f)
@@ -182,7 +124,7 @@ class Configurator(WithConfig, WithLogMixIn):
         wires_cfg = []
         for node1, d in cimc_info_dic.items():
             for port1, mac in d.items():
-                neis = [x.find_neighbour_with_mac(mac=mac, cimc_port_id=port1) for x in self.pod.vim_tors + self.pod.vim_cat]
+                neis = [x.find_neighbour_with_mac(mac=mac, cimc_port_id=port1) for x in pod.vim_tors + pod.vim_cat]
                 neis = filter(lambda n: n is not None, neis)
                 if neis:
                     assert len(neis) == 1, 'More then 1 switch is found connected to the {} {}'.format(node1, port1)
@@ -191,14 +133,15 @@ class Configurator(WithConfig, WithLogMixIn):
                 else:
                     wires_cfg.append({'node1': node1, 'port1': port1, 'mac': mac, 'node2': None,      'port2': None,             'pc-id': None})
 
-        self.pod.wires.extend(Wire.add_wires(pod=self.pod, wires_cfg=wires_cfg))
+        pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=wires_cfg))
 
-    def process_mercury_nets(self):
+    @staticmethod
+    def process_mercury_nets(pod):
         from lab.network import Network
         from netaddr import IPNetwork
 
-        for mercury_net_id, net in self._nets.items():
-            net_mercury_cfg = filter(lambda k: k['segments'][0] == mercury_net_id, self.pod.setup_data['NETWORKING']['networks'])
+        for mercury_net_id, net in Configurator.NETWORKS.items():
+            net_mercury_cfg = filter(lambda k: k['segments'][0] == mercury_net_id, pod.setup_data['NETWORKING']['networks'])
             if net_mercury_cfg:
                 cidr = net_mercury_cfg[0].get('subnet')
                 vlan_id = net_mercury_cfg[0]['vlan_id']
@@ -206,35 +149,36 @@ class Configurator(WithConfig, WithLogMixIn):
                 if cidr:
                     net.net = IPNetwork(cidr)
                     net.is_via_tor = cidr[:2] not in ['11', '22', '33', '44', '55']
-                elif vlan_id in self.KNOWN_EXT_VLANS:
-                    net.net = IPNetwork(self.KNOWN_EXT_VLANS[vlan_id])
+                elif vlan_id in Configurator.KNOWN_LABS['networks']:
+                    net.net = IPNetwork(Configurator.KNOWN_LABS['networks'][vlan_id])
 
-        self.pod.networks.update(Network.add_networks(pod=self.pod, nets_cfg=[{'id': x.id, 'vlan': x.vlan, 'cidr': x.net.cidr, 'roles': x.roles_must_present, 'is-via-tor': x.is_via_tor} for x in self._nets.values()]))
+        pod.networks.update(Network.add_networks(pod=pod, nets_cfg=[{'id': x.id, 'vlan': x.vlan, 'cidr': x.net.cidr, 'roles': x.roles_must_present, 'is-via-tor': x.is_via_tor} for x in Configurator.NETWORKS.values()]))
 
-    def process_mercury_nodes(self):
+    @staticmethod
+    def process_mercury_nodes(pod):
         from lab.nodes import LabNode
         from lab.nodes.virtual_server import VirtualServer
 
-        cimc_username = self.pod.setup_data['CIMC-COMMON']['cimc_username']
-        cimc_password = self.pod.setup_data['CIMC-COMMON']['cimc_password']
-        ssh_username = self.pod.setup_data['COBBLER']['admin_username']
+        cimc_username = pod.setup_data['CIMC-COMMON']['cimc_username']
+        cimc_password = pod.setup_data['CIMC-COMMON']['cimc_password']
+        ssh_username = pod.setup_data['COBBLER']['admin_username']
 
         nodes = [{'id': 'mgm', 'role': 'CimcDirector',
-                  'oob-ip': self.pod.setup_data['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': self.pod.setup_data['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': self.pod.setup_data['TESTING_MGMT_CIMC_PASSWORD'],
-                  'ssh-username': ssh_username, 'ssh-password': self.mgm_ssh_password, 'proxy': None,
-                  'nics': [{'id': 'a', 'ip': self.pod.setup_data['TESTING_MGMT_NODE_API_IP'].split('/')[0], 'is-ssh': True},
-                           {'id': 'm', 'ip': self.pod.setup_data['TESTING_MGMT_NODE_MGMT_IP'].split('/')[0], 'is-ssh': False}]}]
+                  'oob-ip': pod.setup_data['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': pod.setup_data['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': pod.setup_data['TESTING_MGMT_CIMC_PASSWORD'],
+                  'ssh-username': ssh_username, 'ssh-password': None, 'proxy': None,
+                  'nics': [{'id': 'a', 'ip': pod.setup_data['TESTING_MGMT_NODE_API_IP'].split('/')[0], 'is-ssh': True},
+                           {'id': 'm', 'ip': pod.setup_data['TESTING_MGMT_NODE_MGMT_IP'].split('/')[0], 'is-ssh': False}]}]
 
         virtuals = []
 
-        for mercury_role_id, mercury_node_ids in self.pod.setup_data['ROLES'].items():
+        for mercury_role_id, mercury_node_ids in pod.setup_data['ROLES'].items():
             sqe_role_id = {'control': 'CimcController', 'compute': 'CimcCompute', 'block_storage': 'CimcCeph', 'vts': 'VtsHost'}[mercury_role_id]
 
-            nets_for_this_role = {mercury_net_id: net for mercury_net_id, net in self._nets.items() if sqe_role_id in net.roles_must_present}
+            nets_for_this_role = {mercury_net_id: net for mercury_net_id, net in Configurator.NETWORKS.items() if sqe_role_id in net.roles_must_present}
 
             for i, node_id in enumerate(mercury_node_ids, start=1):
                 try:
-                    mercury_srv_cfg = self.pod.setup_data['SERVERS'][node_id]
+                    mercury_srv_cfg = pod.setup_data['SERVERS'][node_id]
                     oob_ip = mercury_srv_cfg['cimc_info']['cimc_ip']
                     oob_username = mercury_srv_cfg['cimc_info'].get('cimc_username', cimc_username)
                     oob_password = mercury_srv_cfg['cimc_info'].get('cimc_password', cimc_password)
@@ -248,27 +192,26 @@ class Configurator(WithConfig, WithLogMixIn):
                     nodes.append({'id': node_id, 'role': sqe_role_id, 'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'proxy': 'mgm', 'nics': nics})
 
                     if mercury_role_id == 'vts':
-                        vtc_nics = [{'id': 'a', 'ip': self.pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_IPS'][i-1], 'is-ssh': True},
-                                    {'id': 'm', 'ip': self.pod.setup_data['VTS_PARAMETERS']['VTS_VTC_MGMT_IPS'][i-1], 'is-ssh': False}]
-                        xrvr_nics = [{'id': 'm', 'ip': self.pod.setup_data['VTS_PARAMETERS']['VTS_XRNC_MGMT_IPS'][i-1], 'is-ssh': True},
-                                     {'id': 't', 'ip': self.pod.setup_data['VTS_PARAMETERS']['VTS_XRNC_TENANT_IPS'][i-1], 'is-ssh': False}]
+                        vtc_nics = [{'id': 'a', 'ip': pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_IPS'][i-1], 'is-ssh': True},
+                                    {'id': 'm', 'ip': pod.setup_data['VTS_PARAMETERS']['VTS_VTC_MGMT_IPS'][i-1], 'is-ssh': False}]
+                        xrvr_nics = [{'id': 'm', 'ip': pod.setup_data['VTS_PARAMETERS']['VTS_XRNC_MGMT_IPS'][i-1], 'is-ssh': True},
+                                     {'id': 't', 'ip': pod.setup_data['VTS_PARAMETERS']['VTS_XRNC_TENANT_IPS'][i-1], 'is-ssh': False}]
 
                         virtuals.append({'id': 'vtc' + str(i), 'role': 'vtc', 'oob-ip': None, 'oob-username': None, 'oob-password': None,
-                                         'ssh-username': self.pod.setup_data['VTS_PARAMETERS']['VTC_SSH_USERNAME'], 'ssh-password': self.pod.setup_data['VTS_PARAMETERS']['VTC_SSH_PASSWORD'],
-                                         'virtual-on': node_id, 'vip_a': self.pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_VIP'], 'vip_m': self.pod.setup_data['VTS_PARAMETERS']['VTS_NCS_IP'], 'proxy': None, 'nics': vtc_nics})
-                        virtuals.append({'id': 'xrvr' + str(i), 'role': 'xrvr', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': self.DEFAULT_PASSWORD,
+                                         'ssh-username': pod.setup_data['VTS_PARAMETERS']['VTC_SSH_USERNAME'], 'ssh-password': pod.setup_data['VTS_PARAMETERS']['VTC_SSH_PASSWORD'],
+                                         'virtual-on': node_id, 'vip_a': pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_VIP'], 'vip_m': pod.setup_data['VTS_PARAMETERS']['VTS_NCS_IP'], 'proxy': None, 'nics': vtc_nics})
+                        virtuals.append({'id': 'xrvr' + str(i), 'role': 'xrvr', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': Configurator.DEFAULT_PASSWORD,
                                          'virtual-on': node_id, 'proxy': 'mgm', 'nics': xrvr_nics})
                 except KeyError as ex:
                     raise KeyError('{}: no {}'.format(node_id, ex))
 
-        self.pod.nodes.update(LabNode.add_nodes(pod=self.pod, nodes_cfg=nodes))
-        self.pod.nodes.update(VirtualServer.add_nodes(pod=self.pod, nodes_cfg=virtuals))
+        pod.nodes.update(LabNode.create_nodes(pod=pod, node_dics_lst=nodes))
+        pod.nodes.update(VirtualServer.create_nodes(pod=pod, node_dics_lst=virtuals))
 
     @staticmethod
     def save_self_config(p):
         from lab.nodes.virtual_server import VirtualServer
         from lab.nodes.lab_server import LabServer
-        from lab.nodes.vtc import Vtc
 
         virtual = 'V'
         switch = 'S'
@@ -280,18 +223,16 @@ class Configurator(WithConfig, WithLogMixIn):
         def nic_yaml_body(nic):
             return '{{id: {:3}, ip: {:20}, is-ssh: {:6} }}'.format(nic.id, nic.ip, nic.is_ssh)
 
-        def node_yaml_body(node, tp):
+        def node_yaml_body(node):
             pn_id = node.proxy.id if node.proxy is not None else None
-            ssh_part = ', ssh-username: {:9}, ssh-password: {:9}'.format(node.ssh_username, node.ssh_password) if isinstance(node, LabServer) else ''
-            a = ' {{id: {:8}, role: {:15}, proxy: {:5}, oob-ip: {:15}, oob-username: {:15}, oob-password: {:9}{}'.format(node.id, node.role, pn_id, node.oob_ip, node.oob_username, node.oob_password, ssh_part)
-            if tp == virtual:
-                a += ', virtual-on: {:5}'.format(node.hard.id)
-            if type(node) is Vtc:
-                vip_a, vip_m = node.get_vtc_vips()
-                a += ', vip_a: {:15}, vip_m: {:15}'.format(vip_a, vip_m)
-            if tp != switch:
-                nics = ',\n              '.join(map(lambda y: nic_yaml_body(y), node.nics.values()))
-                a += ',\n      nics: [ {}\n      ]\n'.format(nics)
+            ssh_part = ', ssh-ip: {:15}, ssh-username: {:9}, ssh-password: {:9}, '.format(node.ssh_ip, node.ssh_username, node.ssh_password) if isinstance(node, LabServer) else ''
+            oob_part = ', oob-ip: {:15}, oob-username: {:9}, oob-password: {:9}'.format(node.oob_ip, node.oob_username, node.oob_password)
+            virtual_part = ', virtual-on: {:5}, '.format(node.hard.id) if node.is_virtual() else ''
+            vip_part = ', ssh-ip-individual: {:15}, '.format(node.ssh_ip_individual) if node.is_vip() else ''
+            a = ' {{id: {:8}, role: {:15}, proxy: {:5}, {}{}{}'.format(node.id, node.role, pn_id, virtual_part, ssh_part, vip_part, oob_part)
+            # if tp != switch:
+            #     nics = ',\n              '.join(map(lambda y: nic_yaml_body(y), node.nics.values()))
+            #     a += ',\n      nics: [ {}\n      ]\n'.format(nics)
             a += ' }'
             return a
 
@@ -307,7 +248,7 @@ class Configurator(WithConfig, WithLogMixIn):
             f.write('\n')
 
             f.write('specials: [\n')
-            special_bodies = [node_yaml_body(node=x, tp=switch) for x in p.oob + p.tor]
+            special_bodies = [node_yaml_body(node=x) for x in p.oob + p.tor]
             f.write(',\n'.join(special_bodies))
             f.write('\n]\n\n')
 
@@ -317,17 +258,17 @@ class Configurator(WithConfig, WithLogMixIn):
             f.write('\n]\n\n')
 
             f.write('switches: [\n')
-            switch_bodies = [node_yaml_body(node=x, tp=switch) for x in p.vim_tors + p.vim_cat]
+            switch_bodies = [node_yaml_body(node=x) for x in p.vim_tors + p.vim_cat]
             f.write(',\n'.join(switch_bodies))
             f.write('\n]\n\n')
 
             f.write('nodes: [\n')
-            node_bodies = sorted([node_yaml_body(node=x, tp=others) for x in p.nodes.values() if isinstance(x, LabServer) and not isinstance(x, VirtualServer)])
+            node_bodies = sorted([node_yaml_body(node=x) for x in p.nodes.values() if isinstance(x, LabServer) and not isinstance(x, VirtualServer)])
             f.write(',\n\n'.join(node_bodies))
             f.write('\n]\n\n')
 
             f.write('virtuals: [\n')
-            node_bodies = [node_yaml_body(node=x, tp=virtual) for x in p.nodes.values() if isinstance(x, VirtualServer)]
+            node_bodies = [node_yaml_body(node=x) for x in p.nodes.values() if isinstance(x, VirtualServer)]
             f.write(',\n\n'.join(node_bodies))
             f.write('\n]\n\n')
 
@@ -348,6 +289,6 @@ if __name__ == '__main__':
     from lab.laboratory import Laboratory
 
     c = Configurator()
-    pod = c.create_from_remote(ip='g7-2')
+    pod = c.create()
     pod = Laboratory.create_from_path(cfg_path=Laboratory.get_artifact_file_path(pod.name + '.yaml'))
     pod.mgmt.r_get_version()

@@ -71,14 +71,14 @@ def cmd():
 @task
 def ha(pod_mgm_ip, test_regex, is_noclean=False, is_debug=False):
     """fab ha:g10,str\t\t\tRun all tests with 'str' in name on g10
-        :param pod_mgm_ip: IP to ssh to managment node
+        :param pod_mgm_ip: IP to ssh to management node
         :param test_regex: regex to match some tc in $REPO/configs/ha
         :param is_debug: if True debug parallel infrastructure
         :param is_noclean: if True, do not cleanup objects created during test, leave them from post analysis
     """
     from lab.runners.runner_ha import RunnerHA
 
-    RunnerHA.run({'pod-mgm-ip': pod_mgm_ip, 'test-regex': test_regex, 'is-debug': str(is_debug) in ['true', 'True', 'yes', 'Yes'], 'is-noclean': str(is_noclean) in ['true', 'True', 'yes', 'Yes']})
+    RunnerHA.run(lab_name=pod_mgm_ip, test_regex=test_regex, is_noclean=str(is_noclean) in ['true', 'True', 'yes', 'Yes'])
 
 
 @task

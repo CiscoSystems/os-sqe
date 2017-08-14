@@ -7,9 +7,9 @@ class DeployerExisting(LabWorker):
     def sample_config():
         return '1.2.3.4'
 
-    def __init__(self, ip):
+    def __init__(self, lab_name):
         from lab.laboratory import Laboratory
-        self.pod = Laboratory.create_from_remote(ip=ip)
+        self.pod = Laboratory.create_from_remote(lab_name=lab_name)
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):

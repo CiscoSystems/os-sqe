@@ -3,93 +3,45 @@ from lab.with_log import WithLogMixIn
 
 
 class ParallelWorker(WithLogMixIn):
-    STATUS_INIT = 'init'
+    STATUS_INITIALIZED = 'init'
     STATUS_DELAYED = 'delayed'
     STATUS_LOOPING = 'looping'
     STATUS_FINISHED = 'finished'
 
     def __repr__(self):
-        return u'worker={}'.format(self._name)
+        return u'test={} worker={}'.format(self.test_cfg_path, self.name)
 
-    def __init__(self,  status_dict, args_dict):
+    def __init__(self, args_dict):
         """ Executed before subprocesses start in the context of RunnerHA.execute()
-        :param status_dict: dictionary defined as multiprocessing.Manager().dict() contains name: status pairs
+        :param args_dict: dictionry with custom worker arguments, they are checked in check_config()
         """
-        import validators
+        self.name = args_dict.pop('name')
+        self.test_cfg_path = args_dict.pop('test_cfg_path')
+        self.status_dict = None
 
-        self._name = args_dict['name']
-        self._status_dict = status_dict
-        self.set_status(status=self.STATUS_INIT)
+        self.delay = args_dict.pop('delay', 0)  # worker will be delayed by this seconds
+        self.period = args_dict.pop('period', 2)  # worker loop will be repeated with this period
+        self.timeout = args_dict.pop('timeout', 100)  # if operation will not successfully finished in that time, the worker will be forced to quit with exception
+
+        self.n_repeats = args_dict.pop('n_repeats', -1)      # worker loop will be repeated n_repeats times
+        self.loop_counter = 0                                # counts loops executed
+        self.run_while = args_dict.pop('run_while', [])  # worker will run till all these flags go False
+        self.run_after = args_dict.pop('run_after', [])  # worker will be delayed until all these flags will go False
+
+        self.cloud = None
+        self.is_noclean = args_dict.pop('is_noclean')
         self._kwargs = args_dict
-
-        self._delay = self._kwargs.get('delay', 0)  # worker will be delayed by this seconds
-        self._period = self._kwargs.get('period', 2)  # worker loop will be repeated with this period
-        self._timeout = self._kwargs.get('timeout', 100)  # if operation will not successfully finished in that time, the worker will be forced to quit with exception
-
-        self._n_repeats = self._kwargs.get('n_repeats')      # worker loop will be repeated n_repeats times
-        self._loop_counter = 0                               # counts loops executed
-        self._run_while = self._kwargs.get('run_while', [])  # worker will run till all these flags go False
-        self._run_after = self._kwargs.get('run_after', [])  # worker will be delayed until all these flags will go False
-
-        if type(self._run_while) is not list:
-            self._run_while = [self._run_while]
-        for x in self._run_while:
-            if x not in self._status_dict.keys():
-                raise ValueError('{}: run_while has "{}" which is invalid. Valid are {}'.format(self._yaml_path, x, self._status_dict.keys()))
-
-        if type(self._run_after) is not list:
-            self._run_after = [self._run_after]
-        for x in self._run_after:
-            if x not in self._status_dict:
-                raise ValueError('{}: run_after has "{}" which is invalid. Valid are {}'.format(self._yaml_path, x, self._status_dict.keys()))
-
-        if self._run_while:
-            if any([self._run_after, self._n_repeats]):
-                raise ValueError('run_while can not co-exists with either of n_repeats and run_after in {}'.format(self._kwargs))
-        else:
-            if self._n_repeats is None or self._n_repeats < 1:
-                raise ValueError('{} section {}: please define n_repeats >=1'.format(self._yaml_path, self._kwargs['class']))
-
-        self._ip = self._kwargs.get('ip')
-        if self._ip:
-            if validators.ipv4(self._ip):
-                try:
-                    self._username, self._password = self._kwargs['username'], self._kwargs['password']
-                except KeyError:
-                    raise ValueError('"username" and/or "password"  are not provided'.format())
-            else:
-                raise ValueError('Provided invalid ip address: "{0}"'.format(self._ip))
-
-        try:
-            self.check_config()
-        except KeyError as ex:
-            raise ValueError('{} section {}: no required parameter "{}"'.format(self._yaml_path, self, ex))
 
     @property
     def pod(self):
-        return self._kwargs['lab']
-
-    @property
-    def cloud(self):
-        return self._kwargs['cloud']
+        return self.cloud.pod
 
     @property
     def mgmt(self):
         return self.pod.mgmt
 
-    def is_debug(self):
-        return self._kwargs['is-debug']
-
-    @property
-    def is_noclean(self):
-        return self._kwargs['is-noclean']
-
-    @property
-    def _yaml_path(self):
-        return self._kwargs['task-yaml-path']
-
     def set_status(self, status):
-        self._status_dict[self._name] = status
+        self.status_dict[self.name] = status
 
     @abc.abstractmethod
     def check_config(self):
@@ -107,41 +59,40 @@ class ParallelWorker(WithLogMixIn):
         pass
 
     def is_ready_to_finish(self):
-        if self._run_while:
-            return all([self._status_dict[x] == 'finished' for x in self._run_while])
+        if self.run_while:
+            return all([self.status_dict[x] == 'finished' for x in self.run_while])
         else:
-            if self._n_repeats == 0:
+            if self.n_repeats == 0:
                 return True
             else:
-                self._n_repeats -= 1
+                self.n_repeats -= 1
                 return False
 
-    def delay(self):
+    def delay_execution(self):
         import time
 
         self.set_status(status=self.STATUS_DELAYED)
 
         time_passed = 0
-        if self._run_after:
-            self.log('delay till {} are false'.format(self._run_after))
-            while not all([self._status_dict[x] for x in self._run_while]):  # first wait for all run_after workers go True
+        if self.run_after:
+            self.log('delay till {} are false'.format(self.run_after))
+            while not all([self.status_dict[x] for x in self.run_while]):  # first wait for all run_after workers go True
                 time.sleep(1)
                 time_passed += 1
-                if time_passed == self._timeout:
-                    raise RuntimeError('Waiting for {} to be all True exceeded {} secs'.format(self._run_after, self._timeout))
-            while not all([not self._status_dict[x] for x in self._run_while]):  # now wait to all run_after workers go False
+                if time_passed == self.timeout:
+                    raise RuntimeError('Waiting for {} to be all True exceeded {} secs'.format(self.run_after, self.timeout))
+            while not all([not self.status_dict[x] for x in self.run_while]):  # now wait to all run_after workers go False
                 time.sleep(1)
                 time_passed += 1
-                if time_passed == self._timeout:
-                    raise RuntimeError('Waiting for {} to be all False exceeded {} secs'.format(self._run_after, self._timeout))
+                if time_passed == self.timeout:
+                    raise RuntimeError('Waiting for {} to be all False exceeded {} secs'.format(self.run_after, self.timeout))
 
-        if self._delay:
-            self.log('delay by {} secs...'.format(self._delay))
-            if not self.is_debug():
-                time.sleep(self._delay)
+        if self.delay:
+            self.log('delay by {} secs...'.format(self.delay))
+            time.sleep(self.delay)
 
-    def start_worker(self):
-        """This code is executed once when subprocess starts. This is the only entry point to the worker."""
+    def start_worker_parallel(self):
+        """This code is executed once when subprocess starts. This is the only entry point to the worker loop."""
         import os
         import time
 
@@ -151,33 +102,21 @@ class ParallelWorker(WithLogMixIn):
 
         exceptions = []
         try:
-            self.delay()
-
-            if not self.is_debug():
-                self.setup_worker()
+            self.delay_execution()
 
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
-                self.log('Loop number {}...'.format(self._loop_counter))
-                self.loop_worker() if not self.is_debug() else self.debug_output()
-                self._loop_counter += 1
-                time.sleep(self._period)
+                self.log('Loop number {}...'.format(self.loop_counter))
+                self.loop_worker()
+                self.loop_counter += 1
+                time.sleep(self.period)
 
             self.log('FINISHED')
         except Exception as ex:
             exceptions.append(str(ex))
-            self.log(message='EXCEPTION', level='exception')
+            self.log_exception()
         finally:
+            time.sleep(1)  # sleep to align log output
             self.set_status(status=self.STATUS_FINISHED)
-            if not self.is_debug():
-                try:
-                    self.teardown_worker()
-                except Exception as ex:
-                    with self.pod.open_artifact('exception-in-teardown.txt'.format(), 'w') as f:
-                        f.write(ex)
-
-            return {'worker name': self._name, 'exceptions': exceptions, 'params': worker_parameters}
-
-    def debug_output(self):
-        return '{} loop {} ok'.format(self._name, self._loop_counter)
+            return {'worker name': self.name, 'exceptions': exceptions, 'params': worker_parameters}

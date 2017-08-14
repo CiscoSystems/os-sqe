@@ -306,3 +306,6 @@ class CimcCompute(CimcServer):
 
 class CimcCeph(CimcServer):
     pass
+
+class CimcVts(CimcServer):
+    pass

@@ -8,10 +8,10 @@ class LabServer(LabNode):
 
         super(LabServer, self).__init__(pod=pod, dic=dic)
 
-        self.ssh_username, self.ssh_password = dic['ssh-username'], dic.get('ssh-password', None)  # if password is None - use sqe ssh key
+        self.ssh_ip, self.ssh_username, self.ssh_password = dic['ssh-ip'], dic['ssh-username'], dic['ssh-password']  # if password is None - use sqe ssh key
         self._package_manager = None
         self.virtual_servers = set()  # virtual servers running on this hardware server
-        self.nics = Nic.add_nics(node=self, nics_cfg=dic['nics'])
+        self.nics_dic = Nic.create_nics_dic(node=self, dics_lst=dic['nics']) or {}
 
     def add_virtual_server(self, server):
         self.virtual_servers.add(server)
@@ -19,69 +19,44 @@ class LabServer(LabNode):
     def cmd(self, cmd):
         raise NotImplementedError
 
-    def get_nic(self, nic):
-        try:
-            return self.nics[nic]
-        except KeyError:
-            raise RuntimeError('{}: is not on network "{}"'.format(self.id, nic))
-
-    @property
-    def ssh_ip(self):
-        return [x for x in self.nics.values() if x.is_ssh][0].ip
-
-    @property
-    def api_ip(self):
-        return self.get_nic('a').ip
-
-    @property
-    def api_ip_with_prefix(self):
-        return self.get_nic('a').ip_with_prefix
-
-    @property
-    def mx_ip(self):
-        return self.get_nic('m').ip
-
-    def get_ip_mx_with_prefix(self):
-        return self.get_nic('m').get_ip_with_prefix()
-
-    def get_gw_mx_with_prefix(self):
-        return self.get_nic('m').get_gw_with_prefix()
-
-    def get_ip_t(self):
-        return self.get_nic('t').get_ip_and_mask()[0]
-
-    def get_ip_t_with_prefix(self):
-        return self.get_nic('t').get_ip_with_prefix()
-
     def r_list_ip_info(self, n_attempts=100):
-        ans_a = self.exe(cmd='ip -o a', n_attempts=n_attempts, is_warn_only=True)
-        if not ans_a:
+        ans = self.exe(cmd='ip -o a && ip -o l && echo SEPARATOR && ip -o r && echo SEPARATOR && cat /etc/hosts', n_attempts=n_attempts, is_warn_only=True)
+        if not ans:
             return {}
-        ans_l = self.exe(cmd='ip -o l', n_attempts=n_attempts, is_warn_only=True)
-        name_ipv4_ipv6 = {}
-        result = {}
+        result = {'ips': {}, 'macs': {}, 'etc_hosts': {}, 'ifaces': {}, 'networks': {}}
 
-        for line in ans_a.split('\n'):
-            _, nic_name, other = line.split(' ', 2)
-            name_ipv4_ipv6.setdefault(nic_name, {'ipv4': [], 'ipv6': []})
-            ip4_or_6 = 'ipv6' if 'inet6' in other else 'ipv4'
-            ip = other.split()[1].strip()
-            name_ipv4_ipv6[nic_name][ip4_or_6].append(ip)
-            result.setdefault(ip, [])
-            result[ip].append(nic_name)
-
-        for line in ans_l.split('\n'):
-            number, nic_name, other = line.split(':', 2)
-            nic_name = nic_name.strip()
-            if nic_name == 'lo':
+        ip_o_al, ip_o_r, cat_etc_hosts = ans.split('SEPARATOR')
+        for line in ip_o_al.split('\r\n')[:-1]:
+            split = line.split()
+            iface_name = split[1].strip(':')
+            iface_dic = result['ifaces'].setdefault(iface_name, {'ipv4': [], 'ipv6': [], 'cidr': None, 'mac': None, 'is-ssh': False, 'master': None, 'slaves': []})
+            if 'inet' in line:
+                ip = split[3]
+                iface_dic['ipv6' if 'inet6' in split else 'ipv4'].append(ip)
+                result['ips'][ip] = iface_name
+            elif 'link/' in line:
+                mac = split[-3]
+                iface_dic['mac'] = mac
+                result['macs'][mac] = iface_name
+        for line in ip_o_r.split('\r\n')[1:-1]:
+            split = line.split()
+            cidr = split[0]
+            if cidr == 'default':  # default route
+                result['gw'] = split[2]
+                result['ifaces'][split[4]]['is-ssh'] = True
+            elif cidr == '169.254.0.0/16':
                 continue
-            status, mac_part = other.split('link/ether')
-            mac = mac_part.split(' brd ')[0].strip()
-            ipv4 = name_ipv4_ipv6.get(nic_name, {'ipv4': []})['ipv4']
-            ipv6 = name_ipv4_ipv6.get(nic_name, {'ipv6': []})['ipv6']
-            result[nic_name] = {'mac': mac, 'ipv4': ipv4, 'ipv6': ipv6}
-            result.setdefault(mac, [])
-            result[mac].append(nic_name)
+            else:
+                iface_name = split[2]
+                result['networks'][cidr] = iface_name
+                result['ifaces'][iface_name]['cidr'] = cidr
+        # for line in brctl_show.split('\r\n')[2:]:
+        #     if line:
+        #         br_name, br_id_stp, ifaces = line.split('\t\t')
+        #         if ifaces:
+        #             result['ifaces'][br_name]['slaves'].append(ifaces)
+        #             result['ifaces'][ifaces]['master'] = br_name
+        result['etc_hosts'] = {x.split()[1]: x.split()[0] for x in cat_etc_hosts.split('\r\n') if x}
         return result
 
     def r_is_nics_correct(self):
@@ -90,7 +65,7 @@ class LabServer(LabNode):
             return False
 
         status = True
-        for main_name, nic in self.nics.items():
+        for main_name, nic in self.nics_dic.items():
             requested_mac = nic.get_macs()[0].lower()
             requested_ip = nic.get_ip_with_prefix()
             if len(nic.get_names()) > 1:

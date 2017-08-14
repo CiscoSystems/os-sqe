@@ -1,17 +1,14 @@
 from lab import decorators
-from lab.nodes.cimc_server import CimcServer
-from lab.nodes.virtual_server import VirtualServer
+from lab.nodes.virtual_server import VipServer
 
 
-class Vtc(VirtualServer):
+class Vtc(VipServer):
     EXECUTOR_CURL = 'curl'
     EXECUTOR_REST = 'rest'
     EXECUTOR_NCS = 'ncs'
 
     def __init__(self, pod, dic):
         super(Vtc, self).__init__(pod=pod, dic=dic)
-        self._vip_a, self._vip_m = dic['vip_a'], dic['vip_m']
-        self._is_api_via_vip = True
         self._curl_executor = CurlExecutor(vtc_object=self)
         self._ncs_executor = NcsCliExecutor(vtc_object=self)
         self._rest_executor = RestExecutor(vtc_object=self)
@@ -208,7 +205,7 @@ class Vtc(VirtualServer):
 
     def r_collect_logs(self, regex):
         body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/ncs/*', regex=regex), self._form_log_grep_cmd(log_files='/var/log/ncs/localhost\:8888.access', regex='HTTP/1.1" 40')]:
+        for cmd in [self._form_log_grep_cmd(log_files='/opt/vts/log/nso/*', regex=regex), self._form_log_grep_cmd(log_files='/opt/vts/log/nso/localhost\:8888.access', regex='HTTP/1.1" 40')]:
             ans = self.exe(cmd, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
@@ -289,7 +286,7 @@ class Vtc(VirtualServer):
         wild_card = 'VTS*tar.bz2'
         self.exe('show_tech_support')
         ans = self.exe('ls ' + wild_card)
-        self._server.r_get_file_from_dir(file_name=ans, local_path='artifacts')
+        self.server.r_get_file_from_dir(file_name=ans, local_path='artifacts')
         self.exe('rm -r ' + wild_card)
 
     def r_is_xrvr_registered(self):
@@ -413,10 +410,6 @@ class Vtc(VirtualServer):
 
     def r_xrvr_show_evpn(self):
         return map(lambda xrvr: xrvr.r_xrvr_show_evpn(), self.pod.get_xrvr())
-
-
-class VtsHost(CimcServer):  # this class is needed just to make sure that the node is VTS host, no additional functionality to CimcServer
-    ROLE = 'vts-n9'
 
 
 class RestExecutor(object):

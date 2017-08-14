@@ -30,17 +30,20 @@ class Network(object):
         return {x['id']: Network.add_network(pod=pod, dic=x) for x in nets_cfg}
 
     def get_ip_for_index(self, index):
-        return self.net[index]
+        try:
+            return self.net[index]
+        except IndexError:
+            raise ValueError('{}: Index {} is out of this network the max is {} = {}'.format(self, index, self.net.size, self.net[self.net.size-1]))
 
     def check_ip_correct(self, msg, ip):
         import netaddr
 
         try:
-            if ip in self._net:
-                if [x for x in [0, 1, 2, 3, -1] if str(self._net[x]) == ip]:
+            if ip in self.net:
+                if [x for x in [0, 1, 2, 3, -1] if str(self.net[x]) == ip]:
                     raise ValueError('{} ip="{}" coincides with either network address broadcast address or gateway hsrp triple'.format(msg, ip))
             else:
-                raise ValueError('{} ip="{}" does not belong to "{}"'.format(msg, ip, self._net))
+                raise ValueError('{} ip="{}" does not belong to "{}"'.format(msg, ip, self.net))
 
         except netaddr.AddrFormatError:
             raise ValueError('{} ip="{}" is not a valid ip'.format(msg, ip))
@@ -52,7 +55,7 @@ class Nic(object):
         try:
             self.net = node.pod.networks[nic_id]    # valid lab.network.Network
         except KeyError:
-            raise ValueError('{}: trying to create NIC on network "{}" which does not exeist'.format(node, nic_id))
+            raise ValueError('{}: trying to create NIC on network "{}" which does not exist'.format(node, nic_id))
         # self._net.check_ip_correct(msg='{}: nic "{}" has problem: '.format(node, nic_id), ip=ip) TODO remove when fix the problem in c25bot
 
         self.node = node  # nic belongs to the node
@@ -79,20 +82,25 @@ class Nic(object):
         return u'{} {}'.format(self.ip_with_prefix, self.id)
 
     @staticmethod
-    def add_nic(node, nic_cfg):
-        """Fabric to create a class Nic instance
-        :param node: object of class LabServer or derived
-        :param nic_cfg: dict e.g. {'nic-id': XX, 'ip': XX, 'ports': [XXX, XXX], 'is_ssh': True}
-        :returns class Nic instance
+    def create_nic(node, dic):
+        """Fabric to create Nic()
+        :param node: object of class derived from LabServer
+        :param dic: dict e.g. {'nic-id': XX, 'ip': XX, 'ports': [XXX, XXX], 'is_ssh': True}
+        :returns Nic()
         """
         try:
-            return Nic(nic_id=nic_cfg['id'], node=node, ip=nic_cfg['ip'], is_ssh=nic_cfg['is-ssh'])
+            return Nic(nic_id=dic['id'], node=node, ip=dic['ip'], is_ssh=dic['is-ssh'])
         except KeyError as ex:
-            raise ValueError('{}: nic "{}" does not specify {}'.format(node, nic_cfg, ex))
+            raise ValueError('{}: nic "{}" does not specify {}'.format(node, dic, ex))
 
     @staticmethod
-    def add_nics(node, nics_cfg):
-        return {nic_cfg['id']: Nic.add_nic(node=node, nic_cfg=nic_cfg) for nic_cfg in nics_cfg}
+    def create_nics_dic(node, dics_lst):
+        """Fabric to create a dict of Nic()
+        :param node:
+        :param dics_lst: list of dicts
+        :return: {'nic_id': Nic(), ...}
+        """
+        return {dic['id']: Nic.create_nic(node=node, dic=dic) for dic in dics_lst}
 
     @property
     def ip_and_mask(self):

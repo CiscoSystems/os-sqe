@@ -32,17 +32,28 @@ class LabNode(WithLogMixIn, WithConfig):
         return self._proxy
 
     @staticmethod
-    def add_node(pod, node_cfg):
+    def create_node(pod, dic):
+        """Fabric to create a LabServer() or derived
+
+        :param pod: lab.laboratory.Laboratory()
+        :param dic: {'id': , 'role': , 'proxy': , 'oob-ip':, 'oob-username': , 'oob-password':, 'ssh-username':, 'ssh-password':, 'nics': [check in lab.network.Nic]}
+        :return:
+        """
         try:
-            role = node_cfg['role']
+            role = dic['role']
             klass = LabNode.get_role_class(role)
-            return klass(pod=pod, dic=node_cfg)  # call class ctor
+            return klass(pod=pod, dic=dic)  # call class ctor
         except KeyError as ex:
-            raise ValueError('Node "id: {}" must have key "{}"'.format(node_cfg.get('id', node_cfg), ex))
+            raise ValueError('Node "id: {}" must have key "{}"'.format(dic.get('id', dic), ex))
 
     @staticmethod
-    def add_nodes(pod, nodes_cfg):
-        return {x['id']: LabNode.add_node(pod=pod, node_cfg=x) for x in nodes_cfg}
+    def create_nodes(pod, node_dics_lst):
+        """Fabric to create a number of nodes
+        :param pod: lab.laboratory.Laboratory()
+        :param node_dics_lst: list of dicts
+        :return: list of objects inhereting from LabNode class
+        """
+        return {x['id']: LabNode.create_node(pod=pod, dic=x) for x in node_dics_lst}
 
     def attach_wire(self, wire):
         self._wires.append(wire)
@@ -96,10 +107,10 @@ class LabNode(WithLogMixIn, WithConfig):
 
         return type(self) in [FiCeph, CimcCeph]
 
-    def is_vts_host(self):
-        from lab.nodes.vtc import VtsHost
+    def is_vts(self):
+        from lab.nodes.cimc_server import CimcVts
 
-        return type(self) == VtsHost
+        return type(self) == CimcVts
 
     def is_vtc(self):
         from lab.nodes.vtc import Vtc
@@ -117,41 +128,23 @@ class LabNode(WithLogMixIn, WithConfig):
         return type(self) == Vtf
 
     def is_virtual(self):
-        return any([self.is_vtc(), self.is_xrvr(), self.is_vtf()])
+        from lab.nodes.virtual_server import VirtualServer
+
+        return isinstance(self, VirtualServer)
+
+    def is_vip(self):
+        from lab.nodes.virtual_server import VipServer
+
+        return isinstance(self, VipServer)
 
     def calculate_mac(self, port_id, mac):
-        import validators
+        o3 = {'CimcDirector': 'DD', 'CimcController': 'CC', 'CimcCompute': 'C0', 'CimcCeph': 'CE', 'Vtc': 'F0', 'Xrvr': 'F1', 'Vtf': 'F2', 'Vts': 'F5'}[self.__class__.__name__]
+        o2 = 'A0' if self.is_cimc_server() else 'E9'  # UCS connected to N9 or Virtual server
+        if self.is_fi_server():
+            server_id = getattr(self, 'get_server_id')()  # UCS connected to FI
+            o2 = 'B' + server_id.split('/')[-1] if '/' in server_id else 'C' + server_id
 
-        mac = str(mac)
-        if not validators.mac_address(mac):
-            if self.is_cimc_server():
-                o2 = 'A0'  # UCS connected to N9
-            elif self.is_fi_server():
-                server_id = getattr(self, 'get_server_id')()  # UCS connected to FI
-                o2 = 'B' + server_id.split('/')[-1] if '/' in server_id else 'C' + server_id
-            else:
-                o2 = 'E9'  # virtual machines
-
-            if self.is_director():
-                o3 = 'DD'
-            elif self.is_controller():
-                o3 = 'CC'
-            elif self.is_compute():
-                o3 = 'C0'
-            elif self.is_ceph():
-                o3 = 'CE'
-            elif self.is_vtc():
-                o3 = 'F0'
-            elif self.is_xrvr():
-                o3 = 'F1'
-            elif self.is_vtf():
-                o3 = 'F2'
-            elif self.is_vts_host():
-                o3 = 'F5'
-            else:
-                return None
-            mac = '{}0:{:02}:{}:{}:{:02}:CA'.format('1' if port_id == 'MLOM/1' else '0', self.pod.get_id(), o2, o3, self._n)
-        return mac
+        return mac or '{}0:{:02}:{}:{}:{:02}:CA'.format('1' if port_id == 'MLOM/1' else '0', self.pod.get_id(), o2, o3, self._n)
 
     def r_verify_oob(self):
         import socket
@@ -178,18 +171,14 @@ class LabNode(WithLogMixIn, WithConfig):
         from lab.nodes.n9 import N9
         from lab.nodes.asr import Asr
         from lab.nodes.tor import Tor, Oob, Pxe, Terminal
-        from lab.nodes.cimc_server import CimcController, CimcCompute, CimcCeph
+        from lab.nodes.cimc_server import CimcController, CimcCompute, CimcCeph, CimcVts
         from lab.nodes.mgmt_server import CimcDirector
         from lab.nodes.xrvr import Xrvr
         from lab.nodes.vtf import Vtf
-        from lab.nodes.vtc import VtsHost
         from lab.nodes.vtc import Vtc
 
-        role = role.lower()
-
-        classes = [Tor, Oob, Pxe, Terminal, N9, VimTor, VimCat, CimcDirector, CimcController, CimcCompute, CimcCeph, VtsHost, Vtc, Vtf, Xrvr, Asr, FI, FiDirector, FiController, FiCompute, FiCeph]
-        for klass in classes:
-            if str(klass).split('.')[-1][:-2].lower() == role:
-                return klass
-        else:
-            raise ValueError('role "{}" is not known. Possible roles: {}'.format(role, ' '.join(map(lambda x: str(x).split('.')[-1][:-2], classes))))
+        classes = {x.__name__: x for x in [Tor, Oob, Pxe, Terminal, N9, VimTor, VimCat, CimcDirector, CimcController, CimcCompute, CimcCeph, CimcVts, Vtc, Vtf, Xrvr, Asr, FI, FiDirector, FiController, FiCompute, FiCeph]}
+        try:
+            return classes[role]
+        except KeyError:
+            raise ValueError('role "{}" is not known. Possible roles: {}'.format(role, classes.keys()))

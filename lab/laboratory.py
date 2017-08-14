@@ -26,11 +26,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     @staticmethod
     @decorators.section('Create pod from actual remote setup_data.xml')
-    def create_from_remote(ip):
-        from tools.configurator import Configurator
+    def create_from_remote(lab_name):
+        from tools.configurator_online import Configurator
 
         c = Configurator()
-        return c.create_from_remote(ip=ip)
+        return c.create(lab_name=lab_name)
 
     @staticmethod
     def create_from_path(cfg_path):
@@ -53,11 +53,11 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         pod.networks.update(Network.add_networks(pod=pod, nets_cfg=cfg['networks']))
 
-        pod.nodes.update(LabNode.add_nodes(pod=pod, nodes_cfg=cfg['switches']))  # first pass - just create nodes
-        pod.nodes.update(LabNode.add_nodes(pod=pod, nodes_cfg=cfg['specials']))
-        pod.nodes.update(LabNode.add_nodes(pod=pod, nodes_cfg=cfg['nodes']))
+        pod.nodes.update(LabNode.create_nodes(pod=pod, node_dics_lst=cfg['switches']))  # first pass - just create nodes
+        pod.nodes.update(LabNode.create_nodes(pod=pod, node_dics_lst=cfg['specials']))
+        pod.nodes.update(LabNode.create_nodes(pod=pod, node_dics_lst=cfg['nodes']))
         if 'virtuals' in cfg:
-            pod.nodes.update(VirtualServer.add_nodes(pod=pod, nodes_cfg=cfg['virtuals']))
+            pod.nodes.update(VirtualServer.create_nodes(pod=pod, node_dics_lst=cfg['virtuals']))
 
         if cfg['wires']:
             pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=cfg['wires']))  # second pass - process wires to connect nodes to peers
@@ -85,7 +85,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         for node in self.nodes.values():
             if not isinstance(node, LabServer):
                 continue
-            actual_nets = set(node.nics.keys())
+            actual_nets = set(node.nics_dic.keys())
             req_nets = role_vs_nets[node.role]
             if actual_nets != req_nets:
                 raise ValueError('{}: should be on nets {} while actually on {} (section nics)'.format(node, req_nets, actual_nets))
@@ -165,21 +165,15 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     @property
     def vtc(self):
-        from lab.nodes.vtc import Vtc
-
-        return filter(lambda x: type(x) is Vtc, self.nodes.values())
+        return [x for x in self.nodes.values() if x.is_vtc()]
 
     @property
     def vts(self):
-        from lab.nodes.vtc import VtsHost
-
-        return filter(lambda x: type(x) is VtsHost, self.nodes.values())
+        return [x for x in self.nodes.values() if x.is_vts()]
 
     @property
     def cimc_servers(self):
-        from lab.nodes.cimc_server import CimcServer
-
-        return filter(lambda x: isinstance(x, CimcServer), self.nodes.values())
+        return [x for x in self.nodes.values() if x.is_cimc()]
 
     def make_sure_that_object_is_unique(self, obj, obj_type, owner):
         """check that given object is unique

@@ -21,14 +21,6 @@ class CimcDirector(CimcServer):
              'release_tag': release_tag,
              'release_name': self.RELEASE_NAMES[release_tag.rsplit('.', 1)[0]]}
         if a['mechanism'] == 'vts':
-            ans = self.exe('sudo cat /root/vts_config.yaml', is_as_sqe=True)
-            active_vtc_ips = [x['vtc']['api_ip'] for x in yaml.load(ans)['vts_hosts'].values()]
-            for vtc in self.pod.vtc:
-                if vtc.api_ip not in active_vtc_ips:
-                    self.log_warning('"{}" deleted since is not active according to /root/vts_config.yaml'.format(vtc))
-                    del self.pod.nodes[vtc.id]
-            if not len(self.pod.vtc):
-                raise RuntimeError('Not VTC is activated on this lab')
             a['mech_ver'] = self.pod.vtc[0].r_vtc_get_version()
         else:
             a['mech_ver'] = 'vpp XXXX'

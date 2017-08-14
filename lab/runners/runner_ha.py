@@ -1,24 +1,13 @@
-from lab.base_lab import LabWorker
+from lab.with_config import WithConfig
 
 
 def starter(worker):
-    return worker.start_worker()
+    return worker.start_worker_parallel()
 
 
-class RunnerHA(LabWorker):
+class RunnerHA(WithConfig):
     @staticmethod
-    def sample_config():
-        return {'task-yaml-path': 'task-ha.yaml', 'is-debug': False, 'is-noclean': True}
-
-    def __init__(self, config):
-        self._task_body = self.read_config_from_file(config_path=config['task-yaml-path'], directory='ha')
-
-        if not self._task_body:
-            raise Exception('Empty Test task list. Please check the file: {0}'.format(config['task-yaml']))
-        self._common_config = config
-
-    def execute(self, cloud):
-        import importlib
+    def execute_single_test(workers, cloud, tims):
         import multiprocessing
         import fabric.network
         import time
@@ -26,99 +15,107 @@ class RunnerHA(LabWorker):
         manager = multiprocessing.Manager()
         status_dict = manager.dict()
 
-        self._common_config['cloud'] = cloud
-        self._common_config['lab'] = cloud.pod
+        for worker in workers:
+            worker.cloud = cloud
+            worker.status_dict = status_dict
+            worker.setup_worker()  # run all setup_worker in non-parallel
+            worker.set_status(status=worker.STATUS_INITIALIZED)
 
-        names_already_seen = []
-        for desc in self._task_body:  # first path to check that all workers have unique names
-            if 'class' not in desc:
-                continue
-            try:
-                name = desc['name']
-            except KeyError:
-                raise ValueError('{} in {} should define "name"'.format(desc['class'], self._task_yaml_path))
-            if name in names_already_seen:
-                raise ValueError('{} in {} defines name "{}" which is already defined somewhere else'.format(desc['class'], self._task_yaml_path, name))
-            status_dict[name] = 'before init'
-
-        workers = []
-        for desc in self._task_body:  # second path to init all workers
-            if 'class' not in desc:
-                continue
-            path_to_module, class_name = desc['class'].rsplit('.', 1)
-            try:
-                mod = importlib.import_module(path_to_module)
-            except ImportError:
-                raise ValueError('{}: tries to run {}.py which does not exist'.format(self._task_yaml_path, path_to_module))
-            try:
-                klass = getattr(mod, class_name)
-            except AttributeError:
-                raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
-            desc.update(self._common_config)
-            workers.append(klass(status_dict=status_dict, args_dict=desc))
-
-        if str(cloud.pod) == 'fake':  # do not run, this is just a config validity check
-            return []
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
         time.sleep(2)
 
         pool = multiprocessing.Pool(len(workers))
-        return pool.map(starter, workers)
+        results = pool.map(starter, workers)
+        tims.publish_result(test_cfg_path=workers[0].test_cfg_path, results=results)
+
+        try:
+            map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
+        except Exception as ex:
+            with cloud.pod.open_artifact('exception-in-teardown.txt'.format(), 'w') as f:
+                f.write(str(ex))
 
     @staticmethod
-    def run(common_config):
+    def run(lab_name, test_regex, is_noclean):
         import time
         from lab.deployers.deployer_existing import DeployerExisting
         from lab.tims import Tims
         from lab.elk import Elk
 
-        try:
-            test_regex = common_config['test-regex']
-            lab_cfg_path = common_config['pod-mgm-ip']
-        except KeyError as ex:
-            raise ValueError('RunnerHA.run() requires "{}"'.format(ex.message))
-        available_tc = RunnerHA.ls_configs(directory='ha')
-        tests = sorted(filter(lambda x: test_regex in x, available_tc))
+        tests = RunnerHA.check_configs(test_regex=test_regex, is_noclean=is_noclean)
 
-        if not tests:
-            raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
-
-        RunnerHA.check_config(tests=tests, common_config=common_config)
-
-        deployer = DeployerExisting(ip=common_config['pod-mgm-ip'])
+        deployer = DeployerExisting(lab_name=lab_name)
         cloud = deployer.execute({'clouds': [], 'servers': []})
         if len(cloud.computes) < 2:
-            raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(lab_cfg_path))
+            raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(cloud))
 
         tims = Tims(pod=cloud.pod)
-        exceptions = []
 
-        for tst in tests:
-            start_time = time.time()
-            common_config['task-yaml-path'] = tst
-            runner = RunnerHA(config=common_config)
-            results = runner.execute(cloud)
+        start_time = time.time()
+        map(lambda x: RunnerHA.execute_single_test(workers=x, cloud=cloud, tims=tims), tests)
 
-            elk = Elk(proxy=cloud.mediator)
-            elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
-            tims.publish_result(test_cfg_path=tst, results=results)
-            exceptions = reduce(lambda l, x: l + x['exceptions'], results, exceptions)
+        elk = Elk(proxy=cloud.mediator)
+        elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
 
         cloud.pod.r_collect_information(regex='error', comment=test_regex)
 
-        if exceptions:
-            raise RuntimeError('Possible reason: {}'.format(exceptions))
+    @staticmethod
+    def check_configs(test_regex, is_noclean):
+        available_tc = RunnerHA.ls_configs(directory='ha')
+        test_cfg_paths = sorted(filter(lambda x: test_regex in x, available_tc))
+
+        if not test_cfg_paths:
+            raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
+
+        return [RunnerHA.check_single_test(test_cfg_path=x, is_noclean=is_noclean) for x in test_cfg_paths]
 
     @staticmethod
-    def check_config(tests, common_config):
+    def check_single_test(test_cfg_path, is_noclean):
+        import importlib
 
-        class FakeCloud(object):
-            def __init__(self):
-                self.pod = 'fake'
+        worker_names_already_seen =[]
 
-        cloud = FakeCloud()
+        workers = []
+        status_dict = {}
+        for worker_args in RunnerHA.read_config_from_file(config_path=test_cfg_path, directory='ha'):
+            if 'class' not in worker_args:
+                continue
+            if 'name' not in worker_args:
+                raise ValueError('{} in {} should define "name"'.format(worker_args['class'], test_cfg_path))
+            if worker_args['name'] in worker_names_already_seen:
+                raise ValueError('{} in {} defines name "{}" which is already defined somewhere else'.format(worker_args['class'], test_cfg_path, worker_args['name']))
 
-        for tst in tests:
-            common_config['task-yaml-path'] = tst
-            r = RunnerHA(config=common_config)
-            r.execute(cloud=cloud)
+            path_to_module, class_name = worker_args['class'].rsplit('.', 1)
+            try:
+                mod = importlib.import_module(path_to_module)
+            except ImportError:
+                raise ValueError('{}: tries to run {}.py which does not exist'.format(test_cfg_path, path_to_module))
+            try:
+               klass = getattr(mod, class_name)
+            except AttributeError:
+                raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
+            worker_args['test_cfg_path'] = test_cfg_path
+            worker_args['is_noclean'] = is_noclean
+            worker = klass(args_dict=worker_args)
+            worker.status_dict = status_dict
+            workers.append(worker)
+
+        for worker in workers:
+            for attr_name in ['run_while', 'run_after']:
+                attr = getattr(worker, attr_name)
+                if type(attr) is not list:
+                    setattr(worker, attr_name, [attr])
+                not_in_status = filter(lambda x: x not in worker.status_dict.keys(), getattr(worker, attr_name))
+                if not_in_status:
+                    worker.raise_exception(ValueError, 'run_while has "{}" which is invalid. Valid are {}'.format(not_in_status, worker.status_dict.keys()))
+
+            if worker.run_while:
+                if any([worker.run_after, worker.n_repeats]):
+                    worker.raise_exception(ValueError, 'run_while can not co-exists with either of n_repeats and run_after')
+            elif worker.n_repeats < 1:
+                    worker.raise_exception(ValueError, 'please define either wun_while or n_repeats >= 1')
+
+            try:
+                worker.check_config()
+            except KeyError as ex:
+                worker.raise_exception(ValueError, 'no required parameter "{}"'.format(ex))
+        return workers

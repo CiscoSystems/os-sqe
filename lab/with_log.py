@@ -82,7 +82,11 @@ class WithLogMixIn(object):
         return cmd
 
     def log(self, message):
+        import time
+
+        time.sleep(2)
         lab_logger.info(str(self) + ': ' + message)
+        time.sleep(2)
 
     def log_warning(self, message):
         lab_logger.warning(str(self) + ': ' + message)
@@ -92,6 +96,9 @@ class WithLogMixIn(object):
 
     def log_exception(self):
         lab_logger.exception(str(self) + ': EXCEPTION')
+
+    def raise_exception(self, klass, message):
+        raise klass(str(self) + ': ' + message)
 
     def log_to_slack(self, message):
         import requests
