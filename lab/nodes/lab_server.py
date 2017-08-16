@@ -13,6 +13,7 @@ class LabServer(LabNode):
         self.virtual_servers = set()  # virtual servers running on this hardware server
         self.nics_dic = Nic.create_nics_dic(node=self, dics_lst=dic['nics']) or {}
         self.intel_nics_dic = {}
+        self.intel_virtual_nics_dic = {}
         self.cisco_vics_dic = {}
         self.lom_nics_dic = {}
 
@@ -30,18 +31,21 @@ class LabServer(LabNode):
         result = {'ips': {}, 'macs': {}, 'etc_hosts': {}, 'ifaces': {}, 'networks': {}}
 
         lspci, ip_o_al, ip_o_r, cat_etc_hosts = ans.split(separator)
-        for line in lspci.split('\r\n')[:-1]:
+        for line in lspci.split('\r\n'):
+            if not line or line.startswith('Warning'):
+                continue
             split = line.split()
             pci_addr = split[0]
             manufacturer = split[3]
-            iface = 'enp{bus}s{card}p{port}'.format(bus=int(pci_addr[:2], 16), card=int(pci_addr[3:5]),  port=int(pci_addr[6:]))
+            iface = 'enp{bus}s{card}p{port}'.format(bus=int(pci_addr[:2], 16), card=int(pci_addr[3:5], 16),  port=int(pci_addr[6:], 16))
             if manufacturer == 'Cisco':
                 self.cisco_vics_dic[iface] = {'model': 'Cisco VIC', 'line': line}
             elif manufacturer == 'Intel':
-                model = split[7]
-                if model == 'X710':
+                if 'XL710/X710' in line:
+                    self.intel_virtual_nics_dic[iface] = {'model': 'Intel XL710/X710 VF', 'line': line}
+                elif 'X710' in line:
                     self.intel_nics_dic[iface] = {'model': 'Intel X710', 'line': line}
-                elif model == 'SFP+':
+                elif 'SFP+' in line:
                     self.intel_nics_dic[iface] = {'model': 'Intel X510', 'line': line}
                 elif 'I350' in line:
                     self.lom_nics_dic[iface] = {'model': 'Intel I350', 'line': line}
@@ -123,13 +127,14 @@ class LabServer(LabNode):
         srv = Server(ip=ip, username=username, password=password)
 
         comment = ' # sshpass -p ' + password if password else ' # '
-        comment += ' ssh ' + username + '@' + ip + ' '  + self.pod.name + ' ' + self.id
+        comment += ' ssh ' + username + '@' + ip
 
         if 'sudo' in cmd and 'sudo -p "" -S ' not in cmd:
             cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.ssh_password))
         if self.proxy:
             cmd = 'ssh -o StrictHostKeyChecking=no ' + self.id + ' "{}"'.format(cmd)
             comment += ' ssh ' + self.id
+        comment += ' ' + self.pod.name + ' ' + self.id
 
         if estimated_time:
             self.log('Running {}... (usually it takes {} secs)'.format(cmd, estimated_time))

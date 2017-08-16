@@ -53,7 +53,7 @@ class NttScenario(ParallelWorker):
         if self.what_to_run in ['both', 'nfvbench']:
             if len(self.pod.mgmt.intel_nics_dic) < 2:
                 raise RuntimeError('{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgmt))
-            self._kwargs['is-sriov'] = len(self.pod.computes[0].intel_nics_dic) >= 8
+            self._kwargs['is-sriov'] = len(self.pod.computes[0].intel_virtual_nics_dic) >= 8
             self.pod.mgmt.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             self.pod.mgmt.exe(cmd='mkdir -p ' + self.pod_dir_in_repo, is_as_sqe=True)
 
