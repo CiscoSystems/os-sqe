@@ -43,8 +43,6 @@ class NttScenario(ParallelWorker):
         from os import path
         from lab.cloud.cloud_image import CloudImage
 
-        self.pod.mgmt.exe(cmd='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple', is_as_sqe=True)
-
         # self.pod.mgmt.r_configure_mx_and_nat()
         if self.what_to_run in ['both', 'csr']:
             self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.csr_repo_dir)
@@ -53,17 +51,15 @@ class NttScenario(ParallelWorker):
             loc_abs_path = path.join(self.csr_repo_dir, path.basename(loc_rel_path))
             self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=loc_abs_path)
         if self.what_to_run in ['both', 'nfvbench']:
-            sriov = [x.r_get_n_sriov() for x in self.pod.computes]
-            if len(set(sriov)) != 1:
-                raise RuntimeError('SRIOV not all nodes have the same number of virtual functions')
-            self._kwargs['is-sriov'] = sriov[0] >= 8
+            if len(self.pod.mgmt.intel_nics_dic) < 2:
+                raise RuntimeError('{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgmt))
+            self._kwargs['is-sriov'] = len(self.pod.computes[0].intel_nics_dic) >= 8
             self.pod.mgmt.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             self.pod.mgmt.exe(cmd='mkdir -p ' + self.pod_dir_in_repo, is_as_sqe=True)
-            self.pod.mgmt.r_check_intel_nics()
 
             # trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
             # [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
-
+        self.pod.mgmt.exe(cmd='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple', is_as_sqe=True)
         self.cloud.os_cleanup(is_all=True)
         self.cloud.os_quota_set()
 

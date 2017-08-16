@@ -53,7 +53,7 @@ def cmd():
             lab_logger.exception('\n Exception: {0}'.format(ex))
 
     while True:
-        lab = Laboratory.create_from_remote(ip=get_user_input(options_lst=Configurator.KNOWN_LABS.keys()))
+        lab = Laboratory.create_from_remote(lab_name=get_user_input(options_lst=Configurator.KNOWN_LABS.keys()))
         while True:
             device_name = get_user_input(owner=lab, options_lst=['lab', 'cloud'] + lab.nodes.keys())
             if device_name == 'level_up':

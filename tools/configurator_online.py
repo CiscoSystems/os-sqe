@@ -96,7 +96,7 @@ class Configurator(WithConfig, WithLogMixIn):
                }
 
         node = klass.create_node(pod=pod, dic=cfg)
-        node.r_list_ip_info()
+        node.r_build_online()
         # node.nics_dic = Nic.create_nics_dic(node=node, dics_lst=[{'id': k[3], 'ip': v['ipv4'][0], 'is-ssh': v['is-ssh']} for k, v in ip_info['ifaces'].items() if k.startswith('br_')])
         pod.nodes[node.id] = node
 
@@ -116,7 +116,7 @@ class Configurator(WithConfig, WithLogMixIn):
                'ssh-ip': vip_a, 'ssh-ip-individual': vtc_ip, 'ssh-username': vtc_username, 'ssh-password': vtc_password,
                'nics': []}
         node = Vtc.create_node(pod=pod, dic=cfg)
-        node.r_list_ip_info()
+        node.r_build_online()
         pod.nodes[node.id] = node
 
         self.log(str(node) + ' processed\n\n')

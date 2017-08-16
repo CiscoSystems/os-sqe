@@ -12,6 +12,9 @@ class LabServer(LabNode):
         self._package_manager = None
         self.virtual_servers = set()  # virtual servers running on this hardware server
         self.nics_dic = Nic.create_nics_dic(node=self, dics_lst=dic['nics']) or {}
+        self.intel_nics_dic = {}
+        self.cisco_vics_dic = {}
+        self.lom_nics_dic = {}
 
     def add_virtual_server(self, server):
         self.virtual_servers.add(server)
@@ -19,14 +22,36 @@ class LabServer(LabNode):
     def cmd(self, cmd):
         raise NotImplementedError
 
-    def r_list_ip_info(self, n_attempts=100):
-        ans = self.exe(cmd='ip -o a && ip -o l && echo SEPARATOR && ip -o r && echo SEPARATOR && cat /etc/hosts', n_attempts=n_attempts, is_warn_only=True)
+    def r_build_online(self, n_attempts=100):
+        separator = 'SEPARATOR'
+        ans = self.exe(cmd='(lspci | grep Ethernet) && echo {0} && ip -o a && ip -o l && echo {0} && ip -o r && echo {0} && cat /etc/hosts'.format(separator), n_attempts=n_attempts, is_warn_only=True)
         if not ans:
             return {}
         result = {'ips': {}, 'macs': {}, 'etc_hosts': {}, 'ifaces': {}, 'networks': {}}
 
-        ip_o_al, ip_o_r, cat_etc_hosts = ans.split('SEPARATOR')
-        for line in ip_o_al.split('\r\n')[:-1]:
+        lspci, ip_o_al, ip_o_r, cat_etc_hosts = ans.split(separator)
+        for line in lspci.split('\r\n')[:-1]:
+            split = line.split()
+            pci_addr = split[0]
+            manufacturer = split[3]
+            iface = 'enp{bus}s{card}p{port}'.format(bus=int(pci_addr[:2], 16), card=int(pci_addr[3:5]),  port=int(pci_addr[6:]))
+            if manufacturer == 'Cisco':
+                self.cisco_vics_dic[iface] = {'model': 'Cisco VIC', 'line': line}
+            elif manufacturer == 'Intel':
+                model = split[7]
+                if model == 'X710':
+                    self.intel_nics_dic[iface] = {'model': 'Intel X710', 'line': line}
+                elif model == 'SFP+':
+                    self.intel_nics_dic[iface] = {'model': 'Intel X510', 'line': line}
+                elif 'I350' in line:
+                    self.lom_nics_dic[iface] = {'model': 'Intel I350', 'line': line}
+                else:
+                    raise RuntimeError('Not known NIC model in {}'.format(line))
+            else:
+                raise RuntimeError('Not known NIC manufacturer: {} in {}'.format(manufacturer, line))
+            #     ans = self.exe('ethtool -i enp{}s{}f{}'.format(bus, card, port), is_warn_only=True)
+
+        for line in ip_o_al.split('\r\n')[1:-1]:
             split = line.split()
             iface_name = split[1].strip(':')
             iface_dic = result['ifaces'].setdefault(iface_name, {'ipv4': [], 'ipv6': [], 'cidr': None, 'mac': None, 'is-ssh': False, 'master': None, 'slaves': []})
@@ -57,7 +82,6 @@ class LabServer(LabNode):
         #             result['ifaces'][br_name]['slaves'].append(ifaces)
         #             result['ifaces'][ifaces]['master'] = br_name
         result['etc_hosts'] = {x.split()[1]: x.split()[0] for x in cat_etc_hosts.split('\r\n') if x}
-        return result
 
     def r_is_nics_correct(self):
         actual_nics = self.r_list_ip_info(n_attempts=1)
@@ -98,9 +122,8 @@ class LabServer(LabNode):
             self.pod.check_create_sqe_user()
         srv = Server(ip=ip, username=username, password=password)
 
-        comment = ' # ' + self.pod.name + ' ' + self.id + ':'
-        comment += ' sshpass -p ' + password if password else ''
-        comment += ' ssh ' + username + '@' + ip
+        comment = ' # sshpass -p ' + password if password else ' # '
+        comment += ' ssh ' + username + '@' + ip + ' '  + self.pod.name + ' ' + self.id
 
         if 'sudo' in cmd and 'sudo -p "" -S ' not in cmd:
             cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.ssh_password))
@@ -230,6 +253,3 @@ class LabServer(LabNode):
             finally:
                 s.close()
             return res
-
-    def r_get_n_sriov(self):
-        return len([x for x in self.exe('lspci | grep 710', is_warn_only=True).split('\n') if 'Virtual' in x])
