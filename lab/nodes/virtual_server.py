@@ -21,7 +21,13 @@ class VirtualServer(LabServer):
         mgmt_ip = self.pod.get_director().get_ip_api()
         os.system('ssh -2NfL {port}:{vts}:{port} root@{mgmt}'.format(port=port, vts=vts_host_ip, mgmt=mgmt_ip))
 
+
 class VipServer(VirtualServer):
     def __init__(self, pod, dic):
         super(VipServer, self).__init__(pod=pod, dic=dic)
         self.ssh_ip_individual = dic['ssh-ip-individual']
+
+
+class LibVirtServer(VirtualServer):
+    def r_libvirt_info(self):
+        self.hard.exe('virsh list')

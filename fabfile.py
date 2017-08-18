@@ -228,7 +228,7 @@ def bash():
     from lab.nodes.virtual_server import VirtualServer
     from tools.configurator import Configurator
 
-    pod = Laboratory.create_from_remote(ip=get_user_input(options_lst=Configurator.KNOWN_LABS.keys()))
+    pod = Laboratory.create_from_remote(lab_name=get_user_input(options_lst=Configurator.KNOWN_LABS.keys()))
     aliases = []
     for node in pod.nodes.values():
         if not isinstance(node, VirtualServer):

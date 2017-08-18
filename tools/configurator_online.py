@@ -27,7 +27,7 @@ class Configurator(WithConfig, WithLogMixIn):
             try:
                 self.s.password = password
                 ans = self.s.exe(cmd='ciscovim install-status # {} mgm with password {}'.format(lab_name, self.s.password), is_warn_only=True)
-                if '| ORCHESTRATION          | Success |' not in ans:
+                if '| CEPH                   | Success |' not in ans:
                     raise RuntimeError('{} is not properly installed'.format(lab_name))
                 ans = self.s.exe(cmd='cat /root/openstack-configs/setup_data.yaml # {} mgm with password {}'.format(lab_name, self.s.password), is_warn_only=True)
                 return self.create_from_setup_data(setup_data=yaml.load(ans))
@@ -46,7 +46,7 @@ class Configurator(WithConfig, WithLogMixIn):
         pod.setup_data = setup_data
 
         ConfiguratorOffline.process_mercury_nets(pod=pod)
-        # ConfiguratorOffline.process_switches(pod=pod)
+        ConfiguratorOffline.process_switches(pod=pod)
 
         mgm_cfg = {'cimc_info': {'cimc_ip': pod.setup_data['TESTING_MGMT_NODE_CIMC_IP'],
                                  'cimc_username': pod.setup_data['TESTING_MGMT_CIMC_USERNAME'],
@@ -58,6 +58,7 @@ class Configurator(WithConfig, WithLogMixIn):
         # ConfiguratorOffline.process_connections(pod=pod)
         # pod.validate_config()
         ConfiguratorOffline.save_self_config(p=pod)
+        pod.versions = pod.mgmt.r_get_version()
         return pod
 
     @staticmethod
@@ -97,7 +98,6 @@ class Configurator(WithConfig, WithLogMixIn):
 
         node = klass.create_node(pod=pod, dic=cfg)
         node.r_build_online()
-        # node.nics_dic = Nic.create_nics_dic(node=node, dics_lst=[{'id': k[3], 'ip': v['ipv4'][0], 'is-ssh': v['is-ssh']} for k, v in ip_info['ifaces'].items() if k.startswith('br_')])
         pod.nodes[node.id] = node
 
         self.log(str(node) + ' processed\n\n')
@@ -106,17 +106,28 @@ class Configurator(WithConfig, WithLogMixIn):
 
     def process_vts_virtuals(self, pod, vts):
         from lab.nodes.vtc import Vtc
+        from lab.nodes.vtsr import Vtsr
 
-        vtc_ip = pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_IPS']
         vtc_username = pod.setup_data['VTS_PARAMETERS']['VTC_SSH_USERNAME']
         vtc_password = pod.setup_data['VTS_PARAMETERS']['VTC_SSH_PASSWORD']
-        vip_a = pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_VIP']
-        vip_m = pod.setup_data['VTS_PARAMETERS']['VTS_NCS_IP']
-        cfg = {'id': 'vtc' + vts.id, 'role': Vtc.__name__, 'proxy': None, 'virtual-on': vts.id,
-               'ssh-ip': vip_a, 'ssh-ip-individual': vtc_ip, 'ssh-username': vtc_username, 'ssh-password': vtc_password,
-               'nics': []}
-        node = Vtc.create_node(pod=pod, dic=cfg)
-        node.r_build_online()
-        pod.nodes[node.id] = node
+        vtc_ips = pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_IPS']
+        vtc_vip_a = pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_VIP']
+        xrvr_ips = pod.setup_data['VTS_PARAMETERS']['VTS_XRVR_MGMT_IPS']
 
-        self.log(str(node) + ' processed\n\n')
+        ans = vts.exe('virsh list')
+        for line in ans.split('\r\n')[2:]:
+            if 'vtc' in line:
+                # vip_m = pod.setup_data['VTS_PARAMETERS']['VTS_NCS_IP']
+                cfg = {'id': 'vtc' + vts.id, 'role': Vtc.__name__, 'proxy': None, 'virtual-on': vts.id,
+                       'ssh-ip': vtc_vip_a, 'ssh-ip-individual': vtc_ips, 'ssh-username': vtc_username, 'ssh-password': vtc_password, 'nics': []}
+                node = Vtc.create_node(pod=pod, dic=cfg)
+            elif 'vtsr' in line:
+                cfg = {'id': 'vtsr' + vts.id, 'role': Vtsr.__name__, 'proxy': pod.mgmt, 'virtual-on': vts.id,
+                       'ssh-ip': '11.11.11.250', 'ssh-ip-individual': xrvr_ips, 'ssh-username': vtc_username, 'ssh-password': vtc_password, 'nics': []}
+                node = Vtsr.create_node(pod=pod, dic=cfg)
+            else:
+                raise RuntimeError('{}: Unknown virtual is running {}'.format(vts, line))
+            node.r_build_online()
+            pod.nodes[node.id] = node
+            self.log(str(node) + ' processed\n\n')
+            break

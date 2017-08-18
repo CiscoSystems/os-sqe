@@ -16,6 +16,7 @@ class LabServer(LabNode):
         self.intel_virtual_nics_dic = {}
         self.cisco_vics_dic = {}
         self.lom_nics_dic = {}
+        self.libvirt_nics_dic = {}
 
     def add_virtual_server(self, server):
         self.virtual_servers.add(server)
@@ -51,6 +52,8 @@ class LabServer(LabNode):
                     self.lom_nics_dic[iface] = {'model': 'Intel I350', 'line': line}
                 else:
                     raise RuntimeError('Not known NIC model in {}'.format(line))
+            elif 'Virtio' in line:
+                self.libvirt_nics_dic[iface] = {'model': 'Virtio', 'line': line}
             else:
                 raise RuntimeError('Not known NIC manufacturer: {} in {}'.format(manufacturer, line))
             #     ans = self.exe('ethtool -i enp{}s{}f{}'.format(bus, card, port), is_warn_only=True)

@@ -63,7 +63,7 @@ class Configurator(WithConfig, WithLogMixIn):
         if 'nc' in known_info:
             switches.append({'id': 'nc', 'role': 'VimCat', 'oob-ip': known_info['nc'], 'oob-username': username, 'oob-password': password})
 
-        tors = VimTor.add_nodes(pod=pod, nodes_cfg=switches)
+        tors = VimTor.create_nodes(pod=pod, node_dics_lst=switches)
 
         specials = {}
         wires_cfg = []
@@ -85,7 +85,7 @@ class Configurator(WithConfig, WithLogMixIn):
             specials[i] = x
 
         pod.nodes.update(tors)
-        pod.nodes.update(VimTor.add_nodes(pod=pod, nodes_cfg=specials.values()))
+        pod.nodes.update(VimTor.create_nodes(pod=pod, node_dics_lst=specials.values()))
         pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=wires_cfg))
 
     @staticmethod
@@ -229,7 +229,7 @@ class Configurator(WithConfig, WithLogMixIn):
             oob_part = ', oob-ip: {:15}, oob-username: {:9}, oob-password: {:9}'.format(node.oob_ip, node.oob_username, node.oob_password)
             virtual_part = ', virtual-on: {:5}, '.format(node.hard.id) if node.is_virtual() else ''
             vip_part = ', ssh-ip-individual: {:15}, '.format(node.ssh_ip_individual) if node.is_vip() else ''
-            a = ' {{id: {:8}, role: {:15}, proxy: {:5}, {}{}{}'.format(node.id, node.role, pn_id, virtual_part, ssh_part, vip_part, oob_part)
+            a = ' {{id: {:8}, role: {:15}, proxy: {:5}, {}{}{}{}'.format(node.id, node.role, pn_id, virtual_part, ssh_part, vip_part, oob_part)
             # if tp != switch:
             #     nics = ',\n              '.join(map(lambda y: nic_yaml_body(y), node.nics.values()))
             #     a += ',\n      nics: [ {}\n      ]\n'.format(nics)
@@ -264,12 +264,12 @@ class Configurator(WithConfig, WithLogMixIn):
 
             f.write('nodes: [\n')
             node_bodies = sorted([node_yaml_body(node=x) for x in p.nodes.values() if isinstance(x, LabServer) and not isinstance(x, VirtualServer)])
-            f.write(',\n\n'.join(node_bodies))
+            f.write(',\n'.join(node_bodies))
             f.write('\n]\n\n')
 
             f.write('virtuals: [\n')
             node_bodies = [node_yaml_body(node=x) for x in p.nodes.values() if isinstance(x, VirtualServer)]
-            f.write(',\n\n'.join(node_bodies))
+            f.write(',\n'.join(node_bodies))
             f.write('\n]\n\n')
 
             f.write('wires: [\n')

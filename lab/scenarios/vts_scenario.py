@@ -33,7 +33,7 @@ class VtsScenario(ParallelWorker):
 
     @property
     def vtc(self):
-        return self.pod.get_vtc()[0]
+        return self.pod.vtc[0]
 
     @property
     def image(self):
@@ -129,10 +129,10 @@ class VtsScenario(ParallelWorker):
 
     @section('Cleaning all objects observed in cloud')
     def cleanup(self):
-        if self.pod.is_with_vts():
+        if self.pod.vtc:
             self.detach_border_leaf()
         self.cloud.os_cleanup(is_all=True)
-        if self.pod.is_with_vts():
+        if self.pod.vtc:
             self.check_vts_networks()
 
     @section(message='Assert no network in VTC')

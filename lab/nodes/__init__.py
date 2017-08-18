@@ -176,8 +176,9 @@ class LabNode(WithLogMixIn, WithConfig):
         from lab.nodes.xrvr import Xrvr
         from lab.nodes.vtf import Vtf
         from lab.nodes.vtc import Vtc
+        from lab.nodes.vtsr import Vtsr
 
-        classes = {x.__name__: x for x in [Tor, Oob, Pxe, Terminal, N9, VimTor, VimCat, CimcDirector, CimcController, CimcCompute, CimcCeph, CimcVts, Vtc, Vtf, Xrvr, Asr, FI, FiDirector, FiController, FiCompute, FiCeph]}
+        classes = {x.__name__: x for x in [Tor, Oob, Pxe, Terminal, N9, VimTor, VimCat, CimcDirector, CimcController, CimcCompute, CimcCeph, CimcVts, Vtc, Vtf, Xrvr, Vtsr, Asr, FI, FiDirector, FiController, FiCompute, FiCeph]}
         try:
             return classes[role]
         except KeyError:
