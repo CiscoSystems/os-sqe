@@ -16,14 +16,14 @@ class VtsDeleteCompute(ParallelWorker):
         import random
         import yaml
 
-        mgmt = self.get_lab().get_director()
-        tag = mgmt.exe('cat /etc/cisco-mercury-release')
+        mgm = self.pod.mgm
+        tag = mgm.exe('cat /etc/cisco-mercury-release')
         setup_data_folder = "/root/installer-{tag}/openstack-configs".format(tag=tag)
         setup_data_path = os.path.join(setup_data_folder, 'setup_data.yaml')
         setup_data_orig_path = os.path.join(setup_data_folder, 'setup_data.yaml.orig')
 
-        setup_data_orig = mgmt.exe('cat {0}'.format(setup_data_orig_path), is_warn_only=True)
-        setup_data = mgmt.exe('cat {0}'.format(setup_data_path))
+        setup_data_orig = mgm.exe('cat {0}'.format(setup_data_orig_path), is_warn_only=True)
+        setup_data = mgm.exe('cat {0}'.format(setup_data_path))
 
         setup_data_orig = None if 'No such file' in setup_data_orig else yaml.load(setup_data_orig)
         setup_data = yaml.load(setup_data)
@@ -34,7 +34,7 @@ class VtsDeleteCompute(ParallelWorker):
 
         if not setup_data_orig:
             # create backup setup_data
-            mgmt.exe('mv -f {0} {1}'.format(setup_data_path, setup_data_orig_path))
+            mgm.exe('mv -f {0} {1}'.format(setup_data_path, setup_data_orig_path))
 
         compute_num = random.randint(0, computes_amount - 1)
         compute_name = setup_data['ROLES']['compute'][compute_num]

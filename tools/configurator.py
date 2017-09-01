@@ -41,7 +41,7 @@ class Configurator(WithConfig, WithLogMixIn):
         self.process_mercury_nets(pod=pod)
         self.process_switches(pod=pod)
         self.process_mercury_nodes(pod=pod)
-        self.process_connections()
+        self.process_connections(pod=pod)
         pod.validate_config()
         self.save_self_config(p=pod)
         return pod
@@ -51,9 +51,7 @@ class Configurator(WithConfig, WithLogMixIn):
         from lab.nodes.n9.vim_tor import VimTor
         from lab.wire import Wire
 
-        pod_name = pod.setup_data['TESTING_TESTBED_NAME']
-
-        known_info = Configurator.KNOWN_LABS[pod_name]
+        known_info = Configurator.KNOWN_LABS[pod.name.rsplit('-', 1)[0]]
         switches = []
         username, password = None, None
         for sw in pod.setup_data['TORSWITCHINFO']['SWITCHDETAILS']:
@@ -213,10 +211,6 @@ class Configurator(WithConfig, WithLogMixIn):
         from lab.nodes.virtual_server import VirtualServer
         from lab.nodes.lab_server import LabServer
 
-        virtual = 'V'
-        switch = 'S'
-        others = 'O'
-
         def net_yaml_body(net):
             return '{{id: {:3}, vlan: {:4}, cidr: {:19}, is-via-tor: {:5}, roles: {}}}'.format(net.id, net.vlan, net.net.cidr, 'True' if net.is_via_tor else 'False', net.roles_must_present)
 
@@ -228,8 +222,7 @@ class Configurator(WithConfig, WithLogMixIn):
             ssh_part = ', ssh-ip: {:15}, ssh-username: {:9}, ssh-password: {:9}, '.format(node.ssh_ip, node.ssh_username, node.ssh_password) if isinstance(node, LabServer) else ''
             oob_part = ', oob-ip: {:15}, oob-username: {:9}, oob-password: {:9}'.format(node.oob_ip, node.oob_username, node.oob_password)
             virtual_part = ', virtual-on: {:5}, '.format(node.hard.id) if node.is_virtual() else ''
-            vip_part = ', ssh-ip-individual: {:15}, '.format(node.ssh_ip_individual) if node.is_vip() else ''
-            a = ' {{id: {:8}, role: {:15}, proxy: {:5}, {}{}{}{}'.format(node.id, node.role, pn_id, virtual_part, ssh_part, vip_part, oob_part)
+            a = ' {{id: {:8}, role: {:15}, proxy: {:5}, {}{}{}'.format(node.id, node.role, pn_id, virtual_part, ssh_part, oob_part)
             # if tp != switch:
             #     nics = ',\n              '.join(map(lambda y: nic_yaml_body(y), node.nics.values()))
             #     a += ',\n      nics: [ {}\n      ]\n'.format(nics)
@@ -245,6 +238,12 @@ class Configurator(WithConfig, WithLogMixIn):
         with Configurator.open_artifact('{}.yaml'.format(p), 'w') as f:
             f.write('name: {} # any string to be used on logging\n'.format(p))
             f.write('description-url: "{}"\n'.format(p))
+            f.write('gerrit_tag: ' + str(p.gerrit_tag) + '\n')
+            f.write('namespace: ' + str(p.namespace) + '\n')
+            f.write('release_tag: ' + str(p.release_tag) + '\n')
+            f.write('os_name: ' + str(p.os_name) + '\n')
+            f.write('driver: ' + str(p.driver) + '\n')
+            f.write('driver_version: ' + str(p.driver_version) + '\n')
             f.write('\n')
 
             f.write('specials: [\n')

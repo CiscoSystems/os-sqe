@@ -203,4 +203,8 @@ ansible-playbook -e @/root/openstack-configs/setup_data.yaml -e @/root/openstack
 
 nfvbench --show-config
 
+
+nfvbench --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
+
+nfvbench -c "{flavor: {extra_specs : {'hw:numa_nodes': 2}}, internal_networks: {left: {physical_network: phys_sriov0, segmentation_id: 2000}, right: {physical_network: phys_sriov1, segmentation_id: 2001}}}" --rate 1Mpps --duration 10 --std-json /tmp/nfvbench --sriov
 """

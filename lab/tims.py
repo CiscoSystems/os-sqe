@@ -3,24 +3,7 @@ from lab.with_config import WithConfig
 
 
 class Tims(WithLogMixIn, WithConfig):
-    FOLDERS = {'HIGH AVAILABILITY': 'Tcbr1841f', 'NEGATIVE': 'Tcbr1979f', 'VTS PERF AND SCALE': 'Tcbr1840f', 'PERFOMANCE_AND_SCALE': 'Tcbr1840f', 'API_TEST': 'Tcbr2001f'}
-    NAMESPACE_TO_BRANCH = {'mercury-rhel7-osp10': 'master', 'mercury-rhel7-osp10-plus': 'newton', 'mercury-rhel7-osp8': 'liberty'}
     MECHANISM_TO_TOPOLOGY = {'vts': 'VTS/VLAN', 'vpp': 'VPP/VLAN'}
-    POD_TO_CONF_ID = {'g7-2-vts': 'Tcbr8154g',
-                      'g7-2-vpp': 'Tcbr96912g',
-                      'marahaika-vts': 'Tcbr9367g',
-                      'marahaika-vpp': 'Tcbr114510g',
-                      'c35bottom-vts': 'Tcbr115582g',
-                      'c35bottom-vpp': 'Tcbr115583g',
-                      'i11tb3-vpp':    'Tcbr114509g',
-                      'i11tb3-vts':    'Tcbr2062g'}
-    TOKENS = {'kshileev': '0000003933000000000D450000000000',
-              'nfedotov': '26520000006G00005F42000077044G47',
-              'dratushn': '000000525F7G007900000000006G4700',
-              'ymorkovn': '6B02004H0000005600003B0000000000'}
-
-    TIMS_PROJECT_ID = 'Tcbr1p'
-
     _OPERATION_ENTITY = 'entity'
     _OPERATION_UPDATE = 'update'
     _OPERATION_SEARCH = 'search'
@@ -30,12 +13,15 @@ class Tims(WithLogMixIn, WithConfig):
         import os
 
         self.pod = pod
-        self._conf_id = Tims.POD_TO_CONF_ID[str(self.pod)]
-        self._versions = pod.versions
-        self._mercury_version = self._versions['gerrit_tag']
-        self._branch = Tims.NAMESPACE_TO_BRANCH[self._versions['container_namespace']]
-        self._topo = Tims.MECHANISM_TO_TOPOLOGY[self._versions['mechanism']]
-        self._dima_common_part_of_logical_id = ':{}-{}:{}'.format(self._branch, self._mercury_version, self._topo)
+        self.tims_url = self.KNOWN_LABS['tims']['url']
+        self.tims_project_id = self.KNOWN_LABS['tims']['project_id']
+        self.tims_db_name = self.KNOWN_LABS['tims']['db_name']
+        self.tims_folders = self.KNOWN_LABS['tims']['folders']
+
+        self.conf_id = self.KNOWN_LABS['tims']['configurations'][str(self.pod)]
+        self._branch = self.KNOWN_LABS['namespaces'][pod.namespace]
+        self._topo = self.MECHANISM_TO_TOPOLOGY[pod.driver]
+        self._dima_common_part_of_logical_id = ':{}-{}:{}'.format(self._branch, self.pod.gerrit_tag, self._topo)
 
         self._jenkins_text = os.getenv('BUILD_URL', None) or 'run off jenkins'
         user_token = os.getenv('TIMS_USER_TOKEN', None)  # some Jenkins jobs define this variable in form user-token
@@ -45,18 +31,20 @@ class Tims(WithLogMixIn, WithConfig):
             user1 = os.getenv('BUILD_USER_ID', 'user_not_defined')  # some Jenkins jobs define this variable
             user2 = os.getenv('BUILD_USER_EMAIL', 'user_not_defined').split('@')[0]  # finally all Jenkins jobs define this variable
             user3 = getpass.getuser()
-            username, token = None, None
+            user_token_dic = self.KNOWN_LABS['tims']['user_tokens']
+            username, token = user_token_dic.items()[0]
             for user in [user1, user2, user3]:
-                if user in self.TOKENS.keys():
-                    username, token = user, self.TOKENS[user]
+                if user in user_token_dic:
+                    username, token = user, user_token_dic[user]
                     break
 
-        self._xml_tims_wrapper = '''<Tims xmlns="http://tims.cisco.com/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink"
-                                    xsi:schemaLocation="http://tims.cisco.com/namespace http://tims.cisco.com/xsd/Tims.xsd">
-                                    <Credential user="{}" token="{}"/>
+        self.log('Using {} to report'.format(username))
+        self._xml_tims_wrapper = '''<Tims xmlns="http://{url}/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink"
+                                    xsi:schemaLocation="http://{url}/namespace http://{url}/xsd/Tims.xsd">
+                                    <Credential user="{user}" token="{token}"/>
                                         {{body}}
                                     </Tims>
-                                 '''.format(username, token) if username else None
+                                 '''.format(url=self.tims_url, user=username, token=token) if username else None
 
     def __repr__(self):
         return u'TIMS'
@@ -69,7 +57,7 @@ class Tims(WithLogMixIn, WithConfig):
             return False
         else:
             data = self._xml_tims_wrapper.format(body=body)
-            response = requests.post("http://tims.cisco.com/xml/{}/{}.svc".format(self.TIMS_PROJECT_ID, operation), data=data)
+            response = requests.post("http://{}/xml/{}/{}.svc".format(self.tims_url, self.tims_project_id, operation), data=data)
             if u"Error" in response.content.decode():
                 raise RuntimeError(response.content)
             return response.content
@@ -80,7 +68,7 @@ class Tims(WithLogMixIn, WithConfig):
                         <FieldName><![CDATA[Logical ID]]></FieldName>
                         <Value><![CDATA[{}]]></Value>
                         </TextCriterion>
-                  </Search>'''.format(self.TIMS_PROJECT_ID, test_cfg_path)
+                  </Search>'''.format(self.KNOWN_LABS['tims']['project_id'], test_cfg_path)
 
         res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
         return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
@@ -91,7 +79,7 @@ class Tims(WithLogMixIn, WithConfig):
                         <FieldName><![CDATA[Logical ID]]></FieldName>
                         <Value><![CDATA[{logical_id}]]></Value>
                         </TextCriterion>
-                  </Search>'''.format(proj_id=self.TIMS_PROJECT_ID, logical_id=logical_id)
+                  </Search>'''.format(proj_id=self.tims_project_id, logical_id=logical_id)
 
         res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
         return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
@@ -100,10 +88,11 @@ class Tims(WithLogMixIn, WithConfig):
         import json
 
         case_id = self.search_test_case(test_cfg_path=test_cfg_path)
-        logical_or_case_id = '<ID xlink:href="http://tims.cisco.com/xml/{0}/entity.svc">{0}</ID>\n<LogicalID>{1}</LogicalID>'.format(case_id, test_cfg_path) if case_id else '<LogicalID>{}</LogicalID>'.format(test_cfg_path)
+        logical_or_case_id = '<ID xlink:href="http://{url}/xml/{c_id}/entity.svc">{c_id}</ID>\n<LogicalID>{l_id}</LogicalID>'.format(url=self.tims_url, c_id=case_id, l_id=test_cfg_path) if case_id \
+            else '<LogicalID>{}</LogicalID>'.format(test_cfg_path)
         cfg_body = self.read_config_from_file(config_path=test_cfg_path, directory='ha')
         folder_name = cfg_body[0].get('Folder', '')
-        if not folder_name or folder_name not in self.FOLDERS:
+        if not folder_name or folder_name not in self.tims_folders:
             self.log('test {} is not updated since does not specify correct folder (one of {})'.format(test_cfg_path, self.FOLDERS.keys()))
             return
         try:
@@ -119,11 +108,11 @@ class Tims(WithLogMixIn, WithConfig):
             <Description><![CDATA[{desc}]]></Description>
             {id}
             <WriteAccess>member</WriteAccess>
-            <ProjectID xlink:href="http://tims.cisco.com/xml/{project_id}/project.svc">{project_id}</ProjectID>
-            <DatabaseID xlink:href="http://tims.cisco.com/xml/NFVICLOUDINFRA/database.svc">NFVICLOUDINFRA</DatabaseID>
-            <FolderID xlink:href="http://tims.cisco.com/xml/{folder_id}/entity.svc">{folder_id}</FolderID>
+            <ProjectID xlink:href="http://{url}/xml/{project_id}/project.svc">{project_id}</ProjectID>
+            <DatabaseID xlink:href="http://{url}/xml/{db_name}/database.svc">{db_name}</DatabaseID>
+            <FolderID xlink:href="http://{url}/xml/{folder_id}/entity.svc">{folder_id}</FolderID>
         </Case>
-        '''.format(test_title=test_title, desc=desc, id=logical_or_case_id, project_id=self.TIMS_PROJECT_ID, folder_id=self.FOLDERS[folder_name])
+        '''.format(test_title=test_title, url=self.tims_url, desc=desc, id=logical_or_case_id, project_id=self.tims_project_id, folder_id=self.tims_folders[folder_name], db_name=self.tims_db_name)
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
         return case_id
@@ -139,7 +128,7 @@ class Tims(WithLogMixIn, WithConfig):
             <Result>
                 <Title><![CDATA[Result {test_cfg_path}]]></Title>
                 <Description><![CDATA[{desc}]]></Description>
-                <ID xlink:href="http://tims.cisco.com/xml/{result_id}/entity.svc">{result_id}</ID>
+                <ID xlink:href="http://{url}/xml/{result_id}/entity.svc">{result_id}</ID>
                 <LogicalID><![CDATA[{logical_id}]]></LogicalID>
                 <WriteAccess>member</WriteAccess>
                 <ListFieldValue multi-value="true">
@@ -147,10 +136,11 @@ class Tims(WithLogMixIn, WithConfig):
                     <Value><![CDATA[ {mercury_version} ]]></Value>
                 </ListFieldValue>
                 <Status>{status}</Status>
-                <ConfigID xlink:href="http://tims.cisco.com/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
-                <CaseID xlink:href="http://tims.cisco.com/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
+                <ConfigID xlink:href="http://{url}/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
+                <CaseID xlink:href="http://{url}/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
             </Result>
-        '''.format(test_cfg_path=test_cfg_path, desc=desc, status=status, mercury_version=self._mercury_version, test_case_id=test_case_id, logical_id=pending_logical_id, result_id=pending_result_id, conf_id=self._conf_id)
+        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, desc=desc, status=status, mercury_version=self.pod.gerrit_tag,
+                   test_case_id=test_case_id, logical_id=pending_logical_id, result_id=pending_result_id, conf_id=self.conf_id)
 
         ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
         return ' and pending http://tims/warp.cmd?ent={} updated'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
@@ -169,11 +159,11 @@ class Tims(WithLogMixIn, WithConfig):
                     <Value><![CDATA[ {mercury_version} ]]></Value>
                 </ListFieldValue>
                 <Status>{status}</Status>
-                <CaseID xlink:href="http://tims.cisco.com/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
-                <ConfigID xlink:href="http://tims.cisco.com/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
+                <CaseID xlink:href="http://{url}/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
+                <ConfigID xlink:href="http://{url}/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
 
         </Result>
-        '''.format(test_cfg_path=test_cfg_path, test_case_id=test_case_id, logical_id=logical_id, description=desc, mercury_version=self._mercury_version, status=status, conf_id=self._conf_id)
+        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, test_case_id=test_case_id, logical_id=logical_id, description=desc, mercury_version=self.pod.gerrit_tag, status=status, conf_id=self.conf_id)
 
         ans = str(self._api_post(operation=self._OPERATION_ENTITY, body=body))
 
@@ -194,7 +184,7 @@ class Tims(WithLogMixIn, WithConfig):
             with self.open_artifact('main-results-for-tims.txt', 'r') as f:
                 desc += 'MAIN RESULTS:\n' + f.read()
 
-        log_msg = '{} {}: {} {} {} '.format(self.pod, self._mercury_version, test_cfg_path, status.upper(), self._jenkins_text)
+        log_msg = '{} {}: {} {} {} '.format(self.pod, self.pod.gerrit_tag, test_cfg_path, status.upper(), self._jenkins_text)
 
         result_url = self.update_pending_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, desc=desc, status=status)
 
@@ -208,7 +198,14 @@ class Tims(WithLogMixIn, WithConfig):
     def simulate():
         from lab.laboratory import Laboratory
 
-        tims_lst = [Tims(Laboratory.create_from_remote('g7-2')), Tims(Laboratory.create_from_remote('c35bottom')), Tims(Laboratory.create_from_remote('i11tb3'))]
+        g72 = Laboratory()
+        g72.name = 'g7-2-vts'
+        g72.gerrit_tag = 10343
+        g72.namespace = 'mercury-rhel7-osp10-plus'
+        g72.driver = 'vts'
+        g72.driver_version = 'vts fake version'
+
+        tims_lst = [Tims(pod=g72)]
         # available_tc = tims.ls_configs(directory='ha')
 
         cfgs = ['perf-csr-0-PVP-1-1k.yaml']

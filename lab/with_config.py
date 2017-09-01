@@ -6,17 +6,16 @@ from lab.network import Network
 
 class WithConfig(object):
     SQE_USERNAME = 'sqe'
-    DEFAULT_PASSWORD = 'cisco123'
     REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
     CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
     CONFIGS_REPO_URL = 'https://wwwin-gitlab-sjc.cisco.com/mercury/configs/raw/master'
 
-    REMOTE_FILE_STORE_IP = '172.29.173.233'
     PRIVATE_KEY = requests.get(url=CONFIGS_REPO_URL + '/' + 'private.key').text
     PUBLIC_KEY = requests.get(url=CONFIGS_REPO_URL + '/' + 'public.key').text
     KNOWN_LABS = json.loads(requests.get(url=CONFIGS_REPO_URL + '/' + 'known_lab_info.json').text)
 
+    VIM_NUM_VS_OS_NAME_DIC = {'2.2': 'ocata', '2.1': 'master', '2.0': 'newton', '1.0': 'liberty'}
     NETWORKS = {'api': Network(net_id='a', cidr='10.10.10.0/32', vlan=9999, is_via_tor=True, pod='', roles_must_present=['CimcDirector', 'CimcController', 'Vtc', 'VtsHost']),
                 'management': Network(net_id='m', cidr='11.11.11.0/24', vlan=2011, is_via_tor=False, pod='', roles_must_present=['CimcDirector', 'CimcController', 'CimcCompute', 'CimcCeph', 'CimcCompute',
                                                                                                                                  'Vtc', 'Xrvr', 'VtsHost']),

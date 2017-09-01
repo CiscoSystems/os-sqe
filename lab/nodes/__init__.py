@@ -7,8 +7,6 @@ from lab.with_log import WithLogMixIn
 class LabNode(WithLogMixIn, WithConfig):
     __metaclass__ = abc.ABCMeta
 
-    _ROLE_VS_COUNT = {}
-
     def __init__(self, pod, dic):
         self.pod = pod                                 # link to parent Laboratory object
         self.id = str(dic['id'])                       # some id which unique in the given role, usually role + some small integer
@@ -16,10 +14,6 @@ class LabNode(WithLogMixIn, WithConfig):
         self._proxy = dic.get('proxy')                 # LabNode object or node id (lazy init), will be used as proxy node to this node
         self.oob_ip, self.oob_username, self.oob_password = dic['oob-ip'], dic['oob-username'], dic['oob-password']
 
-        role = self.role.split('-')[0]      # e.g. control-fi and control-cimc are the same for counting
-        self._ROLE_VS_COUNT.setdefault(role, 0)
-        self._ROLE_VS_COUNT[role] += 1
-        self._n = self._ROLE_VS_COUNT[role]  # number of this node in a list of nodes for this role
         self._wires = []
 
     def __repr__(self):
@@ -58,9 +52,6 @@ class LabNode(WithLogMixIn, WithConfig):
     def attach_wire(self, wire):
         self._wires.append(wire)
 
-    def get_n_in_role(self):
-        return self._n
-
     def get_all_wires(self):
         """Returns all wires"""
         return self._wires
@@ -73,6 +64,26 @@ class LabNode(WithLogMixIn, WithConfig):
     def cmd(self, cmd):
         pass  # this method allows to do OOB commands like e.g. CIMC or NXAPI
 
+    def is_oob(self):
+        from lab.nodes.tor import Oob
+
+        return type(self) is Oob
+
+    def is_tor(self):
+        from lab.nodes.tor import Tor
+
+        return type(self) is Tor
+
+    def is_vim_tor(self):
+        from lab.nodes.n9.vim_tor import VimTor
+
+        return type(self) is VimTor
+
+    def is_vim_cat(self):
+        from lab.nodes.n9 import VimCat
+
+        return type(self) is VimCat
+
     def is_cimc_server(self):
         from lab.nodes.cimc_server import CimcServer
 
@@ -83,7 +94,7 @@ class LabNode(WithLogMixIn, WithConfig):
 
         return isinstance(self, FiServer)
 
-    def is_director(self):
+    def is_mgm(self):
         from lab.nodes.fi import FiDirector
         from lab.nodes.mgmt_server import CimcDirector
 
@@ -137,14 +148,14 @@ class LabNode(WithLogMixIn, WithConfig):
 
         return isinstance(self, VipServer)
 
-    def calculate_mac(self, port_id, mac):
-        o3 = {'CimcDirector': 'DD', 'CimcController': 'CC', 'CimcCompute': 'C0', 'CimcCeph': 'CE', 'Vtc': 'F0', 'Xrvr': 'F1', 'Vtf': 'F2', 'Vts': 'F5'}[self.__class__.__name__]
-        o2 = 'A0' if self.is_cimc_server() else 'E9'  # UCS connected to N9 or Virtual server
-        if self.is_fi_server():
-            server_id = getattr(self, 'get_server_id')()  # UCS connected to FI
-            o2 = 'B' + server_id.split('/')[-1] if '/' in server_id else 'C' + server_id
-
-        return mac or '{}0:{:02}:{}:{}:{:02}:CA'.format('1' if port_id == 'MLOM/1' else '0', self.pod.get_id(), o2, o3, self._n)
+    # def calculate_mac(self, port_id, mac):
+    #     o3 = {'CimcDirector': 'DD', 'CimcController': 'CC', 'CimcCompute': 'C0', 'CimcCeph': 'CE', 'Vtc': 'F0', 'Xrvr': 'F1', 'Vtf': 'F2', 'Vts': 'F5'}[self.__class__.__name__]
+    #     o2 = 'A0' if self.is_cimc_server() else 'E9'  # UCS connected to N9 or Virtual server
+    #     if self.is_fi_server():
+    #         server_id = getattr(self, 'get_server_id')()  # UCS connected to FI
+    #         o2 = 'B' + server_id.split('/')[-1] if '/' in server_id else 'C' + server_id
+    #
+    #     return mac or '{}0:{:02}:{}:{}:{:02}:CA'.format('1' if port_id == 'MLOM/1' else '0', self.pod.get_id(), o2, o3, self._n)
 
     def r_verify_oob(self):
         import socket
@@ -177,8 +188,12 @@ class LabNode(WithLogMixIn, WithConfig):
         from lab.nodes.vtf import Vtf
         from lab.nodes.vtc import Vtc
         from lab.nodes.vtsr import Vtsr
+        from lab.nodes.virtual_server import VtcIndividual, VtsrIndividual
 
-        classes = {x.__name__: x for x in [Tor, Oob, Pxe, Terminal, N9, VimTor, VimCat, CimcDirector, CimcController, CimcCompute, CimcCeph, CimcVts, Vtc, Vtf, Xrvr, Vtsr, Asr, FI, FiDirector, FiController, FiCompute, FiCeph]}
+        classes = {x.__name__: x for x in [Tor, Oob, Pxe, Terminal, N9,
+                                           VimTor, VimCat, CimcDirector, CimcController, CimcCompute, CimcCeph, CimcVts,
+                                           Vtc, VtcIndividual, Vtf, Xrvr, VtsrIndividual, Asr,
+                                           FI, FiDirector, FiController, FiCompute, FiCeph]}
         try:
             return classes[role]
         except KeyError:

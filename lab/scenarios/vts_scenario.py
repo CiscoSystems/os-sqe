@@ -152,7 +152,7 @@ class VtsScenario(ParallelWorker):
         self.check_nve()
         self.vtc.r_vtc_create_border_leaf_port(nets)
         time.sleep(10)
-        self.mgmt.r_create_access_points(nets)
+        self.mgm.r_create_access_points(nets)
         self.check_nve()
 
     def teardown_worker(self):

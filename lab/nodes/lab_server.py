@@ -4,14 +4,11 @@ from lab.nodes import LabNode
 class LabServer(LabNode):
 
     def __init__(self, pod, dic):
-        from lab.network import Nic
-
         super(LabServer, self).__init__(pod=pod, dic=dic)
 
         self.ssh_ip, self.ssh_username, self.ssh_password = dic['ssh-ip'], dic['ssh-username'], dic['ssh-password']  # if password is None - use sqe ssh key
         self._package_manager = None
         self.virtual_servers = set()  # virtual servers running on this hardware server
-        self.nics_dic = Nic.create_nics_dic(node=self, dics_lst=dic['nics']) or {}
         self.intel_nics_dic = {}
         self.intel_virtual_nics_dic = {}
         self.cisco_vics_dic = {}
@@ -90,35 +87,6 @@ class LabServer(LabNode):
         #             result['ifaces'][ifaces]['master'] = br_name
         result['etc_hosts'] = {x.split()[1]: x.split()[0] for x in cat_etc_hosts.split('\r\n') if x}
 
-    def r_is_nics_correct(self):
-        actual_nics = self.r_list_ip_info(n_attempts=1)
-        if not actual_nics:
-            return False
-
-        status = True
-        for main_name, nic in self.nics_dic.items():
-            requested_mac = nic.get_macs()[0].lower()
-            requested_ip = nic.get_ip_with_prefix()
-            if len(nic.get_names()) > 1:
-                requested_name_with_ip = [main_name, 'br-' + main_name]
-            else:
-                requested_name_with_ip = nic.get_names()
-
-            if not nic.is_pxe():
-                if requested_ip not in actual_nics:
-                    self.log_warning(message='{}: requested IP {} is not assigned, actually it has {}'.format(main_name, requested_ip, actual_nics.get(requested_name_with_ip, {}).get('ipv4', 'None')))
-                    status = False
-                else:
-                    iface = actual_nics[requested_ip][0]
-                    if iface not in requested_name_with_ip:  # might be e.g. a or br-a
-                        self.log_warning(message='requested IP {} is assigned to "{}" while supposed to be one of "{}"'.format(requested_ip, iface, requested_name_with_ip))
-                        status = False
-
-            if requested_mac not in actual_nics:
-                self.log_warning(message='{}: requested MAC {} is not assigned, actually it has {}'.format(main_name, requested_mac, actual_nics.get(main_name, {}).get('mac', 'None')))
-                status = False
-        return status
-
     def exe(self, cmd, in_dir='.', is_warn_only=False, is_as_sqe=False, n_attempts=100, estimated_time=None):
         import time
         from lab.server import Server
@@ -182,16 +150,16 @@ class LabServer(LabNode):
         self.exe(cmd='subscription-manager repos --disable=*')
         self.exe(cmd='subscription-manager repos {}'.format(repos_to_enable))
 
-    def r_clone_repo(self, repo_url, local_repo_dir=None, tags=None, patch=None):
+    def r_clone_repo(self, repo_url, local_repo_dir=None, tags=None, patch=None, is_as_sqe=True):
         local_repo_dir = local_repo_dir or repo_url.split('/')[-1].strip('.git')
 
         # self.check_or_install_packages(package_names='git')
-        self.exe(cmd='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url), is_as_sqe=True)
-        repo_abs_path = self.exe(cmd='git pull -q && pwd', in_dir=local_repo_dir, is_as_sqe=True)
+        self.exe(cmd='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url), is_as_sqe=is_as_sqe)
+        repo_abs_path = self.exe(cmd='git pull -q && pwd', in_dir=local_repo_dir, is_as_sqe=is_as_sqe)
         if patch:
-            self.exe(cmd='git fetch {0} && git checkout FETCH_HEAD'.format(patch), is_as_sqe=True)
+            self.exe(cmd='git fetch {0} && git checkout FETCH_HEAD'.format(patch), is_as_sqe=is_as_sqe)
         elif tags:
-            self.exe(cmd='git checkout tags/{0}'.format(tags), in_dir=local_repo_dir, is_as_sqe=True)
+            self.exe(cmd='git checkout tags/{0}'.format(tags), in_dir=local_repo_dir, is_as_sqe=is_as_sqe)
         return repo_abs_path
 
     def r_curl(self, url, size, checksum, loc_abs_path):

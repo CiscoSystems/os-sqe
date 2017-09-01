@@ -15,8 +15,14 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     def __init__(self):
         self._unique_dict = dict()  # to make sure that all needed objects are unique
-        self._name = None
+        self.name = None
         self.setup_data = None
+        self.driver = None
+        self.driver_version = None
+        self.gerrit_tag = None
+        self.release_tag = None
+        self.os_name = None
+        self.namespace = None
         self.dns = []
         self.ntp = []
         self.networks = {}
@@ -45,7 +51,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         from lab.wire import Wire
 
         pod = Laboratory()
-        pod._name = cfg['name']
+        pod.name = cfg['name']
 
         pod.setup_data = cfg.get('setup-data')
         pod.dns.extend(pod.setup_data['NETWORKING']['domain_name_servers'])
@@ -103,69 +109,40 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             #     self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), owner=node.get_node_id())  # check that this peer_node-peer_port is unique
 
     @property
-    def driver(self):
-        return self.setup_data['MECHANISM_DRIVERS']
-
-    @property
-    def name(self):
-        if self._name is None:
-            self._name = self.setup_data['TESTING_TESTBED_NAME'] + '-' + self.driver
-        return self._name
-
-    @property
-    def mgmt(self):
-        from lab.nodes.mgmt_server import CimcDirector
-        from lab.nodes.fi import FiDirector
-
-        return filter(lambda x: type(x) in [CimcDirector, FiDirector], self.nodes.values())[0] or self.controls[0]  # if no specialized management node, use first control node
+    def mgm(self):
+        return filter(lambda x: x.is_mgm(), self.nodes.values())[0] or self.controls[0]  # if no specialized management node, use first control node
 
     @property
     def cobbler(self):
-        from lab.nodes.cobbler import CobblerServer
-
-        return filter(lambda x: type(x) in [CobblerServer], self.nodes.values())[0]
+        return filter(lambda x: x.is_cobbler(), self.nodes.values())[0]
 
     @property
     def vim_tors(self):
-        from lab.nodes.n9.vim_tor import VimTor
-
-        return filter(lambda x: type(x) is VimTor, self.nodes.values())
+        return filter(lambda x: x.is_vim_tor(), self.nodes.values())
 
     @property
     def vim_cat(self):
-        from lab.nodes.n9 import VimCat
-
-        return filter(lambda x: type(x) is VimCat, self.nodes.values())
+        return filter(lambda x: x.is_vim_cat(), self.nodes.values())
 
     @property
     def oob(self):
-        from lab.nodes.tor import Oob
-
-        return filter(lambda x: type(x) is Oob, self.nodes.values())
+        return filter(lambda x: x.is_oob(), self.nodes.values())
 
     @property
     def tor(self):
-        from lab.nodes.tor import Tor
-
-        return filter(lambda x: type(x) is Tor, self.nodes.values())
+        return filter(lambda x: x.is_tor(), self.nodes.values())
 
     @property
     def controls(self):
-        from lab.nodes.cimc_server import CimcController
-        from lab.nodes.fi import FiController
-
-        return filter(lambda x: type(x) in [CimcController, FiController], self.nodes.values())
+        return filter(lambda x: x.is_control(), self.nodes.values())
 
     @property
     def computes(self):
-        from lab.nodes.cimc_server import CimcCompute
-        from lab.nodes.fi import FiCompute
-
-        return filter(lambda x: type(x) in [CimcCompute, FiCompute], self.nodes.values())
+        return filter(lambda x: x.is_compute(), self.nodes.values())
 
     @property
     def vtc(self):
-        return [x for x in self.nodes.values() if x.is_vtc()]
+        return [x for x in self.nodes.values() if x.is_vtc()][0]
 
     @property
     def vts(self):
@@ -173,7 +150,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     @property
     def cimc_servers(self):
-        return [x for x in self.nodes.values() if x.is_cimc()]
+        return filter(lambda x: x.is_cimc_server(), self.nodes.values())
 
     def make_sure_that_object_is_unique(self, obj, obj_type, owner):
         """check that given object is unique
@@ -209,5 +186,5 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
     def check_create_sqe_user(self):
         if not self.is_sqe_user_created:
-            self.mgmt.r_create_sqe_user()
+            self.mgm.r_create_sqe_user()
             self.is_sqe_user_created = True

@@ -18,18 +18,27 @@ def cmd():
     from lab.with_log import lab_logger
     from tools.configurator import Configurator
 
-    def get_node_methodes(l, name):
+    def get_node_methodes(o, name):
         if name == 'cloud':
-            deployer = DeployerExisting(ip=l.mgmt.ssh_ip)
+            deployer = DeployerExisting(ip=o.mgmt.ssh_ip)
             d = deployer.execute({'clouds': [], 'servers': []})
         elif device_name == 'lab':
-            d = l
+            d = o
         else:
-            d = l.nodes[name]
-        return d, [x for x in dir(d) if not (x.startswith('_') or x[0].isupper())]
+            d = o.nodes[name]
+
+        meth_names_lst = []
+        for attr in sorted(dir(d)):  # print all attributes of current object
+            print attr
+            meth_names_lst.append(attr)
+
+        return d, meth_names_lst
 
     def execute(d, name):
         try:
+            if name == 'dir':
+                d.log('\n'.join(dir(d)))
+                return
             method_to_execute = getattr(d, name)
             if inspect.ismethod(method_to_execute):
                 d.log('executing method {} {}'.format(name, 10 * ':'))
@@ -52,20 +61,20 @@ def cmd():
         except Exception as ex:
             lab_logger.exception('\n Exception: {0}'.format(ex))
 
+    pod_name = get_user_input(options_lst=Configurator.KNOWN_LABS.keys())
+    pod = Laboratory.create_from_remote(lab_name=pod_name)
     while True:
-        lab = Laboratory.create_from_remote(lab_name=get_user_input(options_lst=Configurator.KNOWN_LABS.keys()))
+        device_name = get_user_input(owner=pod, options_lst=['lab', 'cloud'] + pod.nodes.keys())
+        if device_name == 'level_up':
+            break
+        device, method_names = get_node_methodes(o=pod, name=device_name)
         while True:
-            device_name = get_user_input(owner=lab, options_lst=['lab', 'cloud'] + lab.nodes.keys())
-            if device_name == 'level_up':
+            method_name = get_user_input(owner=device, options_lst=method_names)
+            if method_name == 'level_up':
                 break
-            device, method_names = get_node_methodes(l=lab, name=device_name)
-            while True:
-                method_name = get_user_input(owner=device, options_lst=method_names)
-                if method_name == 'level_up':
-                    break
-                execute(d=device, name=method_name)
-                time.sleep(1)  # sleep to prevent fabric prompt clashing with
-                prompt('continue? >')
+            execute(d=device, name=method_name)
+            time.sleep(1)  # sleep to prevent fabric prompt clashing with
+            prompt('continue? >')
 
 
 @task
@@ -213,6 +222,8 @@ def get_user_input(options_lst, owner=None):
         sub_list = filter(lambda x: choice in x, sub_list)
         if len(sub_list) == 1:
             return sub_list[0]  # unique match , return it
+        elif choice in sub_list:
+            return choice  # exact match with one item in sublist
         elif len(sub_list) == 0:
             sub_list = options_lst
             continue  # wrong input ask again with full list of options
