@@ -111,7 +111,7 @@ class CloudImage(object):
             time.sleep(15)
 
     def _analyse_problem(self):
-        self.cloud.r_collect_information(regex=self.id, comment='image ' + self.name + ' problem')
+        self.cloud.pod.r_collect_info(regex=self.id, comment='image ' + self.name + ' problem')
         raise RuntimeError('image ' + self.name + ' failed')
 
     @staticmethod

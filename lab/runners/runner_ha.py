@@ -56,7 +56,7 @@ class RunnerHA(WithConfig):
         elk = Elk(proxy=cloud.mediator)
         elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
 
-        cloud.pod.r_collect_information(regex='error', comment=test_regex)
+        cloud.pod.r_collect_info(regex='error', comment=test_regex)
 
     @staticmethod
     def check_configs(test_regex, is_noclean):

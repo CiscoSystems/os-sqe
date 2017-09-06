@@ -3,18 +3,15 @@ from lab.nodes.n9 import N9
 
 
 class Tor(N9):
-    def n9_show_running_config(self):
-        return ''
+    pass
+
 
 class Oob(N9):
-    def n9_show_running_config(self):
-        return ''
+    pass
 
 
 class Pxe(N9):
-    def n9_show_running_config(self):
-        return ''
-
+    pass
 
 class Terminal(LabNode):
     ROLE_OCTET = 'XX'

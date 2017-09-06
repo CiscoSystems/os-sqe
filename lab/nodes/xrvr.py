@@ -241,14 +241,14 @@ router bgp {{ bgp_asn }}
 
         return cfg_body, net_part
 
-    # def r_collect_logs(self, regex):
+    # def r_collect_info(self, regex):
     #     logs = ''
     #     for cmd in [self._form_log_grep_cmd(log_files='/var/log/sr/*err*.log', regex=regex)]:
     #         ans = self.cmd(cmd=cmd, is_xrvr=False, is_warn_only=True)
     #         logs += self._format_single_cmd_output(cmd=cmd, ans=ans)
     #     return logs
 
-    # def r_collect_config(self):
+    #
     #     return self._format_single_cmd_output(cmd='show running config', ans=self.xrvr_show_running_config())
 
     def r_xrnc_set_mtu(self):

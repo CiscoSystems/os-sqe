@@ -95,7 +95,7 @@ class CloudServer(Server):
     def analyse_servers_problems(servers):
         for srv in servers:
             srv.compute.exe('pkill -f ' + srv.libvirt_name)
-            srv.cloud.pod.r_collect_information(regex=srv.id, comment='fail-of-' + srv.name)
+            srv.cloud.pod.r_collect_info(regex=srv.id, comment='fail-of-' + srv.name)
 
     @staticmethod
     @section(message='create servers (estimate 60 secs)')

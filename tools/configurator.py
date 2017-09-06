@@ -208,6 +208,7 @@ class Configurator(WithConfig, WithLogMixIn):
 
     @staticmethod
     def save_self_config(p):
+        import json
         from lab.nodes.virtual_server import VirtualServer
         from lab.nodes.lab_server import LabServer
 
@@ -282,7 +283,7 @@ class Configurator(WithConfig, WithLogMixIn):
             f.write('\n]\n')
 
             if p.setup_data:
-                f.write('\nsetup-data: {}'.format(p.setup_data))
+                f.write('\nsetup-data: {}'.format(json.dumps(p.setup_data, indent=4)))
 
 if __name__ == '__main__':
     from lab.laboratory import Laboratory

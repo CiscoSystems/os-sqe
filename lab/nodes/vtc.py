@@ -203,7 +203,7 @@ class Vtc(VipServer):
                 return False
         return True
 
-    def r_collect_logs(self, regex):
+    def r_collect_info(self, regex):
         body = ''
         for cmd in [self._form_log_grep_cmd(log_files='/opt/vts/log/nso/*', regex=regex), self._form_log_grep_cmd(log_files='/opt/vts/log/nso/localhost\:8888.access', regex='HTTP/1.1" 40')]:
             ans = self.exe(cmd, is_warn_only=True)

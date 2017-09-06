@@ -173,10 +173,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def r_collect_information(self, regex, comment):
         body = ''
         for node in self.nodes.values():
-            if hasattr(node, 'r_collect_logs'):
-                body += node.r_collect_logs(regex=regex)
-            if hasattr(node, 'r_collect_config'):
-                body += node.r_collect_config()
+            body += node.r_collect_info(regex=regex)
         self.log_to_artifact(name=comment.replace(' ', '-') + '.txt', body=body)
 
     def exe(self, cmd):

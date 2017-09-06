@@ -251,17 +251,6 @@ class OS(WithLogMixIn):
         CloudServerGroup.cleanup(cloud=self, is_all=is_all)
         CloudUser.cleanup(cloud=self, is_all=is_all)
 
-    def r_collect_information(self, regex, comment):
-        body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/*', regex=regex), 'neutronserver grep ^mechanism_driver /etc/neutron/plugins/ml2/ml2_conf.ini',
-                    'neutronserver grep -A 5 "\[ml2_cc\]" /etc/neutron/plugins/ml2/ml2_conf.ini']:
-            for host, text in self.exe(cmd).items():
-                body += self._format_single_cmd_output(cmd=cmd, ans=text, node=host)
-
-        addon = '_' + '_'.join(comment.split()) if comment else ''
-        self.log_to_artifact(name='cloud_{}{}.txt'.format(self.name, addon), body=body)
-        return body
-
     def os_quota_set(self):
         from lab.cloud.cloud_project import CloudProject
 

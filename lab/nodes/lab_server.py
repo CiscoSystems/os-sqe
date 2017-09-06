@@ -229,3 +229,10 @@ class LabServer(LabNode):
             finally:
                 s.close()
             return res
+
+    def r_collect_info(self, regex):
+        body = ''
+        for cmd in [self.log_grep_cmd(log_files='/var/log/nova/* /var/log/neutron/*', regex=regex), 'neutronserver cat /etc/neutron/plugins/ml2/ml2_conf.ini']:
+            ans = self.exe(cmd=cmd, is_warn_only=True)
+            body += self.single_cmd_output(cmd=cmd, ans=ans)
+        return body

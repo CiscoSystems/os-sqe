@@ -198,3 +198,6 @@ class LabNode(WithLogMixIn, WithConfig):
             return classes[role]
         except KeyError:
             raise ValueError('role "{}" is not known. Possible roles: {}'.format(role, classes.keys()))
+
+    def r_collect_info(self, regex):
+        return ''

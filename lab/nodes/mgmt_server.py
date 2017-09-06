@@ -5,11 +5,11 @@ from lab.nodes.cimc_server import CimcServer
 class CimcDirector(CimcServer):
     ROLE = 'director-n9'
 
-    def r_collect_logs(self, regex):
+    def r_collect_info(self, regex):
         body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/var/log/mercury/installer/*', regex=regex)]:
+        for cmd in [self.log_grep_cmd(log_files='/var/log/mercury/*', regex=regex)]:
             ans = self.exe(cmd=cmd, is_warn_only=True)
-            body += self._format_single_cmd_output(cmd=cmd, ans=ans)
+            body += self.single_cmd_output(cmd=cmd, ans=ans)
         return body
 
     def r_configure_nat(self):
@@ -55,3 +55,6 @@ class CimcDirector(CimcServer):
     def r_nfvbench_debug(self):
         repo_abs_path = self.r_clone_repo('https://wwwin-gitlab-sjc.cisco.com/openstack-perf/dev-utils.git', is_as_sqe=False)
         self.exe('bash dev-utils/container-hookup.sh', in_dir=repo_abs_path + '/nfvbench')
+
+    def r_discover_cisco_bm(self):
+        self.exe(cmd='PYTHONPATH=. python tools/discover_cisco_bm.py', in_dir='installer-' + self.pod.gerrit_tag)

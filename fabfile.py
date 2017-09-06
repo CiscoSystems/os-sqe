@@ -184,23 +184,13 @@ def ansible():
 
 
 @task
-def info(lab_config_path=None, regex=None):
+def info(pod_name=None, regex=None):
     """fab info:g10,regex\t\t\tExec grep regex
     """
     from lab.laboratory import Laboratory
-    from lab.deployers.deployer_existing import DeployerExisting
 
-    lab_config_path = lab_config_path or get_user_input(options_lst=Laboratory.get_list_of_pods())
-    regex = regex or get_user_input(options_lst=['ERROR', 'error'])
-
-    l = Laboratory.create_from_path(cfg_path=lab_config_path)
-    d = DeployerExisting({'hardware-lab-config': lab_config_path})
-    try:
-        cloud = d.execute([])
-        cloud.r_collect_information(regex=regex, comment='')
-    except RuntimeError:
-        pass  # it's ok if cloud is not yet deployed in the lab
-    l.r_collect_information(regex=regex, comment=regex)
+    l = Laboratory.create_from_remote(lab_name=pod_name)
+    l.r_collect_info(regex=regex, comment=regex)
 
 
 def get_user_input(options_lst, owner=None):

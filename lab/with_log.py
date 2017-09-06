@@ -56,9 +56,19 @@ class WithLogMixIn(object):
         with WithConfig.open_artifact(name, 'w') as f:
             f.write(body)
 
-    def _format_single_cmd_output(self, cmd, ans, node=None):
+    def single_cmd_output(self, cmd, ans):
         n = 200
-        return '\n' + n * 'v' + '\n' + (node or str(self)) + '> ' + cmd + '\n' + n * '^' + '\n' + ans + '\n' + n * '-' + '\n\n'
+        return '\n' + n * 'v' + '\n' + str(self) + '> ' + cmd + '\n' + n * '^' + '\n' + ans + '\n' + n * '-' + '\n\n'
+
+    @staticmethod
+    def log_grep_cmd(log_files, regex, minutes=0):
+        """regex: 'string: some regexp to be used in grep, empty means all',
+        'minutes': 'int: 10 -> filter out all messages older then 10 minutes ago, 0 means no filter'}
+        """
+
+        cmd = "grep -r '{}' {} ".format(regex, log_files)
+        cmd += 'sed -n "/^$(date +%Y-%m-%d\ %H:%M --date="{min} min ago")/, /^$(date +%Y-%m-%d\ %H:%M)/p" '.format(min=minutes) if minutes else ''
+        return cmd
 
     @staticmethod
     def upload_artifacts_to_our_server():
@@ -70,16 +80,6 @@ class WithLogMixIn(object):
         server.exe(cmd='mkdir -p {0}'.format(destination_dir))
         server.put(local_path='*.log', remote_path=destination_dir, is_sudo=False)
         server.put(local_path='artifacts/*', remote_path=destination_dir, is_sudo=False)
-
-    @staticmethod
-    def _form_log_grep_cmd(log_files, regex, minutes=0):
-        """regex: 'string: some regexp to be used in grep, empty means all',
-        'minutes': 'int: 10 -> filter out all messages older then 10 minutes ago, 0 means no filter'}
-        """
-
-        cmd = "sudo grep -r '{}' {} ".format(regex, log_files)
-        cmd += 'sed -n "/^$(date +%Y-%m-%d\ %H:%M --date="{min} min ago")/, /^$(date +%Y-%m-%d\ %H:%M)/p" '.format(min=minutes) if minutes else ''
-        return cmd
 
     def log(self, message):
         import time
