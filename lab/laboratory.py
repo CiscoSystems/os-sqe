@@ -170,7 +170,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         map(lambda x: x.r_verify_oob(), self.nodes.values())
         map(lambda x: x.n9_validate(), self.vim_tors + [self.vim_cat])
 
-    def r_collect_information(self, regex, comment):
+    def r_collect_info(self, regex, comment):
         body = ''
         for node in self.nodes.values():
             body += node.r_collect_info(regex=regex)

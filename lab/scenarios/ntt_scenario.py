@@ -49,17 +49,17 @@ class NttScenario(ParallelWorker):
 
             url, checksum, size, _, _, loc_rel_path = CloudImage.read_image_properties(name='CSR1KV')
             loc_abs_path = path.join(self.csr_repo_dir, path.basename(loc_rel_path))
-            self.pod.mgmt.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=loc_abs_path)
+            self.pod.mgm.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=loc_abs_path)
         if self.what_to_run in ['both', 'nfvbench']:
-            if len(self.pod.mgmt.intel_nics_dic) < 2:
+            if len(self.pod.mgm.intel_nics_dic) < 2:
                 raise RuntimeError('{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgmt))
             self._kwargs['is-sriov'] = len(self.pod.computes[0].intel_virtual_nics_dic) >= 8
-            self.pod.mgmt.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
-            self.pod.mgmt.exe(cmd='mkdir -p ' + self.pod_dir_in_repo, is_as_sqe=True)
+            self.pod.mgm.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
+            self.pod.mgm.exe(cmd='mkdir -p ' + self.pod_dir_in_repo, is_as_sqe=True)
 
             # trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
             # [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
-        self.pod.mgmt.exe(cmd='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple', is_as_sqe=True)
+        self.pod.mgm.exe(cmd='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple', is_as_sqe=True)
         self.cloud.os_cleanup(is_all=True)
         self.cloud.os_quota_set()
 
@@ -68,15 +68,15 @@ class NttScenario(ParallelWorker):
             self.csr_run()
 
         if self.what_to_run in ['nfvbench', 'both']:
-            self.nfvbench_run(sriov='')
+            self.nfvbench_run(is_sriov=False)
             if self.is_sriov:
-                self.nfvbench_run(sriov='--sriov')
+                self.nfvbench_run(is_sriov=True)
 
     def csr_run(self):
         from lab.cloud.cloud_server import CloudServer
 
         cmd = 'source ~/openrc && ./{} # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot'.format(self.csr_args)
-        ans = self.pod.mgmt.exe(cmd=cmd, in_dir=self.csr_repo_dir, is_as_sqe=True)
+        ans = self.pod.mgm.exe(cmd=cmd, in_dir=self.csr_repo_dir, is_as_sqe=True)
 
         with self.pod.open_artifact('csr_script_output.txt', 'w') as f:
             f.write(cmd + '\n')
@@ -90,12 +90,17 @@ class NttScenario(ParallelWorker):
         servers = CloudServer.list(cloud=self.cloud)
         CloudServer.wait(servers=servers, status='ACTIVE')
 
-    def nfvbench_run(self, sriov):
+    def nfvbench_run(self, is_sriov):
         from os import path
 
-        cmd = 'nfvbench ' + self.nfvbench_args + ' --std-json /tmp/nfvbench ' + sriov
-        ans = self.pod.mgmt.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
-        with self.pod.open_artifact(cmd.replace(' ', '_').replace('/', '_') + '.txt', 'w') as f:
+        if is_sriov:
+            cfg = "-c \"{flavor: {extra_specs : {'hw:numa_nodes': 2}}, internal_networks: {left: {physical_network: phys_sriov0, segmentation_id: 3}, right: {physical_network: phys_sriov1, segmentation_id: 4}}}\" --sriov "
+        else:
+            cfg = ' '
+
+        cmd = 'nfvbench ' + cfg + self.nfvbench_args + ' --std-json /tmp/nfvbench '
+        ans = self.pod.mgm.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
+        with self.pod.open_artifact('nfvbench_' + self.nfvbench_args.replace(' ', '_').replace('/', '_') + ('_sriov' if is_sriov else '') + '.txt', 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
 
@@ -108,9 +113,9 @@ class NttScenario(ParallelWorker):
                 f.write('\n' + 80 * '=' + '\n\n')
             json_name1 = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             date = ans.split('Date: ')[-1][:19].replace(' ', '-').replace(':', '-')
-            json_name2 = sriov + date + '.' + json_name1
-            self.pod.mgmt.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.pod_dir_in_repo, is_as_sqe=True)
-            res_json_body = self.pod.mgmt.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.pod_dir_in_repo)
+            json_name2 = ('sriov-' if is_sriov else '') + date + '.' + json_name1
+            self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.pod_dir_in_repo, is_as_sqe=True)
+            res_json_body = self.pod.mgm.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.pod_dir_in_repo)
             ans = self.process_nfvbench_json(res_json_body=res_json_body)
             with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'a') as f:
                 f.write(cmd + '\n' + ans + '\n')
@@ -206,5 +211,5 @@ nfvbench --show-config
 
 nfvbench --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
 
-nfvbench -c "{flavor: {extra_specs : {'hw:numa_nodes': 2}}, internal_networks: {left: {physical_network: phys_sriov0, segmentation_id: 2000}, right: {physical_network: phys_sriov1, segmentation_id: 2001}}}" --rate 1Mpps --duration 10 --std-json /tmp/nfvbench --sriov
+nfvbench -c "{flavor: {extra_specs : {'hw:numa_nodes': 2}}, internal_networks: {left: {physical_network: phys_sriov0, segmentation_id: 3}, right: {physical_network: phys_sriov1, segmentation_id: 4}}}" --rate 1Mpps --duration 10 --std-json /tmp/nfvbench --sriov
 """

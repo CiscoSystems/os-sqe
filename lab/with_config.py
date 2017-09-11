@@ -15,7 +15,7 @@ class WithConfig(object):
     PUBLIC_KEY = requests.get(url=CONFIGS_REPO_URL + '/' + 'public.key').text
     KNOWN_LABS = json.loads(requests.get(url=CONFIGS_REPO_URL + '/' + 'known_lab_info.json').text)
 
-    VIM_NUM_VS_OS_NAME_DIC = {'2.2': 'ocata', '2.1': 'master', '2.0': 'newton', '1.0': 'liberty'}
+    VIM_NUM_VS_OS_NAME_DIC = {'2.3': 'master', '2.2': 'newton', '2.1': 'newton', '2.0': 'newton', '1.0': 'liberty'}
     NETWORKS = {'api': Network(net_id='a', cidr='10.10.10.0/32', vlan=9999, is_via_tor=True, pod='', roles_must_present=['CimcDirector', 'CimcController', 'Vtc', 'VtsHost']),
                 'management': Network(net_id='m', cidr='11.11.11.0/24', vlan=2011, is_via_tor=False, pod='', roles_must_present=['CimcDirector', 'CimcController', 'CimcCompute', 'CimcCeph', 'CimcCompute',
                                                                                                                                  'Vtc', 'Xrvr', 'VtsHost']),

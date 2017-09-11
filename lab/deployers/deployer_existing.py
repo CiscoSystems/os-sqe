@@ -33,7 +33,7 @@ class DeployerExisting(LabWorker):
         from lab.cloud.openstack import OS
 
         if not clouds_and_servers['servers']:
-            clouds_and_servers['servers'].append(self.pod.mgmt)
+            clouds_and_servers['servers'].append(self.pod.mgm)
             clouds_and_servers['servers'].extend(self.pod.controls)
             clouds_and_servers['servers'].extend(self.pod.computes)
 

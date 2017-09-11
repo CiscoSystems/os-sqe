@@ -100,7 +100,7 @@ class LabNode(WithLogMixIn, WithConfig):
 
         return type(self) in [FiDirector, CimcDirector]
 
-    def is_controller(self):
+    def is_control(self):
         from lab.nodes.fi import FiController
         from lab.nodes.cimc_server import CimcController
 
