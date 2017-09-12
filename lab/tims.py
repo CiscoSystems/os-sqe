@@ -12,6 +12,7 @@ class Tims(WithLogMixIn, WithConfig):
         import getpass
         import os
 
+        self.counter = 0
         self.pod = pod
         self.tims_url = self.KNOWN_LABS['tims']['url']
         self.tims_project_id = self.KNOWN_LABS['tims']['project_id']
@@ -170,29 +171,35 @@ class Tims(WithLogMixIn, WithConfig):
         return 'and new http://tims/warp.cmd?ent={} created'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1]) if ans else 'No way to report to TIMS since user is not known'
 
     def publish_result(self, test_cfg_path, results):
+        import os
 
-        test_case_id = self.update_create_test_case(test_cfg_path=test_cfg_path)
-        desc = self._jenkins_text + '\n'
-        status = 'passed'
-        for res in results:  # [{'worker name': 'VtsScenario',  'exceptions': [], 'params': '...'}, ...]
-            desc += res['worker name'] + ' ' + res['params'] + '\n'
-            if res['exceptions']:
-                status = 'failed'
-                desc += '\n'.join(res['exceptions']) + '\n'
+        try:
+            self.counter += 1
+            test_case_id = self.update_create_test_case(test_cfg_path=test_cfg_path)
+            desc = self._jenkins_text + '\n'
+            status = 'passed'
+            for res in results:  # [{'worker name': 'VtsScenario',  'exceptions': [], 'params': '...'}, ...]
+                desc += res['worker name'] + ' ' + res['params'] + '\n'
+                if res['exceptions']:
+                    status = 'failed'
+                    desc += '\n'.join(res['exceptions']) + '\n'
 
-        if self.is_artifact_exists('main-results-for-tims.txt'):
-            with self.open_artifact('main-results-for-tims.txt', 'r') as f:
-                desc += 'MAIN RESULTS:\n' + f.read()
+            if self.is_artifact_exists('main-results-for-tims.txt'):
+                with self.open_artifact('main-results-for-tims.txt', 'r') as f:
+                    desc += 'MAIN RESULTS:\n' + f.read()
+                os.system('mv {} {}'.format(self.get_artifact_file_path('main-results-for-tims.txt'), self.get_artifact_file_path('tims{}.txt'.format(self.counter))))
 
-        log_msg = '{} {}: {} {} {} '.format(self.pod, self.pod.gerrit_tag, test_cfg_path, status.upper(), self._jenkins_text)
+            log_msg = '{} {}: {} {} {} '.format(self.pod, self.pod.gerrit_tag, test_cfg_path, status.upper(), self._jenkins_text)
 
-        result_url = self.update_pending_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, desc=desc, status=status)
+            result_url = self.update_pending_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, desc=desc, status=status)
 
-        with self.open_artifact('tims.html', 'w') as f:
-            f.write('<a href="{}">TIMS result</a>'.format(result_url))
-        log_msg += result_url
-        self.log_to_slack(log_msg)
-        self.log(log_msg)
+            with self.open_artifact('tims.html', 'w') as f:
+                f.write('<a href="{}">TIMS result</a>'.format(result_url))
+            log_msg += result_url
+            self.log_to_slack(log_msg)
+            self.log(log_msg)
+        except Exception:
+            self.log_exception()
 
     @staticmethod
     def simulate():
