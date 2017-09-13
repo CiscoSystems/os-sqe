@@ -22,13 +22,20 @@ class LabServer(LabNode):
         raise NotImplementedError
 
     def r_build_online(self, n_attempts=100):
+        import re
+
         separator = 'SEPARATOR'
-        ans = self.exe(cmd='(lspci | grep Ethernet) && echo {0} && ip -o a && ip -o l && echo {0} && ip -o r && echo {0} && cat /etc/hosts'.format(separator), n_attempts=n_attempts, is_warn_only=True)
+        cmds = ['grep -c ^core /proc/cpuinfo', 'cat /proc/meminfo', '(lspci | grep Ethernet)', 'ip -o a', 'ip -o l', 'ip -o r', 'cat /etc/hosts']
+        cmd = ' && echo {} && '.format(separator).join(cmds)
+        ans = self.exe(cmd=cmd, n_attempts=n_attempts, is_warn_only=True)
         if not ans:
             return {}
         result = {'ips': {}, 'macs': {}, 'etc_hosts': {}, 'ifaces': {}, 'networks': {}}
 
-        lspci, ip_o_al, ip_o_r, cat_etc_hosts = ans.split(separator)
+        n_cpu, mem, lspci, ip_o_a, ip_o_l, ip_o_r, cat_etc_hosts = ans.split(separator)
+        memory = re.findall('(\d{1,10})', mem)
+        self.hardware = '{} cpu {} MB'.format(int(n_cpu), int(memory[0])/1024)
+
         for line in lspci.split('\r\n'):
             if not line or line.startswith('Warning'):
                 continue
@@ -55,8 +62,10 @@ class LabServer(LabNode):
                 raise RuntimeError('Not known NIC manufacturer: {} in {}'.format(manufacturer, line))
             #     ans = self.exe('ethtool -i enp{}s{}f{}'.format(bus, card, port), is_warn_only=True)
 
-        for line in ip_o_al.split('\r\n')[1:-1]:
+        for line in (ip_o_a + ip_o_l).split('\r\n'):
             split = line.split()
+            if len(split) == 0:
+                continue
             iface_name = split[1].strip(':')
             iface_dic = result['ifaces'].setdefault(iface_name, {'ipv4': [], 'ipv6': [], 'cidr': None, 'mac': None, 'is-ssh': False, 'master': None, 'slaves': []})
             if 'inet' in line:

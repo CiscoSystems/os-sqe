@@ -84,7 +84,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
         role_vs_nets = {}
         for net in self.networks.values():
             for role in net.roles_must_present:
-                role = role.lower()
                 role_vs_nets.setdefault(role, set())
                 role_vs_nets[role].add(net.id)
 

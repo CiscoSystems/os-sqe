@@ -10,10 +10,10 @@ class LabNode(WithLogMixIn, WithConfig):
     def __init__(self, pod, dic):
         self.pod = pod                                 # link to parent Laboratory object
         self.id = str(dic['id'])                       # some id which unique in the given role, usually role + some small integer
-        self.role = dic['role'].strip().lower()        # which role this node plays, possible roles are defined in get_role_class()
+        self.role = dic['role'].strip()                # which role this node plays, possible roles are defined in get_role_class()
         self._proxy = dic.get('proxy')                 # LabNode object or node id (lazy init), will be used as proxy node to this node
         self.oob_ip, self.oob_username, self.oob_password = dic['oob-ip'], dic['oob-username'], dic['oob-password']
-
+        self.hardware = ''                             # some description which might be useful for debugging
         self._wires = []
 
     def __repr__(self):

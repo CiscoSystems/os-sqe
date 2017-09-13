@@ -24,7 +24,7 @@ class Configurator(WithConfig, WithLogMixIn):
             raise ValueError('"{}" is not resolved as valid IPv4'.format(ip))
 
         self.s = Server(ip=ip, username='root', password=None)
-        for password in [None, Configurator.KNOWN_LABS['default_password']]:  # first try to exe with key pair, if failed, second try with default password
+        for password in [None, Configurator.KNOWN_LABS['default_password'], 'cisco123']:  # first try to exe with key pair, if failed, second try with default password
             try:
                 self.s.password = password
                 ans = self.s.exe(cmd='ciscovim install-status # {} mgm with password {}'.format(lab_name, self.s.password), is_warn_only=True)
@@ -37,7 +37,7 @@ class Configurator(WithConfig, WithLogMixIn):
                 pod = Laboratory()
                 pod.setup_data = yaml.load(setup_data)
                 pod.driver = pod.setup_data['MECHANISM_DRIVERS']
-                pod.name = hostname.replace('mgmt', pod.driver).strip('\r\n')
+                pod.name = lab_name + '-' + pod.driver
                 pod.gerrit_tag = grep.split('\r\n')[2].split(':')[-1].strip()
                 pod.namespace = grep.split('\r\n')[3].split(':')[-1].strip()
                 pod.release_tag = grep.split('\r\n')[1].split(':')[-1].strip()
@@ -93,6 +93,8 @@ class Configurator(WithConfig, WithLogMixIn):
 
         node_id_vs_role = {}
         for r, id_lst in pod.setup_data['ROLES'].items():
+            if type(id_lst) is not list:
+                continue
             for nid in id_lst:
                 node_id_vs_role[nid] = r
 

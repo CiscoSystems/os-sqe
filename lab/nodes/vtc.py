@@ -293,7 +293,7 @@ class Vtc(VipServer):
         [self.cmd(x) for x in sorted(self.API_CALLS.keys()) if x.startswith('get_')]
 
     def r_vtc_cluster_status(self):
-        return self.exe('sudo crm status')
+        return self.exe('sudo crm status', is_warn_only=True)
 
     def r_vtc_delete_openstack(self):
         for vm_id in self.cmd('get_openstack'):
