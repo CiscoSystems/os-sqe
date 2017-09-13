@@ -32,7 +32,8 @@ class LabServer(LabNode):
             return {}
         result = {'ips': {}, 'macs': {}, 'etc_hosts': {}, 'ifaces': {}, 'networks': {}}
 
-        n_cpu, mem, lspci, ip_o_a, ip_o_l, ip_o_r, cat_etc_hosts = ans.split(separator)
+        cpu, mem, lspci, ip_o_a, ip_o_l, ip_o_r, cat_etc_hosts = ans.split(separator)
+        n_cpu = re.findall('(\d{1,10})', cpu)[-1]  # -1 since sometimes here goes a string likes 'Warning: Permanently added \\'ctl1\\' (ECDSA) to the list of known hosts. \r\n32\r\n
         memory = re.findall('(\d{1,10})', mem)
         self.hardware = '{} cpu {} MB'.format(int(n_cpu), int(memory[0])/1024)
 
