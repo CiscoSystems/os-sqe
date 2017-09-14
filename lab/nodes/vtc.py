@@ -12,7 +12,7 @@ class Vtc(VipServer):
 
     set cisco-vts devices device TORSWITCHA ports port Ethernet1/39 connection-type server
     set cisco-vts devices device TORSWITCHA ports port Ethernet1/39 servers server nfvbench_tg type baremetal
-    set cisco-vts devices device TORSWITCHA ports port Ethernet1/39 servers server nfvbench_tg interface-name eth0
+    set cisco-vts devices device TORSWITCHA ports port Ethernet1/39 servers server nfvbench_tg interface-name eth1
     set cisco-vts devices device TORSWITCHA ports port Ethernet1/39 servers server nfvbench_tg ip 1.1.1.1
     """
 
@@ -23,20 +23,23 @@ class Vtc(VipServer):
         'get_servers':           {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/cisco-vts/uuid-servers?deep',             'cli': 'show configuration cisco-vts uuid-servers'},
         'get_pools':             {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/resource-pools?deep',                     'cli': 'show configuration resource-pools'},
 
-        'del_port':              {'rest': '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/',             'cli': ''},
-        'del_l3_interfaces':     {'rest': '-XDELETE https://{ip}:8888/api/running/{vm_id}/l3/interfaces',                                                            'cli': ''},
-        'del_l3_router':         {'rest': '-XDELETE https://{ip}:8888/api/running/{vm_id}/l3/router',                                                                'cli': ''},
-        'del_openstack_port':    {'rest': '-XDELETE https://{ip}:8888/api/running/{vm_id}/openstack/port',                                                           'cli': ''},
-        'del_openstack_subnet':  {'rest': '-XDELETE https://{ip}:8888/api/running/{vm_id}/openstack/subnet',                                                         'cli': ''},
-        'del_openstack_network': {'rest': '-XDELETE https://{ip}:8888/api/running/{vm_id}/openstack/network',                                                        'cli': ''},
-        'del_subnetwork':        {'rest': '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/subnetworks/subnetwork/', 'cli': ''},
-        'del_network':           {'rest': '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/networks/network/',       'cli': ''},
-        'del_admin':             {'rest': '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/',                                                  'cli': ''},
-        'del_operations':        {'rest': '-XDELETE https://{ip}:8888/{r}',                                                                                                   },  # exec operation listed in operations
+        'del_port': {'rest': '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/', 'cli': ''},
+        'del_l3_interfaces': {'rest': '-XDELETE https://{ip}:8888/api/running/{uuid}/l3/interfaces', 'cli': ''},
+        'del_l3_router': {'rest': '-XDELETE https://{ip}:8888/api/running/{uuid}/l3/router', 'cli': ''},
+        'del_openstack_port': {'rest': '-XDELETE https://{ip}:8888/api/running/{uuid}/openstack/port', 'cli': ''},
+        'del_openstack_subnet': {'rest': '-XDELETE https://{ip}:8888/api/running/{uuid}/openstack/subnet', 'cli': ''},
+        'del_openstack_network': {'rest': '-XDELETE https://{ip}:8888/api/running/{uuid}/openstack/network', 'cli': ''},
+        'del_subnetwork': {'rest': '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/subnetworks/subnetwork/', 'cli': ''},
+        'del_network': {'rest': '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/networks/network/', 'cli': ''},
+        'del_admin': {'rest': '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/', 'cli': ''},
+        'del_operations': {'rest': '-XDELETE https://{ip}:8888/{uuid}', },  # exec operation listed in operations
 
-        'post_sync_from':        {'rest': '-XPOST https://{ip}:8888//api/running/devices/device/{r}/_operations/sync-from',                                          'cli': ''},
+        'post_sync_from':        {'rest': '-XPOST https://{ip}:8888//api/running/devices/device/{uuid}/_operations/sync-from',                                       'cli': ''},
 
-        'put_server':            {'rest': '-XPUT -H "Content-Type: application/vnd.yang.data+json" https://{ip}:8888/api/running/cisco-vts/uuid-servers/uuid-server'}
+        'put_server':            {'rest': "-XPUT -H 'Content-Type: application/vnd.yang.data+json' https://{ip}:8888/api/running/cisco-vts/uuid-servers/uuid-server/{uuid} -d '{data}'"},
+        'patch_device_port':     {'rest': "-XPATCH -H 'Content-Type: application/vnd.yang.data+json' https://{ip}:8888/api/running/cisco-vts/devices/device/{uuid}/ports -d '{data}'",
+                                  'json': '{"cisco-vts:ports": {"port": [{"name": "PORT", "connection-type": "cisco-vts-identities:server", "servers": {"server": [{"name": "NAME", "type": "cisco-vts-identities:baremetal", "interface-name": "eth0", "ip": "1.1.1.1"}]}}]}}'
+                                 }
     }
 
     def __init__(self, pod, dic):
@@ -44,14 +47,13 @@ class Vtc(VipServer):
         self.vtc_username = dic['vtc-username']
         self.vtc_password = dic['vtc-password']
 
-    def cmd(self, cmd, vm_id='', dic=None, res=''):
+    def cmd(self, cmd, uuid='', dic=None):
         import json
 
         if cmd not in self.API_CALLS:
             raise ValueError('VTC: {} is not supported')
-        cmd = 'curl -s -k -u {u}:{p} '.format(u=self.vtc_username, p=self.vtc_password) + self.API_CALLS[cmd]['rest'].format(ip=self.ssh_ip, vm_id=vm_id, r=res)
-        if cmd.startswith('put_'):
-            cmd += ' -d ' + json.dumps(dic)
+
+        cmd = 'curl -s -k -u {u}:{p} '.format(u=self.vtc_username, p=self.vtc_password) + self.API_CALLS[cmd]['rest'].format(ip=self.ssh_ip, uuid=uuid, data=dic)
         for i in range(10):
             ans = self.exe(cmd, is_warn_only=True)
             if ans.failed:
@@ -205,7 +207,7 @@ class Vtc(VipServer):
 
     def r_collect_info(self, regex):
         body = ''
-        for cmd in [self._form_log_grep_cmd(log_files='/opt/vts/log/nso/*', regex=regex), self._form_log_grep_cmd(log_files='/opt/vts/log/nso/localhost\:8888.access', regex='HTTP/1.1" 40')]:
+        for cmd in [self.form_log_grep_cmd(log_files='/opt/vts/log/nso/*', regex=regex), self.form_log_grep_cmd(log_files='/opt/vts/log/nso/localhost\:8888.access', regex='HTTP/1.1" 40')]:
             ans = self.exe(cmd, is_warn_only=True)
             body += self._format_single_cmd_output(cmd=cmd, ans=ans)
         return body
@@ -295,8 +297,9 @@ class Vtc(VipServer):
     def r_vtc_cluster_status(self):
         return self.exe('sudo crm status', is_warn_only=True)
 
+    @decorators.section('Clean up VTS')
     def r_vtc_delete_openstack(self):
-        for vm_id in self.cmd('get_openstack'):
+        for vmm_dic in self.cmd('get_openstack')['cisco-vts-openstack:openstack']['vmm']:
             for oper in ['del_port',
                          'del_l3_interfaces',
                          'del_l3_router',
@@ -311,24 +314,17 @@ class Vtc(VipServer):
                          'del_openstack_port',
                          'del_openstack_subnet',
                          'del_openstack_network']:
-                self.cmd(oper, vm_id=vm_id)
+                self.cmd(oper, uuid=vmm_dic['id'])
 
-    def r_vtc_add_host_to_inventory(self, name, port):
-        import uuid
-
-        for tor_name in ['TORSWITCHA', 'TORSWITCHB']:
-            device_dic = {
-                "connid": str(uuid.uuid4()),
-                "vpcid": "-1",
-                "torname": tor_name,
-                "portname": port,
-                "server-id": name,
-                "interface-name": "eth0",
-                "server-type": "cisco-vts-identities:baremetal",
-                "physnet-name": "",
-                "role": "cisco-vts-identities:managed-server",
-                }
-            self.cmd(cmd='put_server', dic={'uuid_server': device_dic})
+    @decorators.section('Add baremetal to VTC host inventory')
+    def r_vtc_add_host_to_inventory(self, server_name, tor_name, tor_port):
+        """
+        :param server_name: name of server as you need to have it in barametal inventory, e.g. nfvbench_tg
+        :param tor_name: name of TOR as it's seen in VTC get devices API CALL, e.g. TORSWITCHA
+        :param tor_port:  TOR switch port to which this server is connected e.g. Ethernet1/19
+        :return: nothing
+        """
+        self.cmd(cmd='patch_device_port', uuid=tor_name, dic=self.API_CALLS['patch_device_port']['json'].replace('NAME', server_name).replace('PORT', tor_port))
 
     def r_vtc_create_border_leaf_port(self, os_networks):
         import uuid
@@ -373,5 +369,5 @@ class Vtc(VipServer):
 
         for port in ports:
             if port['biding-host-id'] in baremetal_host_ids:
-                self.cmd('del_operations', res=port['operations']['un-deploy'])
+                self.cmd('del_operations', uuid=port['operations']['un-deploy'])
                 time.sleep(15)  # if try to delete 2 ports without delay, one may have TOR out of sync

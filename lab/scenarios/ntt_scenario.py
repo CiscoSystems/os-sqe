@@ -56,11 +56,15 @@ class NttScenario(ParallelWorker):
             self._kwargs['is-sriov'] = len(self.pod.computes[0].intel_virtual_nics_dic) >= 8
             self.pod.mgm.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             self.pod.mgm.exe(cmd='mkdir -p ' + self.pod_dir_in_repo, is_as_sqe=True)
+            if self.pod.driver == 'vts':
+                for tor_name, tor_port in self.pod.setup_data['NFVBENCH']['tor_info'].items():
+                    tor_port = 'Ethernet' + tor_port[-4:]
+                    self.pod.vtc.r_vtc_add_host_to_inventory(server_name='nfvbench_tg', tor_name=tor_name, tor_port=tor_port)
 
             # trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
             # [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
         self.pod.mgm.exe(cmd='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple', is_as_sqe=True)
-        self.cloud.os_cleanup(is_all=True)
+        self.teardown_worker()
         self.cloud.os_quota_set()
 
     def loop_worker(self):
@@ -145,6 +149,8 @@ class NttScenario(ParallelWorker):
     def teardown_worker(self):
         if not self.is_noclean:
             self.cloud.os_cleanup(is_all=True)
+            if self.pod.driver == 'vts':
+                self.pod.vtc.r_vtc_delete_openstack()
             # self.pod.mgmt.exe('rm -rf *')
 
 """
