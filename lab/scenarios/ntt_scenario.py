@@ -113,7 +113,7 @@ class NttScenario(ParallelWorker):
             json_name1 = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             date = ans.split('Date: ')[-1][:19].replace(' ', '-').replace(':', '-')
             json_name2 = ('SRIOV-' if is_sriov else '') +  json_name1 + '.' + date + '.' + self.pod.name
-            self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
+            self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && echo {1} >> catalog && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
             res_json_body = self.pod.mgm.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.perf_reports_repo_dir)
             ans = self.process_nfvbench_json(res_json_body=res_json_body)
             with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'a') as f:
