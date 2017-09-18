@@ -34,10 +34,6 @@ class NttScenario(ParallelWorker):
     def is_sriov(self):
         return self._kwargs['is-sriov']
 
-    @property
-    def pod_dir_in_repo(self):
-        return self.perf_reports_repo_dir + '/' + str(self.pod)
-
     @section(message='Setting up (estimate 100 secs)')
     def setup_worker(self):
         from os import path
@@ -55,7 +51,6 @@ class NttScenario(ParallelWorker):
                 raise RuntimeError('{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgmt))
             self._kwargs['is-sriov'] = len(self.pod.computes[0].intel_virtual_nics_dic) >= 8
             self.pod.mgm.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
-            self.pod.mgm.exe(cmd='mkdir -p ' + self.pod_dir_in_repo, is_as_sqe=True)
             if self.pod.driver == 'vts':
                 for tor_name, tor_port in self.pod.setup_data['NFVBENCH']['tor_info'].items():
                     tor_port = 'Ethernet' + tor_port[-4:]
@@ -73,7 +68,7 @@ class NttScenario(ParallelWorker):
 
         if self.what_to_run in ['nfvbench', 'both']:
             self.nfvbench_run(is_sriov=False)
-            if self.is_sriov:
+            if self.is_sriov and 'PVVP' not in self.nfvbench_args:
                 self.nfvbench_run(is_sriov=True)
 
     def csr_run(self):
@@ -117,9 +112,9 @@ class NttScenario(ParallelWorker):
                 f.write('\n' + 80 * '=' + '\n\n')
             json_name1 = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             date = ans.split('Date: ')[-1][:19].replace(' ', '-').replace(':', '-')
-            json_name2 = ('sriov-' if is_sriov else '') + date + '.' + json_name1
-            self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.pod_dir_in_repo, is_as_sqe=True)
-            res_json_body = self.pod.mgm.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.pod_dir_in_repo)
+            json_name2 = ('SRIOV-' if is_sriov else '') +  json_name1 + '.' + date + '.' + self.pod.name
+            self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
+            res_json_body = self.pod.mgm.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.perf_reports_repo_dir)
             ans = self.process_nfvbench_json(res_json_body=res_json_body)
             with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'a') as f:
                 f.write(cmd + '\n' + ans + '\n')
