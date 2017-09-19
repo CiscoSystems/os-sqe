@@ -8,4 +8,4 @@
   n_repeats: 1
   what-to-run: nfvbench
   csr-args: not-used
-  nfvbench-args: --rate ndr_pdr --service-chain PVVP --service-chain-count 1 --inter-node --flow-count 1000
+  nfvbench-args: --rate ndr_pdr --service-chain PVVP --service-chain-count 1 --inter-node --flow-count 1000 --frame-size 64 --frame-size IMIX --frame-size 1518
