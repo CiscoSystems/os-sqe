@@ -16,7 +16,7 @@ def cmd():
     from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.with_log import lab_logger
-    from tools.configurator import Configurator
+    from tools.configurator_online import Configurator
 
     def get_node_methodes(o, name):
         if name == 'cloud':
@@ -62,7 +62,7 @@ def cmd():
             lab_logger.exception('\n Exception: {0}'.format(ex))
 
     pod_name = get_user_input(options_lst=Configurator.KNOWN_LABS.keys())
-    pod = Laboratory.create_from_remote(lab_name=pod_name)
+    pod = Configurator.create(lab_name=pod_name, is_interactive=True)
     while True:
         device_name = get_user_input(owner=pod, options_lst=['lab', 'cloud'] + pod.nodes.keys())
         if device_name == 'level_up':

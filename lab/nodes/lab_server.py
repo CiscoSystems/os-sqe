@@ -28,7 +28,7 @@ class LabServer(LabNode):
         cmds = ['grep -c ^core /proc/cpuinfo', 'cat /proc/meminfo', '(lspci | grep Ethernet)', 'ip -o a', 'ip -o l', 'ip -o r', 'cat /etc/hosts']
         cmd = ' && echo {} && '.format(separator).join(cmds)
         ans = self.exe(cmd=cmd, n_attempts=n_attempts, is_warn_only=True)
-        if not ans:
+        if not ans or 'No route to host' in ans:
             return {}
         result = {'ips': {}, 'macs': {}, 'etc_hosts': {}, 'ifaces': {}, 'networks': {}}
 
@@ -113,7 +113,7 @@ class LabServer(LabNode):
         if 'sudo' in cmd and 'sudo -p "" -S ' not in cmd:
             cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.ssh_password))
         if self.proxy:
-            cmd = 'ssh -o StrictHostKeyChecking=no ' + self.id + ' "{}"'.format(cmd)
+            cmd = 'ssh -o StrictHostKeyChecking=no ' + (self.ssh_ip or self.id) + ' "{}"'.format(cmd)
             comment += ' ssh ' + self.id
         comment += ' ' + self.pod.name + ' ' + self.id
 

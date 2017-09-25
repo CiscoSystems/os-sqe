@@ -7,12 +7,6 @@ from lab.nodes.n9.n9_vlan_port import N9VlanPort
 
 
 class N9Status(object):
-    def handle_port(self, pc_id, port_id, port_name, port_mode, vlans):
-        try:
-            port = self._port_dic[port_id]
-            port.handle(pc_id=pc_id, port_name=port_name, port_mode=port_mode, vlans=vlans)
-        except KeyError:
-            raise ValueError('{}: does not have port "{}", check your configuration'.format(self._n9, port_id))
 
     def handle_pc(self, pc_id, pc_name, pc_mode):
         cmd_make = ['conf t', 'int ' + pc_id, 'desc ' + pc_name, 'mode ' + pc_mode]
@@ -47,14 +41,3 @@ class N9Status(object):
         #
         #     for port_id in port_ids:  # add ports to the port-channel
         #         self.cmd(['conf t', 'int ethernet ' + port_id, 'channel-group {0} force mode active'.format(pc_id)])
-
-
-
-    def fix_problem(self, cmd, msg):
-        from fabric.operations import prompt
-        import time
-
-        self._n9.log('{} do: {}'.format(msg, ' '.join(cmd)))
-        time.sleep(1)  # prevent prompt message interlacing with log output
-        if prompt('say y if you want to fix it: ') == 'y':
-            self._n9.n9_cmd(cmd)

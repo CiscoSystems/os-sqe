@@ -82,11 +82,7 @@ class WithLogMixIn(object):
         server.put(local_path='artifacts/*', remote_path=destination_dir, is_sudo=False)
 
     def log(self, message):
-        import time
-
-        time.sleep(2)
         lab_logger.info(str(self) + ': ' + message)
-        time.sleep(2)
 
     def log_warning(self, message):
         lab_logger.warning(str(self) + ': ' + message)

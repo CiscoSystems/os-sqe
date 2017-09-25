@@ -1,12 +1,13 @@
-from lab.nodes.n9 import N9
-from lab.nodes.tor import Tor, Oob, Pxe
+from lab.with_log import WithLogMixIn
+from lab.nodes.others import Tor, Oob, Pxe, VimTor, N9
 from lab.nodes.fi import FI, FiServer
+from lab.nodes.cimc_server import CimcServer
 from lab.nodes.asr import Asr
 
 
-class Wire(object):
+class Wire(WithLogMixIn):
     def __repr__(self):
-        return u'{}:{}({}) -> {}:{} {}'.format(self.n1, self.port_id1, self.mac, self.n2, self.port_id2, self.pc_id)
+        return u'{}:{} {} -> {}:{} {}'.format(self.n1, self.port_id1, self.mac or '', self.n2, self.port_id2, self.pc_id or '')
 
     def __init__(self, node1, port_id1, mac,  node2, port_id2, pc_id):
         self.n1 = node1
@@ -18,9 +19,7 @@ class Wire(object):
         self._is_intentionally_down = False
         self._nics = set()  # list of NICs sitting on this wire, many to many relations
         self.pc_id = pc_id
-        self.n1.attach_wire(self)
-        if self.n2:  # some wires might be disconnected
-            self.n2.attach_wire(self)
+        self.log('created')
 
     @staticmethod
     def add_wire(pod, wire_cfg):
@@ -60,37 +59,36 @@ class Wire(object):
         return self._is_intentionally_down
 
     def get_peer_node(self, node):
-        return self._to['node'] if node == self._from['node'] else self._from['node']
+        return self.n2 if node == self.n1 else self.n1
 
     def get_peer_port(self, node):
-        return self._to['port-id'] if node == self._from else self._from['port-id']
+        return self.port_id2 if node == self.n1 else self.port_id1
 
     def get_own_port(self, node):
-        return self._from['port-id'] if node == self._from else self._to['port-id']
+        return self.port_id1 if node == self.n1 else self.port_id2
 
     def _is_class_and_class(self, cls1, cls2):
         return isinstance(self.n1, cls1) and isinstance(self.n2, cls2)
 
     def is_n9_n9(self):
-        return self._is_class_and_class(N9, N9)
+        return self._is_class_and_class(VimTor, VimTor)
 
     def is_n9_tor(self):
-        return self._is_class_and_class(N9, Tor)
+        return self._is_class_and_class(VimTor, Tor)
 
     def is_n9_oob(self):
-        return self._is_class_and_class(N9, Oob)
+        return self._is_class_and_class(VimTor, Oob)
 
     def is_n9_pxe(self):
-        return self._is_class_and_class(N9, Pxe)
+        return self._is_class_and_class(VimTor, Pxe)
 
     def is_n9_asr(self):
-        return self._is_class_and_class(N9, Asr)
+        return self._is_class_and_class(VimTor, Asr)
 
     def is_n9_fi(self):
-        return self._is_class_and_class(N9, FI)
+        return self._is_class_and_class(VimTor, FI)
 
     def is_n9_ucs(self):
-        from lab.nodes.cimc_server import CimcServer
         return self._is_class_and_class(N9, CimcServer)
 
     def is_fi_ucs(self):

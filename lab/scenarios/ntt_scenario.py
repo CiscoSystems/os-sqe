@@ -93,7 +93,7 @@ class NttScenario(ParallelWorker):
         from os import path
 
         if is_sriov:
-            cfg = "-c \"{flavor: {extra_specs : {'hw:numa_nodes': 2}}, internal_networks: {left: {physical_network: phys_sriov0, segmentation_id: 3}, right: {physical_network: phys_sriov1, segmentation_id: 4}}}\" --sriov "
+            cfg = "-c \"{flavor: {extra_specs : {'hw:numa_nodes': 2}}, internal_networks: {left: {physical_network: phys_sriov0, segmentation_id: 3}, right: {physical_network: phys_sriov0, segmentation_id: 4}}}\" --sriov "
         else:
             cfg = ' '
 
@@ -213,4 +213,6 @@ nfvbench --show-config
 nfvbench --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
 
 nfvbench -c "{flavor: {extra_specs : {'hw:numa_nodes': 2}}, internal_networks: {left: {physical_network: phys_sriov0, segmentation_id: 3}, right: {physical_network: phys_sriov1, segmentation_id: 4}}}" --rate 1Mpps --duration 10 --std-json /tmp/nfvbench --sriov
+nfvbench -c "{internal_networks: {left: {physical_network: phys_sriov0, segmentation_id: 3}, right: {physical_network: phys_sriov0, segmentation_id: 4}}}" --rate 1Mpps --duration 10 --service-chain-count 10 --std-json /tmp/nfvbench --sriov
+
 """

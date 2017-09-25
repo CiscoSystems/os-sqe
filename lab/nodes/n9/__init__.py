@@ -4,7 +4,6 @@ from lab.nodes import LabNode
 class N9(LabNode):
     def __init__(self, **kwargs):
         super(N9, self).__init__(**kwargs)
-        self.__requested_topology = None
         self._ports = None
         self._port_channels = None
         self._vlans = None
@@ -47,25 +46,6 @@ class N9(LabNode):
         if self._vlans is None:
             self.n9_get_status()
         return self._vpc_domain
-
-    @property
-    def _requested_topology(self):
-        if self.__requested_topology is None:
-            self.__requested_topology = self.prepare_topology()
-        return self.__requested_topology
-
-    def get_pcs_to_fi(self):
-        """Returns a list of pcs used on connection to peer N9K and both FIs"""
-        return set([str(x.get_pc_id()) for x in self._wires if x.is_n9_fi()])
-
-    def get_peer_link_wires(self):
-        return [x for x in self._wires if x.is_n9_n9()]
-
-    def get_peer_link_id(self):
-        return self.get_peer_link_wires()[0].get_pc_id()
-
-    def get_peer_linked_n9k(self):
-        return self.get_peer_link_wires()[0].get_peer_node(self)
 
     def n9_allow_feature_nxapi(self):
         from fabric.api import settings, run
@@ -147,48 +127,88 @@ class N9(LabNode):
         from lab.nodes.n9.n9_neighbour import N9neighbourLLDP, N9neighbourCDP
         from lab.nodes.n9.n9_port import N9Port
         from lab.nodes.n9.n9_port_channel import N9PortChannel
-        from lab.nodes.n9.n9_vpc_domain import N9VpcDomain
         from lab.nodes.n9.n9_vlan import N9Vlan
         from lab.nodes.n9.n9_vlan_port import N9VlanPort
 
         a = self.n9_cmd(['sh port-channel summary', 'sh int st', 'sh int br', 'sh vlan', 'sh cdp nei det', 'sh lldp nei det'] + (['sh vpc'] if self.id != 'nc' else []), timeout=30)
 
-        self._port_channels = N9PortChannel.process_n9_answer(n9=self, answer=a['sh port-channel summary'])
-        vpc_domain, vpc_dic = N9VpcDomain.process_n9_answer(n9=self, answer=a['sh vpc']) if 'sh vpc' in a else None, {}
-        map(lambda vpc_id, vpc: self.port_channels[vpc_id].update(vpc), vpc_dic.items())
-
-        self._ports = {}
-        for st, br in zip(a['sh int st'], a['sh int br']):
-            st.update(br)  # combine both since br contains pc info
-            port_id = st['interface']
-            if port_id.startswith('port-channel'):
-                self._port_channels[port_id].update(st)
-            elif port_id.startswith('Vlan'):
-                self._ports[port_id] = N9VlanPort(n9=self, n9_dict=st)
-            elif port_id.startswith('Ethernet'):
-                self._ports[port_id] = N9Port(n9=self, n9_dic=st, pc_dic=self._port_channels)
-            else:
-                continue
         self._neighbours_lldp = N9neighbourLLDP.process_n9_answer(n9=self, answer=a['sh lldp nei det'])
         self._neighbours_cdp = N9neighbourCDP.process_n9_answer(n9=self, answer=a['sh cdp nei det'])
+
         self._vlans = N9Vlan.process_n9_answer(n9=self, answer=a['sh vlan'])
+
+        if 'sh vpc' in a:
+            peer_tbl = a['sh vpc'].get('TABLE_peerlink', {'ROW_peerlink': []})['ROW_peerlink']
+            vpc_tbl = a['sh vpc'].get('TABLE_vpc', {'ROW_vpc': []})['ROW_vpc']
+            vpc_lst = [vpc_tbl] if type(vpc_tbl) is dict else vpc_tbl  # if there is only one vpc the API returns dict but not a list. Convert to list
+            sh_vpc_dics = {x['vpc-ifindex'].replace('Po', 'port-channel'): x for x in vpc_lst}
+            assert len(sh_vpc_dics) == int(a['sh vpc']['num-of-vpcs'])  # this is a number of vpc excluding peer-link vpc
+            if peer_tbl:
+                sh_vpc_dics[peer_tbl['peerlink-ifindex'].replace('Po', 'port-channel')] = peer_tbl
+        else:
+           sh_vpc_dics = {}
+        sh_pc_sum_lst = [a['sh port-channel summary']] if type(a['sh port-channel summary']) is dict else a['sh port-channel summary']  # if there is only one port-channel the API returns dict but not a list. Convert to list
+        sh_pc_sum_dics = {x['port-channel']: x for x in sh_pc_sum_lst}
+
+        self._ports = {}
+        self._port_channels = {}
+        for st, br in zip(a['sh int st'], a['sh int br']):
+            port_id = st['interface']
+            if port_id.startswith('port-channel'):
+                self._port_channels[port_id] = N9PortChannel(n9=self, sh_int_st_dic=st, sh_int_br_dic=br, sh_pc_sum_dic=sh_pc_sum_dics[port_id], sh_vpc_dic=sh_vpc_dics.get(port_id))
+            elif port_id.startswith('Vlan'):
+                self._ports[port_id] = N9VlanPort(n9=self, sh_int_st_dic=st, sh_int_br_dic=br)
+            elif port_id.startswith('Ethernet'):
+                self._ports[port_id] = N9Port(n9=self, sh_int_st_dic=st, sh_int_br_dic=br)
+            else:
+                continue
+
 
     def n9_validate(self):
         from lab.nodes.n9.n9_vlan import N9Vlan
+        from lab.nodes.n9.n9_port_channel import N9PortChannel
+        from lab.nodes.n9.n9_port import N9Port
 
-        for req_vlan_id, req_vlan_name in self._requested_topology['vlans'].items():
-            self.vlans.get(req_vlan_id, N9Vlan.create(n9=self, vlan_id=req_vlan_id)).handle_vlan(vlan_id=req_vlan_id, vlan_name=req_vlan_name)
+        map(lambda v: self.vlans.get(str(v.vlan), N9Vlan.create(n9=self, vlan_id=v.vlan)).handle_vlan(vlan_name=self.pod.name[:3] + '-' + v.id), self.pod.networks.values())
 
-        for req_vpc_id, req_vpc in self._requested_topology['vpc'].items():
-            if req_vpc_id == 'mgmt0':  # it's a special mgmt port which is connected to OOB switch
+        for wire in [x for x in self.pod.wires if self in [x.n1, x.n2]]:
+            own_port_id = wire.get_own_port(node=self)
+            if wire.is_n9_ucs():  # it's a potential connection to our node
+                desc = self.pod.name[:3] + ' '
+                pc_id = '????'
+                port_mode = 'access'
+                vlans = 'alll'
+            elif wire.is_n9_oob():
                 continue
-            req_vpc_desc = '{} {}'.format(req_vpc['peer-node'], ' '.join(req_vpc['peer-ports']))
-            for req_port_id in req_vpc['ports']:  # first check physical ports participating in this (v)PC
-                self.ports[req_port_id].handle_port(port_name=req_vpc_desc)
-
-            self.port_channels[req_vpc_id].handle_pc(pc_name=req_vpc_desc, pc_mode=req_vpc['mode'])
+            elif wire.is_n9_n9():  # it's a potential peer link
+                pc_id = wire.pc_id
+                desc = 'peer-link'
+                port_mode = 'trunk'
+                vlans = 'all'
+            elif wire.is_n9_tor():
+                pc_id = '?????'
+                desc = 'up link'
+                port_mode = 'trunk'
+                vlans = 'all'
+            else:
+                pc_id = None
+                port_mode = None
+                vlans = None
+                desc = 'XXX'
+            if pc_id:
+                N9PortChannel.check_create(n9=self, pc_id=pc_id, desc=desc, mode=port_mode, vlans=vlans)
+            self.ports[own_port_id].check(pc_id=pc_id, port_name=desc, port_mode=port_mode, vlans=vlans)
 
         self.log(60 * '-')
+
+    def n9_fix_problem(self, cmd, msg):
+        from fabric.operations import prompt
+        import time
+
+        self.log('{} do: {}'.format(msg, ' '.join(cmd)))
+        time.sleep(1)  # prevent prompt message interlacing with log output
+        if prompt('say y if you want to fix it: ') == 'y':
+            self.n9_cmd(cmd)
 
     def n9_configure_vxlan(self, asr_port):
         import re
@@ -210,45 +230,6 @@ class N9(LabNode):
         self.cmd(['conf t', 'interface ethernet {0}'.format(asr_port), 'no switchport'])
         self.cmd(['conf t', 'interface ethernet {0}'.format(asr_port), 'ip address {0}/30'.format(eth48_ip)])
         self.cmd(['conf t', 'interface ethernet {0}'.format(asr_port), 'ip router ospf {0} area {1}'.format(router_ospf, router_area)])
-
-    def prepare_topology(self):
-        topo = {'vpc': {}, 'vlans': {}, 'peer-link': {'description': 'peerlink', 'ip': None, 'vlans': [], 'ports': []}}
-
-        for wire in self.get_all_wires():
-            own_port_id = wire.get_own_port(self)
-            peer_port_id = wire.get_peer_port(self)
-            pc_id = wire.get_pc_id() or own_port_id
-            if wire.is_n9_n9():
-                mode = 'trunk'
-                vlan_ids = []  # vlans for peerlink will be collected later in this method
-            elif wire.is_n9_tor():
-                vlan_ids = []  # vlans for uplink will be collected later in this method
-                mode = 'trunk'
-            elif wire.is_n9_pxe():
-                vlan_ids = ['1']
-                mode = 'access'
-            elif wire.is_n9_fi():
-                mode = 'trunk'
-                vlan_ids = []
-            elif wire.is_n9_ucs():
-                vlan_ids = sorted(set([x.get_vlan_id() for x in wire.get_nics()]))
-                mode = 'trunk' if 'MLOM' in peer_port_id else 'access'
-            elif wire.is_n9_oob():
-                vlan_ids = []
-                mode = None
-            else:
-                raise ValueError('{}:  strange wire which should not go to N9K: {}'.format(self, wire))
-            topo['vpc'].setdefault(pc_id, {'peer-node': wire.get_peer_node(self), 'pc-id': pc_id, 'vlans': vlan_ids, 'ports': [], 'peer-ports': [], 'mode': mode})
-            topo['vpc'][pc_id]['ports'].append(own_port_id)
-            topo['vpc'][pc_id]['peer-ports'].append(peer_port_id)
-        vlan_id_vs_net = {net.get_vlan_id(): net for net in self.pod.networks.values()}
-        for vlan_id in sorted(set(reduce(lambda lst, a: lst + a['vlans'], topo['vpc'].values(), []))):  # all vlans seen on all wires
-            topo['vlans'][vlan_id] = str(self.pod) + '-' + vlan_id_vs_net[vlan_id].get_net_id()  # fill vlan_id vs vlan name section
-            if 'peerlink' in topo['vpc']:
-                topo['vpc']['peerlink']['vlans'].append(vlan_id)
-            if 'uplink' in topo['vpc'] and vlan_id_vs_net[vlan_id].is_via_tor():
-                topo['vpc']['uplink']['vlans'].append(vlan_id)
-        return topo
 
     def n9_configure_asr1k(self):
         self.cmd(['conf t', 'int po{0}'.format(self.get_peer_link_id()), 'shut'])
@@ -296,8 +277,4 @@ class N9(LabNode):
         return r['result']['body']['TABLE_nve_peers']['ROW_nve_peers'] if r['result'] else {}
 
     def r_collect_config(self):
-        return self._format_single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())
-
-
-class VimCat(N9):
-    pass
+        return self.single_cmd_output(cmd='show running config', ans=self.n9_show_running_config())

@@ -6,13 +6,15 @@ class Configurator(WithConfig, WithLogMixIn):
     def sample_config(self):
         pass
 
-    def __init__(self):
-        self.s = None
+    def __init__(self, mgm, is_interactive):
+        self.mgm = mgm
+        self.is_interactive = is_interactive
 
     def __repr__(self):
         return u'online configurator'
 
-    def create(self, lab_name):
+    @staticmethod
+    def create(lab_name, is_interactive=False):
         import validators
         import yaml
         import time
@@ -23,37 +25,40 @@ class Configurator(WithConfig, WithLogMixIn):
         if not validators.ipv4(ip):
             raise ValueError('"{}" is not resolved as valid IPv4'.format(ip))
 
-        self.s = Server(ip=ip, username='root', password=None)
+        ans = ''
+        cfg = Configurator(mgm=Server(ip=ip, username='root', password=None), is_interactive=is_interactive)
+        separator = 'separator'
         for password in [None, Configurator.KNOWN_LABS['default_password'], 'cisco123']:  # first try to exe with key pair, if failed, second try with default password
-            try:
-                self.s.password = password
-                ans = self.s.exe(cmd='ciscovim install-status # {} mgm with password {}'.format(lab_name, self.s.password), is_warn_only=True)
-                if '| CEPH                   | Success |' not in ans:
-                    raise RuntimeError('{} is not properly installed'.format(lab_name))
-                cmd_tmpl = 'cat /root/openstack-configs/setup_data.yaml && echo separator && hostname && echo separator && grep -E "image_tag|namespace|RELEASE_TAG" /root/openstack-configs/defaults.yaml # {} mgm with password {}'
-                ans = self.s.exe(cmd=cmd_tmpl.format(lab_name, self.s.password), is_warn_only=True)
+            cfg.log('Trying to connect to {} with password {}...'.format(lab_name, password))
+            cfg.mgm.password = password
+            cmds = ['ciscovim install-status', 'cat /root/openstack-configs/setup_data.yaml', 'hostname', 'grep -E "image_tag|namespace|RELEASE_TAG" /root/openstack-configs/defaults.yaml']
+            cmd = ' && echo {} && '.format(separator).join(cmds)
+            ans = cfg.mgm.exe(cmd=cmd, is_warn_only=True)
+            if 'Stages' in ans:
+                break
+            time.sleep(1)
+            cfg.log_warning('It is potentially old release without key pair installed for root@mgm {}, trying to re-execute with password'.format(lab_name))
+            time.sleep(1)
 
-                setup_data, hostname, grep = ans.split('separator')
-                pod = Laboratory()
-                pod.setup_data = yaml.load(setup_data)
-                pod.driver = pod.setup_data['MECHANISM_DRIVERS']
-                pod.name = lab_name + '-' + pod.driver
-                pod.gerrit_tag = grep.split('\r\n')[2].split(':')[-1].strip()
-                pod.namespace = grep.split('\r\n')[3].split(':')[-1].strip()
-                pod.release_tag = grep.split('\r\n')[1].split(':')[-1].strip()
-                pod.os_name = self.VIM_NUM_VS_OS_NAME_DIC[pod.release_tag.rsplit('.', 1)[0]]
-                self.create_from_setup_data(pod=pod)
-                if pod.driver == 'vts':
-                    pod.driver_version = pod.vtc.r_vtc_get_version()
-                    pod.vtc.r_vtc_get_all()
-                else:
-                    pod.driver_version = 'vpp XXXX'
-                return pod
-            except SystemExit:
-                time.sleep(1)
-                self.log_warning('It is potentially old release without key pair installed for root@mgm {}, trying to re-execute with default password'.format(lab_name))
-                time.sleep(1)
-                continue
+        if is_interactive == False and '| CEPH                   | Success |' not in ans:
+            raise RuntimeError('{} is not properly installed'.format(lab_name))
+
+        _, setup_data, hostname, grep = ans.split(separator)
+        pod = Laboratory()
+        pod.setup_data = yaml.load(setup_data)
+        pod.driver = pod.setup_data['MECHANISM_DRIVERS']
+        pod.name = lab_name + '-' + pod.driver
+        pod.gerrit_tag = grep.split('\r\n')[2].split(':')[-1].strip()
+        pod.namespace = grep.split('\r\n')[3].split(':')[-1].strip()
+        pod.release_tag = grep.split('\r\n')[1].split(':')[-1].strip()
+        pod.os_name = cfg.VIM_NUM_VS_OS_NAME_DIC[pod.release_tag.rsplit('.', 1)[0]]
+        cfg.create_from_setup_data(pod=pod)
+        if pod.driver == 'vts':
+            pod.driver_version = pod.vtc.r_vtc_get_version()
+            pod.vtc.r_vtc_get_all()
+        else:
+            pod.driver_version = 'vpp XXXX'
+        return pod
 
     def create_from_setup_data(self, pod):
         from tools.configurator import Configurator as ConfiguratorOffline
@@ -80,6 +85,9 @@ class Configurator(WithConfig, WithLogMixIn):
             self.process_single_node(pod=pod, node_id=node_id, node_dic=node_dic)
 
         ConfiguratorOffline.process_connections(pod=pod)
+        map(lambda x: x.n9_validate(), pod.vim_tors)
+        map(lambda x: x.r_build_online(), pod.cimc_servers)
+        map(lambda x: self.process_vts_virtuals(pod=pod, vts=x), pod.vts)
         # pod.validate_config()
         ConfiguratorOffline.save_self_config(p=pod)
 
@@ -108,9 +116,9 @@ class Configurator(WithConfig, WithLogMixIn):
         oob_username = node_dic['cimc_info'].get('cimc_username') or pod.setup_data['CIMC-COMMON']['cimc_username']
         oob_password = node_dic['cimc_info'].get('cimc_password') or pod.setup_data['CIMC-COMMON']['cimc_password']
 
-        ssh_ip = None if node_id != 'mgm' else self.s.ip
-        ssh_username = None if node_id != 'mgm' else self.s.username
-        ssh_password = None if node_id != 'mgm' else self.s.password
+        ssh_ip = node_dic.get('management_ip') if node_id != 'mgm' else self.mgm.ip
+        ssh_username = None if node_id != 'mgm' else self.mgm.username
+        ssh_password = None if node_id != 'mgm' else self.mgm.password
         proxy = None if node_id == 'mgm' else pod.mgm
 
         klass = self.get_class_for_node_id(pod=pod, node_id=node_id)
@@ -121,12 +129,7 @@ class Configurator(WithConfig, WithLogMixIn):
                }
 
         node = klass.create_node(pod=pod, dic=cfg)
-        node.r_build_online()
         pod.nodes[node.id] = node
-
-        self.log(str(node) + ' processed\n\n')
-        if node.is_vts():
-            self.process_vts_virtuals(pod=pod, vts=node)
 
     def process_vts_virtuals(self, pod, vts):
         import re

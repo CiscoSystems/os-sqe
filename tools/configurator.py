@@ -48,7 +48,7 @@ class Configurator(WithConfig, WithLogMixIn):
 
     @staticmethod
     def process_switches(pod):
-        from lab.nodes.n9.vim_tor import VimTor
+        from lab.nodes.others import UnknownN9, VimTor
         from lab.wire import Wire
 
         known_info = Configurator.KNOWN_LABS[pod.name.rsplit('-', 1)[0]]
@@ -67,23 +67,26 @@ class Configurator(WithConfig, WithLogMixIn):
         wires_cfg = []
         for n9 in tors.values():
             for nei in n9.neighbours_cdp:
-                node2_id = nei.ipv4.split('.')[-1]
+                node2_id = 'ip' + nei.ipv4.split('.')[-1]
                 if nei.port_id == 'mgmt0':
-                    specials[nei.ipv4] = {'id': node2_id, 'role': 'Oob', 'oob-ip': nei.ipv4, 'oob-username': 'XXXXXX', 'oob-password': password}
+                    node2_id = 'oob'
+                    specials[nei.ipv4] = {'id': 'oob', 'role': 'Oob', 'oob-ip': nei.ipv4, 'oob-username': 'openstack-readonly', 'oob-password': password}
                 else:
                     s = filter(lambda y: y.oob_ip == nei.ipv4, tors.values())
-                    if s:
+                    if s:  # this is peer link connection
                         node2_id = s[0].id
-                    else:  # this is unknown connection, one of them is connection to tor
-                        specials[nei.ipv4] = {'id': node2_id, 'role': 'Tor', 'oob-ip': nei.ipv4, 'oob-username': 'XXXXXX', 'oob-password': password}
-                wires_cfg.append({'node1': n9.id, 'port1': nei.port_id, 'mac': 'unknown', 'node2': node2_id, 'port2': nei.peer_port_id, 'pc-id': nei.pc_id})
+                    else:  # this is unknown connection, one of them is connection to TOR
+                        port_desc = n9.ports[nei.port_id].name
+                        role, node2_id  = ('Tor', 'tor') if 'uplink' in port_desc else ('UnknownN9', node2_id)
+                        specials[nei.ipv4] = {'id': node2_id, 'role': role, 'oob-ip': nei.ipv4, 'oob-username': 'XXXXXX', 'oob-password': password}
+                wires_cfg.append({'node1': n9.id, 'port1': nei.port_id, 'mac': None, 'node2': node2_id, 'port2': nei.peer_port_id, 'pc-id': nei.pc_id})
 
         for i, x in enumerate(known_info.get('specials', [])):
             x['oob-password'] = password
             specials[i] = x
 
         pod.nodes.update(tors)
-        pod.nodes.update(VimTor.create_nodes(pod=pod, node_dics_lst=specials.values()))
+        pod.nodes.update(UnknownN9.create_nodes(pod=pod, node_dics_lst=specials.values()))
         pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=wires_cfg))
 
     @staticmethod

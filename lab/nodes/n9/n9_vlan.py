@@ -18,9 +18,11 @@ class N9Vlan(object):
         return self._dic.get('vlanshowplist-ifidx', [])
 
     def handle_vlan(self, vlan_name):
+        self.n9.log('Checking vlan {} {}'.format(self.vlan_id, vlan_name))
         if self.vlan_name != vlan_name:
             msg = 'no vlan ' + self.vlan_id if self.vlan_name == self.NOT_YET else 'vlan {} has actual name {} while requested is {}'.format(self.vlan_id, self.vlan_name, vlan_name)
-            self.n9.fix_problem(cmd=['conf t', 'vlan ' + self.vlan_id, 'name ' + vlan_name, 'no shut'], msg=msg)
+            self.n9.n9_fix_problem(cmd=['conf t', 'vlan ' + self.vlan_id, 'name ' + vlan_name, 'no shut'], msg=msg)
+            self.vlan_name = vlan_name
 
     @staticmethod
     def create(n9, vlan_id):

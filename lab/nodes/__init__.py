@@ -14,7 +14,7 @@ class LabNode(WithLogMixIn, WithConfig):
         self._proxy = dic.get('proxy')                 # LabNode object or node id (lazy init), will be used as proxy node to this node
         self.oob_ip, self.oob_username, self.oob_password = dic['oob-ip'], dic['oob-username'], dic['oob-password']
         self.hardware = ''                             # some description which might be useful for debugging
-        self._wires = []
+        self.log('created')
 
     def __repr__(self):
         return self.id
@@ -49,38 +49,27 @@ class LabNode(WithLogMixIn, WithConfig):
         """
         return {x['id']: LabNode.create_node(pod=pod, dic=x) for x in node_dics_lst}
 
-    def attach_wire(self, wire):
-        self._wires.append(wire)
-
-    def get_all_wires(self):
-        """Returns all wires"""
-        return self._wires
-
-    def get_wires_to(self, node):
-        """Returns wires to given node"""
-        return filter(lambda x: x.get_peer_node(self) == node, self.get_all_wires())
-
     @abc.abstractmethod
     def cmd(self, cmd):
         pass  # this method allows to do OOB commands like e.g. CIMC or NXAPI
 
     def is_oob(self):
-        from lab.nodes.tor import Oob
+        from lab.nodes.others import Oob
 
         return type(self) is Oob
 
     def is_tor(self):
-        from lab.nodes.tor import Tor
+        from lab.nodes.others import Tor
 
         return type(self) is Tor
 
     def is_vim_tor(self):
-        from lab.nodes.n9.vim_tor import VimTor
+        from lab.nodes.others import VimTor
 
         return type(self) is VimTor
 
     def is_vim_cat(self):
-        from lab.nodes.n9 import VimCat
+        from lab.nodes.others import VimCat
 
         return type(self) is VimCat
 
@@ -177,11 +166,9 @@ class LabNode(WithLogMixIn, WithConfig):
     @staticmethod
     def get_role_class(role):
         from lab.nodes.fi import FI, FiDirector, FiController, FiCompute, FiCeph
-        from lab.nodes.n9 import VimCat
-        from lab.nodes.n9.vim_tor import VimTor
         from lab.nodes.n9 import N9
         from lab.nodes.asr import Asr
-        from lab.nodes.tor import Tor, Oob, Pxe, Terminal
+        from lab.nodes.others import Tor, Oob, Pxe, Terminal, VimCat, VimTor, UnknownN9
         from lab.nodes.cimc_server import CimcController, CimcCompute, CimcCeph, CimcVts
         from lab.nodes.mgmt_server import CimcDirector
         from lab.nodes.xrvr import Xrvr
@@ -190,7 +177,7 @@ class LabNode(WithLogMixIn, WithConfig):
         from lab.nodes.vtsr import Vtsr
         from lab.nodes.virtual_server import VtcIndividual, VtsrIndividual
 
-        classes = {x.__name__: x for x in [Tor, Oob, Pxe, Terminal, N9,
+        classes = {x.__name__: x for x in [Tor, Oob, Pxe, Terminal, N9, UnknownN9,
                                            VimTor, VimCat, CimcDirector, CimcController, CimcCompute, CimcCeph, CimcVts,
                                            Vtc, VtcIndividual, Vtf, Xrvr, VtsrIndividual, Asr,
                                            FI, FiDirector, FiController, FiCompute, FiCeph]}

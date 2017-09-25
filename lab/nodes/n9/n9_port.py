@@ -1,19 +1,19 @@
 class N9Port(object):
-    def __init__(self, n9, pc_dic, n9_dic):
+    def __init__(self, n9, sh_int_st_dic, sh_int_br_dic):
         self.n9 = n9
-        self._dic = n9_dic
-        self.pc = None
+        self.sh_int_st_dic = sh_int_st_dic
+        self.sh_int_br_dic = sh_int_br_dic
 
-        if 'portchan' in n9_dic:
-            self.pc = pc_dic['port-channel' + str(n9_dic['portchan'])]
-            self.pc.add_port(self)
+        self.pc = None
+        self.vlans = []  # list of N9Vlans assigned to this port
+
 
     def __repr__(self):
-        return self.port_id
+        return str(self.n9) + ' ' + self.port_id + ' ' + self.name + ' ' + self.mode
 
     @property
     def port_id(self):
-        return self._dic['interface']
+        return self.sh_int_st_dic['interface']
 
     @property
     def pc_id(self):
@@ -21,49 +21,52 @@ class N9Port(object):
 
     @property
     def mode(self):
-        return self._dic['portmode']
+        return self.sh_int_br_dic['portmode']
 
     @property
     def speed(self):
-        return self._dic['speed']
+        return self.sh_int_br_dic['speed']
 
     @property
-    def get_state(self):
-        state = self._dic['state']
-        return state if state == 'up' else self._dic['state_rsn_desc']
-
-    @property
-    def vlans(self):
-        return self._dic['vlan'] if self.mode == 'access' else self._dic['vlan']  # TODO in trunk this field is always trunk
+    def state(self):
+        return self.sh_int_st_dic['state'] if self.sh_int_br_dic['state'] == 'up' else self.sh_int_br_dic['state_rsn_desc']
 
     @property
     def name(self):
-        return self._dic.get('name', '--')  # for port with no description this field either -- or not in dict
+        return self.sh_int_st_dic.get('name', '--')  # for port with no description this field either -- or not in dict
 
     @property
     def is_not_connected(self):
-        return self._dic['state_rsn_desc'] == u'XCVR not inserted'
+        return self.sh_int_br_dic['state_rsn_desc'] == u'XCVR not inserted'
 
     @property
     def is_down(self):
-        return self._dic['state_rsn_desc'] == u'down'
+        return self.sh_int_br_dic['state_rsn_desc'] == u'down'
 
-    def handle(self, pc_id, port_name, port_mode, vlans):
+    def check(self, pc_id, port_name, port_mode, vlans):
+        should_be = self.port_id + ' ' + port_name + ' ' + self.mode + ' in ' + str(pc_id)
 
-        cmd_up = ['conf t', 'int ether ' + self.port_id, 'no shut']
-        cmd_make = ['conf t', 'int ' + self.port_id, 'desc ' + port_name, 'switchport', 'switchport mode ' + port_mode, 'switchport {} vlan {}'.format('trunk allowed' if port_mode == 'trunk' else 'access', vlans)]
-        cmd_name = ['conf t', 'int ' + self.port_id, 'desc ' + port_name]
+        self.n9.log('Checking {} should be {}'.format(self, should_be))
+
+        if self.pc_id != pc_id:
+            raise RuntimeError('{}: Port {} belongs to different port-channel {}. Check your configuration'.format(self.n9, self.port_id, self.pc_id))
+
+        if self.name != port_name:
+            cmd = ['conf t', 'int ' + self.port_id, 'desc ' + port_name]
+            self.n9.fix_n9_problem(cmd=cmd, msg='{} has actual description "{}" while requested is "{}"'.format(self.port_id, self.name, port_name))
+        if vlans is None:  # this means we don't no anything about this port just describe it as XXX for reference
+            return
+
         if self.is_not_connected:
             raise RuntimeError('N9K {}: Port {} seems to be not connected. Check your configuration'.format(self, self.port_id))
-        a_pc_id = self.pc_id
-        if a_pc_id is None:
-            self.n9.fix_problem(cmd=cmd_make, msg='port {} is not a part of any port channels'.format(self.port_id))
-        elif a_pc_id != pc_id:
-            raise RuntimeError('N9K {}: Port {} belongs to different port-channel {}. Check your configuration'.format(self, self.port_id, a_pc_id))
 
         if self.is_down:
-            self.n9.fix_problem(cmd=cmd_up, msg='{} is down'.format(self.port_id))
+            cmd = ['conf t', 'int ether ' + self.port_id, 'no shut']
+            self.n9.fix_problem(cmd=cmd, msg='{} is down'.format(self.port_id))
 
-        a_name = self.name
-        if a_name != port_name:
-            self.n9.fix_problem(cmd=cmd_name, msg='{} has actual description "{}" while requested is "{}"'.format(self.port_id, a_name, port_name))
+        if self.mode != port_mode:
+            cmd = ['conf t', 'int ' + self.port_id, 'switchport mode ' + port_mode]
+            self.n9.fix_n9_problem(cmd=cmd, msg='port {} is of type {}'.format(self.port_id, port_mode))
+
+#            cmd_make = ['conf t', 'int ' + self.port_id, 'desc ' + port_name, 'switchport', 'switchport mode ' + port_mode, 'switchport {} vlan {}'.format('trunk allowed' if port_mode == 'trunk' else 'access', vlans)]
+

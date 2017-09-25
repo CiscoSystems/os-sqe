@@ -35,8 +35,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def create_from_remote(lab_name):
         from tools.configurator_online import Configurator
 
-        c = Configurator()
-        return c.create(lab_name=lab_name)
+        return Configurator.create(lab_name=lab_name)
 
     @staticmethod
     def create_from_path(cfg_path):
