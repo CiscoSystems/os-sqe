@@ -4,23 +4,25 @@ from lab.decorators import section
 
 class NttScenario(ParallelWorker):
 
-    def check_config(self):
+    ARG_RUN_INSIDE = 'run_inside'
+    ARG_CSR_ARGS = 'csr_args'
+    ARG_NFVBENCH_ARGS = 'nfvbench_args'
+
+    def check_arguments(self):
         possible_modes = ['csr', 'nfvbench', 'both']
-        if self.what_to_run not in possible_modes:
-            raise ValueError('{}: what-to-run must on of {}'.format(self, possible_modes))
-        return 'run {}, CSR {}, nfvbench {}'.format(self.what_to_run, self.csr_args, self.nfvbench_args)
+        assert self.run_inside in possible_modes
 
     @property
-    def what_to_run(self):
-        return self._kwargs['what-to-run']
+    def run_inside(self):
+        return self.args[self.ARG_RUN_INSIDE]
 
     @property
     def csr_args(self):
-        return self._kwargs['csr-args']
+        return self.args[self.ARG_CSR_ARGS]
 
     @property
     def nfvbench_args(self):
-        return self._kwargs['nfvbench-args'] + (' --no-cleanup' if self.is_noclean else '')
+        return self.args[self.ARG_NFVBENCH_ARGS] + (' --no-cleanup' if self.is_noclean else '')
 
     @property
     def perf_reports_repo_dir(self):
@@ -32,7 +34,7 @@ class NttScenario(ParallelWorker):
 
     @property
     def is_sriov(self):
-        return self._kwargs['is-sriov']
+        return self.args['is-sriov']
 
     @section(message='Setting up (estimate 100 secs)')
     def setup_worker(self):
@@ -40,16 +42,16 @@ class NttScenario(ParallelWorker):
         from lab.cloud.cloud_image import CloudImage
 
         # self.pod.mgmt.r_configure_mx_and_nat()
-        if self.what_to_run in ['both', 'csr']:
+        if self.run_inside in ['both', 'csr']:
             self.pod.mgmt.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.csr_repo_dir)
 
             url, checksum, size, _, _, loc_rel_path = CloudImage.read_image_properties(name='CSR1KV')
             loc_abs_path = path.join(self.csr_repo_dir, path.basename(loc_rel_path))
             self.pod.mgm.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=loc_abs_path)
-        if self.what_to_run in ['both', 'nfvbench']:
+        if self.run_inside in ['both', 'nfvbench']:
             if len(self.pod.mgm.intel_nics_dic) < 2:
                 raise RuntimeError('{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgmt))
-            self._kwargs['is-sriov'] = len(self.pod.computes[0].intel_virtual_nics_dic) >= 8
+            self.args['is-sriov'] = len(self.pod.computes[0].intel_virtual_nics_dic) >= 8
             self.pod.mgm.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             if self.pod.driver == 'vts':
                 for tor_name, tor_port in self.pod.setup_data['NFVBENCH']['tor_info'].items():
@@ -63,10 +65,10 @@ class NttScenario(ParallelWorker):
         self.cloud.os_quota_set()
 
     def loop_worker(self):
-        if self.what_to_run in ['csr', 'both']:
+        if self.run_inside in ['csr', 'both']:
             self.csr_run()
 
-        if self.what_to_run in ['nfvbench', 'both']:
+        if self.run_inside in ['nfvbench', 'both']:
             self.nfvbench_run(is_sriov=False)
             if self.is_sriov and 'PVVP' not in self.nfvbench_args:
                 self.nfvbench_run(is_sriov=True)
@@ -112,8 +114,9 @@ class NttScenario(ParallelWorker):
                 f.write('\n' + 80 * '=' + '\n\n')
             json_name1 = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             date = ans.split('Date: ')[-1][:19].replace(' ', '-').replace(':', '-')
-            json_name2 = ('SRIOV-' if is_sriov else '') +  json_name1 + '.' + date + '.' + self.pod.name
-            self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git pull && echo {1} >> catalog && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2), in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
+            json_name2 = ('SRIOV-' if is_sriov else '') + json_name1 + '.' + date + '.' + self.pod.name
+            self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git pull && echo {1} >> catalog && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2),
+                             in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
             res_json_body = self.pod.mgm.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.perf_reports_repo_dir)
             ans = self.process_nfvbench_json(res_json_body=res_json_body)
             with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'a') as f:
@@ -147,6 +150,7 @@ class NttScenario(ParallelWorker):
             if self.pod.driver == 'vts':
                 self.pod.vtc.r_vtc_delete_openstack()
             # self.pod.mgmt.exe('rm -rf *')
+
 
 """
 #!/bin/bash

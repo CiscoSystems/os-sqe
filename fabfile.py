@@ -13,7 +13,6 @@ def cmd():
     import inspect
     from fabric.operations import prompt
     import time
-    from lab.laboratory import Laboratory
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.with_log import lab_logger
     from tools.configurator_online import Configurator
@@ -87,7 +86,7 @@ def ha(pod_mgm_ip, test_regex, is_noclean=False, is_debug=False):
     """
     from lab.runners.runner_ha import RunnerHA
 
-    RunnerHA.run(lab_name=pod_mgm_ip, test_regex=test_regex, is_noclean=str(is_noclean) in ['true', 'True', 'yes', 'Yes'])
+    RunnerHA.run(lab_name=pod_mgm_ip, test_regex=test_regex, is_noclean=str(is_noclean) in ['true', 'True', 'yes', 'Yes'], is_debug=(is_debug) in ['true', 'True', 'yes', 'Yes'])
 
 
 @task

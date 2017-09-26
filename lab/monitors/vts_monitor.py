@@ -3,21 +3,14 @@ from lab.parallelworker import ParallelWorker
 
 class VtsMonitor(ParallelWorker):
 
-    def check_config(self):
+    def check_arguments(self):
         pass
 
-    # noinspection PyAttributeOutsideInit
     def setup_worker(self):
-        from lab.nodes.vtc import Vtc
-
-        self._vtc = Vtc(node_id='Vtc{}'.format(self._ip), role='vtc', lab=None) if self._ip else self.get_lab().get_nodes_by_class(Vtc)[0]
-        if self._ip:
-            self._vtc.set_oob_creds(ip=self._ip, username=self._username, password=self._password)
-        self._vtfs = self._vtc.r_vtc_get_vtfs()
-        self._xrvrs = self._vtc.r_vtc_get_xrvrs()
+        pass
 
     def loop_worker(self):
-        self.log('cluster={}'.format(self._vtc.r_vtc_show_ha_cluster_members()))
-        self.log('networks={}'.format(self._vtc.r_vtc_show_openstack_network()))
-        self.log('subnetworks={}'.format(self._vtc.r_vtc_show_openstack_subnet()))
-        self.log('ports={}'.format(self._vtc.r_vtc_show_openstack_port()))
+        self.log('cluster={}'.format(self.pod.vtc.r_vtc_show_ha_cluster_members()))
+        self.log('networks={}'.format(self.pod.vtc.r_vtc_show_openstack_network()))
+        self.log('subnetworks={}'.format(self.pod.vtc.r_vtc_show_openstack_subnet()))
+        self.log('ports={}'.format(self.pod.vtc.r_vtc_show_openstack_port()))

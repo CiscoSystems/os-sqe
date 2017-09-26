@@ -1,13 +1,13 @@
 from lab.with_config import WithConfig
+from lab.with_log import WithLogMixIn
 
 
 def starter(worker):
     return worker.start_worker_parallel()
 
 
-class RunnerHA(WithConfig):
-    @staticmethod
-    def execute_single_test(workers, cloud, tims):
+class RunnerHA(WithConfig, WithLogMixIn):
+    def execute_single_test(self, workers, cloud, tims):
         import multiprocessing
         import fabric.network
         import time
@@ -25,66 +25,84 @@ class RunnerHA(WithConfig):
         time.sleep(2)
 
         pool = multiprocessing.Pool(len(workers))
+        self.log('\n\n***AFTER THIS LINE PARALLEL EXECUTION STARTS***\n\n')
         results = pool.map(starter, workers)
+        self.log('\n\n***PARALLEL EXECUTION FINISHED***\n\n')
+
         tims.publish_result(test_cfg_path=workers[0].test_cfg_path, results=results)
 
         try:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
         except Exception as ex:
-            with cloud.pod.open_artifact('exception-in-teardown.txt'.format(), 'w') as f:
+            with WithConfig.open_artifact('exception-in-teardown.txt'.format(), 'w') as f:
                 f.write(str(ex))
 
     @staticmethod
-    def run(lab_name, test_regex, is_noclean):
+    def run(lab_name, test_regex, is_noclean, is_debug):
         import time
-        from lab.deployers.deployer_existing import DeployerExisting
         from lab.tims import Tims
         from lab.elk import Elk
 
-        tests = RunnerHA.check_configs(test_regex=test_regex, is_noclean=is_noclean)
+        tests = RunnerHA.create_tests(test_regex=test_regex, is_noclean=is_noclean)
+        if is_debug:
+            return
 
-        deployer = DeployerExisting(lab_name=lab_name)
+        if 'dev-test-parallel' not in test_regex:
+            cloud = RunnerHA.init_cloud(pod_name=lab_name)
+            pod = cloud.pod
+        else:
+            cloud = None
+            pod = None
+        tims = Tims.create(pod=pod)
+
+        runner = RunnerHA()
+        start_time = time.time()
+        map(lambda x: runner.execute_single_test(workers=x, cloud=cloud, tims=tims), tests)
+
+        if cloud:
+            elk = Elk(proxy=cloud.mediator)
+            elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
+            cloud.pod.r_collect_info(regex='error', comment=test_regex)
+
+    @staticmethod
+    def init_cloud(pod_name):
+        from lab.deployers.deployer_existing import DeployerExisting
+
+        deployer = DeployerExisting(lab_name=pod_name)
         cloud = deployer.execute({'clouds': [], 'servers': []})
         if len(cloud.computes) < 2:
             raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(cloud))
+        return cloud
 
-        tims = Tims(pod=cloud.pod)
-
-        start_time = time.time()
-        map(lambda x: RunnerHA.execute_single_test(workers=x, cloud=cloud, tims=tims), tests)
-
-        elk = Elk(proxy=cloud.mediator)
-        elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
-
-        cloud.pod.r_collect_info(regex='error', comment=test_regex)
 
     @staticmethod
-    def check_configs(test_regex, is_noclean):
+    def create_tests(test_regex, is_noclean):
         available_tc = RunnerHA.ls_configs(directory='ha')
         test_cfg_paths = sorted(filter(lambda x: test_regex in x, available_tc))
 
         if not test_cfg_paths:
             raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
-        return [RunnerHA.check_single_test(test_cfg_path=x, is_noclean=is_noclean) for x in test_cfg_paths]
+        return [RunnerHA.create_test_workers(test_cfg_path=x, is_noclean=is_noclean) for x in test_cfg_paths]
 
     @staticmethod
-    def check_single_test(test_cfg_path, is_noclean):
+    def create_test_workers(test_cfg_path, is_noclean):
         import importlib
 
         worker_names_already_seen =[]
 
+        headers_seen = []
         workers = []
-        status_dict = {}
-        for worker_args in RunnerHA.read_config_from_file(config_path=test_cfg_path, directory='ha'):
-            if 'class' not in worker_args:
+        for worker_dic in RunnerHA.read_config_from_file(config_path=test_cfg_path, directory='ha'):  # list of dicts
+            if 'class' not in worker_dic:
+                headers_seen.extend(worker_dic.keys())
+                if 'Folder' in worker_dic:
+                    assert worker_dic['Folder'] in WithConfig.KNOWN_LABS['tims']['folders']
                 continue
-            if 'name' not in worker_args:
-                raise ValueError('{} in {} should define "name"'.format(worker_args['class'], test_cfg_path))
-            if worker_args['name'] in worker_names_already_seen:
-                raise ValueError('{} in {} defines name "{}" which is already defined somewhere else'.format(worker_args['class'], test_cfg_path, worker_args['name']))
-
-            path_to_module, class_name = worker_args['class'].rsplit('.', 1)
+            if 'name' not in worker_dic:
+                raise ValueError('{} in {} should define unique "name"'.format(worker_dic['class'], test_cfg_path))
+            klass = worker_dic['class']
+            path_to_module, class_name = klass.rsplit('.', 1)
             try:
                 mod = importlib.import_module(path_to_module)
             except ImportError:
@@ -93,29 +111,25 @@ class RunnerHA(WithConfig):
                klass = getattr(mod, class_name)
             except AttributeError:
                 raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
-            worker_args['test_cfg_path'] = test_cfg_path
-            worker_args['is_noclean'] = is_noclean
-            worker = klass(args_dict=worker_args)
-            worker.status_dict = status_dict
+            worker_dic['test_cfg_path'] = test_cfg_path
+            worker_dic['is_noclean'] = is_noclean
+            worker = klass(args_dict=worker_dic)
+            if worker.name in worker_names_already_seen:
+                worker.raise_exception('uses name which is already seen in {}'.format(worker, test_cfg_path))
+            else:
+                worker_names_already_seen.append(worker.name)
+
             workers.append(worker)
 
         for worker in workers:
-            for attr_name in ['run_while', 'run_after']:
-                attr = getattr(worker, attr_name)
-                if type(attr) is not list:
-                    setattr(worker, attr_name, [attr])
-                not_in_status = filter(lambda x: x not in worker.status_dict.keys(), getattr(worker, attr_name))
-                if not_in_status:
-                    worker.raise_exception(ValueError, 'run_while has "{}" which is invalid. Valid are {}'.format(not_in_status, worker.status_dict.keys()))
+            for attr_name in [worker.ARG_RUN, worker.ARG_DELAY]:
+                value = getattr(worker, attr_name)
+                if type(value) is int:
+                    continue
+                wrong_names = filter(lambda x: x not in worker_names_already_seen, value)
+                if wrong_names:
+                    worker.raise_exception('has names "{}" which are invalid. Valid are {}'.format(wrong_names, worker_names_already_seen))
+        required_headers_set = {'Title', 'Folder', 'Description'}
+        assert set(headers_seen) == required_headers_set, '{}: no header(s) {}'.format(test_cfg_path, required_headers_set - set(headers_seen))
 
-            if worker.run_while:
-                if any([worker.run_after, worker.n_repeats]):
-                    worker.raise_exception(ValueError, 'run_while can not co-exists with either of n_repeats and run_after')
-            elif worker.n_repeats < 1:
-                    worker.raise_exception(ValueError, 'please define either wun_while or n_repeats >= 1')
-
-            try:
-                worker.check_config()
-            except KeyError as ex:
-                worker.raise_exception(ValueError, 'no required parameter "{}"'.format(ex))
         return workers

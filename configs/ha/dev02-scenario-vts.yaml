@@ -1,0 +1,16 @@
+---
+- Folder: Automation itself tests
+- Title: Test VTS scenario
+- Description: VTS scenario creates number of networks and instances on these networks then ping all servers checking in parallel VTS responses to operations
+
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
+  delay: 0
+  run: 1
+  pause: 0
+  timeout: 360
+  n_networks: 1
+  n_servers: 1
+  uptime: 30
+  run_inside: ping

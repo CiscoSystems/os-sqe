@@ -1,0 +1,31 @@
+---
+- Folder: Automation itself tests
+- Title: Test socket monitor
+- Description: Socket monitor periodically tries to connect to the given ip:port
+
+- class: lab.monitors.socket_connect_to_port_monitor.SocketConnectToPort
+  name: s150
+  delay: 1
+  run: 10
+  pause: 3
+  ip_port: 10.23.221.150:8888
+  socket_timeout: 5
+  timeout: 360
+
+- class: lab.monitors.socket_connect_to_port_monitor.SocketConnectToPort
+  name: s151
+  delay: 1
+  run: 10
+  pause: 3
+  ip_port: 10.23.221.151:8888
+  socket_timeout: 5
+  timeout: 360
+
+- class: lab.monitors.socket_connect_to_port_monitor.SocketConnectToPort
+  name: s152
+  delay: 1
+  run: 10
+  pause: 3
+  ip_port: 10.23.221.152:8888
+  socket_timeout: 5
+  timeout: 360

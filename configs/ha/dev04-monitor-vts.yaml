@@ -1,0 +1,11 @@
+---
+- Folder: Automation itself tests
+- Title: Test VTS monitor
+- Description: VTS monitor periodically tries to check the status of VTS
+
+- class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
+  run: 10
+  pause: 2
+  delay: 1
+  timeout: 360

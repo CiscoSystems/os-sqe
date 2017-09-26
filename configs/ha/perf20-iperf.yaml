@@ -1,0 +1,15 @@
+---
+- Folder: PERFOMANCE_AND_SCALE
+- Title: iperf run
+- Description: runs iperf and reports its results
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
+  delay: 0
+  timeout: 1000
+  pause: 0
+  n_networks: 1
+  n_servers: 2
+  run_inside: iperf -n 10G  -M 9000
+  run: 1
+  uptime: 30

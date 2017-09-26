@@ -3,7 +3,7 @@ from lab.decorators import section
 
 
 class VtsDeleteCompute(ParallelWorker):
-    def check_config(self):
+    def check_arguments(self):
         pass
 
     @section('Setup')
@@ -41,6 +41,6 @@ class VtsDeleteCompute(ParallelWorker):
         del setup_data['ROLES']['compute'][compute_num]
         del setup_data['SERVERS'][compute_name]
 
-        mgmt.file_append(setup_data_path, yaml.dump(setup_data, default_flow_style=False))
+        mgm.file_append(setup_data_path, yaml.dump(setup_data, default_flow_style=False))
 
-        mgmt.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --force --remove-computes {name} '.format(tag=tag, name=compute_name))
+        mgm.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --force --remove-computes {name} '.format(tag=tag, name=compute_name))

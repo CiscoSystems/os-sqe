@@ -18,7 +18,7 @@ class VtsDeleteScenario(ParallelWorker):
         self._odd_server_numbers = [10 + x for x in range(self._n_instances) if x % 2 != 0]
 
         self._n_nets = self._kwargs['how-many-networks']
-        self._what_to_run_inside = self._kwargs.get('what-to-run-inside', 'Nothing')  # if nothing specified - do not run anything in addition to ping
+        self._what_to_run_inside = self._kwargs.get('run_inside-inside', 'Nothing')  # if nothing specified - do not run anything in addition to ping
         self._build_node = self._lab.get_director()
         self._vtc = self._lab.get_vtc()[0]
         self._hosts = self._cloud.os_host_list()

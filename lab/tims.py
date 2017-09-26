@@ -13,18 +13,18 @@ class Tims(WithLogMixIn, WithConfig):
         import os
 
         self.counter = 0
-        self.pod = pod
         self.tims_url = self.KNOWN_LABS['tims']['url']
         self.tims_project_id = self.KNOWN_LABS['tims']['project_id']
         self.tims_db_name = self.KNOWN_LABS['tims']['db_name']
         self.tims_folders = self.KNOWN_LABS['tims']['folders']
 
-        self.conf_id = self.KNOWN_LABS['tims']['configurations'][str(self.pod)]
-        self._branch = self.KNOWN_LABS['namespaces'][pod.namespace]
-        self._topo = self.MECHANISM_TO_TOPOLOGY[pod.driver]
-        self._dima_common_part_of_logical_id = ':{}-{}:{}'.format(self._branch, self.pod.gerrit_tag, self._topo)
+        self.conf_id = self.KNOWN_LABS['tims']['configurations'][str(pod)]
+        self.branch = self.KNOWN_LABS['namespaces'][pod.namespace]
+        self.topo = self.MECHANISM_TO_TOPOLOGY[pod.driver]
+        self.gerrit_tag = pod.gerrit_tag
+        self.dima_common_part_of_logical_id = ':{}-{}:{}'.format(self.branch, self.gerrit_tag, self.topo)
 
-        self._jenkins_text = os.getenv('BUILD_URL', None) or 'run off jenkins'
+        self.common_text = str(pod) + ' ' + str(pod.gerrit_tag) + ' ' + os.getenv('BUILD_URL', 'run manually out off jenkins')
         user_token = os.getenv('TIMS_USER_TOKEN', None)  # some Jenkins jobs define this variable in form user-token
         if user_token and user_token.count('-') == 1:
             username, token = user_token.split('-')
@@ -94,7 +94,7 @@ class Tims(WithLogMixIn, WithConfig):
         cfg_body = self.read_config_from_file(config_path=test_cfg_path, directory='ha')
         folder_name = cfg_body[0].get('Folder', '')
         if not folder_name or folder_name not in self.tims_folders:
-            self.log('test {} is not updated since does not specify correct folder (one of {})'.format(test_cfg_path, self.FOLDERS.keys()))
+            self.log('test {} is not updated since does not specify correct folder (one of {})'.format(test_cfg_path, self.tims_folders.keys()))
             return
         try:
             test_title = [x for x in cfg_body if 'Title' in x][0]['Title']
@@ -119,7 +119,7 @@ class Tims(WithLogMixIn, WithConfig):
         return case_id
 
     def update_pending_result(self, test_cfg_path, test_case_id, desc, status):
-        pending_logical_id = test_cfg_path + self._dima_common_part_of_logical_id
+        pending_logical_id = test_cfg_path + self.dima_common_part_of_logical_id
         pending_result_id = self.search_result(logical_id=pending_logical_id)
 
         if not pending_result_id:
@@ -140,7 +140,7 @@ class Tims(WithLogMixIn, WithConfig):
                 <ConfigID xlink:href="http://{url}/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
                 <CaseID xlink:href="http://{url}/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
             </Result>
-        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, desc=desc, status=status, mercury_version=self.pod.gerrit_tag,
+        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, desc=desc, status=status, mercury_version=self.gerrit_tag,
                    test_case_id=test_case_id, logical_id=pending_logical_id, result_id=pending_result_id, conf_id=self.conf_id)
 
         ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
@@ -164,7 +164,7 @@ class Tims(WithLogMixIn, WithConfig):
                 <ConfigID xlink:href="http://{url}/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
 
         </Result>
-        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, test_case_id=test_case_id, logical_id=logical_id, description=desc, mercury_version=self.pod.gerrit_tag, status=status, conf_id=self.conf_id)
+        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, test_case_id=test_case_id, logical_id=logical_id, description=desc, mercury_version=self.gerrit_tag, status=status, conf_id=self.conf_id)
 
         ans = str(self._api_post(operation=self._OPERATION_ENTITY, body=body))
 
@@ -176,7 +176,7 @@ class Tims(WithLogMixIn, WithConfig):
         try:
             self.counter += 1
             test_case_id = self.update_create_test_case(test_cfg_path=test_cfg_path)
-            desc = self._jenkins_text + '\n'
+            desc = self.common_text + '\n'
             status = 'passed'
             for res in results:  # [{'worker name': 'VtsScenario',  'exceptions': [], 'params': '...'}, ...]
                 desc += res['worker name'] + ' ' + res['params'] + '\n'
@@ -189,7 +189,7 @@ class Tims(WithLogMixIn, WithConfig):
                     desc += 'MAIN RESULTS:\n' + f.read()
                 os.system('mv {} {}'.format(self.get_artifact_file_path('main-results-for-tims.txt'), self.get_artifact_file_path('tims{}.txt'.format(self.counter))))
 
-            log_msg = '{} {}: {} {} {} '.format(self.pod, self.pod.gerrit_tag, test_cfg_path, status.upper(), self._jenkins_text)
+            log_msg = '{}: {} {} '.format(self.common_text, test_cfg_path, status.upper())
 
             result_url = self.update_pending_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, desc=desc, status=status)
 
@@ -202,17 +202,21 @@ class Tims(WithLogMixIn, WithConfig):
             self.log_exception()
 
     @staticmethod
-    def simulate():
+    def create(pod=None):
         from lab.laboratory import Laboratory
 
-        g72 = Laboratory()
-        g72.name = 'g7-2-vts'
-        g72.gerrit_tag = 10343
-        g72.namespace = 'mercury-rhel7-osp10-plus'
-        g72.driver = 'vts'
-        g72.driver_version = 'vts fake version'
+        if pod is None:
+            pod = Laboratory()
+            pod.name = 'g7-2-vts'
+            pod.gerrit_tag = 99
+            pod.namespace = 'mercury-rhel7-osp10-plus'
+            pod.driver = 'vts'
+            pod.driver_version = 'vts fake version'
+        return Tims(pod=pod)
 
-        tims_lst = [Tims(pod=g72)]
+    @staticmethod
+    def simulate():
+        tims_lst = [Tims.create()]
         # available_tc = tims.ls_configs(directory='ha')
 
         cfgs = ['perf-csr-0-PVP-1-1k.yaml']
@@ -224,6 +228,7 @@ class Tims(WithLogMixIn, WithConfig):
                 with tims.open_artifact('main-results-for-tims.txt', 'w') as f:
                     f.write('STATUS=passed\nFAKE main results 1\nFAKE main results 2')
                 tims.publish_result(test_cfg_path=test_cfg_path, results=results)
+
 
 if __name__ == '__main__':
     Tims.simulate()

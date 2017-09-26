@@ -1,0 +1,33 @@
+---
+- Folder: HIGH AVAILABILITY
+- Title: Passive DL corosync stop while adding OS servers
+- Description: test it statically - run VM create - ping - delete cycle parametrized number of steps, in paralell do the same with disruptor, then make sure from log timestemps that disrupting while VM was provisioning
+              indeed happend at least once.
+
+- class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
+  delay: 0
+  run: [VtsScenario]
+  pause: 2
+  timeout: 1000
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
+  delay: 0
+  run: [VtsDisruptor]
+  pause: 10
+  timeout: 1000
+  n_networks: 1
+  n_servers: 1
+  run_inside: ping
+  uptime: 20
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptor
+  delay: 10
+  run: 10
+  pause: 30
+  timeout: 1000
+  node_to_disrupt: slave-dl
+  method_to_disrupt: corosync-stop
+  disrupt_time: 20

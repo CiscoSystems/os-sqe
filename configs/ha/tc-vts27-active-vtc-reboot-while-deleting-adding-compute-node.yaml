@@ -1,0 +1,35 @@
+---
+- Folder: HIGH AVAILABILITY
+- Title: Active VTC reboot while adding compute node
+- Description: Validate Standby VTC becomes "Active' when Active VTC is rebooted while a compute node is added and deleted
+
+- class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
+  delay: 0
+  run: [VtsDeleteCompute]
+  pause: 2
+  timeout: 1000
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptor
+  delay: 0
+  run: [VtsDeleteCompute, VtsAddCompute]
+  pause: 20
+  timeout: 1000
+  disrupt_time: 60
+  node_to_disrupt: master-vtc
+  method_to_disrupt: vm-reboot
+
+- class: lab.scenarios.vts_delete_compute.VtsDeleteCompute
+  name: VtsDeleteCompute
+  delay: 0
+  run: 1
+  pause: 100
+  timeout: 1000
+
+- class: lab.scenarios.vts_add_compute.VtsAddCompute
+  name: VtsAddCompute
+  delay: [VtsDeleteCompute]
+  run: 1
+  pause: 10
+  timeout: 1000

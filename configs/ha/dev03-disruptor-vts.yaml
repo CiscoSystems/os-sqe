@@ -1,0 +1,44 @@
+---
+- Folder: Automation itself tests
+- Title: Test VTS disruptor
+- Description: Runs a number of VTS disruptors
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: disrupt-slave-dl-isolate-from-mx
+  delay: 0
+  run: 1
+  pause: 20
+  node_to_disrupt: slave-dl
+  method_to_disrupt: isolate-from-mx
+  disrupt_time: 60
+  timeout: 360
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: disrupt-slave-dl-isolate-from-api
+  delay: [disrupt-slave-dl-isolate-from-mx]
+  run: 1
+  pause: 20
+  node_to_disrupt: slave-dl
+  method_to_disrupt: isolate-from-api
+  disrupt_time: 60
+  timeout: 360
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: disrupt-slave-vtc-isolate-from-mx
+  delay: [disrupt-slave-dl-isolate-from-api]
+  run: 1
+  node_to_disrupt: slave-vtc
+  method_to_disrupt: isolate-from-mx
+  disrupt_time: 60
+  pause: 20
+  timeout: 360
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: disrupt-slave-vtc-isolate-from-api
+  delay: [disrupt-slave-vtc-isolate-from-mx]
+  run: 1
+  node_to_disrupt: slave-vtc
+  method_to_disrupt: isolate-from-api
+  disrupt_time: 60
+  pause: 20
+  timeout: 360

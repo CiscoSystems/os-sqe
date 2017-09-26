@@ -1,0 +1,14 @@
+---
+- Folder: VTS PERF AND SCALE
+- Title: 10 CSR per compute, 10 EXT chain with 1M flows
+- Description: runs number of perfomance benchmarks described in https://cisco.jiveon.com/docs/DOC-1711443. Target architecture is defined by pod on which this test is run.
+
+- class: lab.scenarios.ntt_scenario.NttScenario
+  name: NttScenario
+  delay: 0
+  timeout: 1000
+  pause: 0
+  run: 1
+  run_inside: both  # might by nfvbench, csr, both
+  csr_args: csr_create.sh 10 1 5 # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot
+  nfvbench_args: --rate ndr_pdr --service-chain EXT --service-chain-count 10 --flow-count 1000000 --frame-size IMIX

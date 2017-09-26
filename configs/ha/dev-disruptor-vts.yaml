@@ -1,8 +1,0 @@
-- class: lab.disruptors.vts_disruptor.VtsDisruptor
-  name: VtsDisruptor
-  delay: 0
-  node-to-disrupt: master-dl
-  method-to-disrupt: vm-reboot
-  n_repeats: 1
-  downtime: 60
-  uptime: 20

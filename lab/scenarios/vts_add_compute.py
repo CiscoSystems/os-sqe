@@ -4,7 +4,7 @@ from lab.decorators import section
 
 class VtsAddCompute(ParallelWorker):
 
-    def check_config(self):
+    def check_arguments(self):
         pass
     
     @section('Setup')
@@ -17,15 +17,13 @@ class VtsAddCompute(ParallelWorker):
         import random
         import yaml
 
-        mgmt = self.get_lab().get_director()
-
-        tag = mgmt.exe('cat /etc/cisco-mercury-release')
+        tag = self.pod.mgm.exe('cat /etc/cisco-mercury-release')
         setup_data_folder = "/root/installer-{tag}/openstack-configs".format(tag=tag)
         setup_data_path = os.path.join(setup_data_folder, 'setup_data.yaml')
         setup_data_orig_path = os.path.join(setup_data_folder, 'setup_data.yaml.orig')
 
-        setup_data_orig = mgmt.exe('cat {0}'.format(setup_data_orig_path), is_warn_only=True)
-        setup_data = mgmt.exe('cat {0}'.format(setup_data_path))
+        setup_data_orig = self.pod.mgm.exe('cat {0}'.format(setup_data_orig_path), is_warn_only=True)
+        setup_data = self.pod.mgm.exe('cat {0}'.format(setup_data_path))
 
         if 'No such file' in setup_data_orig:
             raise Exception('There is no {0}. Could not add compute node'.format(setup_data_orig_path))
@@ -41,7 +39,7 @@ class VtsAddCompute(ParallelWorker):
         setup_data['ROLES']['compute'].append(compute_name)
         setup_data['SERVERS'][compute_name] = setup_data_orig['SERVERS'][compute_name]
 
-        mgmt.exe('rm -rf {0}'.format(setup_data_path))
-        mgmt.file_append(setup_data_path, yaml.dump(setup_data, default_flow_style=False))
+        self.pod.mgm.exe('rm -rf {0}'.format(setup_data_path))
+        self.pod.mgm.file_append(setup_data_path, yaml.dump(setup_data, default_flow_style=False))
 
-        mgmt.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --add-computes {name} '.format(tag=tag, name=compute_name))
+        self.pod.mgm.exe('cd /root/installer-{tag} && ./runner/runner.py -y -s 1,3 --add-computes {name} '.format(tag=tag, name=compute_name))

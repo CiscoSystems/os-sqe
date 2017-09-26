@@ -1,0 +1,42 @@
+---
+- Folder: HIGH AVAILABILITY
+- Title: Active VTC passive DL libvirt VM shutdown
+- Description: first create OS VM then shutdown VTC master and DL slave
+
+- class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
+  delay: 0
+  run: [VtsScenario]
+  pause: 2
+  timeout: 1000
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
+  delay: 0
+  run: [VtsDisruptorVtcMaster, VtsDisruptorDlSlave]
+  pause: 0
+  timeout: 1000
+  n_networks: 1
+  n_servers: 3
+  run_inside: ping
+  uptime: 20
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptorVtcMaster
+  delay: 200
+  run: 1
+  pause: 30
+  timeout: 1000
+  node_to_disrupt: master-vtc
+  method_to_disrupt: vm-shutdown
+  disrupt_time: 20
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptorDlSlave
+  delay: 200
+  run: 1
+  pause: 0
+  timeout: 1000
+  node_to_disrupt: slave-dl
+  method_to_disrupt: vm-shutdown
+  disrupt_time: 20

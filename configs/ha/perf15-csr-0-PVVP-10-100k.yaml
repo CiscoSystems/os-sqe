@@ -1,0 +1,14 @@
+---
+- Folder: VTS PERF AND SCALE
+- Title: no CSR, 10 PVVP chain with 100k flows
+- Description: runs number of perfomance benchmarks described in https://cisco.jiveon.com/docs/DOC-1711443. Target architecture is defined by pod on which this test is run.
+
+- class: lab.scenarios.ntt_scenario.NttScenario
+  name: NttScenario
+  delay: 0
+  timeout: 1000
+  pause: 0
+  run: 1
+  run_inside: nfvbench  # might by nfvbench, csr, both
+  csr_args: not-used
+  nfvbench_args: --rate ndr_pdr --service-chain PVVP --service-chain-count 10 --inter-node --flow-count 100000 --frame-size 64 --frame-size IMIX --frame-size 1518

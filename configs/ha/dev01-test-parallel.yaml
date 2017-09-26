@@ -1,0 +1,42 @@
+---
+- Folder: Automation itself tests
+- Title: Test parallel workers execution
+- Description: Test to check that parallel infrastructure actually works
+
+- class: lab.monitors.empty_monitor.EmptyMonitor
+  name: monitor
+  delay: 0
+  run: [scenario]
+  pause: 2
+  timeout: 360
+  arg1 : 22
+  arg2: 33
+
+- class: lab.monitors.empty_monitor.EmptyMonitor
+  name: scenario
+  delay: 3
+  run:
+    - disruptor1
+    - disruptor2
+  pause: 3
+  timeout: 360
+  arg1 : 22
+  arg2: 33
+
+- class: lab.monitors.empty_monitor.EmptyMonitor
+  name: disruptor1
+  delay: 20
+  run: 2
+  pause: 3
+  timeout: 360
+  arg1 : 22
+  arg2: 33
+
+- class: lab.monitors.empty_monitor.EmptyMonitor
+  name: disruptor2
+  delay: [disruptor1]
+  run: 3
+  pause: 3
+  timeout: 360
+  arg1 : 22
+  arg2: 33

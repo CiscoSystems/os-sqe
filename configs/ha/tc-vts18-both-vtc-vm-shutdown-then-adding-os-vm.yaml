@@ -1,0 +1,43 @@
+---
+- Folder: HIGH AVAILABILITY
+- Title: Both VTC libvirt vm shutdown
+- Description: Validate VTC Ha comes up properly after both Active and Standby VTCs VMs are paused and then resumed
+
+- class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
+  delay: 0
+  run: [VtsScenario]
+  pause: 2
+  timeout: 1000
+
+# wait for long time. Check if VTC HA comes up by booting up VMs
+- class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
+  delay: [VtsDisruptorVtcMaster, VtsDisruptorVtcSlave]
+  run: 1
+  pause: 0
+  timeout: 1000
+  n_networks: 1
+  n_servers: 2
+  run_inside: ping
+  uptime: 20
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptorVtcMaster
+  delay: 0
+  run: 1
+  pause: 0
+  timeout: 1000
+  node_to_disrupt: master-vtc
+  method_to_disrupt: vm-shutdown
+  disrupt_time: 20
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptorVtcSlave
+  delay: [VtsDisruptorVtcMaster]
+  run: 1
+  pause: 0
+  timeout: 1000
+  node_to_disrupt: slave-vtc
+  method_to_disrupt: vm-shutdown
+  disrupt_time: 20
