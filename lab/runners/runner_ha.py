@@ -7,6 +7,9 @@ def starter(worker):
 
 
 class RunnerHA(WithConfig, WithLogMixIn):
+    def __repr__(self):
+        return u'RunnerHA'
+
     def execute_single_test(self, workers, cloud, tims):
         import multiprocessing
         import fabric.network
@@ -18,8 +21,11 @@ class RunnerHA(WithConfig, WithLogMixIn):
         for worker in workers:
             worker.cloud = cloud
             worker.status_dict = status_dict
-            worker.setup_worker()  # run all setup_worker in non-parallel
-            worker.set_status(status=worker.STATUS_INITIALIZED)
+            worker.set_status(worker.STATUS_CREATED)
+            if not worker.is_debug:
+                worker.setup_worker()  # run all setup_worker in non-parallel
+            else:
+                worker.log('Setup...')
 
         fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
         time.sleep(2)
@@ -43,11 +49,9 @@ class RunnerHA(WithConfig, WithLogMixIn):
         from lab.tims import Tims
         from lab.elk import Elk
 
-        tests = RunnerHA.create_tests(test_regex=test_regex, is_noclean=is_noclean)
-        if is_debug:
-            return
+        tests = RunnerHA.create_tests(test_regex=test_regex, is_noclean=is_noclean, is_debug=is_debug)
 
-        if 'dev-test-parallel' not in test_regex:
+        if not is_debug:
             cloud = RunnerHA.init_cloud(pod_name=lab_name)
             pod = cloud.pod
         else:
@@ -76,18 +80,19 @@ class RunnerHA(WithConfig, WithLogMixIn):
 
 
     @staticmethod
-    def create_tests(test_regex, is_noclean):
+    def create_tests(test_regex, is_noclean, is_debug):
         available_tc = RunnerHA.ls_configs(directory='ha')
         test_cfg_paths = sorted(filter(lambda x: test_regex in x, available_tc))
 
         if not test_cfg_paths:
             raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
-        return [RunnerHA.create_test_workers(test_cfg_path=x, is_noclean=is_noclean) for x in test_cfg_paths]
+        return [RunnerHA.create_test_workers(test_cfg_path=x, is_noclean=is_noclean, is_debug=is_debug) for x in test_cfg_paths]
 
     @staticmethod
-    def create_test_workers(test_cfg_path, is_noclean):
+    def create_test_workers(test_cfg_path, is_noclean, is_debug):
         import importlib
+        from lab.parallelworker import ParallelWorker
 
         worker_names_already_seen =[]
 
@@ -112,7 +117,8 @@ class RunnerHA(WithConfig, WithLogMixIn):
             except AttributeError:
                 raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
             worker_dic['test_cfg_path'] = test_cfg_path
-            worker_dic['is_noclean'] = is_noclean
+            worker_dic[ParallelWorker.ARG_IS_NOCLEAN] = is_noclean
+            worker_dic[ParallelWorker.ARG_IS_DEBUG] = is_debug
             worker = klass(args_dict=worker_dic)
             if worker.name in worker_names_already_seen:
                 worker.raise_exception('uses name which is already seen in {}'.format(worker, test_cfg_path))

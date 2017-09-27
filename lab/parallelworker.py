@@ -3,6 +3,8 @@ from lab.with_log import WithLogMixIn
 
 
 class ParallelWorker(WithLogMixIn):
+    STATUS_CREATED = 'created'
+    STATUS_SETUP = 'setup'
     STATUS_DELAYED = 'delayed'
     STATUS_LOOPING = 'looping'
     STATUS_FINISHED = 'finished'
@@ -10,8 +12,10 @@ class ParallelWorker(WithLogMixIn):
     ARG_DELAY = 'delay'
     ARG_RUN = 'run'
     ARG_PERIOD = 'pause'
-    ARG_IS_NOCLEAN = 'is_noclean'
     ARG_TIMEOUT = 'timeout'
+
+    ARG_IS_NOCLEAN = 'is_noclean'
+    ARG_IS_DEBUG = 'is_debug'
 
     def __repr__(self):
         return u'test={} worker={}'.format(self.test_cfg_path, self.name)
@@ -40,6 +44,10 @@ class ParallelWorker(WithLogMixIn):
             assert type(self.delay) is int and self.delay >= 0, '{}: wrong delay "{}". should be list of names or int'.format(self, self.delay)
 
         self.check_arguments()
+
+    @property
+    def is_debug(self):  # if True, test parallel infrastructure
+        return self.args[self.ARG_IS_DEBUG]
 
     @property
     def delay(self):  # delay: 3 means delay by 3 secs after common start, delay: [name1, name2] means delay until workers name1, name2 go to self.STATUS_FINISHED
@@ -100,15 +108,14 @@ class ParallelWorker(WithLogMixIn):
 
         time_passed = 0
         if type(self.delay) is list:
-            self.log('delay while {} are not {}'.format(self.delay, self.STATUS_FINISHED))
-            while all([self.status_dict[x] == self.STATUS_FINISHED for x in self.delay]):  # wait while all run_after workers go self.STATUS_FINISHED
+            self.log('delay while {} are not yet {}'.format(self.delay, self.STATUS_FINISHED))
+            while all([self.status_dict[x] != self.STATUS_FINISHED for x in self.delay]):
                 time.sleep(1)
                 time_passed += 1
                 if time_passed == self.timeout:
                     raise RuntimeError('Waiting for {} to be all False exceeded {} secs'.format(self.delay, self.timeout))
-
-        if self.delay:
-            self.log('delay by {} secs...'.format(self.delay))  # after that delay for self.delay seconds
+        else:
+            self.log('delay by {} secs...'.format(self.delay))
             time.sleep(self.delay)
 
     def start_worker_parallel(self):
@@ -128,13 +135,15 @@ class ParallelWorker(WithLogMixIn):
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
-                self.log('Loop number {} run while ...'.format(self.loop_counter))
-                loop_results.append(self.loop_worker())
+                self.log('starting loop {} out of {} ...'.format(self.loop_counter, self.run))
+                if not self.is_debug:
+                    loop_results.append(self.loop_worker())
+                if self.pause > 0:
+                    self.log('pausing {} sec after loop {}  ...'.format(self.pause, self.loop_counter))
+                    time.sleep(self.pause)
                 self.loop_counter += 1
-                self.log('Loop number {} sleeping for {} sec pause ...'.format(self.loop_counter, self.pause))
-                time.sleep(self.pause)
 
-            self.log('FINISHED run {} loops'.format(self.loop_counter-1))
+            self.log('finished after {} loops out of {}'.format(self.loop_counter, self.run))
         except Exception as ex:
             exceptions.append(str(ex))
             self.log_exception()
