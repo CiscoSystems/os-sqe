@@ -20,12 +20,16 @@ class N9Vlan(object):
     def handle_vlan(self, vlan_name):
         self.n9.log('Checking vlan {} {}'.format(self.vlan_id, vlan_name))
         if self.vlan_name != vlan_name:
-            msg = 'no vlan ' + self.vlan_id if self.vlan_name == self.NOT_YET else 'vlan {} has actual name {} while requested is {}'.format(self.vlan_id, self.vlan_name, vlan_name)
+            msg = 'no vlan ' + self.vlan_id if self.vlan_name == self.NOT_YET else 'vlan {} has actual name "{}" while requested is "{}"'.format(self.vlan_id, self.vlan_name, vlan_name)
             self.n9.n9_fix_problem(cmd=['conf t', 'vlan ' + self.vlan_id, 'name ' + vlan_name, 'no shut'], msg=msg)
-            self.vlan_name = vlan_name
+            self._dic['vlanshowbr-vlanname'] = vlan_name
 
     @staticmethod
     def create(n9, vlan_id):
+        try:
+            int(vlan_id)
+        except (TypeError, ValueError):
+            raise ValueError('wrong vlan {}'.format(vlan_id))
         return N9Vlan(n9=n9, dic={'vlanshowbr-vlanname': 'not_yet_in_n9', 'vlanshowbr-vlanid': str(vlan_id)})
 
     @staticmethod
