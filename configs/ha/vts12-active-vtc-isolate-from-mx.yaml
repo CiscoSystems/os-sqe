@@ -1,0 +1,34 @@
+Folder: HIGH AVAILABILITY
+Title: Active VTC isolate mx
+Description: Do OS instance create-ping once then in the middle do active vtc isolate from mx then delete OS instance
+UniqueID: os-sqe-vts12
+
+Workers:
+- class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
+  delay: 0
+  run: [VtsScenario]
+  pause: 2
+  timeout: 1000
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
+  delay: 0
+  run: [VtsDisruptor]
+  pause: 10
+  timeout: 1000
+  n_networks: 1
+  n_servers: 3
+  run_inside: ping
+  uptime: 20
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptor
+  delay: 200
+  run: 1
+  pause: 0
+  timeout: 1000
+  node_to_disrupt: master-vtc
+  method_to_disrupt: isolate-from-mx
+  run: 2
+  disrupt_time: 20

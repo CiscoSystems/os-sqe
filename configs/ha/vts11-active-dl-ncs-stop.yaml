@@ -1,0 +1,35 @@
+Folder: HIGH AVAILABILITY
+Title: Active DL ncs stop
+Description: Do OS instance create-ping once then in the middle do active dl ncs stop then delete OS instance
+UniqueID: os-sqe-vts11
+
+Workers:
+- class: lab.monitors.vts_monitor.VtsMonitor
+  name: VtsMonitor
+  delay: 0
+  timeout: 1000
+  pause: 2
+  run:
+    - VtsDisruptor
+
+- class: lab.scenarios.vts_scenario.VtsScenario
+  name: VtsScenario
+  delay: 0
+  timeout: 1000
+  pause: 2
+  n_networks: 1
+  n_servers: 1
+  run_inside: ping
+  uptime: 20
+  run:
+    - VtsDisruptor
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: VtsDisruptor
+  delay: 200
+  run: 1
+  pause: 0
+  timeout: 1000
+  node_to_disrupt: master-dl
+  method_to_disrupt: ncs-stop
+  disrupt_time: 20
