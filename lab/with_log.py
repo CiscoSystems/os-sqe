@@ -47,6 +47,17 @@ class JsonFilter(logging.Filter):
         return record.exc_text or '=' in record.message
 
 
+class SlackHandler(logging.Handler):
+    def handle(self, record):
+        import requests
+        import json
+
+        msg = record.getMessage()
+        if 'tims/warp' in msg:
+            data = json.dumps({"channel": "#autoreports", "username": "leeroy", "text": '{}'.format(record.getMessage())})
+            requests.post(url='https://hooks.slack.com/services/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', data=data)
+
+
 class WithLogMixIn(object):
 
     @staticmethod
@@ -93,15 +104,11 @@ class WithLogMixIn(object):
     def log_exception(self):
         lab_logger.exception(str(self) + ': EXCEPTION')
 
-    def raise_exception(self, klass, message):
-        raise klass(str(self) + ': ' + message)
+    def raise_value_error(self, message):
+        raise ValueError(str(self) + ': ' + message)
 
-    def log_to_slack(self, message):
-        import requests
-        import json
-
-        data = json.dumps({"channel": "#autoreports", "username": "leeroy", "text": '{}: {}'.format(self, message)})
-        requests.post(url='https://hooks.slack.com/services/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', data=data)
+    def raise_runtime_error(self, message):
+        raise RuntimeError(str(self) + ': ' + message)
 
 
 class Logger(object):
@@ -145,6 +152,10 @@ class Logger(object):
         artifacts_json.setFormatter(JsonFormatter())
         artifacts_json.addFilter(JsonFilter())
         logger.addHandler(artifacts_json)
+
+        slack = SlackHandler()
+        slack.setLevel(logging.INFO)
+        logger.addHandler(slack)
 
         logging.captureWarnings(True)
         self._logger = logger
