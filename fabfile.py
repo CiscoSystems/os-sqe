@@ -77,16 +77,17 @@ def cmd():
 
 
 @task
-def ha(pod_mgm_ip, test_regex, is_noclean=False, is_debug=False):
+def ha(pod, regex, noclean=False, debug=False):
     """fab ha:g10,str\t\t\tRun all tests with 'str' in name on g10
-        :param pod_mgm_ip: IP to ssh to management node
-        :param test_regex: regex to match some tc in $REPO/configs/ha
-        :param is_debug: if True debug parallel infrastructure
-        :param is_noclean: if True, do not cleanup objects created during test, leave them from post analysis
+        :param pod: IP to ssh to management node
+        :param regex: regex to match some tc in $REPO/configs/ha
+        :param debug: if True debug parallel infrastructure
+        :param noclean: if True, do not cleanup objects created during test, leave them from post analysis
     """
     from lab.runners.runner_ha import RunnerHA
 
-    RunnerHA.run(lab_name=pod_mgm_ip, test_regex=test_regex, is_noclean=str(is_noclean) in ['true', 'True', 'yes', 'Yes'], is_debug=(is_debug) in ['true', 'True', 'yes', 'Yes'])
+    yes = ['true', 'True', 'yes', 'Yes', 'y', 'Y']
+    RunnerHA().run(pod_name=pod, test_regex=regex, is_noclean=str(noclean) in yes, is_debug=str(debug) in yes)
 
 
 @task
@@ -130,8 +131,8 @@ def run(config_path):
     """
     from lab.base_lab import BaseLab
 
-    l = BaseLab(yaml_name=config_path)
-    return l.run()
+    some = BaseLab(yaml_name=config_path)
+    return some.run()
 
 
 @task
@@ -188,21 +189,21 @@ def info(pod_name=None, regex=None):
     """
     from lab.laboratory import Laboratory
 
-    l = Laboratory.create_from_remote(lab_name=pod_name)
-    l.r_collect_info(regex=regex, comment=regex)
+    pod = Laboratory.create_from_remote(lab_name=pod_name)
+    pod.r_collect_info(regex=regex, comment=regex)
 
 
 def get_user_input(options_lst, owner=None):
     from fabric.operations import prompt
     import sys
 
-    def chunks(l, n):
-        for i in range(0, len(l), n):
-            yield ' * '.join(l[i:i + n])
+    def chunks(lst, n):
+        for i in range(0, len(lst), n):
+            yield ' * '.join(lst[i:i + n])
 
     sub_list = options_lst
     while True:
-        sub_list_str = '\n'.join(chunks(l=sub_list, n=14))
+        sub_list_str = '\n'.join(chunks(lst=sub_list, n=14))
         choice = prompt(text='choose one of:\n\n{}\n\nq to quit {}>'.format(sub_list_str, 'u to level up for {}'.format(owner) if owner else ''))
         if choice == 'q':
             sys.exit(2)

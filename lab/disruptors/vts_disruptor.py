@@ -1,7 +1,7 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
-class VtsDisruptor(ParallelWorker):
+class VtsDisruptor(TestCaseWorker):
     ARG_METHOD_TO_DISRUPT = 'method_to_disrupt'
     ARG_NODE_TO_DISRUPT = 'node_to_disrupt'
     ARG_DISRUPT_TIME = 'disrupt_time'
@@ -76,7 +76,7 @@ class VtsDisruptor(ParallelWorker):
 #         call
 #         last):
 #         File
-#         "./lab/parallelworker.py", line
+#         "./lab/test_case_worker.py", line
 #         138, in start_worker
 #         loop_output = self.loop_worker() if not self._is_debug else self.debug_output()
 #

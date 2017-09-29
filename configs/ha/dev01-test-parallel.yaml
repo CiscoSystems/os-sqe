@@ -1,30 +1,29 @@
----
-- Folder: Automation itself tests
-- Title: Test parallel workers execution
-- Description: Test to check that parallel infrastructure actually works
+Folder: Automation itself tests
+Title: Test parallel workers
+Description: Test to check that parallel infrastructure actually works
+UniqueID: os-sqe-dev01
 
+Workers:
 - class: lab.monitors.empty_monitor.EmptyMonitor
-  name: monitor
+  name: mon
   delay: 0
-  run: [scenario]
+  run: [sce]
   pause: 2
   timeout: 360
   arg1 : 22
   arg2: 33
 
 - class: lab.monitors.empty_monitor.EmptyMonitor
-  name: scenario
+  name: sce
   delay: 3
-  run:
-    - disruptor1
-    - disruptor2
+  run: [di1, di2]
   pause: 3
   timeout: 360
   arg1 : 22
   arg2: 33
 
 - class: lab.monitors.empty_monitor.EmptyMonitor
-  name: disruptor1
+  name: di1
   delay: 20
   run: 2
   pause: 3
@@ -33,8 +32,8 @@
   arg2: 33
 
 - class: lab.monitors.empty_monitor.EmptyMonitor
-  name: disruptor2
-  delay: [disruptor1]
+  name: di2
+  delay: [di1]
   run: 3
   pause: 3
   timeout: 360

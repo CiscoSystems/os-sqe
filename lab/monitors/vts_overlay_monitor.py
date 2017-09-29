@@ -1,4 +1,4 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
 class VtsNetworksNotSynced(Exception):
@@ -17,7 +17,7 @@ class VtsInstancesNotSynced(Exception):
     pass
 
 
-class VtsOverlayMonitor(ParallelWorker):
+class VtsOverlayMonitor(TestCaseWorker):
 
     # noinspection PyAttributeOutsideInit
     def setup_worker(self):

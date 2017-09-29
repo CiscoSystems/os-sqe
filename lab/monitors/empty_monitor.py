@@ -1,8 +1,8 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 from lab.decorators import section
 
 
-class EmptyMonitor(ParallelWorker):
+class EmptyMonitor(TestCaseWorker):
     ARG_ARG1 = 'arg1'
     ARG_ARG2 = 'arg2'
 
@@ -26,6 +26,11 @@ class EmptyMonitor(ParallelWorker):
         import time
 
         time.sleep(2)
+        if self.name == 'sce' and self.loop_counter == 2:
+            self.worker_data = 'some good info'
+        if self.name == 'di2' and self.loop_counter == 0:
+            self.worker_data = 'reason of fail'
+            self.fail(is_stop_running=True)
 
     @section('Tearing down EmptyMonitor')
     def teardown_worker(self):

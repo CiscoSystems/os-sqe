@@ -1,5 +1,10 @@
 from lab.with_config import WithConfig
 from lab.with_log import WithLogMixIn
+from lab.laboratory import Laboratory
+
+
+class FakeCloud(object):
+    pod = Laboratory()
 
 
 def starter(worker):
@@ -7,10 +12,18 @@ def starter(worker):
 
 
 class RunnerHA(WithConfig, WithLogMixIn):
+    def __init__(self):
+        from prettytable import PrettyTable
+
+        self.table = PrettyTable()
+        self.table.field_names = ['path', 'time', 'status', 'result', 'tims']
+        self.cloud = None
+
+
     def __repr__(self):
         return u'RunnerHA'
 
-    def execute_single_test(self, workers, cloud, tims):
+    def execute_single_test(self, test_case):
         import multiprocessing
         import fabric.network
         import time
@@ -18,11 +31,11 @@ class RunnerHA(WithConfig, WithLogMixIn):
         manager = multiprocessing.Manager()
         status_dict = manager.dict()
 
+        workers = test_case.workers
         for worker in workers:
-            worker.cloud = cloud
             worker.status_dict = status_dict
             worker.set_status(worker.STATUS_CREATED)
-            if not worker.is_debug:
+            if not test_case.is_debug:
                 worker.setup_worker()  # run all setup_worker in non-parallel
             else:
                 worker.log('Setup...')
@@ -35,7 +48,8 @@ class RunnerHA(WithConfig, WithLogMixIn):
         results = pool.map(starter, workers)
         self.log('\n\n***PARALLEL EXECUTION FINISHED***\n\n')
 
-        tims.publish_result(test_cfg_path=workers[0].test_cfg_path, results=results)
+        test_case.after_run(results=results)
+        self.table.add_row([test_case.path, test_case.time, test_case.tcr.status, test_case.tcr.text, test_case.tcr.tims_url])
 
         try:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
@@ -43,99 +57,57 @@ class RunnerHA(WithConfig, WithLogMixIn):
             with WithConfig.open_artifact('exception-in-teardown.txt'.format(), 'w') as f:
                 f.write(str(ex))
 
-    @staticmethod
-    def run(lab_name, test_regex, is_noclean, is_debug):
+    def run(self, pod_name, test_regex, is_noclean, is_debug):
         import time
-        from lab.tims import Tims
         from lab.elk import Elk
 
-        tests = RunnerHA.create_tests(test_regex=test_regex, is_noclean=is_noclean, is_debug=is_debug)
+        available_tc = self.ls_configs(directory='ha')
+        test_paths = sorted(filter(lambda x: test_regex in x, available_tc))
 
-        if not is_debug:
-            cloud = RunnerHA.init_cloud(pod_name=lab_name)
-            pod = cloud.pod
-        else:
-            cloud = None
-            pod = None
-        tims = Tims.create(pod=pod)
-
-        runner = RunnerHA()
-        start_time = time.time()
-        map(lambda x: runner.execute_single_test(workers=x, cloud=cloud, tims=tims), tests)
-
-        if cloud:
-            elk = Elk(proxy=cloud.mediator)
-            elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
-            cloud.pod.r_collect_info(regex='error', comment=test_regex)
-
-    @staticmethod
-    def init_cloud(pod_name):
-        from lab.deployers.deployer_existing import DeployerExisting
-
-        deployer = DeployerExisting(lab_name=pod_name)
-        cloud = deployer.execute({'clouds': [], 'servers': []})
-        if len(cloud.computes) < 2:
-            raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(cloud))
-        return cloud
-
-
-    @staticmethod
-    def create_tests(test_regex, is_noclean, is_debug):
-        available_tc = RunnerHA.ls_configs(directory='ha')
-        test_cfg_paths = sorted(filter(lambda x: test_regex in x, available_tc))
-
-        if not test_cfg_paths:
+        if not test_paths:
             raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
-        return [RunnerHA.create_test_workers(test_cfg_path=x, is_noclean=is_noclean, is_debug=is_debug) for x in test_cfg_paths]
+        self.cloud = self.init_cloud(pod_name=pod_name, is_debug=is_debug, test_paths=test_paths)
+
+        tests = self.create_tests(test_paths=test_paths, is_noclean=is_noclean, is_debug=is_debug)
+
+        start_time = time.time()
+        map(lambda x: self.execute_single_test(test_case=x), tests)
+
+        with self.open_artifact('main_results.txt', 'w') as f:
+            f.write(self.table.get_string())
+
+        if type(self.cloud) is not FakeCloud:
+            elk = Elk(proxy=self.cloud.mediator)
+            elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
+            self.cloud.pod.r_collect_info(regex='error', comment=test_regex)
+        print self.table
 
     @staticmethod
-    def create_test_workers(test_cfg_path, is_noclean, is_debug):
-        import importlib
-        from lab.parallelworker import ParallelWorker
+    def init_cloud(pod_name, is_debug, test_paths):
+        from lab.deployers.deployer_existing import DeployerExisting
 
-        worker_names_already_seen =[]
+        if len(test_paths) == 1 and test_paths[0] == 'dev01-test-parallel.yaml':  # special test case to test infrastructure itself, does not require cloud
+            return FakeCloud()
 
-        headers_seen = []
-        workers = []
-        for worker_dic in RunnerHA.read_config_from_file(config_path=test_cfg_path, directory='ha'):  # list of dicts
-            if 'class' not in worker_dic:
-                headers_seen.extend(worker_dic.keys())
-                if 'Folder' in worker_dic:
-                    assert worker_dic['Folder'] in WithConfig.KNOWN_LABS['tims']['folders']
-                continue
-            if 'name' not in worker_dic:
-                raise ValueError('{} in {} should define unique "name"'.format(worker_dic['class'], test_cfg_path))
-            klass = worker_dic['class']
-            path_to_module, class_name = klass.rsplit('.', 1)
-            try:
-                mod = importlib.import_module(path_to_module)
-            except ImportError:
-                raise ValueError('{}: tries to run {}.py which does not exist'.format(test_cfg_path, path_to_module))
-            try:
-               klass = getattr(mod, class_name)
-            except AttributeError:
-                raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
-            worker_dic['test_cfg_path'] = test_cfg_path
-            worker_dic[ParallelWorker.ARG_IS_NOCLEAN] = is_noclean
-            worker_dic[ParallelWorker.ARG_IS_DEBUG] = is_debug
-            worker = klass(args_dict=worker_dic)
-            if worker.name in worker_names_already_seen:
-                worker.raise_exception('uses name which is already seen in {}'.format(worker, test_cfg_path))
-            else:
-                worker_names_already_seen.append(worker.name)
+        if not is_debug:
+            deployer = DeployerExisting(lab_name=pod_name)
+            cloud = deployer.execute({'clouds': [], 'servers': []})
+            if len(cloud.computes) < 2:
+                raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(cloud))
+            return cloud
+        else:
+            return FakeCloud()  # debug mode just to show the time sequence of parrallel workers and there interactions
 
-            workers.append(worker)
+    def create_tests(self, test_paths, is_noclean, is_debug):
+        from lab.test_case import TestCase
 
-        for worker in workers:
-            for attr_name in [worker.ARG_RUN, worker.ARG_DELAY]:
-                value = getattr(worker, attr_name)
-                if type(value) is int:
-                    continue
-                wrong_names = filter(lambda x: x not in worker_names_already_seen, value)
-                if wrong_names:
-                    worker.raise_exception('has names "{}" which are invalid. Valid are {}'.format(wrong_names, worker_names_already_seen))
-        required_headers_set = {'Title', 'Folder', 'Description'}
-        assert set(headers_seen) == required_headers_set, '{}: no header(s) {}'.format(test_cfg_path, required_headers_set - set(headers_seen))
+        unique_id_seen = []
+        test_cases = []
+        for test_path in test_paths:
+            test = TestCase(path=test_path, is_noclean=is_noclean, is_debug=is_debug, cloud=self.cloud)
+            assert test.unique_id not in unique_id_seen
+            unique_id_seen.append(test.unique_id)
+            test_cases.append(test)
 
-        return workers
+        return test_cases

@@ -12,7 +12,6 @@ class Tims(WithLogMixIn, WithConfig):
         import getpass
         import os
 
-        self.counter = 0
         self.tims_url = self.KNOWN_LABS['tims']['url']
         self.tims_project_id = self.KNOWN_LABS['tims']['project_id']
         self.tims_db_name = self.KNOWN_LABS['tims']['db_name']
@@ -31,7 +30,7 @@ class Tims(WithLogMixIn, WithConfig):
         else:
             user1 = os.getenv('BUILD_USER_ID', 'user_not_defined')  # some Jenkins jobs define this variable
             user2 = os.getenv('BUILD_USER_EMAIL', 'user_not_defined').split('@')[0]  # finally all Jenkins jobs define this variable
-            user3 = getpass.getuser()
+            user3 = getpass.getuser()  # take username which runs this job
             user_token_dic = self.KNOWN_LABS['tims']['user_tokens']
             username, token = user_token_dic.items()[0]
             for user in [user1, user2, user3]:
@@ -63,18 +62,18 @@ class Tims(WithLogMixIn, WithConfig):
                 raise RuntimeError(response.content)
             return response.content
 
-    def search_test_case(self, test_cfg_path):
+    def _search_test_case(self, logical_id):
         body = '''<Search scope="project" root="{}" entity="case" casesensitive="true">
                     <TextCriterion operator="is">
                         <FieldName><![CDATA[Logical ID]]></FieldName>
                         <Value><![CDATA[{}]]></Value>
                         </TextCriterion>
-                  </Search>'''.format(self.KNOWN_LABS['tims']['project_id'], test_cfg_path)
+                  </Search>'''.format(self.KNOWN_LABS['tims']['project_id'], logical_id)
 
         res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
         return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
 
-    def search_result(self, logical_id):
+    def _search_result(self, logical_id):
         body = '''<Search scope="project" root="{proj_id}" entity="result" casesensitive="true">
                     <TextCriterion operator="is">
                         <FieldName><![CDATA[Logical ID]]></FieldName>
@@ -85,23 +84,12 @@ class Tims(WithLogMixIn, WithConfig):
         res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
         return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
 
-    def update_create_test_case(self, test_cfg_path):
-        import json
-
-        case_id = self.search_test_case(test_cfg_path=test_cfg_path)
-        logical_or_case_id = '<ID xlink:href="http://{url}/xml/{c_id}/entity.svc">{c_id}</ID>\n<LogicalID>{l_id}</LogicalID>'.format(url=self.tims_url, c_id=case_id, l_id=test_cfg_path) if case_id \
-            else '<LogicalID>{}</LogicalID>'.format(test_cfg_path)
-        cfg_body = self.read_config_from_file(config_path=test_cfg_path, directory='ha')
-        folder_name = cfg_body[0].get('Folder', '')
-        if not folder_name or folder_name not in self.tims_folders:
-            self.log('test {} is not updated since does not specify correct folder (one of {})'.format(test_cfg_path, self.tims_folders.keys()))
-            return
-        try:
-            test_title = [x for x in cfg_body if 'Title' in x][0]['Title']
-        except IndexError:
-            raise ValueError('test {}: does not define - Title: some text'.format(test_cfg_path))
-        desc = 'This is the configuration actually used in testing:\n' + json.dumps(cfg_body, indent=5) + \
-               '\nuploaded from https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}'.format(test_cfg_path)
+    def _create_update_test_case(self, test_case):
+        logical_id = test_case.unique_id
+        case_id = self._search_test_case(logical_id=logical_id)
+        logical_or_case_id = '<ID xlink:href="http://{url}/xml/{c_id}/entity.svc">{c_id}</ID>\n<LogicalID>{l_id}</LogicalID>'.format(url=self.tims_url, c_id=case_id, l_id=logical_id) if case_id \
+            else '<LogicalID>{}</LogicalID>'.format(logical_id)
+        desc = 'actual config:\n' + test_case.body_text + '\nurl: https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}\n'.format(test_case.path)
 
         body = '''
         <Case>
@@ -113,17 +101,21 @@ class Tims(WithLogMixIn, WithConfig):
             <DatabaseID xlink:href="http://{url}/xml/{db_name}/database.svc">{db_name}</DatabaseID>
             <FolderID xlink:href="http://{url}/xml/{folder_id}/entity.svc">{folder_id}</FolderID>
         </Case>
-        '''.format(test_title=test_title, url=self.tims_url, desc=desc, id=logical_or_case_id, project_id=self.tims_project_id, folder_id=self.tims_folders[folder_name], db_name=self.tims_db_name)
+        '''.format(test_title=test_case.title, url=self.tims_url, desc=desc, id=logical_or_case_id, project_id=self.tims_project_id, folder_id=self.tims_folders[test_case.folder], db_name=self.tims_db_name)
 
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
-        return case_id
+        if not case_id:
+            case_id = self._search_test_case(logical_id=logical_id)
+            return case_id, 'created'
+        else:
+            return case_id, 'updated'
 
-    def update_pending_result(self, test_cfg_path, test_case_id, desc, status):
+    def _create_update_result(self, test_cfg_path, test_case_id, status, text):
         pending_logical_id = test_cfg_path + self.dima_common_part_of_logical_id
-        pending_result_id = self.search_result(logical_id=pending_logical_id)
+        pending_result_id = self._search_result(logical_id=pending_logical_id)
 
         if not pending_result_id:
-            return self.create_new_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, logical_id=pending_logical_id, desc=desc, status=status)
+            return self._create_new_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, logical_id=pending_logical_id, desc=text, status=status), 'created'
 
         body = '''
             <Result>
@@ -140,13 +132,13 @@ class Tims(WithLogMixIn, WithConfig):
                 <ConfigID xlink:href="http://{url}/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
                 <CaseID xlink:href="http://{url}/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
             </Result>
-        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, desc=desc, status=status, mercury_version=self.gerrit_tag,
+        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, desc=text, status=status, mercury_version=self.gerrit_tag,
                    test_case_id=test_case_id, logical_id=pending_logical_id, result_id=pending_result_id, conf_id=self.conf_id)
 
         ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
-        return ' and pending http://tims/warp.cmd?ent={} updated'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1])
+        return ans.split('</ID>')[0].rsplit('>', 1)[-1], 'updated'
 
-    def create_new_result(self, test_cfg_path, test_case_id, logical_id, desc, status):
+    def _create_new_result(self, test_cfg_path, test_case_id, logical_id, desc, status):
         body = '''
         <Result>
                 <Title><![CDATA[for {test_cfg_path}]]></Title>
@@ -167,68 +159,19 @@ class Tims(WithLogMixIn, WithConfig):
         '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, test_case_id=test_case_id, logical_id=logical_id, description=desc, mercury_version=self.gerrit_tag, status=status, conf_id=self.conf_id)
 
         ans = str(self._api_post(operation=self._OPERATION_ENTITY, body=body))
+        return ans.split('</ID>')[0].rsplit('>', 1)[-1]
 
-        return 'and new http://tims/warp.cmd?ent={} created'.format(ans.split('</ID>')[0].rsplit('>', 1)[-1]) if ans else 'No way to report to TIMS since user is not known'
-
-    def publish_result(self, test_cfg_path, results):
-        import os
-
+    def publish(self, tc):
+        url_tmpl = 'http://tims/warp.cmd?ent={}'
         try:
-            self.counter += 1
-            test_case_id = self.update_create_test_case(test_cfg_path=test_cfg_path)
-            desc = self.common_text + '\n'
-            status = 'passed'
-            for res in results:  # [{'worker name': 'VtsScenario',  'exceptions': [], 'params': '...'}, ...]
-                desc += res['worker name'] + ' ' + res['params'] + '\n'
-                if res['exceptions']:
-                    status = 'failed'
-                    desc += '\n'.join(res['exceptions']) + '\n'
-
-            if self.is_artifact_exists('main-results-for-tims.txt'):
-                with self.open_artifact('main-results-for-tims.txt', 'r') as f:
-                    desc += 'MAIN RESULTS:\n' + f.read()
-                os.system('mv {} {}'.format(self.get_artifact_file_path('main-results-for-tims.txt'), self.get_artifact_file_path('tims{}.txt'.format(self.counter))))
-
-            log_msg = '{}: {} {} '.format(self.common_text, test_cfg_path, status.upper())
-
-            result_url = self.update_pending_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, desc=desc, status=status)
-
-            with self.open_artifact('tims.html', 'w') as f:
-                f.write('<a href="{}">TIMS result</a>'.format(result_url))
-            log_msg += result_url
-            self.log_to_slack(log_msg)
-            self.log(log_msg)
-        except Exception:
+            if tc.tcr is None:
+                tims_id, up_or_cr = self._create_update_test_case(test_case=tc)
+                tc.set_tims_info(tims_id=tims_id, url_tmpl=url_tmpl)
+                tc.log(up_or_cr)
+            else:
+                tims_id, up_or_cr = self._create_update_result(test_cfg_path=tc.path, test_case_id=tc.tims_id, text=tc.tcr.text, status=tc.tcr.status)
+                tc.tcr.tims_url = url_tmpl.format(tims_id)
+                tc.tcr.log(up_or_cr)
+        except Exception as ex:
             self.log_exception()
 
-    @staticmethod
-    def create(pod=None):
-        from lab.laboratory import Laboratory
-
-        if pod is None:
-            pod = Laboratory()
-            pod.name = 'g7-2-vts'
-            pod.gerrit_tag = 99
-            pod.namespace = 'mercury-rhel7-osp10-plus'
-            pod.driver = 'vts'
-            pod.driver_version = 'vts fake version'
-        return Tims(pod=pod)
-
-    @staticmethod
-    def simulate():
-        tims_lst = [Tims.create()]
-        # available_tc = tims.ls_configs(directory='ha')
-
-        cfgs = ['perf-csr-0-PVP-1-1k.yaml']
-        for test_cfg_path in cfgs:
-            results = [{'worker name': 'FakeScenario', 'params': 'FAKE params', 'exceptions': []},
-                       {'worker name': 'FakeMonitor', 'params': 'FAKE params', 'exceptions': []},
-                       ]
-            for tims in tims_lst:
-                with tims.open_artifact('main-results-for-tims.txt', 'w') as f:
-                    f.write('STATUS=passed\nFAKE main results 1\nFAKE main results 2')
-                tims.publish_result(test_cfg_path=test_cfg_path, results=results)
-
-
-if __name__ == '__main__':
-    Tims.simulate()

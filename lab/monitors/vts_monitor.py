@@ -1,7 +1,7 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
-class VtsMonitor(ParallelWorker):
+class VtsMonitor(TestCaseWorker):
 
     def check_arguments(self):
         pass

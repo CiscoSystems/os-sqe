@@ -1,7 +1,7 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
-class ServerRebuild(ParallelWorker):
+class ServerRebuild(TestCaseWorker):
     def check_arguments(self, **kwargs):
         pass
 

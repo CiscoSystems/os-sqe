@@ -11,4 +11,4 @@
   run: 1
   run_inside: nfvbench  # might by nfvbench, csr, both
   csr_args: not-used
-  nfvbench_args: --rate 1Mpps --duration 10
+  nfvbench_args: --rate 1Mpps --duration 10 --debug

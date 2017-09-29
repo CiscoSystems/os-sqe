@@ -47,7 +47,7 @@ class Vtc(VipServer):
         import json
 
         if cmd not in self.API_CALLS:
-            raise ValueError('VTC: {} is not supported')
+            raise ValueError('{}: API CALL "{}" is not supported'.format(self, cmd))
 
         cmd = 'curl -s -k -u {u}:{p} '.format(u=self.vtc_username, p=self.vtc_password) + self.API_CALLS[cmd]['rest'].format(ip=self.ssh_ip, uuid=uuid, uuid1=uuid1, data=dic)
         for i in range(10):

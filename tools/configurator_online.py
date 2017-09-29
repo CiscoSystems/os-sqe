@@ -20,6 +20,7 @@ class Configurator(WithConfig, WithLogMixIn):
         import time
         from lab.laboratory import Laboratory
         from lab.server import Server
+        from lab.tims import Tims
 
         ip = Configurator.KNOWN_LABS.get(lab_name, {'mgm_ip': lab_name})['mgm_ip']
         if not validators.ipv4(ip):
@@ -43,15 +44,14 @@ class Configurator(WithConfig, WithLogMixIn):
         if is_interactive == False and '| CEPH                   | Success |' not in ans:
             raise RuntimeError('{} is not properly installed'.format(lab_name))
 
-        _, setup_data, hostname, grep = ans.split(separator)
-        pod = Laboratory()
-        pod.setup_data = yaml.load(setup_data)
-        pod.driver = pod.setup_data['MECHANISM_DRIVERS']
-        pod.name = lab_name + '-' + pod.driver
-        pod.gerrit_tag = grep.split('\r\n')[2].split(':')[-1].strip()
-        pod.namespace = grep.split('\r\n')[3].split(':')[-1].strip()
-        pod.release_tag = grep.split('\r\n')[1].split(':')[-1].strip()
-        pod.os_name = cfg.VIM_NUM_VS_OS_NAME_DIC[pod.release_tag.rsplit('.', 1)[0]]
+        _, setup_data_text, hostname, grep = ans.split(separator)
+        setup_data = yaml.load(setup_data_text)
+        pod = Laboratory(name = lab_name,
+                         driver = setup_data['MECHANISM_DRIVERS'],
+                         release_tag=grep.split('\r\n')[1].split(':')[-1].strip(),
+                         gerrit_tag=grep.split('\r\n')[2].split(':')[-1].strip(),
+                         namespace=grep.split('\r\n')[3].split(':')[-1].strip(),
+                         setup_data=setup_data)
         cfg.create_from_setup_data(pod=pod)
         if pod.driver == 'vts':
             pod.driver_version = pod.vtc.r_vtc_get_version()
@@ -85,7 +85,8 @@ class Configurator(WithConfig, WithLogMixIn):
             self.process_single_node(pod=pod, node_id=node_id, node_dic=node_dic)
 
         ConfiguratorOffline.process_connections(pod=pod)
-        map(lambda x: x.n9_validate(), pod.vim_tors)
+        if self.is_interactive:
+            map(lambda x: x.n9_validate(), pod.vim_tors)
         map(lambda x: x.r_build_online(), pod.cimc_servers)
         map(lambda x: self.process_vts_virtuals(pod=pod, vts=x), pod.vts)
         # pod.validate_config()

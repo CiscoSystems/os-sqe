@@ -1,8 +1,8 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 from lab.decorators import section
 
 
-class NttScenario(ParallelWorker):
+class NttScenario(TestCaseWorker):
 
     ARG_RUN_INSIDE = 'run_inside'
     ARG_CSR_ARGS = 'csr_args'
@@ -22,7 +22,7 @@ class NttScenario(ParallelWorker):
 
     @property
     def nfvbench_args(self):
-        return self.args[self.ARG_NFVBENCH_ARGS] + (' --no-cleanup' if self.is_noclean else '')
+        return self.args[self.ARG_NFVBENCH_ARGS] + (' --no-cleanup' if self.test_case.is_noclean else '')
 
     @property
     def perf_reports_repo_dir(self):
@@ -86,8 +86,8 @@ class NttScenario(ParallelWorker):
             errors = [x.split('\r\n')[0] for x in ans.split('ERROR')[1:]]
             errors = [x for x in errors if 'No hypervisor matching' not in x]
             if errors:
-                raise RuntimeError('# errors {} the first is {}'.format(len(errors), errors[0]))
-
+                self.worker_data = '# errors {} the first is {}'.format(len(errors), errors[0])
+                self.fail(is_stop_running=True)
         servers = CloudServer.list(cloud=self.cloud)
         CloudServer.wait(servers=servers, status='ACTIVE')
 
@@ -106,7 +106,8 @@ class NttScenario(ParallelWorker):
             f.write(ans)
 
         if 'ERROR' in ans:
-            raise RuntimeError(ans.split('ERROR')[-1][-200:])
+            self.worker_data = ans.split('ERROR')[-1][-200:]
+            self.fail(is_stop_running=True)
         else:
             with self.pod.open_artifact('final_report.txt', 'a') as f:
                 f.write('csr: ' + self.csr_args + ' nfvbench ' + self.nfvbench_args + '\n')
@@ -118,9 +119,7 @@ class NttScenario(ParallelWorker):
             self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git pull && echo {1} >> catalog && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2),
                              in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
             res_json_body = self.pod.mgm.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.perf_reports_repo_dir)
-            ans = self.process_nfvbench_json(res_json_body=res_json_body)
-            with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'a') as f:
-                f.write(cmd + '\n' + ans + '\n')
+            self.process_nfvbench_json(res_json_body=res_json_body)
 
     def process_nfvbench_json(self, res_json_body):
         import json
@@ -136,16 +135,18 @@ class NttScenario(ParallelWorker):
                 for t in ['ndr', 'pdr']:
                     la_min, la_avg, la_max = di[t]['stats']['overall']['min_delay_usec'], di[t]['stats']['overall']['avg_delay_usec'], di[t]['stats']['overall']['max_delay_usec']
                     gbps = di[t]['rate_bps'] / 1e9
+                    if gbps < 1.2:
+                        self.fail(is_stop_running=False)
                     drop_thr = di[t]['stats']['overall']['drop_percentage']
                     res.append('size={} {}({:.4f}) rate={:.4f} Gbps latency={:.1f} {:.1f} {:.1f} usec\n'.format(mtu, t, drop_thr, gbps, la_min, la_avg, la_max))
             else:
                 gbps = (di['stats']['overall']['rx']['pkt_bit_rate'] + di['stats']['overall']['tx']['pkt_bit_rate']) / 1e9
                 res.append('size={} rate={} Gbps'.format(mtu, gbps))
-        return '; '.join(res)
+        self.worker_data = '; '.join(res)
 
     @section(message='Tearing down (estimate 100 sec)')
     def teardown_worker(self):
-        if not self.is_noclean:
+        if not self.test_case.is_noclean:
             self.cloud.os_cleanup(is_all=True)
             if self.pod.driver == 'vts':
                 self.pod.vtc.r_vtc_delete_openstack()

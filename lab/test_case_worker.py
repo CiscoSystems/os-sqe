@@ -2,7 +2,7 @@ import abc
 from lab.with_log import WithLogMixIn
 
 
-class ParallelWorker(WithLogMixIn):
+class TestCaseWorker(WithLogMixIn):
     STATUS_CREATED = 'created'
     STATUS_SETUP = 'setup'
     STATUS_DELAYED = 'delayed'
@@ -14,24 +14,24 @@ class ParallelWorker(WithLogMixIn):
     ARG_PERIOD = 'pause'
     ARG_TIMEOUT = 'timeout'
 
-    ARG_IS_NOCLEAN = 'is_noclean'
-    ARG_IS_DEBUG = 'is_debug'
-
     def __repr__(self):
-        return u'test={} worker={}'.format(self.test_cfg_path, self.name)
+        return u'TCW={}.{}'.format(self.test_case.path.split('-')[0], self.name)
 
-    def __init__(self, args_dict):
+    def __init__(self, test_case, args_dict):
         """ Executed before subprocesses start in the context of RunnerHA.execute()
         :param args_dict: dictionry with custom worker arguments, they are checked in check_config()
         """
-        args_dict.pop('class')
-        self.test_cfg_path = args_dict.pop('test_cfg_path')
+        self.test_case = test_case
         self.name = args_dict.pop('name')
+        self.worker_data = ''                                                  # might be set to some arbotrary object in worker_loop()
+        self.is_failed = False                                                 # might be set by self.fail()
+        self.exceptions = []                                                   # any exceptions will be collected here
         self.status_dict = None                                                # will be set just before running multiprocessing.Pool.map() to multiprocessing.Manager().dict()
         self.cloud = None                                                      # will be set just before running multiprocessing.Pool.map()
         self.args = {}                                                         # all arguments will be kept in this dict
         self.loop_counter = 0                                                  # counts loops executed
 
+        args_dict.pop('class')
         self.required_properties = set([getattr(self, x) for x in dir(self) if x.startswith('ARG_')])
         assert self.required_properties.issubset(dir(self)), '{}: please define method(s) decorated with @property {}'.format(self, self.required_properties - set(dir(self)))
         for x in sorted(self.required_properties):
@@ -46,8 +46,8 @@ class ParallelWorker(WithLogMixIn):
         self.check_arguments()
 
     @property
-    def is_debug(self):  # if True, test parallel infrastructure
-        return self.args[self.ARG_IS_DEBUG]
+    def description(self):
+        return ' '.join(['{}={}'.format(x[0], x[1]) for x in self.args.items()])
 
     @property
     def delay(self):  # delay: 3 means delay by 3 secs after common start, delay: [name1, name2] means delay until workers name1, name2 go to self.STATUS_FINISHED
@@ -64,10 +64,6 @@ class ParallelWorker(WithLogMixIn):
     @property
     def pause(self):  # wait this time at the end of each loop
         return self.args[self.ARG_PERIOD]
-
-    @property
-    def is_noclean(self):
-        return self.args[self.ARG_IS_NOCLEAN]
 
     @property
     def pod(self):
@@ -108,12 +104,13 @@ class ParallelWorker(WithLogMixIn):
 
         time_passed = 0
         if type(self.delay) is list:
-            self.log('delay while {} are not yet {}'.format(self.delay, self.STATUS_FINISHED))
+            self.log('delay while {} not yet {}'.format(self.delay, self.STATUS_FINISHED))
             while all([self.status_dict[x] != self.STATUS_FINISHED for x in self.delay]):
                 time.sleep(1)
                 time_passed += 1
                 if time_passed == self.timeout:
                     raise RuntimeError('Waiting for {} to be all False exceeded {} secs'.format(self.delay, self.timeout))
+            self.log('{} finished, worker now active'.format(self.delay))
         else:
             self.log('delay by {} secs...'.format(self.delay))
             time.sleep(self.delay)
@@ -123,12 +120,10 @@ class ParallelWorker(WithLogMixIn):
         import os
         import time
 
-        worker_parameters = 'ppid={} pid={} {}'.format(os.getppid(), os.getpid(), ' '.join(['{}={}'.format(x[0], x[1]) for x in self.args.items()]))
+        worker_parameters = 'ppid={} pid={} {}'.format(os.getppid(), os.getpid(), self.description)
         self.log(worker_parameters)
         time.sleep(1)
 
-        exceptions = []
-        loop_results = []
         try:
             self.delay_execution()
 
@@ -136,18 +131,26 @@ class ParallelWorker(WithLogMixIn):
 
             while not self.is_ready_to_finish():
                 self.log('starting loop {} out of {} ...'.format(self.loop_counter, self.run))
-                if not self.is_debug:
-                    loop_results.append(self.loop_worker())
+
+                if not self.test_case.is_debug:
+                    self.loop_worker()
+
                 if self.pause > 0:
                     self.log('pausing {} sec after loop {}  ...'.format(self.pause, self.loop_counter))
                     time.sleep(self.pause)
+
                 self.loop_counter += 1
 
             self.log('finished after {} loops out of {}'.format(self.loop_counter, self.run))
         except Exception as ex:
-            exceptions.append(str(ex))
+            self.exceptions.append(str(ex))
             self.log_exception()
         finally:
             time.sleep(1)  # sleep to align log output
             self.set_status(status=self.STATUS_FINISHED)
-            return {'worker name': self.name, 'exceptions': exceptions, 'params': worker_parameters, 'results': loop_results}
+            return self
+
+    def fail(self, is_stop_running):
+        self.is_failed = True
+        if is_stop_running:
+            raise RuntimeError()

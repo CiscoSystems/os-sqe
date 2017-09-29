@@ -1,7 +1,7 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
-class SocketConnectToPort(ParallelWorker):
+class SocketConnectToPort(TestCaseWorker):
 
     ARG_IP_PORT = 'ip_port'
     ARG_SOCKET_TIMEOUT = 'socket_timeout'

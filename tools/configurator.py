@@ -145,8 +145,9 @@ class Configurator(WithConfig, WithLogMixIn):
             net_mercury_cfg = filter(lambda k: k['segments'][0] == mercury_net_id, pod.setup_data['NETWORKING']['networks'])
             if net_mercury_cfg:
                 cidr = net_mercury_cfg[0].get('subnet')
-                vlan_id = net_mercury_cfg[0]['vlan_id']
-                net.vlan = vlan_id
+                vlan_id = net_mercury_cfg[0].get('vlan_id')
+                if vlan_id not in [None, 'None', 'none']:
+                    net.vlan = vlan_id
                 if cidr:
                     net.net = IPNetwork(cidr)
                     net.is_via_tor = cidr[:2] not in ['11', '22', '33', '44', '55']
@@ -241,7 +242,7 @@ class Configurator(WithConfig, WithLogMixIn):
             f.write('gerrit_tag: ' + str(p.gerrit_tag) + '\n')
             f.write('namespace: ' + str(p.namespace) + '\n')
             f.write('release_tag: ' + str(p.release_tag) + '\n')
-            f.write('os_name: ' + str(p.os_name) + '\n')
+            f.write('os_code_name: ' + str(p.os_code_name) + '\n')
             f.write('driver: ' + str(p.driver) + '\n')
             f.write('driver_version: ' + str(p.driver_version) + '\n')
             f.write('\n')

@@ -13,22 +13,29 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def sample_config():
         return 'path to lab config'
 
-    def __init__(self):
+    def __init__(self, name='g72', release_tag='9.9.9', gerrit_tag=99, driver='vts', namespace='mercury-rhel7-osp10-plus', setup_data=None):
+        from lab.tims import Tims
+
         self._unique_dict = dict()  # to make sure that all needed objects are unique
-        self.name = None
-        self.setup_data = None
-        self.driver = None
+        self.name = name + '-' + driver
+        self.setup_data = setup_data
+        self.driver = driver
         self.driver_version = None
-        self.gerrit_tag = None
-        self.release_tag = None
-        self.os_name = None
-        self.namespace = None
+        self.gerrit_tag = gerrit_tag
+        self.release_tag = release_tag
+        self.os_code_name = self.VIM_NUM_VS_OS_NAME_DIC[release_tag.rsplit('.', 1)[0]]
+        self.namespace = namespace
         self.dns = []
         self.ntp = []
         self.networks = {}
         self.nodes = {}
         self.wires = []
         self.is_sqe_user_created = False
+        self.tims = Tims(self)
+
+    @property
+    def version(self):
+        return '{} {} {} {}'.format(self.release_tag, self.gerrit_tag, self.namespace, self.os_code_name)
 
     @staticmethod
     @decorators.section('Create pod from actual remote setup_data.xml')

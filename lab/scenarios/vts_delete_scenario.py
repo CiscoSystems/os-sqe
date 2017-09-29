@@ -1,8 +1,8 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 from lab.decorators import section
 
 
-class VtsDeleteScenario(ParallelWorker):
+class VtsDeleteScenario(TestCaseWorker):
 
     def check_config(self):
         pass

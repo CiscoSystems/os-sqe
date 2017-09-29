@@ -163,7 +163,6 @@ class N9(LabNode):
             else:
                 continue
 
-
     def n9_validate(self):
         from lab.nodes.n9.n9_vlan import N9Vlan
         from lab.nodes.n9.n9_port_channel import N9PortChannel

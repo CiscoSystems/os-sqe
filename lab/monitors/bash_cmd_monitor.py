@@ -1,7 +1,7 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
-class BashCmdMonitor(ParallelWorker):
+class BashCmdMonitor(TestCaseWorker):
 
     # noinspection PyAttributeOutsideInit
     def setup_worker(self):

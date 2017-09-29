@@ -1,7 +1,7 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
-class CloudDisruptor(ParallelWorker):
+class CloudDisruptor(TestCaseWorker):
     ARG_NODE_TO_DISRUPT = 'node_to_disrupt'
     ARG_METHOD_TO_DISRUPT = 'method_to_disrupt'
 

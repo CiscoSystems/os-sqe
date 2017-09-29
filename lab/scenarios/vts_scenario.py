@@ -1,8 +1,8 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 from lab.decorators import section
 
 
-class VtsScenario(ParallelWorker):
+class VtsScenario(TestCaseWorker):
     ARG_N_SERVERS = 'n_servers'
     ARG_N_NETWORKS = 'n_networks'
     ARG_UPTIME = 'uptime'
@@ -103,6 +103,7 @@ class VtsScenario(ParallelWorker):
                 ans = self.pod.mgm.exe('ping -c {} {}'.format(n_packets, ip), is_warn_only=True)
                 if '{0} packets transmitted, {0} received, 0% packet loss'.format(n_packets) not in ans:
                     raise RuntimeError(ans)
+        return '50 packets send'
 
     @section('Iperf servers')
     def iperf_servers(self):
@@ -113,9 +114,7 @@ class VtsScenario(ParallelWorker):
         ip = server_passive.get_ssh_ip()
         server_passive.exe('iperf -s -p 1111 &')  # run iperf in listening mode on first server of first compute host
         a = [x.exe('{} -c {} -p 1111'.format(self.run_inside, ip)) for x in [server_same, server_other]]
-
-        with self.pod.open_artifact('main-results-for-tims.txt'.format(), 'w') as f:
-            f.write(a)
+        return a
 
     @section('Running test')
     def loop_worker(self):
@@ -133,7 +132,7 @@ class VtsScenario(ParallelWorker):
             if self.run_inside.startswith('iperf'):
                 return self.iperf_servers()
             else:
-                self.ping_servers()
+                return self.ping_servers()
         self.delete_servers()
 
     @section('Deleting servers')

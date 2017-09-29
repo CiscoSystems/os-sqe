@@ -1,8 +1,8 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 from lab.decorators import section
 
 
-class VtsAddCompute(ParallelWorker):
+class VtsAddCompute(TestCaseWorker):
 
     def check_arguments(self):
         pass

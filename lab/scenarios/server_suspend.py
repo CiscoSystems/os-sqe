@@ -1,7 +1,7 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
-class ServerSuspend(ParallelWorker):
+class ServerSuspend(TestCaseWorker):
     def check_arguments(self, **kwargs):
         pass
 

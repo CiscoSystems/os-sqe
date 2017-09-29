@@ -1,7 +1,7 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
-class VtfMonitor(ParallelWorker):
+class VtfMonitor(TestCaseWorker):
 
     def setup_worker(self):
         from lab.nodes.vtc import Vtc

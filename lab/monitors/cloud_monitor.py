@@ -1,7 +1,7 @@
-from lab.parallelworker import ParallelWorker
+from lab.test_case_worker import TestCaseWorker
 
 
-class CloudMonitor(ParallelWorker):
+class CloudMonitor(TestCaseWorker):
     # noinspection PyAttributeOutsideInit
     def setup_worker(self, **kwargs):
         self._is_ha_details = kwargs.get('show-details', True)
