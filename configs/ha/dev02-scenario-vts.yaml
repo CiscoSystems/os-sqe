@@ -1,7 +1,7 @@
----
-- Folder: Automation itself tests
-- Title: Test VTS scenario
-- Description: VTS scenario creates number of networks and instances on these networks then ping all servers checking in parallel VTS responses to operations
+
+Folder: Automation itself tests
+Title: Test VTS scenario
+Description: VTS scenario creates number of networks and instances on these networks then ping all servers checking in parallel VTS responses to operations
 
 
 - class: lab.scenarios.vts_scenario.VtsScenario

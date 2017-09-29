@@ -1,7 +1,7 @@
----
-- Folder: Automation itself tests
-- Title: Test VTS monitor
-- Description: VTS monitor periodically tries to check the status of VTS
+
+Folder: Automation itself tests
+Title: Test VTS monitor
+Description: VTS monitor periodically tries to check the status of VTS
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

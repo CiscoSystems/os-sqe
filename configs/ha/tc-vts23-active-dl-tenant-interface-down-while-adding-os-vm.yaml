@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Active DL tenenat iface down while adding OS servers
-- Description: Validate Standby XRNC becomes "Active' when Active XRNC's eth0 is shut while new tenant VMs are being created
+
+Folder: HIGH AVAILABILITY
+Title: Active DL tenenat iface down while adding OS servers
+Description: Validate Standby XRNC becomes "Active' when Active XRNC's eth0 is shut while new tenant VMs are being created
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

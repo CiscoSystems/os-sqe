@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Both VTC libvirt vm shutdown
-- Description: Validate VTC Ha comes up properly after both Active and Standby VTCs VMs are paused and then resumed
+
+Folder: HIGH AVAILABILITY
+Title: Both VTC libvirt vm shutdown
+Description: Validate VTC Ha comes up properly after both Active and Standby VTCs VMs are paused and then resumed
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Passive VTC reboot while adding OS servers
-- Description: Validate Standby VTC is still running and in Standby mode when Standby  VTC is rebooted while tenant VMs are also being created
+
+Folder: HIGH AVAILABILITY
+Title: Passive VTC reboot while adding OS servers
+Description: Validate Standby VTC is still running and in Standby mode when Standby  VTC is rebooted while tenant VMs are also being created
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

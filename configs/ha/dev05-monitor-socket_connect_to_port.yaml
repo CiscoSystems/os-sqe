@@ -1,7 +1,7 @@
----
-- Folder: Automation itself tests
-- Title: Test socket monitor
-- Description: Socket monitor periodically tries to connect to the given ip:port
+
+Folder: Automation itself tests
+Title: Test socket monitor
+Description: Socket monitor periodically tries to connect to the given ip:port
 
 - class: lab.monitors.socket_connect_to_port_monitor.SocketConnectToPort
   name: s150

@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Passive VTC isolate from mx
-- Description: tc_vts_passive_vtc_isolate_from_mx first create OS VM then set DOWN MX interface for a while
+
+Folder: HIGH AVAILABILITY
+Title: Passive VTC isolate from mx
+Description: tc_vts_passive_vtc_isolate_from_mx first create OS VM then set DOWN MX interface for a while
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

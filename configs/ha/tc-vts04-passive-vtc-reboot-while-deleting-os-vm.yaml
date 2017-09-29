@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Passive VTC reboot while deleting OS servers
-- Description: Validate Standby VTC is still running and in Standby mode when Standby VTC is rebooted while existing tenant VMs are also being deleted
+
+Folder: HIGH AVAILABILITY
+Title: Passive VTC reboot while deleting OS servers
+Description: Validate Standby VTC is still running and in Standby mode when Standby VTC is rebooted while existing tenant VMs are also being deleted
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

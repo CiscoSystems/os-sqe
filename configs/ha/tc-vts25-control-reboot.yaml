@@ -1,7 +1,7 @@
----
-- Folder: NEGATIVE
-- Title: Control node reboot
-- Description: Create servers on different computes start pinging them form mgmt node, then reboot OS controller node
+
+Folder: NEGATIVE
+Title: Control node reboot
+Description: Create servers on different computes start pinging them form mgmt node, then reboot OS controller node
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

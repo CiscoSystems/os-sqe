@@ -1,7 +1,7 @@
----
-- Folder: PERFOMANCE_AND_SCALE
-- Title: iperf run
-- Description: runs iperf and reports its results
+
+Folder: PERFOMANCE_AND_SCALE
+Title: iperf run
+Description: runs iperf and reports its results
 
 - class: lab.scenarios.vts_scenario.VtsScenario
   name: VtsScenario

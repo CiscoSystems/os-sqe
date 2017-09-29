@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Active VTC isolate XRNC from mx while adding OS servers
-- Description: disrupt active vtc by downing mx iface while adding - deleting OS VM
+
+Folder: HIGH AVAILABILITY
+Title: Active VTC isolate XRNC from mx while adding OS servers
+Description: disrupt active vtc by downing mx iface while adding - deleting OS VM
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Passive DL ncs stop
-- Description: first create OS VM then start disruptor
+
+Folder: HIGH AVAILABILITY
+Title: Passive DL ncs stop
+Description: first create OS VM then start disruptor
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

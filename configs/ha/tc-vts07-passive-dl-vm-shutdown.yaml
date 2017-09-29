@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Passive DL libvirt shutdown
-- Description: Verify that OS VM are connected after Slave DL VM shutdown
+
+Folder: HIGH AVAILABILITY
+Title: Passive DL libvirt shutdown
+Description: Verify that OS VM are connected after Slave DL VM shutdown
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

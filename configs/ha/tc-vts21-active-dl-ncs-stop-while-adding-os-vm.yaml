@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Active DL ncs stop while adding OS servers
-- Description: test it statically - run VM create - ping - delete cycle parametrized number of steps, in paralell do the same with disruptor, then make sure from log timestemps that disrupting while VM was provisioning
+
+Folder: HIGH AVAILABILITY
+Title: Active DL ncs stop while adding OS servers
+Description: test it statically - run VM create - ping - delete cycle parametrized number of steps, in paralell do the same with disruptor, then make sure from log timestemps that disrupting while VM was provisioning
               indeed happend at least once.
 
 - class: lab.monitors.vts_monitor.VtsMonitor

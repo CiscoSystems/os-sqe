@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Active VTC passive DL libvirt VM shutdown
-- Description: first create OS VM then shutdown VTC master and DL slave
+
+Folder: HIGH AVAILABILITY
+Title: Active VTC passive DL libvirt VM shutdown
+Description: first create OS VM then shutdown VTC master and DL slave
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

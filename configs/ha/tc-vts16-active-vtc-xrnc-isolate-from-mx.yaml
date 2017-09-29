@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Active VTC isolate XRNC fomr mx
-- Description: Verify VM Creation during UNDERLAY Link failure on Active VTC/XRNC Controller
+
+Folder: HIGH AVAILABILITY
+Title: Active VTC isolate XRNC fomr mx
+Description: Verify VM Creation during UNDERLAY Link failure on Active VTC/XRNC Controller
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

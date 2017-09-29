@@ -1,7 +1,7 @@
----
-- Folder: HIGH AVAILABILITY
-- Title: Active VTC reboot while adding compute node
-- Description: Validate Standby VTC becomes "Active' when Active VTC is rebooted while a compute node is added and deleted
+
+Folder: HIGH AVAILABILITY
+Title: Active VTC reboot while adding compute node
+Description: Validate Standby VTC becomes "Active' when Active VTC is rebooted while a compute node is added and deleted
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

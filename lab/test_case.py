@@ -30,6 +30,7 @@ class TestCase(WithConfig, WithLogMixIn):
 
         test_dic = yaml.load(self.body_text)
         must_be = {'Title', 'Folder', 'Description', 'UniqueID', 'Workers'}
+        assert type(test_dic) is dict, '{}: should be dictionery, no - please'.format(path)
         actual = set(test_dic.keys())
         assert actual == must_be, 'actual="{}", must be "{}"'.format(actual, must_be)
         assert test_dic['Folder'] in self.KNOWN_LABS['tims']['folders']

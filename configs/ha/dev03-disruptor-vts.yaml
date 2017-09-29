@@ -1,7 +1,7 @@
----
-- Folder: Automation itself tests
-- Title: Test VTS disruptor
-- Description: Runs a number of VTS disruptors
+
+Folder: Automation itself tests
+Title: Test VTS disruptor
+Description: Runs a number of VTS disruptors
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   name: disrupt-slave-dl-isolate-from-mx
