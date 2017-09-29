@@ -1,7 +1,9 @@
-
 Folder: VTS PERF AND SCALE
 Title: no CSR, 10 PVVP chain with 10k flows
 Description: runs number of perfomance benchmarks described in https://cisco.jiveon.com/docs/DOC-1711443. Target architecture is defined by pod on which this test is run.
+UniqueID: os-sqe-perf14
+
+Workers:
 
 - class: lab.scenarios.ntt_scenario.NttScenario
   name: NttScenario

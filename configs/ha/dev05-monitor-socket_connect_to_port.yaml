@@ -1,7 +1,9 @@
-
 Folder: Automation itself tests
 Title: Test socket monitor
 Description: Socket monitor periodically tries to connect to the given ip:port
+UniqueID: os-sqe-dev05
+
+Workers:
 
 - class: lab.monitors.socket_connect_to_port_monitor.SocketConnectToPort
   name: s150

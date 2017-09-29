@@ -1,8 +1,9 @@
-
 Folder: Automation itself tests
 Title: Test VTS scenario
 Description: VTS scenario creates number of networks and instances on these networks then ping all servers checking in parallel VTS responses to operations
+UniqueID: os-sqe-dev02
 
+Workers:
 
 - class: lab.scenarios.vts_scenario.VtsScenario
   name: VtsScenario

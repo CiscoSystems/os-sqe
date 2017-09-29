@@ -1,7 +1,9 @@
-
 Folder: Automation itself tests
 Title: Test VTS disruptor
 Description: Runs a number of VTS disruptors
+UniqueID: os-sqe-dev03
+
+Workers:
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   name: disrupt-slave-dl-isolate-from-mx

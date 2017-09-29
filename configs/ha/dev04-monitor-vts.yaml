@@ -1,7 +1,9 @@
-
 Folder: Automation itself tests
 Title: Test VTS monitor
 Description: VTS monitor periodically tries to check the status of VTS
+UniqueID: os-sqe-dev04
+
+Workers:
 
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor
