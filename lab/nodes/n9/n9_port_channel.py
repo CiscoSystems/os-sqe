@@ -11,6 +11,8 @@ class N9PortChannel(N9Port):
         self.sh_vpc_dic = sh_vpc_dic
 
         self.ports = []
+        if 'TABLE_member' not in self.sh_pc_sum_dic:  # this port channel has no ports added
+            return
         lst = self.sh_pc_sum_dic['TABLE_member']['ROW_member'] # it's a list of dicts if few ports in this pc or just a dict if single port in this pc
         lst = [lst] if type(lst) is dict else lst
         for x in lst:  # list of N9Ports belonging to this port-channel
