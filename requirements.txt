@@ -9,3 +9,4 @@ netaddr
 pytz
 ansible
 py-dateutil
+prettytable
