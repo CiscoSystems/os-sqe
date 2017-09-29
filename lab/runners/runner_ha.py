@@ -62,7 +62,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         from lab.elk import Elk
 
         available_tc = self.ls_configs(directory='ha')
-        test_paths = sorted(filter(lambda x: test_regex in x, available_tc))
+        test_paths = sorted(filter(lambda x: x.startswith(), available_tc))
 
         if not test_paths:
             raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
