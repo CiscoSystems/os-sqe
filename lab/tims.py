@@ -10,15 +10,20 @@ class Tims(WithLogMixIn, WithConfig):
 
     def __init__(self, pod):
         import getpass
+        import json       
         import os
+        import requests
 
-        self.tims_url = self.KNOWN_LABS['tims']['url']
-        self.tims_project_id = self.KNOWN_LABS['tims']['project_id']
-        self.tims_db_name = self.KNOWN_LABS['tims']['db_name']
-        self.tims_folders = self.KNOWN_LABS['tims']['folders']
+        cfg_dic = json.loads(requests.get(url=self.CONFIGS_REPO_URL + '/tims.json').text)
 
-        self.conf_id = self.KNOWN_LABS['tims']['configurations'][str(pod)]
-        self.branch = self.KNOWN_LABS['namespaces'][pod.namespace]
+        self.tims_url = cfg_dic['tims']['url']
+        self.tims_project_id = cfg_dic['tims']['project_id']
+        self.tims_db_name = cfg_dic['tims']['db_name']
+        self.tims_folders = cfg_dic['tims']['folders']
+        self.tims_project_id = cfg_dic['tims']['project_id']
+
+        self.conf_id = cfg_dic['tims']['configurations'][str(pod)]
+        self.branch = pod.git_repo_branch
         self.topo = self.MECHANISM_TO_TOPOLOGY[pod.driver]
         self.gerrit_tag = pod.gerrit_tag
         self.dima_common_part_of_logical_id = ':{}-{}:{}'.format(self.branch, self.gerrit_tag, self.topo)
@@ -31,7 +36,7 @@ class Tims(WithLogMixIn, WithConfig):
             user1 = os.getenv('BUILD_USER_ID', 'user_not_defined')  # some Jenkins jobs define this variable
             user2 = os.getenv('BUILD_USER_EMAIL', 'user_not_defined').split('@')[0]  # finally all Jenkins jobs define this variable
             user3 = getpass.getuser()  # take username which runs this job
-            user_token_dic = self.KNOWN_LABS['tims']['user_tokens']
+            user_token_dic = cfg_dic['tims']['user_tokens']
             username, token = user_token_dic.items()[0]
             for user in [user1, user2, user3]:
                 if user in user_token_dic:
@@ -68,7 +73,7 @@ class Tims(WithLogMixIn, WithConfig):
                         <FieldName><![CDATA[Logical ID]]></FieldName>
                         <Value><![CDATA[{}]]></Value>
                         </TextCriterion>
-                  </Search>'''.format(self.KNOWN_LABS['tims']['project_id'], logical_id)
+                  </Search>'''.format(self.tims_project_id, logical_id)
 
         res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
         return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
@@ -172,6 +177,5 @@ class Tims(WithLogMixIn, WithConfig):
                 tims_id, up_or_cr = self._create_update_result(test_cfg_path=tc.path, test_case_id=tc.tims_id, text=tc.tcr.text, status=tc.tcr.status)
                 tc.tcr.tims_url = url_tmpl.format(tims_id)
                 tc.tcr.log(up_or_cr)
-        except Exception as ex:
+        except Exception:
             self.log_exception()
-

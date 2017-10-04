@@ -1,7 +1,6 @@
 import os
 import requests
 import json
-from lab.network import Network
 
 
 class WithConfig(object):
@@ -13,16 +12,8 @@ class WithConfig(object):
 
     PRIVATE_KEY = requests.get(url=CONFIGS_REPO_URL + '/' + 'private.key').text
     PUBLIC_KEY = requests.get(url=CONFIGS_REPO_URL + '/' + 'public.key').text
-    KNOWN_LABS = json.loads(requests.get(url=CONFIGS_REPO_URL + '/' + 'known_lab_info.json').text)
 
     VIM_NUM_VS_OS_NAME_DIC = {'2.3': 'master', '2.2': 'newton', '2.1': 'newton', '2.0': 'newton', '1.0': 'liberty', '9.9': 'fake'}
-    NETWORKS = {'api': Network(net_id='a', cidr='10.10.10.0/32', vlan=9999, is_via_tor=True, pod='', roles_must_present=['CimcDirector', 'CimcController', 'Vtc', 'VtsHost']),
-                'management': Network(net_id='m', cidr='11.11.11.0/24', vlan=2011, is_via_tor=False, pod='', roles_must_present=['CimcDirector', 'CimcController', 'CimcCompute', 'CimcCeph', 'CimcCompute',
-                                                                                                                                 'Vtc', 'Xrvr', 'VtsHost']),
-                'tenant': Network(net_id='t', cidr='22.22.22.0/24', vlan=2022, is_via_tor=False, pod='', roles_must_present=['CimcCompute', 'Xrvr', 'VtsHost']),
-                'storage': Network(net_id='s', cidr='33.33.33.0/24', vlan=2033, is_via_tor=False, pod='', roles_must_present=['CimcController', 'CimcCompute', 'CimcCeph']),
-                'external': Network(net_id='e', cidr='44.44.44.0/24', vlan=2044, is_via_tor=False, pod='', roles_must_present=['CimcController']),
-                'provider': Network(net_id='p', cidr='55.55.55.0/24', vlan=2055, is_via_tor=False, pod='', roles_must_present=['CimcCompute'])}
 
     def verify_config(self, sample_config, config):
         from lab.config_verificator import verify_config

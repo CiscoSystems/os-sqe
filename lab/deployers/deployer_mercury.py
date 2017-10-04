@@ -20,17 +20,13 @@ class DeployerMercury(LabWorker):
         self._is_add_vts_role = config['is_add_vts_role']
 
     def deploy_cloud(self, list_of_servers):
-        from lab.cloud import Cloud
-        from lab.nodes.mgmt_server import CimcDirector
+        from lab.cloud.openstack import OS
         from fabric.operations import prompt
         from lab.laboratory import Laboratory
 
         lab = Laboratory(config_path=self._lab_path)
 
-        try:
-            build_node = filter(lambda x: type(x) is CimcDirector, list_of_servers)[0]
-        except IndexError:
-            build_node = lab.get_director()
+        build_node = lab.mgm
 
         mercury_tag = self._mercury_installer_location.split('/')[-1]
         self.log(message='Deploying {} on {}'.format(mercury_tag, build_node))
@@ -97,7 +93,7 @@ class DeployerMercury(LabWorker):
         lab.r_collect_information(regex='ERROR', comment='after mercury runner')
 
         openrc_body = build_node.exe(command='cat openstack-configs/openrc')
-        return Cloud.from_openrc(name=self._lab_path.strip('.yaml'), mediator=build_node, openrc_as_string=openrc_body)
+        return OS.from_openrc(name=self._lab_path.strip('.yaml'), mediator=build_node, openrc_as_string=openrc_body)
 
     def execute(self, servers_and_clouds):
         cloud = self.deploy_cloud(list_of_servers=servers_and_clouds['servers'])

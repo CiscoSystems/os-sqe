@@ -15,7 +15,7 @@ def cmd():
     import time
     from lab.deployers.deployer_existing import DeployerExisting
     from lab.with_log import lab_logger
-    from tools.configurator_online import Configurator
+    from lab.laboratory import Laboratory
 
     def get_node_methodes(o, name):
         if name == 'cloud':
@@ -60,8 +60,8 @@ def cmd():
         except Exception as ex:
             lab_logger.exception('\n Exception: {0}'.format(ex))
 
-    pod_name = get_user_input(options_lst=Configurator.KNOWN_LABS.keys())
-    pod = Configurator.create(lab_name=pod_name, is_interactive=True)
+    pod_name = get_user_input(options_lst=Laboratory.MERCURY_DIC.keys())
+    pod = Laboratory.create(lab_name=pod_name, is_interactive=True)
     while True:
         device_name = get_user_input(owner=pod, options_lst=['lab', 'cloud'] + pod.nodes.keys())
         if device_name == 'level_up':
@@ -189,7 +189,7 @@ def info(pod_name=None, regex=None):
     """
     from lab.laboratory import Laboratory
 
-    pod = Laboratory.create_from_remote(lab_name=pod_name)
+    pod = Laboratory.create(lab_name=pod_name)
     pod.r_collect_info(regex=regex, comment=regex)
 
 
@@ -227,9 +227,8 @@ def bash():
     from lab.laboratory import Laboratory
     from lab.nodes.lab_server import LabServer
     from lab.nodes.virtual_server import VirtualServer
-    from tools.configurator import Configurator
 
-    pod = Laboratory.create_from_remote(lab_name=get_user_input(options_lst=Configurator.KNOWN_LABS.keys()))
+    pod = Laboratory.create(lab_name=get_user_input(options_lst=Laboratory.MERCURY_DIC.keys()))
     aliases = []
     for node in pod.nodes.values():
         if not isinstance(node, VirtualServer):

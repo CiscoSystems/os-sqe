@@ -2,7 +2,6 @@ from lab.nodes import LabNode
 
 
 class LabServer(LabNode):
-
     def __init__(self, pod, dic):
         super(LabServer, self).__init__(pod=pod, dic=dic)
 
@@ -14,6 +13,10 @@ class LabServer(LabNode):
         self.cisco_vics_dic = {}
         self.lom_nics_dic = {}
         self.libvirt_nics_dic = {}
+
+    @property
+    def networks_dic(self):  # this Labserver must be conneected to this networks
+        return {x.id: x for x in self.pod.networks.values() if type(self) in x.roles_must_present}
 
     def add_virtual_server(self, server):
         self.virtual_servers.add(server)

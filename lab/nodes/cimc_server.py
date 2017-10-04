@@ -6,49 +6,47 @@ class CimcServer(LabServer):
 
     def __init__(self, pod, dic):
         super(CimcServer, self).__init__(pod=pod, dic=dic)
-        self.__handle = None
+        self._handle = None
         self._dump_xml = False
         self._logout_on_each_command = False
 
     def logger(self, message):
         self.log('CIMC ' + message)
 
-    @property
-    def _handle(self):
+    def connect(self):
         import ImcSdk
+        from urllib2 import URLError
 
-        if self.__handle is None:
+        if self._handle is None:
             if self._dump_xml:
                 self.logger('logging in')
-            self.__handle = ImcSdk.ImcHandle()
-            self._handle.login(name=self.oob_ip, username=self.oob_username, password=self.oob_password, dump_xml=self._dump_xml)
-        return self.__handle
-
-    def _logout(self):
-        if self._dump_xml:
-            self.logger('logging out')
-        self._handle.logout()
-        self.__handle = None
+            self._handle = ImcSdk.ImcHandle()
+            try:
+                self._handle.login(name=self.oob_ip, username=self.oob_username, password=self.oob_password, dump_xml=self._dump_xml)
+            except URLError as ex:
+                raise RuntimeError('{}: {} {}'.format(self, ex, self.oob_ip))
+        return self._handle
 
     def cmd(self, cmd, in_mo=None, class_id=None, params=None):
         from ImcSdk.ImcCoreMeta import ImcException
-        
-        if cmd not in dir(self._handle):
+
+        handle = self.connect()
+        if cmd not in dir(handle):
             raise NotImplemented('{} does not exist'.format(cmd))
-        func = getattr(self._handle, cmd)
+        func = getattr(handle, cmd)
         for i in range(3):  # try to repeat the command up to 3 times
             try:
                 return func(in_mo=in_mo, class_id=class_id, params=params, dump_xml=self._dump_xml)
             except ImcException as ex:
                 if ex.error_code == '552':
                     self.logger('refreshing connection')
-                    self._handle.refresh(auto_relogin=True)
+                    handle.refresh(auto_relogin=True)
                     continue
                 else:
                     raise
             finally:
                 if self._logout_on_each_command:
-                    self._logout()
+                    handle.logout()
 
     def cimc_get_raid_battery_status(self):
         return self.cimc_get_mo_by_class_id('storageRaidBattery')
@@ -68,7 +66,7 @@ class CimcServer(LabServer):
         self._cimc_bios_lom(status='Disable')
 
     def cimc_list_all_nics(self):
-        self.log('getting CIMC NICs')
+        self.log('{} getting CIMC NICs'.format(self.oob_ip))
         r1 = self.cimc_get_mo_by_class_id('networkAdapterEthIf')  # physical Intel NICs (or others in PCI-E slots)
         r2 = self.cimc_get_mo_by_class_id('adaptorExtEthIf')  # physical Cisco VIC in MLOM
 
@@ -224,10 +222,10 @@ class CimcServer(LabServer):
         self._cimc_power('up' if current_power_state == 'off' else 'cycle-immediate')
 
     def cimc_recreate_vnics(self):
-        actual_vnics = self.cimc_list_vnics()
+        actual_vnics = self.cimc_list_all_nics_and_vnics()
         actual_loms = [x for x in self.cimc_list_pci_nic_ports() if 'L' in x['Dn']]
 
-        for nic_order, nic in enumerate(self.get_nics().values()):  # NIC order starts from 0
+        for nic_order, nic in enumerate(self.lom_nics_dic.values()):  # NIC order starts from 0
             names = nic.get_names()
             macs = nic.get_macs()
             port_ids = nic.get_port_ids()
@@ -235,7 +233,7 @@ class CimcServer(LabServer):
                 if port_id in ['LOM-1', 'LOM-2']:
                     actual_mac = actual_loms[port_id]['mac']
                     if mac.upper() != actual_mac.upper():
-                        raise ValueError('{}: "{}" actual mac is "{}" while requested "{}". Edit lab config!'.format(self.get_node_id(), port_id, actual_mac, mac))
+                        raise ValueError('{}: "{}" actual mac is "{}" while requested "{}". Edit lab config!'.format(self.id, port_id, actual_mac, mac))
                 else:
                     if 'eth' not in self.get_nics() and nic.is_ssh():  # if no NIC called eth and it's nic on ssh network, use default eth0, eth1
                         if name in actual_vnics:
@@ -259,11 +257,11 @@ class CimcServer(LabServer):
 
     def cimc_configure(self, is_debug=False):
         self._dump_xml = is_debug
-        lab_type = self.lab().get_type()
+        lab_type = self.pod.get_type()
         self.logger('configuring for {}'.format(lab_type))
         self.cimc_set_hostname()
         self.cimc_power_up()
-        if self.lab().get_type() == self.lab().MERCURY:
+        if self.pod.get_type() == self.pod.MERCURY:
             self.cimc_disable_loms_in_bios()
         else:
             is_any_nic_on_lom = any(map(lambda x: x.is_on_lom(), self.get_nics().values()))
@@ -273,7 +271,6 @@ class CimcServer(LabServer):
             self.cimc_change_boot_order(pxe_order=1, hdd_order=2)
         # if lab_type == self.lab().LAB_MERCURY:
         #    self.create_storage('1', 2, True)
-        self._logout()
 
     def cimc_get_adaptors(self):
         r = self.cimc_get_mo_by_class_id('AdaptorUnit')
@@ -290,7 +287,7 @@ class CimcServer(LabServer):
 
     def cimc_set_hostname(self):
         current = self.cimc_get_mgmt_nic()
-        new_cimc_hostname = '{}-ru{}-{}'.format(self.lab(), self.get_hardware_info()[0], self.get_node_id())
+        new_cimc_hostname = '{}-ru{}-{}'.format(self.pod, self.hardware, self.id)
         if new_cimc_hostname != current['hostname']:
             self.logger(message='setting hostname to {}'.format(new_cimc_hostname))
             self.cimc_set_mo_by_class_id(class_id='mgmtIf', params={'dn': 'sys/rack-unit-1/mgmt/if-1', 'hostname': new_cimc_hostname})
@@ -298,14 +295,47 @@ class CimcServer(LabServer):
             self.logger(message='hostname is already {}'.format(new_cimc_hostname))
 
 
+    @staticmethod
+    def cimc_deduce_wiring_by_lldp(pod):
+        import yaml
+        from lab.wire import Wire
+
+        cimc_info_yaml = pod.get_artifact_file_path('cimc-{}.yaml'.format(pod))
+        try:
+            cimc_info_dic = pod.read_config_from_file(config_path=cimc_info_yaml)
+        except ValueError:
+            cimc_info_dic = {}
+            for cimc in sorted(pod.cimc_servers_dic.values()):
+                cimc_info_dic[cimc.oob_ip] = cimc.cimc_list_all_nics()  # returns dic of {port_id: mac}
+            with pod.open_artifact(name=cimc_info_yaml, mode='w') as f:
+                yaml.dump(cimc_info_dic, f)
+
+        wires_cfg = []
+        for node in sorted(pod.cimc_servers_dic.values()):
+            for port1, mac in cimc_info_dic[node.oob_ip].items():
+                neis = [x.find_neighbour_with_mac(mac=mac, cimc_port_id=port1) for x in pod.switches]
+                neis = filter(lambda n: n is not None, neis)
+                if neis:
+                    assert len(neis) == 1, 'More then 1 switch is found connected to {} {}'.format(node, port1)
+                    nei = neis[0]
+                    wires_cfg.append({'node1': node.id, 'port1': port1, 'mac': mac, 'node2': nei.n9.id, 'port2': nei.port.port_id, 'pc-id': nei.port.pc_id})
+                else:
+                    wires_cfg.append({'node1': node.id, 'port1': port1, 'mac': mac, 'node2': None,      'port2': None,             'pc-id': None})
+
+        pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=wires_cfg))
+
+
 class CimcController(CimcServer):
     pass
+
 
 class CimcCompute(CimcServer):
     pass
 
+
 class CimcCeph(CimcServer):
     pass
+
 
 class CimcVts(CimcServer):
     pass

@@ -130,18 +130,18 @@ class TestCaseWorker(WithLogMixIn):
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
-                self.log('starting loop {} out of {} ...'.format(self.loop_counter, self.run))
+                self.log('{:6} loop out of {}   {} ...'.format(self.loop_counter, self.run, self.status_dict))
 
                 if not self.test_case.is_debug:
                     self.loop_worker()
 
                 if self.pause > 0:
-                    self.log('pausing {} sec after loop {}  ...'.format(self.pause, self.loop_counter))
+                    self.log('{:6} loop pausing {} sec ...'.format(self.loop_counter, self.pause ))
                     time.sleep(self.pause)
 
                 self.loop_counter += 1
 
-            self.log('finished after {} loops out of {}'.format(self.loop_counter, self.run))
+            self.log('finished after {} loops out of {} with data "{}", {}'.format(self.loop_counter, self.run, self.worker_data, self.status_dict))
         except Exception as ex:
             self.exceptions.append(str(ex))
             self.log_exception()
@@ -150,7 +150,7 @@ class TestCaseWorker(WithLogMixIn):
             self.set_status(status=self.STATUS_FINISHED)
             return self
 
-    def fail(self, is_stop_running):
+    def fail(self, message, is_stop_running):
         self.is_failed = True
         if is_stop_running:
-            raise RuntimeError()
+            raise RuntimeError(str(message))

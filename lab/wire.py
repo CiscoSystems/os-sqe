@@ -38,9 +38,9 @@ class Wire(WithLogMixIn):
         except KeyError as ex:
             raise ValueError('Wire "{}": has no "{}"'.format(wire_cfg, ex.message))
         try:
-            node1 = pod.nodes[node_id1]
-            node2 = pod.nodes.get(node_id2)
-        except ValueError as ex:
+            node1 = pod.nodes_dic[node_id1]
+            node2 = pod.nodes_dic.get(node_id2)
+        except KeyError as ex:
             raise ValueError('wrong node id: "{}" on wire "{}"'.format(ex.message, wire_cfg))
 
         return Wire(node1=node1, port_id1=port_id1, mac=mac, node2=node2, port_id2=port_id2, pc_id=pc_id)
@@ -89,7 +89,7 @@ class Wire(WithLogMixIn):
         return self._is_class_and_class(VimTor, FI)
 
     def is_n9_ucs(self):
-        return self._is_class_and_class(N9, CimcServer)
+        return self._is_class_and_class(CimcServer, N9)
 
     def is_fi_ucs(self):
-        return self._is_class_and_class(FI, FiServer)
+        return self._is_class_and_class(FiServer, FI)

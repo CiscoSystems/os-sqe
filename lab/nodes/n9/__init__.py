@@ -173,10 +173,18 @@ class N9(LabNode):
         for wire in [x for x in self.pod.wires if self in [x.n1, x.n2]]:
             own_port_id = wire.get_own_port(node=self)
             if wire.is_n9_ucs():  # it's a potential connection to our node
-                desc = self.pod.name[:3] + ' '
-                pc_id = '????'
-                port_mode = 'access'
-                vlans = 'alll'
+                if 'adaptor-MLOM' in wire.port_id1:
+                    a = ' MLOM' + wire.port_id1[-1]
+                    port_mode = 'trunk'
+                elif 'adapter-L' in wire.port_id1:
+                    a = ' LOM' + wire.port_id1[-1]
+                    port_mode = 'trunk'
+                else:
+                    a = ' TREX' + wire.port_id1[-1]
+                    port_mode = 'trunk'
+                desc = self.pod.name[:3] + ' ' + wire.n1.id + a + ' ' + wire.mac
+                pc_id = wire.pc_id
+                vlans = ','.join(sorted([str(x.vlan) for x in wire.n1.networks_dic.values()])) + ',' + self.pod.setup_data_dic['TENANT_VLAN_RANGES'].replace(':', '-')
             elif wire.is_n9_oob():
                 continue
             elif wire.is_n9_n9():  # it's a potential peer link
@@ -185,8 +193,8 @@ class N9(LabNode):
                 port_mode = 'trunk'
                 vlans = 'all'
             elif wire.is_n9_tor():
-                pc_id = '?????'
-                desc = 'up link'
+                pc_id = wire.pc_id
+                desc = 'uplink ' + wire.n2.id + ' ' + wire.port_id2.replace('Ethernet', '')
                 port_mode = 'trunk'
                 vlans = 'all'
             else:

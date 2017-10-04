@@ -47,49 +47,6 @@ class Configurator(WithConfig, WithLogMixIn):
         return pod
 
     @staticmethod
-    def process_switches(pod):
-        from lab.nodes.others import UnknownN9, VimTor
-        from lab.wire import Wire
-
-        known_info = Configurator.KNOWN_LABS[pod.name.rsplit('-', 1)[0]]
-        switches = []
-        username, password = None, None
-        for sw in pod.setup_data['TORSWITCHINFO']['SWITCHDETAILS']:
-            username, password = sw['username'], sw['password']
-            switches.append({'id': 'n' + sw['hostname'][-1].lower(), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'oob-username': username, 'oob-password': password})
-
-        if 'nc' in known_info:
-            switches.append({'id': 'nc', 'role': 'VimCat', 'oob-ip': known_info['nc'], 'oob-username': username, 'oob-password': password})
-
-        tors = VimTor.create_nodes(pod=pod, node_dics_lst=switches)
-
-        specials = {}
-        wires_cfg = []
-        for n9 in tors.values():
-            for nei in n9.neighbours_cdp:
-                node2_id = 'ip' + nei.ipv4.split('.')[-1]
-                if nei.port_id == 'mgmt0':
-                    node2_id = 'oob'
-                    specials[nei.ipv4] = {'id': 'oob', 'role': 'Oob', 'oob-ip': nei.ipv4, 'oob-username': 'openstack-readonly', 'oob-password': password}
-                else:
-                    s = filter(lambda y: y.oob_ip == nei.ipv4, tors.values())
-                    if s:  # this is peer link connection
-                        node2_id = s[0].id
-                    else:  # this is unknown connection, one of them is connection to TOR
-                        port_desc = n9.ports[nei.port_id].name
-                        role, node2_id  = ('Tor', 'tor') if 'uplink' in port_desc else ('UnknownN9', node2_id)
-                        specials[nei.ipv4] = {'id': node2_id, 'role': role, 'oob-ip': nei.ipv4, 'oob-username': 'XXXXXX', 'oob-password': password}
-                wires_cfg.append({'node1': n9.id, 'port1': nei.port_id, 'mac': None, 'node2': node2_id, 'port2': nei.peer_port_id, 'pc-id': nei.pc_id})
-
-        for i, x in enumerate(known_info.get('specials', [])):
-            x['oob-password'] = password
-            specials[i] = x
-
-        pod.nodes.update(tors)
-        pod.nodes.update(UnknownN9.create_nodes(pod=pod, node_dics_lst=specials.values()))
-        pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=wires_cfg))
-
-    @staticmethod
     def ask_ip_u_p(msg, default):
         from fabric.operations import prompt
         import validators
@@ -106,55 +63,6 @@ class Configurator(WithConfig, WithLogMixIn):
         username = prompt(text=msg + ' enter username > ', default='admin')
         password = prompt(text=msg + ' enter password > ')
         return ipv4, username, password
-
-    @staticmethod
-    def process_connections(pod):
-        import yaml
-        from lab.wire import Wire
-
-        cimc_info_yaml = Configurator.get_artifact_file_path('{}-cimc-info.yaml'.format(pod))
-        try:
-            cimc_info_dic = Configurator.read_config_from_file(config_path=cimc_info_yaml)
-        except ValueError:
-            cimc_info_dic = {}
-            for cimc in pod.cimc_servers:
-                cimc_info_dic[cimc.id] = cimc.cimc_list_all_nics()  # returns dic of {port_id: mac}
-            with Configurator.open_artifact(name=cimc_info_yaml, mode='w') as f:
-                yaml.dump(cimc_info_dic, f)
-
-        wires_cfg = []
-        for node1, d in cimc_info_dic.items():
-            for port1, mac in d.items():
-                neis = [x.find_neighbour_with_mac(mac=mac, cimc_port_id=port1) for x in pod.vim_tors + pod.vim_cat]
-                neis = filter(lambda n: n is not None, neis)
-                if neis:
-                    assert len(neis) == 1, 'More then 1 switch is found connected to the {} {}'.format(node1, port1)
-                    nei = neis[0]
-                    wires_cfg.append({'node1': node1, 'port1': port1, 'mac': mac, 'node2': nei.n9.id, 'port2': nei.port.port_id, 'pc-id': nei.port.pc_id})
-                else:
-                    wires_cfg.append({'node1': node1, 'port1': port1, 'mac': mac, 'node2': None,      'port2': None,             'pc-id': None})
-
-        pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=wires_cfg))
-
-    @staticmethod
-    def process_mercury_nets(pod):
-        from lab.network import Network
-        from netaddr import IPNetwork
-
-        for mercury_net_id, net in Configurator.NETWORKS.items():
-            net_mercury_cfg = filter(lambda k: k['segments'][0] == mercury_net_id, pod.setup_data['NETWORKING']['networks'])
-            if net_mercury_cfg:
-                cidr = net_mercury_cfg[0].get('subnet')
-                vlan_id = net_mercury_cfg[0].get('vlan_id')
-                if vlan_id not in [None, 'None', 'none']:
-                    net.vlan = vlan_id
-                if cidr:
-                    net.net = IPNetwork(cidr)
-                    net.is_via_tor = cidr[:2] not in ['11', '22', '33', '44', '55']
-                elif vlan_id in Configurator.KNOWN_LABS['networks']:
-                    net.net = IPNetwork(Configurator.KNOWN_LABS['networks'][vlan_id])
-
-        pod.networks.update(Network.add_networks(pod=pod, nets_cfg=[{'id': x.id, 'vlan': x.vlan, 'cidr': x.net.cidr, 'roles': x.roles_must_present, 'is-via-tor': x.is_via_tor} for x in Configurator.NETWORKS.values()]))
 
     @staticmethod
     def process_mercury_nodes(pod):
@@ -284,11 +192,3 @@ class Configurator(WithConfig, WithLogMixIn):
 
             if p.setup_data:
                 f.write('\nsetup-data: {}'.format(json.dumps(p.setup_data, indent=4)))
-
-if __name__ == '__main__':
-    from lab.laboratory import Laboratory
-
-    c = Configurator()
-    pod = c.create()
-    pod = Laboratory.create_from_path(cfg_path=Laboratory.get_artifact_file_path(pod.name + '.yaml'))
-    pod.mgmt.r_get_version()

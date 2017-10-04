@@ -29,8 +29,7 @@ class EmptyMonitor(TestCaseWorker):
         if self.name == 'sce' and self.loop_counter == 2:
             self.worker_data = 'some good info'
         if self.name == 'di2' and self.loop_counter == 0:
-            self.worker_data = 'reason of fail'
-            self.fail(is_stop_running=True)
+            self.fail('reason of fail', is_stop_running=True)
 
     @section('Tearing down EmptyMonitor')
     def teardown_worker(self):

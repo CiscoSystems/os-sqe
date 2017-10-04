@@ -24,6 +24,10 @@ class N9PortChannel(N9Port):
     def pc_id(self):
         return self.sh_pc_sum_dic['port-channel']
 
+    @property
+    def vlan_string(self):
+        return self.sh_vpc_dic.get('up-vlan-bitset') or self.sh_vpc_dic['peer-up-vlan-bitset']
+
     # def n9_configure_vpc(self):
     #     vpc = self._requested_topology['vpc']
     #     for pc_id, info in vpc.items():
@@ -53,10 +57,13 @@ class N9PortChannel(N9Port):
             n9.n9_fix_problem(cmd=cmd, msg='no port channel {}, create'.format(pc_id))
         else:
             pc = n9.port_channels[pc_id]
-            n9.log('Checking {} {}'.format(pc_id, desc))
+            n9.log('Checking port channel {} {}'.format(pc_id, desc))
             if pc.name != desc:
                 cmd = ['conf t', 'int ' + pc_id, 'desc ' + desc]
-                n9.fix_problem(cmd=cmd, msg='{} has actual description "{}" while requested is "{}"'.format(pc, pc.name, desc))
+                n9.n9_fix_problem(cmd=cmd, msg='{} has actual description "{}" while requested is "{}"'.format(pc, pc.name, desc))
             if pc.mode != mode:
                 cmd = ['conf t', 'int ' + pc_id, 'switchport mode ' + mode]
-                n9.fix_problem(cmd=cmd, msg='{} has actual mode "{}" while requested is "{}"'.format(pc, pc.mode, mode))
+                n9.n9_fix_problem(cmd=cmd, msg='{} has actual mode "{}" while requested is "{}"'.format(pc, pc.mode, mode))
+            if pc.vlans != vlans:
+                cmd = ['conf t', 'int ' + pc_id, 'switchport ' + pc.mode + ' allowed vlan ' + vlans]
+                n9.n9_fix_problem(cmd=cmd, msg='{} has actual vlans "{}" while requested is "{}"'.format(pc, pc.vlan_string, vlans))

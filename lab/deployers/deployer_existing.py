@@ -9,7 +9,7 @@ class DeployerExisting(LabWorker):
 
     def __init__(self, lab_name):
         from lab.laboratory import Laboratory
-        self.pod = Laboratory.create_from_remote(lab_name=lab_name)
+        self.pod = Laboratory.create(lab_name=lab_name)
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):

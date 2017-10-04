@@ -19,7 +19,6 @@ class RunnerHA(WithConfig, WithLogMixIn):
         self.table.field_names = ['path', 'time', 'status', 'result', 'tims']
         self.cloud = None
 
-
     def __repr__(self):
         return u'RunnerHA'
 
@@ -51,11 +50,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         test_case.after_run(results=results)
         self.table.add_row([test_case.path, test_case.time, test_case.tcr.status, test_case.tcr.text, test_case.tcr.tims_url])
 
-        try:
-            map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
-        except Exception as ex:
-            with WithConfig.open_artifact('exception-in-teardown.txt'.format(), 'w') as f:
-                f.write(str(ex))
+        map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
 
     def run(self, pod_name, test_regex, is_noclean, is_debug):
         import time

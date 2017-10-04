@@ -53,7 +53,7 @@ class N9Port(object):
 
         if self.name != port_name:
             cmd = ['conf t', 'int ' + self.port_id, 'desc ' + port_name]
-            self.n9.fix_n9_problem(cmd=cmd, msg='{} has actual description "{}" while requested is "{}"'.format(self.port_id, self.name, port_name))
+            self.n9.n9_fix_problem(cmd=cmd, msg='{} has actual description "{}" while requested is "{}"'.format(self.port_id, self.name, port_name))
         if vlans is None:  # this means we don't no anything about this port just describe it as XXX for reference
             return
 
@@ -66,7 +66,7 @@ class N9Port(object):
 
         if self.mode != port_mode:
             cmd = ['conf t', 'int ' + self.port_id, 'switchport mode ' + port_mode]
-            self.n9.fix_n9_problem(cmd=cmd, msg='port {} is of type {}'.format(self.port_id, port_mode))
+            self.n9.n9_fix_problem(cmd=cmd, msg='port {} is of type {}'.format(self.port_id, port_mode))
 
 #            cmd_make = ['conf t', 'int ' + self.port_id, 'desc ' + port_name, 'switchport', 'switchport mode ' + port_mode, 'switchport {} vlan {}'.format('trunk allowed' if port_mode == 'trunk' else 'access', vlans)]
 

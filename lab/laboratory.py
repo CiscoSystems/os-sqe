@@ -1,11 +1,11 @@
-from lab.mercury.with_mercury import WithMercuryMixIn
+from lab.mercury.with_mercury import WithMercury
 from lab.ospd.with_osdp7 import WithOspd7
 from lab.with_config import WithConfig
 from lab.with_log import WithLogMixIn
 from lab import decorators
 
 
-class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
+class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
     def __repr__(self):
         return self.name
 
@@ -13,22 +13,33 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def sample_config():
         return 'path to lab config'
 
-    def __init__(self, name='g72', release_tag='9.9.9', gerrit_tag=99, driver='vts', namespace='mercury-rhel7-osp10-plus', setup_data=None):
+    def __init__(self, name='g72', release_tag='9.9.9', gerrit_tag=99, driver='vts', namespace='mercury-rhel7-osp10-plus', setup_data_dic=None):
         from lab.tims import Tims
 
         self._unique_dict = dict()  # to make sure that all needed objects are unique
         self.name = name + '-' + driver
-        self.setup_data = setup_data
+        self.setup_data_dic = setup_data_dic
         self.driver = driver
         self.driver_version = None
         self.gerrit_tag = gerrit_tag
         self.release_tag = release_tag
         self.os_code_name = self.VIM_NUM_VS_OS_NAME_DIC[release_tag.rsplit('.', 1)[0]]
         self.namespace = namespace
+        self.git_repo_branch = self.MERCURY_DIC['namespaces'][self.namespace]
         self.dns = []
         self.ntp = []
         self.networks = {}
-        self.nodes = {}
+        self.tor = None
+        self.oob = None
+        self.vtc = None
+        self.mgm = None
+        self.vim_cat = None
+        self.vim_tors = []
+        self.controls = []
+        self.computes = []
+        self.cephs = []
+        self.vts = []
+        self.unknowns = []  # nodes detected to be connected to some switches, which is not a part of the lab
         self.wires = []
         self.is_sqe_user_created = False
         self.tims = Tims(self)
@@ -37,21 +48,27 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def version(self):
         return '{} {} {} {}'.format(self.release_tag, self.gerrit_tag, self.namespace, self.os_code_name)
 
+    @property
+    def nodes_dic(self):
+        return {x.id: x for x in [self.oob] + [self.tor] + [self.mgm] + [self.vtc] + self.controls + self.computes + self.cephs + self.vts + self.vim_tors if x}
+
+    @property
+    def switches(self):
+        return [x for x in [self.vim_cat] + self.vim_tors if x]
+
+    @property
+    def cimc_servers_dic(self):
+        from lab.nodes.cimc_server import CimcServer
+
+        return {x.id: x for x in [self.mgm] + self.controls + self.computes + self.cephs + self.vts if isinstance(x, CimcServer)}
+
     @staticmethod
     @decorators.section('Create pod from actual remote setup_data.xml')
     def create_from_remote(lab_name):
-        from tools.configurator_online import Configurator
-
-        return Configurator.create(lab_name=lab_name)
-
-    @staticmethod
-    def create_from_path(cfg_path):
-        cfg = Laboratory.read_config_from_file(config_path=cfg_path)
-        return Laboratory.create_from_config(cfg=cfg)
+        return Laboratory.create(lab_name=lab_name)
 
     @staticmethod
     def create_from_config(cfg):
-        from lab.nodes.virtual_server import VirtualServer
         from lab.network import Network
         from lab.nodes import LabNode
         from lab.wire import Wire
@@ -65,11 +82,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
 
         pod.networks.update(Network.add_networks(pod=pod, nets_cfg=cfg['networks']))
 
-        pod.nodes.update(LabNode.create_nodes(pod=pod, node_dics_lst=cfg['switches']))  # first pass - just create nodes
-        pod.nodes.update(LabNode.create_nodes(pod=pod, node_dics_lst=cfg['specials']))
-        pod.nodes.update(LabNode.create_nodes(pod=pod, node_dics_lst=cfg['nodes']))
-        if 'virtuals' in cfg:
-            pod.nodes.update(VirtualServer.create_nodes(pod=pod, node_dics_lst=cfg['virtuals']))
+        tmp_nodes = []
+        for sec in ['switches', 'specials', 'nodes', 'virtuals']:
+            if sec in cfg:
+                tmp_nodes.extend(LabNode.create_nodes(pod=pod, node_dics_lst=cfg[sec]))
 
         if cfg['wires']:
             pod.wires.extend(Wire.add_wires(pod=pod, wires_cfg=cfg['wires']))  # second pass - process wires to connect nodes to peers
@@ -79,7 +95,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def validate_config(self):
         from lab.nodes.lab_server import LabServer
 
-        map(lambda n: self.make_sure_that_object_is_unique(obj=n.id, obj_type='node_id', owner=self), self.nodes.values())  # make sure that all nodes have unique ids
+        map(lambda n: self.make_sure_that_object_is_unique(obj=n.id, obj_type='node_id', owner=self), self.nodes_dic.values())  # make sure that all nodes have unique ids
         map(lambda n: self.make_sure_that_object_is_unique(obj=n.vlan, obj_type='vlan', owner=n), self.networks.values())  # make sure that all nets have unique VLAN ID
         map(lambda n: self.make_sure_that_object_is_unique(obj=n.net.cidr, obj_type='cidr', owner=n), self.networks.values())  # make sure that all nets have unique CIDR
 
@@ -93,10 +109,10 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
                 role_vs_nets.setdefault(role, set())
                 role_vs_nets[role].add(net.id)
 
-        for node in self.nodes.values():
+        for node in self.nodes_dic.values():
             if not isinstance(node, LabServer):
                 continue
-            actual_nets = set(node.nics_dic.keys())
+            actual_nets = set(node.nics.keys())
             req_nets = role_vs_nets[node.role]
             if actual_nets != req_nets:
                 raise ValueError('{}: should be on nets {} while actually on {} (section nics)'.format(node, req_nets, actual_nets))
@@ -113,50 +129,6 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             #     peer_port_id = wire.get_peer_port(node)
             #     self.make_sure_that_object_is_unique(obj='{}-{}'.format(peer_node.get_node_id(), peer_port_id), owner=node.get_node_id())  # check that this peer_node-peer_port is unique
 
-    @property
-    def mgm(self):
-        return filter(lambda x: x.is_mgm(), self.nodes.values())[0] or self.controls[0]  # if no specialized management node, use first control node
-
-    @property
-    def cobbler(self):
-        return filter(lambda x: x.is_cobbler(), self.nodes.values())[0]
-
-    @property
-    def vim_tors(self):
-        return filter(lambda x: x.is_vim_tor(), self.nodes.values())
-
-    @property
-    def vim_cat(self):
-        return filter(lambda x: x.is_vim_cat(), self.nodes.values())
-
-    @property
-    def oob(self):
-        return filter(lambda x: x.is_oob(), self.nodes.values())
-
-    @property
-    def tor(self):
-        return filter(lambda x: x.is_tor(), self.nodes.values())
-
-    @property
-    def controls(self):
-        return filter(lambda x: x.is_control(), self.nodes.values())
-
-    @property
-    def computes(self):
-        return filter(lambda x: x.is_compute(), self.nodes.values())
-
-    @property
-    def vtc(self):
-        return [x for x in self.nodes.values() if x.is_vtc()][0]
-
-    @property
-    def vts(self):
-        return [x for x in self.nodes.values() if x.is_vts()]
-
-    @property
-    def cimc_servers(self):
-        return filter(lambda x: x.is_cimc_server(), self.nodes.values())
-
     def make_sure_that_object_is_unique(self, obj, obj_type, owner):
         """check that given object is unique
         :param obj: object which is supposed to be unique
@@ -172,7 +144,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
             self._unique_dict[key] = owner
 
     def lab_validate(self):
-        map(lambda x: x.r_verify_oob(), self.nodes.values())
+        map(lambda x: x.r_verify_oob(), self.nodes_dic.values())
         map(lambda x: x.n9_validate(), self.vim_tors + [self.vim_cat])
 
     def r_collect_info(self, regex, comment):
@@ -184,7 +156,7 @@ class Laboratory(WithMercuryMixIn, WithOspd7, WithLogMixIn, WithConfig):
     def exe(self, cmd):
         from lab.nodes.lab_server import LabServer
 
-        return {node.id: node.exe(cmd) for node in self.nodes.values() if isinstance(node, LabServer)}
+        return {node.id: node.exe(cmd) for node in self.nodes_dic.values() if isinstance(node, LabServer)}
 
     def check_create_sqe_user(self):
         if not self.is_sqe_user_created:

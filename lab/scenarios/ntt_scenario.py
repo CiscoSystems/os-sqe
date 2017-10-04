@@ -86,8 +86,7 @@ class NttScenario(TestCaseWorker):
             errors = [x.split('\r\n')[0] for x in ans.split('ERROR')[1:]]
             errors = [x for x in errors if 'No hypervisor matching' not in x]
             if errors:
-                self.worker_data = '# errors {} the first is {}'.format(len(errors), errors[0])
-                self.fail(is_stop_running=True)
+                self.fail('# errors {} the first is {}'.format(len(errors), errors[0]), is_stop_running=True)
         servers = CloudServer.list(cloud=self.cloud)
         CloudServer.wait(servers=servers, status='ACTIVE')
 
@@ -106,8 +105,7 @@ class NttScenario(TestCaseWorker):
             f.write(ans)
 
         if 'ERROR' in ans:
-            self.worker_data = ans.split('ERROR')[-1][-200:]
-            self.fail(is_stop_running=True)
+            self.fail(ans.split('ERROR')[-1][-200:], is_stop_running=True)
         else:
             with self.pod.open_artifact('final_report.txt', 'a') as f:
                 f.write('csr: ' + self.csr_args + ' nfvbench ' + self.nfvbench_args + '\n')
@@ -136,7 +134,7 @@ class NttScenario(TestCaseWorker):
                     la_min, la_avg, la_max = di[t]['stats']['overall']['min_delay_usec'], di[t]['stats']['overall']['avg_delay_usec'], di[t]['stats']['overall']['max_delay_usec']
                     gbps = di[t]['rate_bps'] / 1e9
                     if gbps < 1.2:
-                        self.fail(is_stop_running=False)
+                        self.fail('GBPS < 1.2', is_stop_running=False)
                     drop_thr = di[t]['stats']['overall']['drop_percentage']
                     res.append('size={} {}({:.4f}) rate={:.4f} Gbps latency={:.1f} {:.1f} {:.1f} usec\n'.format(mtu, t, drop_thr, gbps, la_min, la_avg, la_max))
             else:
