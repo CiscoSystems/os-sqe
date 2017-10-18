@@ -67,16 +67,16 @@ class WithConfig(object):
         from lab.nodes.lab_server import LabServer
 
         def net_yaml_body(net):
-            return '{{id: {:3}, vlan: {:4}, cidr: {:19}, is-via-tor: {:5}, roles: {}}}'.format(net.id, net.vlan, net.net.cidr, 'True' if net.is_via_tor else 'False', net.roles_must_present)
+            return '{{id: {:3}, vlan: {:4}, cidr: {:19}, is-via-tor: {:5}, roles: {}}}'.format(net.id, net.vlan, net.net.cidr, 'True' if net.is_via_tor else 'False', [x.__name__ for x in net.roles_must_present])
 
         def nic_yaml_body(nic):
             return '{{id: {:3}, ip: {:20}, is-ssh: {:6} }}'.format(nic.id, nic.ip, nic.is_ssh)
 
         def node_yaml_body(node):
-            a = ' {{id: {:8}, hard: "{:25}", role: {:15}, proxy: {:5}'.format(node.id, node.hardware, node.role, node.proxy.id if node.proxy is not None else None)
+            a = ' {{id: {:8}, hard: "{:25}", role: {:18}, proxy: {:5}'.format(node.id, node.hardware, node.role, node.proxy.id if node.proxy is not None else None)
             a += ', oob-ip: {:15}, oob-username: {:9}, oob-password: {:9}'.format(node.oob_ip, node.oob_username, node.oob_password)
             a += ', ssh-ip: {:15}, ssh-username: {:9}, ssh-password: {:9} '.format(node.ssh_ip, node.ssh_username, node.ssh_password) if isinstance(node, LabServer) else ''
-            a += ', virtual-on: {:5}, '.format(node.hard.id) if node.is_virtual() else ''
+            a += ', virtual-on: {:5}, '.format(node.hard.id) if isinstance(node, VirtualServer) else ''
             a += ' }'
             return a
 
@@ -113,12 +113,12 @@ class WithConfig(object):
             f.write('\n]\n\n')
 
             f.write('nodes: [\n')
-            node_bodies = sorted([node_yaml_body(node=x) for x in p.nodes.values() if isinstance(x, LabServer) and not isinstance(x, VirtualServer)])
+            node_bodies = sorted([node_yaml_body(node=x) for x in p.controls + p.computes + p.cephs + p.vts])
             f.write(',\n'.join(node_bodies))
             f.write('\n]\n\n')
 
             f.write('virtuals: [\n')
-            node_bodies = [node_yaml_body(node=x) for x in p.nodes.values() if isinstance(x, VirtualServer)]
+            node_bodies = [node_yaml_body(node=x) for x in p.virtuals]
             f.write(',\n'.join(node_bodies))
             f.write('\n]\n\n')
 
@@ -132,8 +132,8 @@ class WithConfig(object):
                 f.write(wire_yaml_body(wire=w) + ',\n')
             f.write('\n]\n')
 
-            if p.setup_data:
-                f.write('\nsetup-data: {}'.format(json.dumps(p.setup_data, indent=4)))
+            if p.setup_data_dic:
+                f.write('\nsetup-data: {}'.format(json.dumps(p.setup_data_dic, indent=4)))
 
 
 def read_config_from_file(cfg_path, folder='', is_as_string=False):
