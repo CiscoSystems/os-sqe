@@ -106,7 +106,7 @@ class LabServer(LabNode):
 
         ip, username, password = (self.proxy.ssh_ip, self.proxy.ssh_username, self.proxy.ssh_password) if self.proxy else (self.ssh_ip, self.ssh_username, self.ssh_password)
         if is_as_sqe:
-            username, password = self.SQE_USERNAME, None
+            username, password = self.pod.SQE_USERNAME, None
             self.pod.check_create_sqe_user()
         srv = Server(ip=ip, username=username, password=password)
 
