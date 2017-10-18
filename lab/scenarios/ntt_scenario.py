@@ -144,7 +144,7 @@ class NttScenario(TestCaseWorker):
 
     @section(message='Tearing down (estimate 100 sec)')
     def teardown_worker(self):
-        if not self.test_case.is_noclean:
+        if not self.test_case.is_noclean and self.cloud:
             self.cloud.os_cleanup(is_all=True)
             if self.pod.driver == 'vts':
                 self.pod.vtc.r_vtc_delete_openstack()

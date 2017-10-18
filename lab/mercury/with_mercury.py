@@ -4,9 +4,9 @@ from lab.with_config import WithConfig
 from lab.network import Network
 from lab.mercury.nodes import MercuryMgm, MercuryController, MercuryCompute, MercuryCeph, MercuryVts
 from lab.nodes.others import Oob, VimTor, VimCat, Tor, UnknownN9
-from lab.nodes.vtc import Vtc
+from lab.nodes.vtc import Vtc, VtcIndividual
 from lab.nodes.xrvr import Xrvr
-from lab.nodes.vtsr import Vtsr
+from lab.nodes.vtsr import Vtsr, VtsrIndividual
 
 
 class WithMercury(object):
@@ -21,7 +21,7 @@ class WithMercury(object):
     }
 
     MERCURY_DIC = json.loads(requests.get(url=WithConfig.CONFIGS_REPO_URL + '/mercury.json').text)
-    ROLE_ID_TO_CLASS_DIC = {x.__name__: x for x in [MercuryMgm, MercuryVts, MercuryCeph, MercuryCompute, MercuryController, Vtc, Xrvr, Vtsr, Tor, VimTor, VimCat, Oob, UnknownN9]}
+    ROLE_ID_TO_CLASS_DIC = {x.__name__: x for x in [MercuryMgm, MercuryVts, MercuryCeph, MercuryCompute, MercuryController, Vtc, VtcIndividual, Vtsr, VtsrIndividual, Tor, VimTor, VimCat, Oob, UnknownN9]}
 
     @staticmethod
     def mercury_node_class(pod, node_id):
@@ -146,7 +146,6 @@ class WithMercury(object):
     @staticmethod
     def process_vts_virtuals(pod, vts):
         import re
-        from lab.nodes.virtual_server import VtcIndividual, VtsrIndividual
 
         num = re.findall('\d{1,3}', vts.id)[0]
 
@@ -169,7 +168,7 @@ class WithMercury(object):
                 raise RuntimeError('Not known virsh VM runnning: ' + virsh_vm)
             node = VtcIndividual.create_node(pod=pod, dic=dic)
             node.r_build_online()
-            pod.nodes[node.id] = node
+            pod.virtuals.append(node)
             pod.vtc.individuals[node.id] = node
             pod.log(str(node) + ' processed\n\n')
             break

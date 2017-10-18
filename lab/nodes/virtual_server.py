@@ -5,7 +5,7 @@ class VirtualServer(LabServer):
     def __init__(self, pod, dic):
         dic.update({'oob-ip': None, 'oob-username': None, 'oob-password': None})
         super(VirtualServer, self).__init__(pod=pod, dic=dic)
-        self.hard = self.pod.nodes[dic['virtual-on']]
+        self.hard = self.pod.nodes_dic[dic['virtual-on']]
         self.hard.add_virtual_server(self)
 
     def cmd(self, cmd):
@@ -28,16 +28,6 @@ class LibVirtServer(VirtualServer):
         vts_host_ip = self.hard.get_ip_mx()
         mgmt_ip = self.pod.get_director().get_ip_api()
         os.system('ssh -2NfL {port}:{vts}:{port} root@{mgmt}'.format(port=port, vts=vts_host_ip, mgmt=mgmt_ip))
-
-
-class VtcIndividual(LibVirtServer):
-    def cmd(self, cmd):
-        raise NotImplementedError()
-
-
-class VtsrIndividual(LibVirtServer):
-    def cmd(self, cmd):
-        raise NotImplementedError()
 
 
 class VipServer(LabServer):

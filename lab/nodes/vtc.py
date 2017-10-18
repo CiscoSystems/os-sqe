@@ -1,5 +1,5 @@
 from lab import decorators
-from lab.nodes.virtual_server import VipServer
+from lab.nodes.virtual_server import VipServer, LibVirtServer
 
 
 class Vtc(VipServer):
@@ -359,3 +359,7 @@ class Vtc(VipServer):
             if port['biding-host-id'] in baremetal_host_ids:
                 self.cmd('del_operations', uuid=port['operations']['un-deploy'])
                 time.sleep(15)  # if try to delete 2 ports without delay, one may have TOR out of sync
+
+
+class VtcIndividual(LibVirtServer):
+    pass

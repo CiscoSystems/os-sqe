@@ -1,4 +1,4 @@
-from lab.nodes.virtual_server import VirtualServer
+from lab.nodes.virtual_server import VirtualServer, LibVirtServer
 
 
 class Vtsr(VirtualServer):
@@ -19,3 +19,6 @@ class Vtsr(VirtualServer):
             ans = self.exe(command=cmd, is_warn_only=is_warn_only)
         return ans
 
+
+class VtsrIndividual(LibVirtServer):
+    pass

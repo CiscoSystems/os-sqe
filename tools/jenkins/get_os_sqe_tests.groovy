@@ -7,17 +7,21 @@ def shell(String command)
 	return "$sout $serr"
 }
 
-def tests = [starts_with]
+def tests = []
+if (starts_with.startsWith('perf'))
+	tests = ['perf-csr-0', 'perf-csr']
+else if (starts_with.startsWith('vts'))
+    tests = ['vts']
+
 
 def url = 'https://wwwin-gitlab-sjc.cisco.com/mercury/os-sqe/tree/master/configs/ha'
 ans = shell('curl ' + url)
 
-
-def regex = /title="${starts_with}.*\.yaml"/  // match things like title="xxx01-vts.yaml"
+def regex = /title="[\w-]+\.yaml"/  // match things like title="xxx-vts.yaml"
 def find_names = (ans =~ /$regex/)
 find_names.each{ s ->
-  a = s.split(' ')[0]
-  b = a.stripIndent(6).replace('"', '')
-  tests.push(b)
+  a = s.stripIndent(6).replace('"', '')
+  if (a.startsWith(starts_with))
+  	tests.push(a)
 }
 return tests.toSet().sort()

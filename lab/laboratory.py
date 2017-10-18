@@ -39,6 +39,7 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
         self.computes = []
         self.cephs = []
         self.vts = []
+        self.virtuals = []
         self.unknowns = []  # nodes detected to be connected to some switches, which is not a part of the lab
         self.wires = []
         self.is_sqe_user_created = False
@@ -50,7 +51,7 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
 
     @property
     def nodes_dic(self):
-        return {x.id: x for x in [self.oob] + [self.tor] + [self.mgm] + [self.vtc] + self.controls + self.computes + self.cephs + self.vts + self.vim_tors if x}
+        return {x.id: x for x in [self.oob] + [self.tor] + [self.mgm] + [self.vtc] + self.controls + self.computes + self.cephs + self.vts + self.vim_tors + self.virtuals if x}
 
     @property
     def switches(self):

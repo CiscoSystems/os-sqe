@@ -33,7 +33,7 @@ class TestCase(WithConfig, WithLogMixIn):
         assert type(test_dic) is dict, '{}: should be dictionery, no - please'.format(path)
         actual = set(test_dic.keys())
         assert actual == must_be, 'actual="{}", must be "{}"'.format(actual, must_be)
-        assert test_dic['Folder'] in self.KNOWN_LABS['tims']['folders']
+        assert test_dic['Folder'] in cloud.pod.tims.tims_folders.keys()
 
         self.title = test_dic['Title']
         self.folder = test_dic['Folder']
