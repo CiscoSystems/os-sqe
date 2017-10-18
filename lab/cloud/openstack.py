@@ -2,21 +2,17 @@ from lab.with_log import WithLogMixIn
 
 
 class OS(WithLogMixIn):
-    ROLE_CONTROLLER = 'controller'
-    ROLE_UCSM = 'ucsm'
-    ROLE_NETWORK = 'network'
-    ROLE_COMPUTE = 'compute'
-    ROLE_MEDIATOR = 'mediator'
+    def __repr__(self):
+        return u'Cloud {}'.format(self.name)
 
     def __init__(self, name, mediator, openrc_path):
-        self._provider_physical_network = 'Default Value Set In Cloud.__init__()'
-
-        self._openstackclient_version = None
         self.name = name
-        self.openrc_path = openrc_path
-        self._os_sqe_password = 'os-sqe'
         self.mediator = mediator    # Instance of LabServer child to be used to execute CLI commands for this cloud
         self.pod = mediator.pod     # Instance of class Laboratory (sigleton)
+        self._provider_physical_network = 'Default Value Set In Cloud.__init__()'
+
+        self.openrc_path = openrc_path
+        self._os_sqe_password = 'os-sqe'
         self._instance_counter = 0  # this counter is used to count how many instances are created via this class
         services_lst = self.os_host_list()
         control_names_in_cloud = set([x['Host Name'] for x in services_lst if x['Service'] == 'scheduler'])
@@ -33,29 +29,6 @@ class OS(WithLogMixIn):
     @property
     def computes(self):
         return self.pod.computes
-
-    @staticmethod
-    def process_openrc(openrc_as_string):
-        username, tenant, password, end_point = None, None, None, None
-        for line in openrc_as_string.split('\n'):
-            if 'OS_USERNAME' in line:
-                username = line.split('=')[-1].strip()
-            elif 'OS_TENANT_NAME' in line:
-                tenant = line.split('=')[-1].strip()
-            elif 'OS_PASSWORD' in line:
-                password = line.split('=')[-1].strip()
-            elif 'OS_AUTH_URL' in line:
-                end_point = line.split('=')[-1].strip()
-        return username, tenant, password, end_point
-
-    def __repr__(self):
-        return 'Cloud {}: {} {} {}'.format(self.name, self._username, self._password, self._end_point)
-
-    @property
-    def os_openstackclient_version(self):
-        if self._openstackclient_version is None:
-            self._openstackclient_version = self.os_cmd(cmd='openstack --version').split(' ')[-1]
-        return self._openstackclient_version
 
     @staticmethod
     def _add_name_prefix(name):
