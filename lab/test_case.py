@@ -23,6 +23,9 @@ class TestCase(WithConfig, WithLogMixIn):
         import yaml
         import time
 
+        self.tcr = None   # will be object of TestCaseResult() in self.after_run()
+        self.tims_id = None
+        self.tims_url = ''
         self.path = path
         self.is_noclean = is_noclean
         self.is_debug = is_debug
@@ -39,16 +42,11 @@ class TestCase(WithConfig, WithLogMixIn):
         self.folder = test_dic['Folder']
         self.description = test_dic['Description']
         self.unique_id = test_dic['UniqueID']
-
-        self.workers = self.create_test_workers(test_dic.pop('Workers'))
-
         self.cloud = cloud
         self.time = time.time()  # time when the object was constructed
 
-        self.tcr = None   # will be object of TestCaseResult() in self.after_run()
-        self.tims_id = None
-        self.tims_url = ''
-        self.cloud.pod.tims.publish(self)  # sould be the last oper in ctor since tims.publish checks some of attributes
+        self.workers = self.create_test_workers(test_dic.pop('Workers'))  # should be after self.cloud is assigned
+        self.cloud.pod.tims.publish(self)  # should be the last oper in ctor since tims.publish checks some of attributes
 
     def __repr__(self):
         return 'TC ' + self.path.split('-')[0] + ' ' + self.tims_url

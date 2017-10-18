@@ -27,7 +27,7 @@ class TestCaseWorker(WithLogMixIn):
         self.is_failed = False                                                 # might be set by self.fail()
         self.exceptions = []                                                   # any exceptions will be collected here
         self.status_dict = None                                                # will be set just before running multiprocessing.Pool.map() to multiprocessing.Manager().dict()
-        self.cloud = None                                                      # will be set just before running multiprocessing.Pool.map()
+        self.cloud = test_case.cloud
         self.args = {}                                                         # all arguments will be kept in this dict
         self.loop_counter = 0                                                  # counts loops executed
 
