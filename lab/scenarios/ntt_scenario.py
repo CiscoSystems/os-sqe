@@ -61,7 +61,6 @@ class NttScenario(TestCaseWorker):
             # trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
             # [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
         self.pod.mgm.exe(cmd='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple', is_as_sqe=True)
-        self.teardown_worker()
         self.cloud.os_quota_set()
 
     def loop_worker(self):
@@ -106,6 +105,8 @@ class NttScenario(TestCaseWorker):
 
         if 'ERROR' in ans:
             self.fail(ans.split('ERROR')[-1][-200:], is_stop_running=True)
+        elif 'Error' in ans:
+            self.fail(ans, is_stop_running=True)
         else:
             with self.pod.open_artifact('final_report.txt', 'a') as f:
                 f.write('csr: ' + self.csr_args + ' nfvbench ' + self.nfvbench_args + '\n')
@@ -142,13 +143,13 @@ class NttScenario(TestCaseWorker):
                 res.append('size={} rate={} Gbps'.format(mtu, gbps))
         self.worker_data = '; '.join(res)
 
-    @section(message='Tearing down (estimate 100 sec)')
-    def teardown_worker(self):
-        if not self.test_case.is_noclean and self.cloud:
-            self.cloud.os_cleanup(is_all=True)
-            if self.pod.driver == 'vts':
-                self.pod.vtc.r_vtc_delete_openstack()
-            # self.pod.mgmt.exe('rm -rf *')
+    # @section(message='Tearing down (estimate 100 sec)')
+    # def teardown_worker(self):
+    #     if not self.test_case.is_noclean:
+    #         self.cloud.os_cleanup(is_all=False)
+    #         if self.pod.driver == 'vts':
+    #             self.pod.vtc.r_vtc_delete_openstack()
+    #         # self.pod.mgmt.exe('rm -rf *')
 
 
 """
