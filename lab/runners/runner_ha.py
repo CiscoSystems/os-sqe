@@ -27,6 +27,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         import fabric.network
         import time
 
+        test_case.time = time.time()  # used to calculate duration of test
         manager = multiprocessing.Manager()
         status_dict = manager.dict()
 
@@ -81,19 +82,19 @@ class RunnerHA(WithConfig, WithLogMixIn):
 
     @staticmethod
     def init_cloud(pod_name, is_debug, test_paths):
-        from lab.deployers.deployer_existing import DeployerExisting
+        from lab.deployers.deployer_existing_cloud import DeployerExistingCloud
 
         if len(test_paths) == 1 and test_paths[0] == 'dev01-test-parallel.yaml':  # special test case to test infrastructure itself, does not require cloud
             return FakeCloud()
 
         if not is_debug:
-            deployer = DeployerExisting(lab_name=pod_name)
+            deployer = DeployerExistingCloud(lab_name=pod_name)
             cloud = deployer.execute({'clouds': [], 'servers': []})
             if len(cloud.computes) < 2:
                 raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(cloud))
             return cloud
         else:
-            return FakeCloud()  # debug mode just to show the time sequence of parrallel workers and there interactions
+            return FakeCloud()  # debug mode just to show the time sequence of parallel workers and there interactions
 
     def create_tests(self, test_paths, is_noclean, is_debug):
         from lab.test_case import TestCase

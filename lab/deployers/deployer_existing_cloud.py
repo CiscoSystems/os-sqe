@@ -1,7 +1,7 @@
 from lab.base_lab import LabWorker
 
 
-class DeployerExisting(LabWorker):
+class DeployerExistingCloud(LabWorker):
 
     @staticmethod
     def sample_config():
@@ -48,12 +48,7 @@ class DeployerExisting(LabWorker):
         if openrc_path is None:
             raise RuntimeError('{}: "{}" does not contain any valid cloud'.format(self, self.pod))
         mgm.exe(cmd='rm -f openrc && sudo cp {} openrc && sudo chown sqe.sqe openrc'.format(openrc_path), is_as_sqe=True)
-        return OS(name=self.pod, mediator=mgm, openrc_path='openrc')
+        return OS(name=self.pod.name, mediator=mgm, openrc_path='openrc')
 
     def execute(self, clouds_and_servers):
-        cloud = self.deploy_cloud(clouds_and_servers=clouds_and_servers)
-        return cloud
-
-if __name__ == '__main__':
-    d = DeployerExisting('g7-2')
-    d.execute({'clouds': [], 'servers': []})
+        return self.deploy_cloud(clouds_and_servers=clouds_and_servers)

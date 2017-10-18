@@ -13,13 +13,13 @@ def cmd():
     import inspect
     from fabric.operations import prompt
     import time
-    from lab.deployers.deployer_existing import DeployerExisting
+    from lab.deployers.deployer_existing_cloud import DeployerExistingCloud
     from lab.with_log import lab_logger
     from lab.laboratory import Laboratory
 
     def get_node_methodes(o, name):
         if name == 'cloud':
-            deployer = DeployerExisting(ip=o.mgmt.ssh_ip)
+            deployer = DeployerExistingCloud(ip=o.mgmt.ssh_ip)
             d = deployer.execute({'clouds': [], 'servers': []})
         elif device_name == 'lab':
             d = o
