@@ -150,7 +150,7 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
 
     def r_collect_info(self, regex, comment):
         body = ''
-        for node in self.nodes.values():
+        for node in self.computes + self.controls + self.cephs + ([self.vtc] if self.vtc else []):
             body += node.r_collect_info(regex=regex)
         self.log_to_artifact(name=comment.replace(' ', '-') + '.txt', body=body)
 
