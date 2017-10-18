@@ -50,7 +50,8 @@ class RunnerHA(WithConfig, WithLogMixIn):
         test_case.after_run(results=results)
         self.table.add_row([test_case.path, test_case.time, test_case.tcr.status, test_case.tcr.text, test_case.tcr.tims_url])
 
-        map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
+        if not test_case.is_debug:
+            map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
 
     def run(self, pod_name, test_regex, is_noclean, is_debug):
         import time
