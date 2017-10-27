@@ -108,7 +108,7 @@ class WithMercury(object):
         node_id_vs_node_class = {'mgm': MercuryMgm}
         for role_name, node_names_lst in pod.setup_data_dic['ROLES'].items():
             for node_name in node_names_lst:
-                node_id_vs_node_class[node_name] = {'control': MercuryController, 'compute': MercuryCompute, 'storage': MercuryCeph, 'vts': MercuryVts}[role_name]
+                node_id_vs_node_class[node_name] = {'control': MercuryController, 'compute': MercuryCompute, 'block_storage': MercuryCeph, 'vts': MercuryVts}[role_name]
 
         for node_id, node_dic in [('mgm', mgm_cfg)] + sorted(pod.setup_data_dic['SERVERS'].items()):
             cfg = {'id': node_id,
