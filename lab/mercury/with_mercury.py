@@ -147,7 +147,7 @@ class WithMercury(object):
     def process_vts_virtuals(pod, vts):
         import re
 
-        num = re.findall('\d{1,3}', vts.id)[0]
+        num = re.findall('\d{1,3}', vts.id)[-1]
 
         dic = {'proxy': None, 'virtual-on': vts.id,
                'ssh-username': pod.setup_data_dic['VTS_PARAMETERS']['VTC_SSH_USERNAME'],
