@@ -54,7 +54,7 @@ class NttScenario(TestCaseWorker):
             self.args['is-sriov'] = len(self.pod.computes[0].intel_virtual_nics_dic) >= 8
             self.pod.mgm.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             if self.pod.driver == 'vts':
-                for tor_name, tor_port in self.pod.setup_data['NFVBENCH']['tor_info'].items():
+                for tor_name, tor_port in self.pod.setup_data_dic['NFVBENCH']['tor_info'].items():
                     tor_port = 'Ethernet' + tor_port[-4:]
                     self.pod.vtc.r_vtc_add_host_to_inventory(server_name='nfvbench_tg', tor_name=tor_name, tor_port=tor_port)
 
