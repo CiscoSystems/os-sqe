@@ -64,7 +64,7 @@ class WithMercury(object):
             time.sleep(1)
             time.sleep(1)
 
-        if not is_interactive and '| CEPH                   | Success |' not in ans:
+        if not is_interactive and '| ORCHESTRATION          | Success  |' not in ans:
             raise RuntimeError('{} is not properly installed'.format(lab_name))
 
         _, setup_data_text, hostname, grep = ans.split(separator)
