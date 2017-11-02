@@ -64,7 +64,7 @@ class WithMercury(object):
             time.sleep(1)
             time.sleep(1)
 
-        if not is_interactive and '| ORCHESTRATION          | Success  |' not in ans:
+        if not is_interactive and '| ORCHESTRATION          | Success |' not in ans:
             raise RuntimeError('{} is not properly installed'.format(lab_name))
 
         _, setup_data_text, hostname, grep = ans.split(separator)
@@ -147,14 +147,14 @@ class WithMercury(object):
     def process_vts_virtuals(pod, vts):
         import re
 
-        num = re.findall('\d{1,3}', vts.id)[-1]
-
         dic = {'proxy': None, 'virtual-on': vts.id,
                'ssh-username': pod.setup_data_dic['VTS_PARAMETERS']['VTC_SSH_USERNAME'],
                'ssh-password': pod.setup_data_dic['VTS_PARAMETERS']['VTC_SSH_PASSWORD'], 'nics': []}
 
         ans = vts.exe('virsh list')
         for virsh_vm in ans.split('\r\n')[2:]:
+            dic['id'] = virsh_vm.split()[1]
+            num = re.findall('\d{1,3}', dic['id'])[-1]
             if 'vtsr' in virsh_vm:
                 dic['role'] = VtsrIndividual.__name__
                 dic['id'] = 'vtsr' + num
@@ -162,16 +162,14 @@ class WithMercury(object):
                 dic['proxy'] = pod.mgm
             elif 'vtc' in virsh_vm:
                 dic['role'] = VtcIndividual.__name__
-                dic['id'] = 'vtc' + num
                 dic['ssh-ip'] = pod.setup_data_dic['VTS_PARAMETERS']['VTS_VTC_API_IPS'][int(num)-1]
             else:
                 raise RuntimeError('Not known virsh VM runnning: ' + virsh_vm)
             node = VtcIndividual.create_node(pod=pod, dic=dic)
-            node.r_build_online()
+            # node.r_build_online()
             pod.virtuals.append(node)
             pod.vtc.individuals[node.id] = node
             pod.log(str(node) + ' processed\n\n')
-            break
 
     @staticmethod
     def process_nets(pod):

@@ -27,7 +27,8 @@ class VtsDisruptor(TestCaseWorker):
         assert self.method_to_disrupt in possible_methods
 
     def setup_worker(self):
-        pass
+        if len(self.pod.vts) < 2:
+            raise RuntimeError('This pod has no actual HA, single host runs all VTC virtuals: {}'.format(self.pod.vts[0].virtual_servers))
 
     def loop_worker(self):
         import re
