@@ -18,9 +18,9 @@ class OS(WithLogMixIn):
         control_names_in_cloud = set([x['Host Name'] for x in services_lst if x['Service'] == 'scheduler'])
         compute_names_in_cloud = set([x['Host Name'] for x in services_lst if x['Service'] == 'compute'])
         if set([x.id for x in self.computes]) != compute_names_in_cloud:
-            raise RuntimeError('computes known by cloud are different from computes known by pod')
+            raise RuntimeError('computes in cloud {} in pod {}'.format(compute_names_in_cloud, self.computes))
         if set([x.id for x in self.controls]) != control_names_in_cloud:
-            raise RuntimeError('controls known by cloud are different from ones from pod')
+            raise RuntimeError('controls in cloud {} in pod {}'.format(compute_names_in_cloud, self.controls))
 
     @property
     def controls(self):
