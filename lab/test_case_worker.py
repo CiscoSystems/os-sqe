@@ -119,6 +119,7 @@ class TestCaseWorker(WithLogMixIn):
         """This code is executed once when subprocess starts. This is the only entry point to the worker loop."""
         import os
         import time
+        import sys
 
         worker_parameters = 'ppid={} pid={} {}'.format(os.getppid(), os.getpid(), self.description)
         self.log(worker_parameters)
@@ -143,8 +144,10 @@ class TestCaseWorker(WithLogMixIn):
 
             self.log('finished after {} loops out of {} with data "{}", {}'.format(self.loop_counter, self.run, self.worker_data, self.status_dict))
         except Exception as ex:
-            self.exceptions.append(str(ex))
-            self.log_exception()
+            frame = sys.exc_traceback
+            while frame.tb_next:
+                frame = frame.tb_next
+            self.exceptions.append(str(ex).replace('\\', '') + ' ' + frame.tb_frame.f_code.co_filename + ':' + str(frame.tb_lineno))
         finally:
             time.sleep(1)  # sleep to align log output
             self.set_status(status=self.STATUS_FINISHED)

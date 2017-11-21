@@ -166,16 +166,16 @@ class Tims(WithLogMixIn, WithConfig):
         ans = str(self._api_post(operation=self._OPERATION_ENTITY, body=body))
         return ans.split('</ID>')[0].rsplit('>', 1)[-1]
 
-    def publish(self, tc):
+    def publish(self, tc, tcr=None):
         url_tmpl = 'http://tims/warp.cmd?ent={}'
         try:
-            if tc.tcr is None:
+            if tcr is None:
                 tims_id, up_or_cr = self._create_update_test_case(test_case=tc)
                 tc.set_tims_info(tims_id=tims_id, url_tmpl=url_tmpl)
                 tc.log(up_or_cr)
             else:
-                tims_id, up_or_cr = self._create_update_result(test_cfg_path=tc.path, test_case_id=tc.tims_id, text=tc.tcr.text, status=tc.tcr.status)
-                tc.tcr.tims_url = url_tmpl.format(tims_id)
-                tc.tcr.log(up_or_cr)
+                tims_id, up_or_cr = self._create_update_result(test_cfg_path=tc.path, test_case_id=tc.tims_id, text=tcr.text, status=tcr.status)
+                tcr.log(up_or_cr)
+                return url_tmpl.format(tims_id)
         except Exception:
             self.log_exception()

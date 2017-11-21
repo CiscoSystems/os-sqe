@@ -23,7 +23,6 @@ class TestCase(WithConfig, WithLogMixIn):
         import yaml
         import time
 
-        self.tcr = None   # will be object of TestCaseResult() in self.after_run()
         self.tims_id = None
         self.tims_url = ''
         self.path = path
@@ -89,17 +88,21 @@ class TestCase(WithConfig, WithLogMixIn):
                 assert len(wrong_names) == 0, '{}.{} has invalid names: "{}". Valid: {}'.format(worker, attr_name, wrong_names, worker_names_already_seen)
         return workers
 
-    def after_run(self, results):
+    def after_run(self, results, pretty_table):
         import time
 
-        self.time = time.time() - self.time
-        self.tcr = TestCaseResult(tect_case=self)
-        failes = []
+        execution_time = time.time() - self.time
+        tcr = TestCaseResult(tect_case=self)
+        tcr.status = tcr.PASSED
         for w in results:
-            self.tcr.text += str(w.worker_data)
-            failes.append(w.is_failed)
+            tcr.text += str(w.worker_data)
+            if w.is_failed:
+                tcr.status = tcr.FAILED
             exceptions_text = '\n'.join(w.exceptions)
             if exceptions_text:
-                self.tcr.text += exceptions_text
-        self.tcr.status = self.tcr.FAILED if any(failes) else self.tcr.PASSED
-        self.cloud.pod.tims.publish(tc=self)
+                tcr.status = tcr.FAILED
+                tcr.text += exceptions_text + '\n'
+                w.log('EXCEPTION {}'.format(exceptions_text))
+
+        tims_url = self.cloud.pod.tims.publish(tc=self, tcr=tcr)
+        pretty_table.add_row([self.path, execution_time, tcr.status, tcr.text, tims_url])

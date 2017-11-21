@@ -48,8 +48,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         results = pool.map(starter, workers)
         self.log('\n\n***PARALLEL EXECUTION FINISHED***\n\n')
 
-        test_case.after_run(results=results)
-        self.table.add_row([test_case.path, test_case.time, test_case.tcr.status, test_case.tcr.text, test_case.tcr.tims_url])
+        test_case.after_run(results=results, pretty_table=self.table)
 
         if not test_case.is_debug:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
