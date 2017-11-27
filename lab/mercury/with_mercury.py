@@ -40,7 +40,7 @@ class WithMercury(object):
         return klass
 
     @staticmethod
-    def create(lab_name, is_interactive=False):
+    def create(lab_name, allowed_drivers, is_interactive=False):
         import validators
         import yaml
         import time
@@ -69,8 +69,10 @@ class WithMercury(object):
 
         _, setup_data_text, hostname, grep = ans.split(separator)
         setup_data_dic = yaml.load(setup_data_text)
+        driver = setup_data_dic['MECHANISM_DRIVERS']
+        assert driver.lower() in allowed_drivers, 'driver {} not in {}'.format(driver, allowed_drivers)
         pod = Laboratory(name=lab_name,
-                         driver=setup_data_dic['MECHANISM_DRIVERS'],
+                         driver=driver,
                          release_tag=grep.split('\r\n')[1].split(':')[-1].strip(),
                          gerrit_tag=grep.split('\r\n')[2].split(':')[-1].strip(),
                          namespace=grep.split('\r\n')[3].split(':')[-1].strip(),

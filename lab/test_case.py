@@ -31,21 +31,20 @@ class TestCase(WithConfig, WithLogMixIn):
         self.body_text = self.read_config_from_file(config_path=path, directory='ha', is_as_string=True)
 
         test_dic = yaml.load(self.body_text)
-        must_be = {'Title', 'Folder', 'Description', 'UniqueID', 'Workers'}
-        assert type(test_dic) is dict, '{}: should be dictionery, no - please'.format(path)
+        must_be = {'Title', 'Folder', 'Description', 'UniqueID', 'PossibleDrivers', 'Workers'}
+        assert type(test_dic) is dict, '{}: should be dictionary, no - please'.format(path)
         actual = set(test_dic.keys())
         assert actual == must_be, 'actual="{}", must be "{}"'.format(actual, must_be)
-        assert test_dic['Folder'] in cloud.pod.tims.tims_folders.keys()
 
         self.title = test_dic['Title']
         self.folder = test_dic['Folder']
         self.description = test_dic['Description']
         self.unique_id = test_dic['UniqueID']
+        self.possible_drivers = test_dic['PossibleDrivers']
         self.cloud = cloud
         self.time = time.time()  # time when the object was constructed
 
         self.workers = self.create_test_workers(test_dic.pop('Workers'))  # should be after self.cloud is assigned
-        self.cloud.pod.tims.publish(self)  # should be the last oper in ctor since tims.publish checks some of attributes
 
     def __repr__(self):
         return 'TC ' + self.path.split('-')[0] + ' ' + self.tims_url

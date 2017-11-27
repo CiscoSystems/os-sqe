@@ -7,9 +7,9 @@ class DeployerExistingCloud(LabWorker):
     def sample_config():
         return '1.2.3.4'
 
-    def __init__(self, lab_name):
+    def __init__(self, lab_name, allowed_drivers):
         from lab.laboratory import Laboratory
-        self.pod = Laboratory.create(lab_name=lab_name)
+        self.pod = Laboratory.create(lab_name=lab_name, allowed_drivers=allowed_drivers)
 
     @staticmethod
     def _its_ospd_installation(lab, list_of_servers):
