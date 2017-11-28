@@ -7,8 +7,8 @@ class TestCaseResult(WithLogMixIn):
     FAILED = 'failed'
     SKIPED = 'skipped'
 
-    def __init__(self, tect_case):
-        self.name = 'TCR ' + tect_case.path.split('-')[0] + ' '
+    def __init__(self, tc):
+        self.name = 'TCR ' + tc.path.split('-')[0] + ' '
         self.text = ''
         self.status = ''
         self.tims_url = ''
@@ -87,7 +87,7 @@ class TestCase(WithConfig, WithLogMixIn):
         import time
 
         execution_time = time.time() - self.time
-        tcr = TestCaseResult(tect_case=self)
+        tcr = TestCaseResult(tc=self)
         tcr.status = tcr.PASSED
         for w in results:
             tcr.text += str(w.worker_data)

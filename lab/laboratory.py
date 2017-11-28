@@ -43,7 +43,7 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
         self.unknowns = []  # nodes detected to be connected to some switches, which is not a part of the lab
         self.wires = []
         self.is_sqe_user_created = False
-        self.tims = Tims(self)
+        self.tims = Tims(version=self.version)
 
     @property
     def version(self):
