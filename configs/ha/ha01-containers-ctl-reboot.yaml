@@ -1,0 +1,16 @@
+Folder: ha
+Title: containers restored after node reboot
+Description: Reboot ctl node and check that all containers are up
+UniqueID: ha01-containers
+PossibleDrivers: [vts, vpp]
+
+Workers:
+- class: lab.disruptors.node_disruptor.NodeDisruptor
+  name: dis1
+  delay: 0
+  run: 1
+  pause: 0
+  timeout: 300
+  disrupt_time: 30
+  node_to_disrupt: ctl1
+  method_to_disrupt: reboot
