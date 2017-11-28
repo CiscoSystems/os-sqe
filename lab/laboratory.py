@@ -47,7 +47,7 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
 
     @property
     def version(self):
-        return '{} {} {} {}'.format(self.release_tag, self.gerrit_tag, self.namespace, self.os_code_name)
+        return '{}({}){}'.format(self.release_tag, self.gerrit_tag, self.driver.upper())
 
     @property
     def nodes_dic(self):

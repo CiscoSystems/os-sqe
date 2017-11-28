@@ -10,6 +10,8 @@ from lab.nodes.vtsr import Vtsr, VtsrIndividual
 
 
 class WithMercury(object):
+    VTS = 'vts'
+    VPP = 'vpp'
 
     NETWORKS_DIC = {
         'a': Network(net_id='a', cidr='10.10.10.0/24', vlan=9999, is_via_tor=True,  pod='api', roles_must_present=[MercuryMgm, MercuryController, Vtc, MercuryVts]),
@@ -78,7 +80,7 @@ class WithMercury(object):
                          namespace=grep.split('\r\n')[3].split(':')[-1].strip(),
                          setup_data_dic=setup_data_dic)
         WithMercury.create_from_setup_data(pod=pod, mgm=mgm, is_interactive=is_interactive)
-        if pod.driver == 'vts':
+        if pod.driver == WithMercury.VTS:
             pod.driver_version = pod.vtc.r_vtc_get_version()
             pod.vtc.r_vtc_get_all()
         else:
@@ -92,7 +94,7 @@ class WithMercury(object):
         WithMercury.process_nets(pod=pod)
         WithMercury.process_switches(pod=pod)
 
-        if pod.driver == 'vts':
+        if pod.driver == WithMercury.VTS:
             cfg = {'id': 'vtc', 'role': Vtc.__name__,
                    'ssh-ip': pod.setup_data_dic['VTS_PARAMETERS']['VTS_VTC_API_VIP'],
                    'ssh-username': pod.setup_data_dic['VTS_PARAMETERS']['VTC_SSH_USERNAME'],
