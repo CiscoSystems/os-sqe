@@ -49,10 +49,6 @@ class TestCase(WithConfig, WithLogMixIn):
     def __repr__(self):
         return 'TC ' + self.path.split('-')[0] + ' ' + self.tims_url
 
-    def set_tims_info(self, tims_id, url_tmpl):
-        self.tims_id = tims_id
-        self.tims_url = url_tmpl.format(tims_id, 'test case')
-
     def create_test_workers(self, workers_lst):
         import importlib
 
@@ -103,5 +99,5 @@ class TestCase(WithConfig, WithLogMixIn):
                 tcr.text += exceptions_text + '\n'
                 w.log('EXCEPTION {}'.format(exceptions_text))
 
-        tims_url = self.cloud.pod.tims.publish(tc=self, tcr=tcr)
+        tims_url = self.cloud.pod.tims.publish_tcr(tc=self, tcr=tcr)
         pretty_table.add_row([self.path, execution_time, tcr.status, tcr.text, tims_url])

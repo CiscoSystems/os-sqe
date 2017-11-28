@@ -28,11 +28,13 @@ class RunnerHA(WithConfig, WithLogMixIn):
         import time
 
         test_case.time = time.time()  # used to calculate duration of test
+        test_case.cloud = self.cloud
         manager = multiprocessing.Manager()
         status_dict = manager.dict()
 
         workers = test_case.workers
         for worker in workers:
+            worker.cloud = self.cloud
             worker.status_dict = status_dict
             worker.set_status(worker.STATUS_CREATED)
             if not test_case.is_debug:

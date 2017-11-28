@@ -111,16 +111,16 @@ class Tims(WithLogMixIn, WithConfig):
         self._api_post(operation=self._OPERATION_UPDATE, body=body)
         if not case_id:
             case_id = self._search_test_case(logical_id=logical_id)
-            return case_id, 'created'
+            return case_id, 'NEW'
         else:
-            return case_id, 'updated'
+            return case_id, ''
 
     def _create_update_result(self, test_cfg_path, test_case_id, status, text):
         pending_logical_id = test_cfg_path + self.dima_common_part_of_logical_id
         pending_result_id = self._search_result(logical_id=pending_logical_id)
 
         if not pending_result_id:
-            return self._create_new_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, logical_id=pending_logical_id, desc=text, status=status), 'created'
+            return self._create_new_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, logical_id=pending_logical_id, desc=text, status=status), 'NEW'
 
         body = '''
             <Result>
@@ -141,7 +141,7 @@ class Tims(WithLogMixIn, WithConfig):
                    test_case_id=test_case_id, logical_id=pending_logical_id, result_id=pending_result_id, conf_id=self.conf_id)
 
         ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
-        return ans.split('</ID>')[0].rsplit('>', 1)[-1], 'updated'
+        return ans.split('</ID>')[0].rsplit('>', 1)[-1], ''
 
     def _create_new_result(self, test_cfg_path, test_case_id, logical_id, desc, status):
         body = '''
@@ -166,16 +166,12 @@ class Tims(WithLogMixIn, WithConfig):
         ans = str(self._api_post(operation=self._OPERATION_ENTITY, body=body))
         return ans.split('</ID>')[0].rsplit('>', 1)[-1]
 
-    def publish(self, tc, tcr=None):
-        url_tmpl = 'http://tims/warp.cmd?ent={}'
+    def publish_tcr(self, tc, tcr):
+        url_tmpl = 'http://tims/warp.cmd?ent='
         try:
-            if tcr is None:
-                tims_id, up_or_cr = self._create_update_test_case(test_case=tc)
-                tc.set_tims_info(tims_id=tims_id, url_tmpl=url_tmpl)
-                tc.log(up_or_cr)
-            else:
-                tims_id, up_or_cr = self._create_update_result(test_cfg_path=tc.path, test_case_id=tc.tims_id, text=tcr.text, status=tcr.status)
-                tcr.log(up_or_cr)
-                return url_tmpl.format(tims_id)
+            tc_id, tc_up_or_cr = self._create_update_test_case(test_case=tc)
+            tcr_id, tcr_up_or_cr = self._create_update_result(test_cfg_path=tc.path, test_case_id=tc_id, text=tcr.text, status=tcr.status)
+            self.log('<{}|{} {}> for <{}|{} {}> '.format(url_tmpl + tcr_id, tcr_up_or_cr, tcr.status, url_tmpl + tc_id, tc_up_or_cr, tc.path))
+            return url_tmpl + tcr_id
         except Exception:
             self.log_exception()

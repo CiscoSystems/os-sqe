@@ -65,10 +65,19 @@ class Vtc(VipServer):
     def show_vxlan_tunnel(self):
         return map(lambda vtf: vtf.show_vxlan_tunnel(), self.pod.get_vft())
 
-    def disrupt(self, method_to_disrupt, downtime):
+    def disrupt(self, node_to_disrupt, method_to_disrupt, downtime):
         import time
 
-        vts_host = self.hard
+        is_master = node_to_disrupt.startswith('master')
+        node_class = node_to_disrupt.split('-')[-1]
+        cluster = self.r_vtc_get_ha()
+
+        node_id = [x['hostname'] for x in cluster['vtc-ha:vtc-ha']['nodes']['node'] if x['original-state'] == ('Master' if is_master else 'Slave')][0]
+        node_id = node_id.replace('vtc', node_class)  # node_id might by vtcXX or vtsrXX
+
+        node_disrupt = self.individuals[node_id]
+
+        vts_host = node_disrupt.hard
 
         if method_to_disrupt == 'vm-shutdown':
             vts_host.exe(command='virsh suspend {}'.format(self.id))
@@ -179,6 +188,9 @@ class Vtc(VipServer):
             return response.text
         else:
             raise RuntimeError(response.text)
+
+    def r_vtc_get_ha(self):
+        return self.cmd('get_vtc_ha')
 
     def r_vtc_wait_cluster_formed(self, n_retries=1):
         import requests.exceptions

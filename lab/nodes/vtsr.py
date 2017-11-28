@@ -19,6 +19,41 @@ class Vtsr(VirtualServer):
             ans = self.exe(command=cmd, is_warn_only=is_warn_only)
         return ans
 
+    def disrupt(self, method_to_disrupt, downtime):
+        import time
+
+        vts_host = self.get_hardware_server()
+        if method_to_disrupt == 'vm-shutdown':
+            # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
+            vts_host.exe(command='virsh suspend xrnc{}'.format(self.get_node_id()[-1]))
+            time.sleep(downtime)
+            vts_host.exe(command='virsh resume xrnc{}'.format(self.get_node_id()[-1]))
+        elif method_to_disrupt == 'corosync-stop':
+            self.cmd('sudo service corosync stop', is_xrvr=False)
+            time.sleep(downtime)
+            self.cmd('sudo service corosync start', is_xrvr=False)
+        elif method_to_disrupt == 'ncs-stop':
+            self.cmd('sudo service ncs stop', is_xrvr=False)
+            time.sleep(downtime)
+            self.cmd('sudo service ncs start', is_xrvr=False)
+        elif method_to_disrupt == 'vm-reboot':
+            self.exe('set -m; sudo bash -c "ip link set dev eth0 down && ip link set dev eth1 down && sleep {0} && shutdown -r now" 2>/dev/null >/dev/null &'.format(downtime), is_warn_only=True)
+            time.sleep(downtime)
+        elif method_to_disrupt == 'isolate-from-mx':
+            # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
+            ans = vts_host.exe('ip l | grep mgmt | grep xrnc{}'.format(self.get_node_id()[-1]))
+            if_name = ans.split()[1][:-1]
+            vts_host.exe('ip l s dev {} down'.format(if_name))
+            time.sleep(downtime)
+            vts_host.exe('ip l s dev {} up'.format(if_name))
+        elif method_to_disrupt == 'isolate-from-t':
+            # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
+            ans = vts_host.exe('ip l | grep tenant | xrnc{}'.format(self.get_node_id()[-1]))
+            if_name = ans.split()[1][:-1]
+            vts_host.exe('ip l s dev {} down'.format(if_name))
+            time.sleep(downtime)
+            vts_host.exe('ip l s dev {} up'.format(if_name))
+
 
 class VtsrIndividual(LibVirtServer):
     pass
