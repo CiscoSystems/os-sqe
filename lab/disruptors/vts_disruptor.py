@@ -24,7 +24,7 @@ class VtsDisruptor(TestCaseWorker):
 
         assert self.disrupt_time > 0
         assert self.node_to_disrupt in possible_nodes, '{} not in {}, check {}'.format(self.node_to_disrupt, possible_nodes, self.test_case.path)
-        assert self.method_to_disrupt in possible_methods
+        assert self.method_to_disrupt in possible_methods, '{} not in {}, check {}'.format(self.method_to_disrupt, possible_methods, self.test_case.path)
 
     def setup_worker(self):
         if len(self.pod.vts) < 2:
@@ -32,4 +32,3 @@ class VtsDisruptor(TestCaseWorker):
 
     def loop_worker(self):
         self.pod.vtc.disrupt(node_to_disrupt=self.node_to_disrupt, method_to_disrupt=self.method_to_disrupt, downtime=self.disrupt_time)  # chekc inside that node is back after disruption
-
