@@ -3,12 +3,11 @@ from lab.with_config import WithConfig
 
 
 class Tims(WithLogMixIn, WithConfig):
-    MECHANISM_TO_TOPOLOGY = {'vts': 'VTS/VLAN', 'vpp': 'VPP/VLAN'}
     _OPERATION_ENTITY = 'entity'
     _OPERATION_UPDATE = 'update'
     _OPERATION_SEARCH = 'search'
 
-    def __init__(self, pod):
+    def __init__(self, version):
         import getpass
         import json       
         import os
@@ -16,19 +15,13 @@ class Tims(WithLogMixIn, WithConfig):
 
         cfg_dic = json.loads(requests.get(url=self.CONFIGS_REPO_URL + '/tims.json').text)
 
-        self.tims_url = cfg_dic['tims']['url']
         self.tims_project_id = cfg_dic['tims']['project_id']
         self.tims_db_name = cfg_dic['tims']['db_name']
         self.tims_folders = cfg_dic['tims']['folders']
         self.tims_project_id = cfg_dic['tims']['project_id']
 
-        self.conf_id = cfg_dic['tims']['configurations'][str(pod)]
-        self.branch = pod.git_repo_branch
-        self.topo = self.MECHANISM_TO_TOPOLOGY[pod.driver]
-        self.gerrit_tag = pod.gerrit_tag
-        self.dima_common_part_of_logical_id = ':{}-{}:{}'.format(self.branch, self.gerrit_tag, self.topo)
+        self.version = version
 
-        self.common_text = str(pod) + ' ' + str(pod.gerrit_tag) + ' ' + os.getenv('BUILD_URL', 'run manually out off jenkins')
         user_token = os.getenv('TIMS_USER_TOKEN', None)  # some Jenkins jobs define this variable in form user-token
         if user_token and user_token.count('-') == 1:
             username, token = user_token.split('-')
@@ -44,134 +37,98 @@ class Tims(WithLogMixIn, WithConfig):
                     break
 
         self.log('Using {} to report'.format(username))
-        self._xml_tims_wrapper = '''<Tims xmlns="http://{url}/namespace" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink"
-                                    xsi:schemaLocation="http://{url}/namespace http://{url}/xsd/Tims.xsd">
-                                    <Credential user="{user}" token="{token}"/>
-                                        {{body}}
-                                    </Tims>
-                                 '''.format(url=self.tims_url, user=username, token=token) if username else None
+        self.header = '<Tims\n\txsi:schemaLocation="http://tims.cisco.com/namespace http://tims.cisco.com/xsd/Tims.xsd"\n\txmlns="http://tims.cisco.com/namespace"\n\txmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n\t' + \
+                      'xmlns:xlink="http://www.w3.org/1999/xlink">\n\t<Credential user="{user}" token="{auth_token}"/>\n\t'.format(user=username, auth_token=token)
+        self.footer = '\n</Tims>\n'
 
     def __repr__(self):
         return u'TIMS'
 
-    def _api_post(self, operation, body):
+    def post(self, url, data):
         import requests
 
-        if not self._xml_tims_wrapper:
-            self.log_error('No way to detect the user who is running the test, nothing will be published in TIMS')
-            return False
-        else:
-            data = self._xml_tims_wrapper.format(body=body)
-            response = requests.post("http://{}/xml/{}/{}.svc".format(self.tims_url, self.tims_project_id, operation), data=data)
-            if u"Error" in response.content.decode():
-                raise RuntimeError(response.content)
-            return response.content
+        r = requests.post(url, data)
+        self.check(r)
+        return r.content
 
-    def _search_test_case(self, logical_id):
-        body = '''<Search scope="project" root="{}" entity="case" casesensitive="true">
-                    <TextCriterion operator="is">
-                        <FieldName><![CDATA[Logical ID]]></FieldName>
-                        <Value><![CDATA[{}]]></Value>
-                        </TextCriterion>
-                  </Search>'''.format(self.tims_project_id, logical_id)
+    def get(self, url):
+        import requests
 
-        res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
-        return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
+        r = requests.get(url)
+        self.check(r)
+        return r.content
 
-    def _search_result(self, logical_id):
-        body = '''<Search scope="project" root="{proj_id}" entity="result" casesensitive="true">
-                    <TextCriterion operator="is">
-                        <FieldName><![CDATA[Logical ID]]></FieldName>
-                        <Value><![CDATA[{logical_id}]]></Value>
-                        </TextCriterion>
-                  </Search>'''.format(proj_id=self.tims_project_id, logical_id=logical_id)
+    def check(self, r):
+        if 'Error' in r.content:
+            raise RuntimeError('{}: {} error {}'.format(self, r.request.url, r.content.split('Error')[1]))
 
-        res = self._api_post(operation=self._OPERATION_SEARCH, body=body)
-        return res.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in res else ''
+    def search_by_logical_id(self, logical_id, what):
+        data = self.header + '''<Search scope="project" root="{}" entity="{}" casesensitive="true">
+                                    <TextCriterion operator="is">
+                                        <FieldName><![CDATA[Logical ID]]></FieldName>
+                                        <Value><![CDATA[{}]]></Value>
+                                    </TextCriterion>
+                                </Search>'''.format(self.tims_project_id, what, logical_id) + self.footer
 
-    def _create_update_test_case(self, test_case):
-        logical_id = test_case.unique_id
-        case_id = self._search_test_case(logical_id=logical_id)
-        logical_or_case_id = '<ID xlink:href="http://{url}/xml/{c_id}/entity.svc">{c_id}</ID>\n<LogicalID>{l_id}</LogicalID>'.format(url=self.tims_url, c_id=case_id, l_id=logical_id) if case_id \
-            else '<LogicalID>{}</LogicalID>'.format(logical_id)
-        desc = 'actual config:\n' + test_case.body_text + '\nurl: https://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}\n'.format(test_case.path)
+        xml = self.post('http://tims.cisco.com/xml/{}/search.svc'.format(self.tims_project_id), data=data)  # http://wwwin-ces.cisco.com/rtis/tims/learning/xml/apiref/search.shtml
+        return xml.split('</SearchHit>')[0].rsplit('>', 1)[-1] if 'SearchHit' in xml else ''
 
-        body = '''
-        <Case>
-            <Title><![CDATA[{test_title}]]></Title>
-            <Description><![CDATA[{desc}]]></Description>
-            {id}
-            <WriteAccess>member</WriteAccess>
-            <ProjectID xlink:href="http://{url}/xml/{project_id}/project.svc">{project_id}</ProjectID>
-            <DatabaseID xlink:href="http://{url}/xml/{db_name}/database.svc">{db_name}</DatabaseID>
-            <FolderID xlink:href="http://{url}/xml/{folder_id}/entity.svc">{folder_id}</FolderID>
-        </Case>
-        '''.format(test_title=test_case.title, url=self.tims_url, desc=desc, id=logical_or_case_id, project_id=self.tims_project_id, folder_id=self.tims_folders[test_case.folder], db_name=self.tims_db_name)
+    def create_update_test_case(self, tc):
+        tc_id = self.search_by_logical_id(logical_id=tc.unique_id, what='case')
+        id_str = '<ID xlink:href="http://tims.cisco.com/xml/{0}/entity.svc">{0}</ID>'.format(tc_id) if tc_id else ''
+        desc = 'actual config:\n' + tc.body_text + '\nurl:\nhttps://raw.githubusercontent.com/CiscoSystems/os-sqe/master/configs/ha/{}\n'.format(tc.path)
 
-        self._api_post(operation=self._OPERATION_UPDATE, body=body)
-        if not case_id:
-            case_id = self._search_test_case(logical_id=logical_id)
-            return case_id, 'NEW'
-        else:
-            return case_id, ''
+        data = self.header + '''<Case>
+                                    <Title><![CDATA[{title}]]></Title>
+                                    <Description><![CDATA[{desc}]]>
+                                    </Description>
+                                    <LogicalID>{log_id}</LogicalID>
+                                    {id_str}
+                                    <FolderID xlink:href="http://tims.cisco.com/xml/{folder_id}/entity.svc">{folder_id}</FolderID>
+                                </Case>'''.format(title=tc.title, desc=desc, log_id=tc.unique_id, id_str=id_str, folder_id=self.tims_folders[tc.folder]) + self.footer
 
-    def _create_update_result(self, test_cfg_path, test_case_id, status, text):
-        pending_logical_id = test_cfg_path + self.dima_common_part_of_logical_id
-        pending_result_id = self._search_result(logical_id=pending_logical_id)
+        xml = self.post(url='http://tims.cisco.com/xml/{}/update.svc'.format(self.tims_project_id), data=data)
+        return xml.split('</ID>')[0].rsplit('>', 1)[-1]
 
-        if not pending_result_id:
-            return self._create_new_result(test_cfg_path=test_cfg_path, test_case_id=test_case_id, logical_id=pending_logical_id, desc=text, status=status), 'NEW'
+    def create_update_result(self, tc_id, tc_unique_id, status, text):
 
-        body = '''
-            <Result>
-                <Title><![CDATA[Result {test_cfg_path}]]></Title>
-                <Description><![CDATA[{desc}]]></Description>
-                <ID xlink:href="http://{url}/xml/{result_id}/entity.svc">{result_id}</ID>
-                <LogicalID><![CDATA[{logical_id}]]></LogicalID>
-                <WriteAccess>member</WriteAccess>
-                <ListFieldValue multi-value="true">
-                    <FieldName><![CDATA[ Software Version ]]></FieldName>
-                    <Value><![CDATA[ {mercury_version} ]]></Value>
-                </ListFieldValue>
-                <Status>{status}</Status>
-                <ConfigID xlink:href="http://{url}/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
-                <CaseID xlink:href="http://{url}/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
-            </Result>
-        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, desc=text, status=status, mercury_version=self.gerrit_tag,
-                   test_case_id=test_case_id, logical_id=pending_logical_id, result_id=pending_result_id, conf_id=self.conf_id)
+        logical_id = tc_unique_id + '-' + self.version
+        tcr_id = self.search_by_logical_id(logical_id=logical_id, what='result')
 
-        ans = self._api_post(operation=self._OPERATION_UPDATE, body=body)
-        return ans.split('</ID>')[0].rsplit('>', 1)[-1], ''
+        id_str = '<ID xlink:href="http://tims.cisco.com/xml/{0}/entity.svc">{0}</ID>'.format(tcr_id) if tcr_id else ''
+        data = self.header + '''<Result>
+                                    <Title><![CDATA[for {version}]]></Title>
+                                    <Description><![CDATA[{desc}]]></Description>
+                                    <LogicalID>{logical_id}</LogicalID>
+                                    {id_str}
+                                    <ListFieldValue multi-value="false">
+                                        <FieldName><![CDATA[ Software Version ]]></FieldName>
+                                        <Value><![CDATA[ {version} ]]></Value>
+                                    </ListFieldValue>
+                                    <Status>{status}</Status>
+                                    <CaseID xlink:href="http://tims.cisco.com/xml/{tc_id}/entity.svc">{tc_id}</CaseID>
+                                </Result>'''.format(logical_id=logical_id, id_str=id_str, desc=text, status=status, version=self.version, tc_id=tc_id) + self.footer
 
-    def _create_new_result(self, test_cfg_path, test_case_id, logical_id, desc, status):
-        body = '''
-        <Result>
-                <Title><![CDATA[for {test_cfg_path}]]></Title>
-                <Description><![CDATA[{description}]]></Description>
-                <LogicalID><![CDATA[{logical_id}]]></LogicalID>
-                <Owner>
-                        <UserID>kshileev</UserID>
-                </Owner>
-                <ListFieldValue multi-value="true">
-                    <FieldName><![CDATA[ Software Version ]]></FieldName>
-                    <Value><![CDATA[ {mercury_version} ]]></Value>
-                </ListFieldValue>
-                <Status>{status}</Status>
-                <CaseID xlink:href="http://{url}/xml/{test_case_id}/entity.svc">{test_case_id}</CaseID>
-                <ConfigID xlink:href="http://{url}/xml/{conf_id}/entity.svc">{conf_id}</ConfigID>
-
-        </Result>
-        '''.format(test_cfg_path=test_cfg_path, url=self.tims_url, test_case_id=test_case_id, logical_id=logical_id, description=desc, mercury_version=self.gerrit_tag, status=status, conf_id=self.conf_id)
-
-        ans = str(self._api_post(operation=self._OPERATION_ENTITY, body=body))
-        return ans.split('</ID>')[0].rsplit('>', 1)[-1]
+        xml = self.post(url='http://tims.cisco.com/xml/{}/update.svc'.format(self.tims_project_id), data=data)
+        return xml.split('</ID>')[0].rsplit('>', 1)[-1]
 
     def publish_tcr(self, tc, tcr):
         url_tmpl = 'http://tims/warp.cmd?ent='
         try:
-            tc_id, tc_up_or_cr = self._create_update_test_case(test_case=tc)
-            tcr_id, tcr_up_or_cr = self._create_update_result(test_cfg_path=tc.path, test_case_id=tc_id, text=tcr.text, status=tcr.status)
-            self.log('<{}|{} {}> for <{}|{} {}> '.format(url_tmpl + tcr_id, tcr_up_or_cr, tcr.status, url_tmpl + tc_id, tc_up_or_cr, tc.path))
+            tc_id = self.create_update_test_case(tc=tc)
+            tcr_id = self.create_update_result(tc_id=tc_id, tc_unique_id=tc.unique_id, status=tcr.status, text=tcr.text)
+            self.log('<{}|{}>: <{}|{}> '.format(url_tmpl + tc_id, tc.path, url_tmpl + tcr_id, tcr.status))
             return url_tmpl + tcr_id
         except Exception:
             self.log_exception()
+
+
+if __name__ == '__main__':
+    from lab.test_case import TestCase, TestCaseResult
+
+    tims = Tims(version='2.2.5(11577)VTS')
+    tc = TestCase(path='ha01-containers-ctl-reboot.yaml', is_debug=True, is_noclean=False, cloud=None)
+    tcr = TestCaseResult(tc=tc)
+    tcr.status = tcr.FAILED
+    tcr.text = 'run to test TIMS from tims.py'
+    tims.publish_tcr(tc=tc, tcr=tcr)
