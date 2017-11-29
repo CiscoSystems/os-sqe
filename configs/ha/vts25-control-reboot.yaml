@@ -2,7 +2,7 @@ Folder: NEGATIVE
 Title: Control node reboot
 Description: Do OS instance create-ping once then in the middle do control reboot then delete OS instance
 UniqueID: os-sqe-vts25
-
+PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

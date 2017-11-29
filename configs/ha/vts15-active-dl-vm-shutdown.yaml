@@ -1,8 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Active DL VTS libvirt VM shutdown
 Description: Do OS instance create-ping once then in the middle do active dl vm shutdown then delete OS instance
 UniqueID: os-sqe-vts15
-
+PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

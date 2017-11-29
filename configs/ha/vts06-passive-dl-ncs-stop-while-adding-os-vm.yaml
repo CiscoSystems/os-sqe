@@ -1,8 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Passive DL ncs stop while adding OS servers
 Description: Do OS instance create-ping-delete cycle, at the same time do passive dl ncs stop in a cycle
 UniqueID: os-sqe-vts06
-
+PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

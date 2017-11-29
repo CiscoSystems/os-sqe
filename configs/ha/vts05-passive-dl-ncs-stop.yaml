@@ -1,7 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Passive DL ncs stop
 Description: Do OS instance create-ping once then in the middle do passive dl ncs stop then delete OS instance
 UniqueID: os-sqe-vts05
+PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

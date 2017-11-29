@@ -2,6 +2,7 @@ Folder: Automation itself tests
 Title: Test parallel workers
 Description: Test to check that parallel infrastructure actually works
 UniqueID: os-sqe-dev01
+PossibleDrivers: [vts, vpp]
 
 Workers:
 - class: lab.monitors.empty_monitor.EmptyMonitor

@@ -1,8 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Both VTC libvirt vm shutdown
 Description: Do OS instance create-ping once then in the middle do both vtc vm shutdown then adding os vm then delete OS instance
 UniqueID: os-sqe-vts18
-
+PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

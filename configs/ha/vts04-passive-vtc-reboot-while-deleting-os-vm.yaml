@@ -1,7 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Passive VTC reboot while deleting OS servers
 Description: Do OS instance create-ping-delete cycle, at the same time do passive vtc reboot in a cycle
 UniqueID: os-sqe-vts04
+PossibleDrivers: [vts]
 
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor

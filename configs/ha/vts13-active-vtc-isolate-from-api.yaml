@@ -1,8 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Active VTC isolate api
 Description: Do OS instance create-ping once then in the middle do active vtc isolate from api then delete OS instance
 UniqueID: os-sqe-vts13
-
+PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: Vts`Disruptor

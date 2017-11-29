@@ -2,7 +2,6 @@ Folder: Automation itself tests
 Title: Test VTS disruptor
 Description: Runs a number of VTS disruptors
 UniqueID: os-sqe-dev02
-UniqueID: os-sqe-dev02
 PossibleDrivers: [vts]
 
 Workers:

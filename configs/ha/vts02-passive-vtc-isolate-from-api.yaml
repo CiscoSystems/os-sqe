@@ -1,7 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Passive VTC isolate from api
 Description: Do OS instance create-ping once then in the middle do passive vtc isolate from api then delete OS instance
 UniqueID: os-sqe-vts02
+PossibleDrivers: [vts]
 
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor

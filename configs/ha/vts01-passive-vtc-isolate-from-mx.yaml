@@ -1,7 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Passive VTC isolate from mx
 Description: Do OS instance create-ping once then in the middle do passive vtc isolate from mx then delete OS instance
 UniqueID: os-sqe-vts01
+PossibleDrivers: [vts]
 
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor

@@ -77,7 +77,7 @@ class WithLogMixIn(object):
         'minutes': 'int: 10 -> filter out all messages older then 10 minutes ago, 0 means no filter'}
         """
 
-        cmd = "grep -r '{}' {} ".format(regex, log_files)
+        cmd = "sudo grep -r '{}' {} ".format(regex, log_files)
         cmd += 'sed -n "/^$(date +%Y-%m-%d\ %H:%M --date="{min} min ago")/, /^$(date +%Y-%m-%d\ %H:%M)/p" '.format(min=minutes) if minutes else ''
         return cmd
 

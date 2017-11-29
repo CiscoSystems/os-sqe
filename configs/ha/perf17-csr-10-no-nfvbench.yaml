@@ -1,10 +1,9 @@
-Folder: VTS PERF AND SCALE
+Folder: perf
 Title: 10 CSR per compute, no nfvbench
 Description: runs number of perfomance benchmarks described in https://cisco.jiveon.com/docs/DOC-1711443. Target architecture is defined by pod on which this test is run.
 UniqueID: os-sqe-perf17
-
+PossibleDrivers: [vts, vpp]
 Workers:
-
 - class: lab.scenarios.ntt_scenario.NttScenario
   name: NttScenario
   delay: 0

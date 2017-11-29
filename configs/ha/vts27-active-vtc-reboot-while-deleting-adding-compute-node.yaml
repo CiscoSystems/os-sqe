@@ -1,8 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Active VTC reboot while adding compute node
 Description: Do compute node delete-add cycle, at the same time do active vtc reboot cycle
 UniqueID: os-sqe-vts27
-
+PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor

@@ -1,8 +1,8 @@
-Folder: HIGH AVAILABILITY
+Folder: ha
 Title: Active VTC isolate XRNC fomr mx
 Description: Do OS instance create-ping once then in the middle do active vtc xrnc isolate from mx then delete OS instance
 UniqueID: os-sqe-vts16
-
+PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: VtsMonitor
