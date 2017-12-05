@@ -175,17 +175,18 @@ class LabServer(LabNode):
             self.exe(cmd='git checkout tags/{0}'.format(tags), in_dir=local_repo_dir, is_as_sqe=is_as_sqe)
         return repo_abs_path
 
-    def r_curl(self, url, size, checksum, loc_abs_path):
+    def r_curl(self, url, size, checksum, abs_path=None):
         from os import path
 
-        if loc_abs_path[0] not in ['/', '~']:
-            raise ValueError('loc_abs_path needs to be full path')
+        abs_path = '~/' + url.split('/')[-1] if not abs_path else abs_path
+        if abs_path[0] not in ['/', '~']:
+            raise ValueError('abs_path needs to be full path')
         url = url.strip().strip('\'')
 
-        cache_abs_path = path.join('/tmp', path.basename(loc_abs_path))
+        cache_abs_path = path.join('/tmp', path.basename(abs_path))
 
-        if path.dirname(loc_abs_path) not in ['~', '.', '/tmp', '/var/tmp', '/var', '/root']:
-            self.exe('mkdir -p {0}'.format(path.dirname(loc_abs_path)), is_as_sqe=True)
+        if path.dirname(abs_path) not in ['~', '.', '/tmp', '/var/tmp', '/var', '/root']:
+            self.exe('mkdir -p {0}'.format(path.dirname(abs_path)), is_as_sqe=True)
 
         while True:
             self.exe('test -e {c} || curl --silent --remote-time {url} -o {c}'.format(c=cache_abs_path, url=url), is_as_sqe=True)  # download to cache directory and use as cache
@@ -200,7 +201,8 @@ class LabServer(LabNode):
                 else:
                     raise RuntimeError('image described here {}.txt has wrong checksum. Check it manually'.format(url))
 
-        self.exe('rm -f {l} && cp {c} {l}'.format(l=loc_abs_path, c=cache_abs_path), is_as_sqe=True)
+        self.exe('rm -f {l} && cp {c} {l}'.format(l=abs_path, c=cache_abs_path), is_as_sqe=True)
+        return abs_path
 
     def r_get_file_from_dir(self, rem_rel_path, in_dir='.', loc_abs_path=None):
         """Get remote file as string or local file if local_path is specified
@@ -214,15 +216,22 @@ class LabServer(LabNode):
         else:
             return self.exe(cmd='sudo cat ' + rem_rel_path, in_dir=in_dir, is_as_sqe=True)
 
-    def r_put_string_to_file_in_dir(self, string_to_put, rem_rel_path, in_dir='.'):
-        if '/' in rem_rel_path:
+    def r_put_string_to_file_in_dir(self, str_to_put, rem_file_name, is_as_sqe, in_dir='.'):
+        """Put string as remote file
+        :param str_to_put: string
+        :param rem_file_name: remote file name without path
+        :param in_dir: absolute or relative to ~ path to remote folder
+        :return: abs remote path
+        """
+        if '/' in rem_file_name:
             raise SyntaxError('rem_rel_path can not contain /, use in_dir instead')
 
         sudo = 'sudo ' if in_dir.startswith('/') else ''
 
         if in_dir not in ['.', '~', '/var', '/tmp', '/var/tmp']:
-            self.exe(cmd=sudo + 'mkdir -p ' + in_dir, is_as_sqe=True)
-        self.exe(cmd=sudo + 'echo ' + string_to_put + ' > ' + rem_rel_path, in_dir=in_dir)
+            self.exe(cmd=sudo + 'mkdir -p ' + in_dir, is_as_sqe=is_as_sqe)
+        self.exe(cmd=sudo + 'echo "' + str_to_put + '" > ' + rem_file_name, in_dir=in_dir, is_as_sqe=is_as_sqe)
+        return in_dir + '/' + rem_file_name
 
     def r_is_online(self):
         import socket

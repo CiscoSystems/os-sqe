@@ -17,11 +17,11 @@ class Vtc(VipServer):
     """
 
     API_CALLS = {
-        'get_vtc_ha':            {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/vtc-ha?deep',                             'cli': 'show configuration vtc-ha'},
-        'get_openstack':         {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/openstack?deep',                          'cli': 'show configuration openstack vmm'},
         'get_devices':           {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/cisco-vts/devices?deep',                  'cli': 'show configuration cisco-vts devices device'},
-        'get_servers':           {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/cisco-vts/uuid-servers?deep',             'cli': 'show configuration cisco-vts uuid-servers'},
+        'get_openstack':         {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/openstack?deep',                          'cli': 'show configuration openstack vmm'},
         'get_pools':             {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/resource-pools?deep',                     'cli': 'show configuration resource-pools'},
+        'get_servers':           {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/cisco-vts/uuid-servers?deep',             'cli': 'show configuration cisco-vts uuid-servers'},
+        'get_vtc_ha':            {'rest': '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/vtc-ha?deep',                             'cli': 'show configuration vtc-ha'},
 
         'del_port':              {'rest': '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port', 'cli': ''},
         'del_network':           {'rest': '-XDELETE https://{ip}:8888/api/running/openstack/vmm/{uuid}/network', 'cli': ''},
@@ -37,6 +37,31 @@ class Vtc(VipServer):
                                   'json': '{"cisco-vts:ports": {"port": [{"name": "PORT", "connection-type": "cisco-vts-identities:server", "servers": {"server": [{"name": "NAME", "type": "cisco-vts-identities:baremetal", "interface-name": "eth0", "ip": "1.1.1.1"}]}}]}}'
                                  }
     }
+
+
+    def r_vtc_get_devices(self):
+        return self.cmd('get_devices')
+
+    def r_vtc_get_openstack(self):
+        from lab.cloud.cloud_network import CloudNetwork
+
+        a = self.cmd('get_openstack')['cisco-vts-openstack:openstack']['vmm'][0]
+        net_dics = a.get('network', [])
+        servers = a.get('servers', [])
+        nets = []
+        for subnet_dic in a.get('subnet', []):
+            net_dic = [x for x in net_dics if x['id'] == subnet_dic['network-id']][0]
+            nets.append(CloudNetwork(cloud=None, net_dic=net_dic, subnet_dic=subnet_dic))
+        return nets, servers
+
+    def r_vtc_get_pools(self):
+        return self.cmd('get_pools')
+
+    def r_vtc_get_servers(self):
+        return self.cmd('get_servers')['cisco-vts:uuid-servers']['uuid-server']
+
+    def r_vtc_get_ha(self):
+        return self.cmd('get_vtc_ha')
 
     def __init__(self, pod, dic):
         super(Vtc, self).__init__(pod=pod, dic=dic)
@@ -189,9 +214,6 @@ class Vtc(VipServer):
         else:
             raise RuntimeError(response.text)
 
-    def r_vtc_get_ha(self):
-        return self.cmd('get_vtc_ha')
-
     def r_vtc_wait_cluster_formed(self, n_retries=1):
         import requests.exceptions
 
@@ -215,7 +237,7 @@ class Vtc(VipServer):
 
     def r_collect_info(self, regex):
         body = ''
-        for cmd in [self.log_grep_cmd(log_files='/opt/vts/log/nso/*', regex=regex), self.log_grep_cmd(log_files='/opt/vts/log/nso/localhost\:8888.access', regex='HTTP/1.1" 40')]:
+        for cmd in [self.log_grep_cmd(log_files='/opt/vts/log/nso/', regex=regex), self.log_grep_cmd(log_files='/opt/vts/log/nso/localhost\:8888.access', regex='HTTP/1.1" 40')]:
             ans = self.exe(cmd, is_warn_only=True)
             body += self.single_cmd_output(cmd=cmd, ans=ans)
         return body
@@ -319,26 +341,27 @@ class Vtc(VipServer):
     @decorators.section('Add baremetal to VTC host inventory')
     def r_vtc_add_host_to_inventory(self, server_name, tor_name, tor_port):
         """
-        :param server_name: name of server as you need to have it in barametal inventory, e.g. nfvbench_tg
-        :param tor_name: name of TOR as it's seen in VTC get devices API CALL, e.g. TORSWITCHA
-        :param tor_port:  TOR switch port to which this server is connected e.g. Ethernet1/19
-        :return: nothing
+        :param server_name: name of server as you need to have it in bare metal inventory, e.g. nfvbench_tg
+        :param tor_name: name of TOR as it's seen in VTC get_devices API CALL, e.g. TORSWITCHA
+        :param tor_port: TOR switch port to which this server is connected e.g. Ethernet1/19
+        :return: json with result of operation
         """
-        self.cmd(cmd='patch_device_port', uuid=tor_name, dic=self.API_CALLS['patch_device_port']['json'].replace('NAME', server_name).replace('PORT', tor_port))
+        return self.cmd(cmd='patch_device_port', uuid=tor_name, dic=self.API_CALLS['patch_device_port']['json'].replace('NAME', server_name).replace('PORT', tor_port))
 
     def r_vtc_create_border_leaf_port(self, os_networks):
         import uuid
         import json
         from collections import OrderedDict
 
-        a = self.cmd('get_pools')
-        vlan_start, vlan_end = 1 ,2
+        pools = self.r_vtc_get_pools()
+        vlan_start, vlan_end = 1, 2
 
         vlan = (vlan_start + vlan_end) / 2
         srvs = self.cmd(cmd='get_servers')
         mgmt_srv = [srv for srv in srvs if 'baremetal' in srv['server-type'] and 'nfvbench' not in srv['server-id']][0]
         tenant = 'admin'
 
+        r = []
         for network in os_networks:
             port_id = str(uuid.uuid4())
             new_uuid = str(uuid.uuid4())
@@ -356,21 +379,21 @@ class Vtc(VipServer):
             port_data = {'port': port_dict}
 
             port_json = json.dumps(port_data)
-            self.cmd(cmd='put_port', ).put(url='/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/{1}'.format(tenant, port_id), data=port_json)
+            r.append(self.cmd(cmd='put_port', ).put(url='/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/{1}'.format(tenant, port_id), data=port_json))
+        pass
 
-    def r_vtc_delete_border_leaf_port(self):
-        import time
+    def r_vtc_setup(self):
+        servers = self.r_vtc_get_servers()
+        for dic in self.pod.setup_data_dic['TORSWITCHINFO']['SWITCHDETAILS']:
+            tor_port = dic['br_mgmt_port_info']
+            tor_name = dic['hostname']
+            if not [s for s in servers if tor_name in s['torname'] and tor_port in s['portname']]:
+                self.pod.vtc.r_vtc_add_host_to_inventory(server_name='vmtp', tor_name=tor_name, tor_port=tor_port)
 
-        ports = self.cmd('get_ports')
-        if len(ports) == 0:
-            return
-
-        baremetal_host_ids = [srv for srv in self.cmd('get_servers') if 'baremetal' in srv['server-type']]
-
-        for port in ports:
-            if port['biding-host-id'] in baremetal_host_ids:
-                self.cmd('del_operations', uuid=port['operations']['un-deploy'])
-                time.sleep(15)  # if try to delete 2 ports without delay, one may have TOR out of sync
+    @decorators.section(message='Detach border leaf')
+    def r_vtc_del_border_leaf_ports(self):
+        os = self.r_vtc_get_openstack()
+        pass
 
 
 class VtcIndividual(LibVirtServer):

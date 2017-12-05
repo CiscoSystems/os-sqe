@@ -3,67 +3,36 @@ from lab.decorators import section
 
 class CloudImage(object):
     IMAGES = {'sqe-iperf': 'http://172.29.173.233/cloud-images/os-sqe-localadmin-ubuntu.qcow2',
-              'CSR1KV': 'http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2',
+              'sqe-csr': 'http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2',
               'nfvbenchvm': 'http://172.29.173.233/cloud-images/testpmdvm-latest.qcow2'}
 
-    SQE_PERF = 'sqe-perf'
+    SQE_PERF = 'sqe-iperf'
     FOR_CSR = 'sqe-csr'
 
-    def __init__(self, cloud, image_dic):
+    def __init__(self, cloud, image_dic, username=None, password=None):
         self.cloud = cloud
-        self._dic = image_dic
+        self.dic = image_dic
+        self.username = username
+        self.password = password
 
     @property
     def id(self):
-        return self._dic['id']
+        return self.dic['id']
 
     @property
     def name(self):
         import re
 
-        if '(' in self._dic['name']:
-            self._dic['name'], self._dic['id'] = re.findall('(.*) \((.*)\)', self._dic['name'])[0]
-        return self._dic['name']
-
-    @property
-    def url(self):
-        if 'url' not in self._dic:
-            self._read_image_properties()
-        return self._dic['url']
+        if '(' in self.dic['name']:
+            self.dic['name'], self.dic['id'] = re.findall('(.*) \((.*)\)', self.dic['name'])[0]
+        return self.dic['name']
 
     @property
     def checksum(self):
-        if 'checksum' not in self._dic:
-            self._read_image_properties()
-        return self._dic['checksum']
-
-    @property
-    def size(self):
-        if 'size' not in self._dic:
-            self._read_image_properties()
-        return self._dic['size']
-
-    @property
-    def loc_abs_path(self):
-        if 'loc_abs_path' not in self._dic:
-            self._read_image_properties()
-        return self._dic['loc_abs_path']
-
-    @property
-    def username(self):
-        if 'username' not in self._dic:
-            self._read_image_properties()
-        return self._dic['username']
-
-    @property
-    def password(self):
-        if 'password' not in self._dic:
-            self._read_image_properties()
-        return self._dic['password']
+        return self.dic['checksum']
 
     @staticmethod
     def read_image_properties(name):
-        from os import path
         import requests
 
         url = CloudImage.IMAGES[name]
@@ -74,43 +43,31 @@ class CloudImage(object):
             if not r.ok:
                 raise RuntimeError(r.url + ': ' + r.reason)
             checksum, _, size, username, password = r.text.split()
-            return url, checksum, size, username, password, path.basename(url)
+            return url, checksum, size, username, password
         except ValueError:
             raise ValueError(url_txt + ' has wrong body, expected checksum file_name size username password')
-
-    def _read_image_properties(self):
-        self._dic['url'], self._dic['checksum'], self._dic['size'], self._dic['username'], self._dic['password'], self._dic['loc_abs_path'] = self.read_image_properties(name=self.name) if self.name in self.IMAGES else 6 * ['fake']
 
     @staticmethod
     @section('Creating custom image (estimate 30 sec)')
     def create(image_name, cloud):
-        image = CloudImage(cloud=cloud, image_dic={'name': image_name})
+        a = cloud.os_cmd(cmd='openstack image show -f json ' + image_name,  is_warn_only=True)
+        status = {'checksum': 0, 'status': 'no'} if 'Could not find resource' in a else a
 
-        status = cloud.os_image_show(image.name)
-
-        if not status or status['checksum'] != image.checksum:
-            cloud.mediator.r_curl(url=image.url, size=image.size, checksum=image.checksum, loc_abs_path=image.loc_abs_path)
-            cloud.os_cmd('openstack image create {} --public --disk-format qcow2 --container-format bare --file {}'.format(image_name, image.loc_abs_path))
+        url, checksum, size, username, password = CloudImage.read_image_properties(name=image_name)
+        if status['checksum'] != checksum:
+            if status['status'] != 'no':
+                cloud.os_cmd(cmd='openstack image delete ' + status['id'], comment=status['name'])
+            abs_path = cloud.mediator.r_curl(url=url, size=size, checksum=checksum)
+            created = cloud.os_cmd('openstack image create {} --public --disk-format qcow2 --container-format bare --file {} -f json'.format(image_name, abs_path))
+            image = CloudImage(cloud=cloud, image_dic=created, username=username, password=password)
+            if created['status'] == 'ERROR':
+                image.analyse_problem()
         else:
-            cloud.log('image already registered in the cloud with correct checksum: {}'.format(image.checksum))
-        return image.wait()
+            image = CloudImage(cloud=cloud, image_dic=status, username=username, password=password)
+            cloud.log('image already registered in the cloud with correct checksum: {}'.format(checksum))
+        return image
 
-    def show(self):
-        return self.cloud.os_cmd(cmd='openstack image show -f json ' + self.name,  is_warn_only=True)
-
-    def wait(self):
-        import time
-
-        while True:
-            dic = self.cloud.os_cmd(cmd='openstack image show -f json ' + self.id, comment=self.name)
-            if dic['status'] == 'ERROR':
-                self._analyse_problem()
-            elif dic['status'] == 'active':
-                self.cloud.log('image={} status=active'.format(self.name))
-                return self
-            time.sleep(15)
-
-    def _analyse_problem(self):
+    def analyse_problem(self):
         self.cloud.pod.r_collect_info(regex=self.id, comment='image ' + self.name + ' problem')
         raise RuntimeError('image ' + self.name + ' failed')
 

@@ -4,32 +4,24 @@ from lab.decorators import section
 class CloudKeyPair(object):
     def __init__(self, cloud, dic):
         self.cloud = cloud
-        self._dic = dic
-
-    @property
-    def id(self):
-        return self._dic['ID']
-
-    @property
-    def name(self):
-        return self._dic['Name']
+        self.keypair_name = dic['name']
+        self.keypair_fingerprint = dic['fingerprint']
 
     @staticmethod
-    @section('Creating key pair (estimate 10 secs)')
+    @section('Creating key pair (estimate 5 secs)')
     def create(cloud):
-        from lab import with_config
+        from lab.with_config import WithConfig
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
 
-        with open(with_config.KEY_PUBLIC_PATH) as f:
-            public_path = cloud.mediator.r_put_string_as_file_in_dir(string_to_put=f.read(), file_name='sqe_public_key')
-
-        cloud.os_cmd('openstack keypair create {} --public-key {}'.format(UNIQUE_PATTERN_IN_NAME + 'key', public_path))
+        rem_abs_path = cloud.mediator.r_put_string_to_file_in_dir(str_to_put=WithConfig.PUBLIC_KEY, rem_file_name='sqe_public_key', is_as_sqe=True)
+        dic = cloud.os_cmd('openstack keypair create {} --public-key {} -f json'.format(UNIQUE_PATTERN_IN_NAME + 'key', rem_abs_path))
+        return CloudKeyPair(cloud=cloud, dic=dic)
 
     @staticmethod
     def delete(keypairs):
         if keypairs:
             cloud = keypairs[0].cloud
-            cloud.os_cmd('openstack keypair delete ' + ' '.join([kp.name for kp in keypairs]))
+            cloud.os_cmd('openstack keypair delete ' + ' '.join([kp.keypair_name for kp in keypairs]))
 
     @staticmethod
     @section(message='cleanup key pairs (estimate 5 secs)')
@@ -38,9 +30,14 @@ class CloudKeyPair(object):
 
         lst = CloudKeyPair.list(cloud=cloud)
         if not is_all:
-            lst = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], lst)
+            lst = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s.keypair_name, lst)
         CloudKeyPair.delete(keypairs=lst)
 
     @staticmethod
     def list(cloud):
-        return [CloudKeyPair(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack keypair list -f json')]
+        class Tmp:
+            def __init__(self, cloud, dic):
+                self.cloud = cloud
+                self.keypair_name = dic['Name']
+
+        return [Tmp(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack keypair list -f json')]

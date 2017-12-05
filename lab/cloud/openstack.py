@@ -193,10 +193,6 @@ class OS(WithLogMixIn):
     def os_host_list(self):
         return self.os_cmd('openstack host list -f json')
 
-    def os_server_create(self, srv_name, flavor_name, image_name, zone_name, port_ids):
-        ports_part = ' '.join(map(lambda x: '--nic port-id=' + x, port_ids))
-        return self.os_cmd('openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name sqe-key1 {} -f json'.format(srv_name, flavor_name, image_name, zone_name, ports_part))
-
     def os_cleanup(self, is_all=False):
         from lab.cloud.cloud_server import CloudServer
         from lab.cloud.cloud_image import CloudImage

@@ -54,6 +54,14 @@ class VtsScenario(TestCaseWorker):
         self.args['flavor'] = flavor
 
     @property
+    def keypair(self):
+        return self.args['keypair']
+
+    @keypair.setter
+    def keypair(self, key):
+        self.args['keypair'] = key
+
+    @property
     def _is_border_leaf_attached(self):
         return self.args.get('is-border-leaf-attached', False)
 
@@ -61,30 +69,29 @@ class VtsScenario(TestCaseWorker):
     def setup_worker(self):
         from lab.cloud.cloud_flavor import CloudFlavor
         from lab.cloud.cloud_image import CloudImage
+        from lab.cloud.cloud_key_pair import CloudKeyPair
 
+        self.pod.vtc.r_vtc_setup()
         self.cleanup()
-        self.cloud.os_keypair_create()
+        self.keypair = CloudKeyPair.create(cloud=self.cloud)
         self.image = CloudImage.create(cloud=self.cloud, image_name=CloudImage.SQE_PERF)
-        self.flavor = CloudFlavor.create(variant=CloudFlavor.TYPE_VTS)
+        self.flavor = CloudFlavor.create(cloud=self.cloud, flavor_type=CloudFlavor.TYPE_VTS)
 
     @section('Creating networks')
-    def _network_part(self):
+    def network_part(self):
         from lab.cloud.cloud_network import CloudNetwork
 
         nets = CloudNetwork.create(common_part_of_name='int', how_many=self.n_networks, cloud=self.cloud)
-        if self.pod.is_with_vts():
-            self._wait_for_vtc_networks(nets=nets)
+        self._wait_for_vtc_networks(nets=nets)
         return nets
 
     @section('Waiting till VTC registers networks')
     def _wait_for_vtc_networks(self, nets):
         import time
 
-        required = [(x.net_id, str(x.segmentation_id)) for x in nets]
         for i in range(10):
-            vtc_nets = self.pod.vtc.r_vtc_show_openstack_network()
-            actual = [(x['id'], x['provider-segmentation-id']) for x in vtc_nets]
-            if set(required) <= (set(actual)):
+            vts_nets, _ = self.pod.vtc.r_vtc_get_openstack()
+            if set(nets) == set(vts_nets):
                 break
             time.sleep(5)
         else:
@@ -93,7 +100,7 @@ class VtsScenario(TestCaseWorker):
     def create_servers(self, on_nets):
         from lab.cloud.cloud_server import CloudServer
 
-        self.servers = CloudServer.create(how_many=self.n_servers, flavor_name=self.flavor.name, image=self.image, on_nets=on_nets, timeout=self.timeout, cloud=self.cloud)
+        self.servers = CloudServer.create(how_many=self.n_servers, flavor=self.flavor, image=self.image, on_nets=on_nets, key=self.keypair, timeout=self.timeout, cloud=self.cloud)
 
     @section('Ping servers')
     def ping_servers(self):
@@ -120,11 +127,10 @@ class VtsScenario(TestCaseWorker):
     def loop_worker(self):
         import time
 
-        nets = self._network_part()
+        nets = self.network_part()
 
         self.create_servers(on_nets=nets)
-        if self.pod.is_with_vts():
-            self.attach_border_leaf(nets=nets)
+        self.attach_border_leaf(nets=nets)
 
         start_time = time.time()
 
@@ -139,13 +145,9 @@ class VtsScenario(TestCaseWorker):
     def delete_servers(self):
         self.cloud.os_server_delete(servers=self.servers)
 
-    @section('Cleaning all objects observed in cloud')
     def cleanup(self):
-        if self.pod.vtc:
-            self.detach_border_leaf()
+        self.pod.vtc.r_vtc_del_border_leaf_ports()
         self.cloud.os_cleanup(is_all=True)
-        if self.pod.vtc:
-            self.check_vts_networks()
 
     @section(message='Assert no network in VTC')
     def check_vts_networks(self):
@@ -153,7 +155,6 @@ class VtsScenario(TestCaseWorker):
         if vtc_networks:
             raise RuntimeError('Networks are not deleted in VTC: {}'.format(vtc_networks))
 
-    @section(message='Detach border leaf')
     def detach_border_leaf(self):
         self.pod.vtc.r_vtc_delete_border_leaf_port()
 

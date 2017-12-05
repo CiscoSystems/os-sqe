@@ -82,7 +82,6 @@ class WithMercury(object):
         WithMercury.create_from_setup_data(pod=pod, mgm=mgm, is_interactive=is_interactive)
         if pod.driver == WithMercury.VTS:
             pod.driver_version = pod.vtc.r_vtc_get_version()
-            pod.vtc.r_vtc_get_all()
         else:
             pod.driver_version = 'vpp XXXX'
         return pod
