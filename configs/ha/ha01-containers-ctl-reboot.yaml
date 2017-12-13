@@ -12,5 +12,5 @@ Workers:
   pause: 0
   timeout: 300
   disrupt_time: 30
-  node_to_disrupt: ctl1
+  node_to_disrupt: ctl0
   method_to_disrupt: reboot

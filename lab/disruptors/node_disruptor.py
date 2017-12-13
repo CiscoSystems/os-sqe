@@ -23,15 +23,25 @@ class NodeDisruptor(TestCaseWorker):
 
         assert self.disrupt_time > 0
         assert self.method_to_disrupt in allowed_methods, '{} not in {}, check {}'.format(self.method_to_disrupt, allowed_methods, self.test_case.path)
+        r = map(str, range(100))
+        assert self.node_to_disrupt.strip('ctl') in r or self.node_to_disrupt.strip('ctl') in r, 'node_to_disrupt {} wrong, must be ctlX or compX where x is from 0 to 99'.format(self.node_to_disrupt)
 
     def setup_worker(self):
-        if self.node_to_disrupt not in self.pod.nodes_dic:
-            raise RuntimeError('This pod has no node with id = "{}"'.format(self.node_to_disrupt))
+
+        for a in [('ctl', self.pod.controls), ('comp', self.pod.computes)]:
+            if a[0] not in self.node_to_disrupt:
+                continue
+            num = int(self.node_to_disrupt.strip(a[0]))
+            if num < len(a[1]):
+                self.args[self.ARG_NODE_TO_DISRUPT] = a[1][num]
+                return
+            else:
+                raise RuntimeError('This pod has just {t}0-{t}{l}, no way to run on {n}'.format(l=len(a[1])-1, t=a[0], n=self.node_to_disrupt))
 
     def loop_worker(self):
         import time
 
-        node = self.pod.nodes_dic[self.node_to_disrupt]
+        node = self.node_to_disrupt
 
         a = node.exe('docker ps -a --format "{{.Image}}>{{.Status}}"')
         before = {l.split()[0] for l in a.split('\n')}
