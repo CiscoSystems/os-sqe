@@ -90,7 +90,6 @@ class WithConfig(object):
             f.write('name: {} # any string to be used on logging\n'.format(p))
             f.write('description-url: "{}"\n'.format(p))
             f.write('gerrit_tag: ' + str(p.gerrit_tag) + '\n')
-            f.write('namespace: ' + str(p.namespace) + '\n')
             f.write('release_tag: ' + str(p.release_tag) + '\n')
             f.write('os_code_name: ' + str(p.os_code_name) + '\n')
             f.write('driver: ' + str(p.driver) + '\n')

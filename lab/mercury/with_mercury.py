@@ -58,7 +58,7 @@ class WithMercury(object):
         separator = 'separator'
         for password in [None, WithMercury.MERCURY_DIC['default_password'], 'cisco123']:  # first try to exe with key pair, if failed, second try with default password
             mgm.password = password
-            cmds = ['ciscovim install-status', 'cat /root/openstack-configs/setup_data.yaml', 'hostname', 'grep -E "image_tag|namespace|RELEASE_TAG" /root/openstack-configs/defaults.yaml']
+            cmds = ['ciscovim install-status', 'cat /root/openstack-configs/setup_data.yaml', 'hostname', 'grep -E "image_tag|RELEASE_TAG" /root/openstack-configs/defaults.yaml']
             cmd = ' && echo {} && '.format(separator).join(cmds)
             ans = mgm.exe(cmd=cmd, is_warn_only=True)
             if 'Stages' in ans:
@@ -77,7 +77,6 @@ class WithMercury(object):
                          driver=driver,
                          release_tag=grep.split('\r\n')[1].split(':')[-1].strip(),
                          gerrit_tag=grep.split('\r\n')[2].split(':')[-1].strip(),
-                         namespace=grep.split('\r\n')[3].split(':')[-1].strip(),
                          setup_data_dic=setup_data_dic)
         WithMercury.create_from_setup_data(pod=pod, mgm=mgm, is_interactive=is_interactive)
         if pod.driver == WithMercury.VTS:

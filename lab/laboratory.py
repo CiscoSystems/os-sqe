@@ -13,7 +13,7 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
     def sample_config():
         return 'path to lab config'
 
-    def __init__(self, name='g72', release_tag='9.9.9', gerrit_tag=99, driver='vts', namespace='mercury-rhel7-osp10-plus', setup_data_dic=None):
+    def __init__(self, name='g72', release_tag='9.9.9', gerrit_tag=99, driver='vts', setup_data_dic=None):
         from lab.tims import Tims
 
         self._unique_dict = dict()  # to make sure that all needed objects are unique
@@ -24,8 +24,6 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
         self.gerrit_tag = gerrit_tag
         self.release_tag = release_tag
         self.os_code_name = self.VIM_NUM_VS_OS_NAME_DIC[release_tag.rsplit('.', 1)[0]]
-        self.namespace = namespace
-        self.git_repo_branch = self.MERCURY_DIC['namespaces'][self.namespace]
         self.dns = []
         self.ntp = []
         self.networks = {}
