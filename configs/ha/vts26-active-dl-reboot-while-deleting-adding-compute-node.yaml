@@ -18,7 +18,7 @@ Workers:
   pause: 10
   timeout: 1000
   disrupt_time: 60
-  node_to_disrupt: master-dl
+  node_to_disrupt: master-vtsr
   method_to_disrupt: vm-shutdown
 
 - class: lab.scenarios.vts_delete_compute.VtsDeleteCompute

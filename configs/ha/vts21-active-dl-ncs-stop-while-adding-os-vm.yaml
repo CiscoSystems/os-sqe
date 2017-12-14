@@ -29,7 +29,7 @@ Workers:
   delay: 10
   timeout: 1000
   pause: 30
-  node_to_disrupt: master-dl
+  node_to_disrupt: master-vtsr
   method_to_disrupt: ncs-stop
   run: 5
   disrupt_time: 20

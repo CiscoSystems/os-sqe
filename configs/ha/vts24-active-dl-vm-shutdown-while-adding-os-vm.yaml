@@ -28,6 +28,6 @@ Workers:
   run: 10
   pause: 10
   timeout: 1000
-  node_to_disrupt: master-dl
+  node_to_disrupt: master-vtsr
   method_to_disrupt: vm-shutdown
   disrupt_time: 30
