@@ -38,6 +38,6 @@ Workers:
   run: 1
   pause: 0
   timeout: 1000
-  node_to_disrupt: slave-dl
+  node_to_disrupt: slave-vtsr
   method_to_disrupt: vm-shutdown
   disrupt_time: 20
