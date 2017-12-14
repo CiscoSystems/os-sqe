@@ -195,7 +195,7 @@ class WithMercury(object):
 
     @staticmethod
     def process_switches(pod):
-        from lab.nodes.others import UnknownN9, VimTor
+        from lab.nodes.others import UnknownN9, VimTor, VimCat
         from lab.wire import Wire
 
         known_info = WithMercury.MERCURY_DIC[pod.name.rsplit('-', 1)[0]]
@@ -205,10 +205,9 @@ class WithMercury(object):
             username, password = sw['username'], sw['password']
             switches.append({'id': 'n' + sw['hostname'][-1].lower(), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'oob-username': username, 'oob-password': password})
 
-        if 'nc' in known_info:
-            switches.append({'id': 'nc', 'role': 'VimCat', 'oob-ip': known_info['nc'], 'oob-username': username, 'oob-password': password})
-
         pod.vim_tors = VimTor.create_nodes(pod=pod, node_dics_lst=switches)
+        if 'nc' in known_info:
+            pod.vim_cat = VimCat.create_node(pod=pod, dic={'id': 'nc', 'role': 'VimCat', 'oob-ip': known_info['nc'], 'oob-username': username, 'oob-password': password})
 
         wires_cfg = []
         for n9 in pod.vim_tors:
