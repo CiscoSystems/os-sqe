@@ -162,23 +162,21 @@ class VtsScenario(TestCaseWorker):
     def attach_border_leaf(self, nets):
         import time
 
-        self.check_nve()
+        self.check_nve(is_attached=False)
         self.pod.vtc.r_vtc_create_border_leaf_port(nets)
         time.sleep(10)
         self.mgm.r_create_access_points(nets)
-        self.check_nve()
+        self.check_nve(is_attached=True)
 
     def teardown_worker(self):
         self.cleanup()
 
-    def check_nve(self):
+    def check_nve(self, is_attached):
         comp_names = set([x.compute.id for x in self.servers])
-        # comp_t_ips = [self.pod.get_node_by_id(x).get for x in comp_names]
 
-        for n9 in self.pod.get_tors():
+        for n9 in self.pod.vim_tors:
             nve_ips = [x['peer-ip'] for x in n9.n9_show_nve_peers()]
-            if self._is_border_leaf_attached:  # attaching border leaf should create additional peer to mgm node
-                pass
+            if is_attached:  # attaching border leaf should create additional peer to mgm node
                 for comp_name in comp_names:
                     raise RuntimeError('{}: nve is not empty {} {} '.format(n9, nve_ips, comp_name))
             else:  # there should be nve peers connected to all computes where some instances run and no peer for mgm

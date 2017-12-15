@@ -10,7 +10,6 @@ class VtsMonitor(TestCaseWorker):
         pass
 
     def loop_worker(self):
-        self.log('cluster={}'.format(self.pod.vtc.r_vtc_show_ha_cluster_members()))
-        self.log('networks={}'.format(self.pod.vtc.r_vtc_show_openstack_network()))
-        self.log('subnetworks={}'.format(self.pod.vtc.r_vtc_show_openstack_subnet()))
-        self.log('ports={}'.format(self.pod.vtc.r_vtc_show_openstack_port()))
+        self.log('cluster={}'.format(self.pod.vtc.api_vtc_ha()))
+        self.log('openstack={}'.format(self.pod.vtc.api_openstack()))
+        self.log('ports={}'.format(self.pod.vtc.api_port_lst()))
