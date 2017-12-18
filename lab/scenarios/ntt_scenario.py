@@ -43,7 +43,7 @@ class NttScenario(TestCaseWorker):
 
         # self.pod.mgmt.r_configure_mx_and_nat()
         if self.run_inside in ['both', 'csr']:
-            self.pod.mgm.r_clone_repo(repo_url='http://gitlab.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.csr_repo_dir)
+            self.pod.mgm.r_clone_repo(repo_url='https://wwwin-gitlab-sjc.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.csr_repo_dir)
 
             url, checksum, size, _, _, loc_rel_path = CloudImage.read_image_properties(name='CSR1KV')
             loc_abs_path = path.join(self.csr_repo_dir, path.basename(loc_rel_path))
