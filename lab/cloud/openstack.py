@@ -21,6 +21,7 @@ class OS(WithLogMixIn):
             raise RuntimeError('computes in cloud {} in pod {}'.format(compute_names_in_cloud, self.computes))
         if set([x.id for x in self.controls]) != control_names_in_cloud:
             raise RuntimeError('controls in cloud {} in pod {}'.format(compute_names_in_cloud, self.controls))
+        self.enable_console()
 
     @property
     def controls(self):
@@ -225,3 +226,10 @@ class OS(WithLogMixIn):
 
         admin_id = [x.id for x in CloudProject.list(cloud=self) if x.name == 'admin'][0]
         self.os_cmd('openstack quota set --instances 1000 --cores 2000 --ram 512000 --networks 100 --subnets 300 --ports 500 {}'.format(admin_id))
+
+    def enable_console(self):
+        for comp in self.computes:
+            mx_ip = comp.ssh_ip
+            comp.exe('compute crudini --set /etc/nova/nova.conf serial_console enabled true')
+            comp.exe('compute crudini --set /etc/nova/nova.conf serial_console proxyclient_address {}'.format(mx_ip))
+            comp.exe('systemctl restart docker-novacpu')
