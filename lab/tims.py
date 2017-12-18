@@ -117,7 +117,7 @@ class Tims(WithLogMixIn, WithConfig):
         try:
             tc_id = self.create_update_test_case(tc=tc)
             tcr_id = self.create_update_result(tc_id=tc_id, tc_unique_id=tc.unique_id, status=tcr.status, text=tcr.text)
-            self.log('<{}|{}>: <{}|{}> '.format(url_tmpl + tc_id, tc.path, url_tmpl + tcr_id, tcr.status))
+            self.log('<{}|{}>: <{}|{}> {}'.format(url_tmpl + tc_id, tc.path, url_tmpl + tcr_id, tcr.status, tcr.text))
             return url_tmpl + tcr_id
         except Exception:
             self.log_exception()
