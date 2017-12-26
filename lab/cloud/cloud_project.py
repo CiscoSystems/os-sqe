@@ -33,4 +33,4 @@ class CloudProject(object):
 
     @staticmethod
     def list(cloud):
-        return [CloudProject(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack project list -f json')]
+        return [CloudProject(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack project list ')]

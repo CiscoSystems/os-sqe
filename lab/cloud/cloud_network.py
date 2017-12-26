@@ -32,8 +32,8 @@ class CloudNetwork(object):
         from netaddr import IPNetwork
 
         n = IPNetwork(self.cidr)
-        ip = str(n[(index / 100) * 256 + index % 100])                                     # special variant index 99 gives 99.0.0.99 199 gives 99.0.1.99
-        mac = 'cc:ab:' + ':'.join(map(lambda n: '{0:02}'.format(int(n)), ip.split('.')))      # mac coincides with ip: 99.0.3.25 -> cc:ab:99:00:03:25
+        ip = str(n[(index / 100) * 256 + index % 100])                                                                  # special variant index 99 gives 99.0.0.99 199 gives 99.0.1.99
+        mac = 'cc:' + ':'.join(map(lambda n: '{0:02}'.format(int(n)), ip.split('.'))) + ':{:02}'.format(n.prefixlen)    # mac coincides with ip: 99.0.3.25/16 -> cc:99:00:03:25:16
         return ip, mac
 
     @staticmethod
@@ -45,10 +45,10 @@ class CloudNetwork(object):
 
         d_h = '--dns-nameserver ' + dns
         d_h += '--dhcp' if is_dhcp else ' --no-dhcp'  # '' if is_dhcp else '--disable-dhcp'
-        # net_cmd = 'neutron net-create {} {} -f json'
-        net_cmd = 'openstack network create {net_name} {phys} -f json'
-        # sub_cmd = 'neutron subnet-create            {net_name}                {cidr} --gateway {gw} --allocation-pool start={p1},end={p2} ' + d_h + ' --name {subnet_name} -f json'
-        sub_cmd = 'openstack subnet create --network {net_name} --subnet-range {cidr} --gateway {gw} --allocation-pool start={p1},end={p2} ' + d_h + ' {subnet_name} -f json'
+        # net_cmd = 'neutron net-create {} {} '
+        net_cmd = 'openstack network create {net_name} {phys} '
+        # sub_cmd = 'neutron subnet-create            {net_name}                {cidr} --gateway {gw} --allocation-pool start={p1},end={p2} ' + d_h + ' --name {subnet_name} '
+        sub_cmd = 'openstack subnet create --network {net_name} --subnet-range {cidr} --gateway {gw} --allocation-pool start={p1},end={p2} ' + d_h + ' {subnet_name} '
 
         def phys(a):
             return '--provider:physical_network=physnet1 --provider:network_type=vlan --provider:segmentation_id=' + str(vlan_id + a) if vlan_id else ''
@@ -101,4 +101,4 @@ class CloudNetwork(object):
                 self.cloud = cloud
                 self.net_id = dic['ID']
                 self.net_name = dic['Name']
-        return [Tmp(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack network list -f json')]
+        return [Tmp(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack network list ')]

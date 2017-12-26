@@ -36,7 +36,7 @@ class CloudPort(object):
             ip, mac = net.calc_ip_and_mac(server_number)
             fixed_ip_addon = '--fixed-ip ip_address={ip} --mac-address {mac}'.format(ip=ip, mac=mac) if ip else ''
             port_name = UNIQUE_PATTERN_IN_NAME + str(server_number) + '-p' + ('-srvio' if sriov else '') + '-on-' + net.net_name
-            dic = cloud.os_cmd('neutron port-create -f json --name {port_name} {net_name} {ip_addon} {sriov_addon}'.format(port_name=port_name, net_name=net.net_name, ip_addon=fixed_ip_addon, sriov_addon=sriov_addon))
+            dic = cloud.os_cmd('neutron port-create  --name {port_name} {net_name} {ip_addon} {sriov_addon}'.format(port_name=port_name, net_name=net.net_name, ip_addon=fixed_ip_addon, sriov_addon=sriov_addon))
             port = CloudPort(cloud=cloud, net=net, dic=dic)
             assert port.net_id == net.net_id, 'Port {} is created with wrong network_id'
             ports.append(port)
@@ -56,4 +56,4 @@ class CloudPort(object):
                 self.cloud = cloud
                 self.port_id = dic['ID']
                 self.port_name = dic['Name']
-        return [Tmp(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack port list -f json')]
+        return [Tmp(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack port list ')]

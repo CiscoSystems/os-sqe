@@ -3,8 +3,8 @@ from lab.decorators import section
 
 class CloudFlavor(object):
     TYPE_VTS = 'vts'
-    FLAVOR_TYPES = {'vts': {'cmd': 'openstack flavor create {} --vcpu 2 --ram 4096 --disk 20 --public -f json', 'opt': 'openstack flavor set {} --property hw:mem_page_size=large'},
-                    'old': {'cmd': 'openstack flavor create {} --vcpu 2 --ram 4096 --disk 20 --public -f json', 'opt': 'openstack flavor set {} --property hw:numa_nodes=1'}}
+    FLAVOR_TYPES = {'vts': {'cmd': 'openstack flavor create {} --vcpu 2 --ram 4096 --disk 20 --public ', 'opt': 'openstack flavor set {} --property hw:mem_page_size=large'},
+                    'old': {'cmd': 'openstack flavor create {} --vcpu 2 --ram 4096 --disk 20 --public ', 'opt': 'openstack flavor set {} --property hw:numa_nodes=1'}}
 
     def __init__(self, cloud, flavor_dic):
         self.cloud = cloud
@@ -41,7 +41,7 @@ class CloudFlavor(object):
     def cleanup(cloud, is_all):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
 
-        lst = cloud.os_cmd('openstack flavor list -f json')
+        lst = cloud.os_cmd('openstack flavor list ')
         if not is_all:
             lst = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], lst)
         if len(lst):

@@ -23,6 +23,9 @@ class WithMercury(object):
     }
 
     MERCURY_DIC = json.loads(requests.get(url=WithConfig.CONFIGS_REPO_URL + '/mercury.json').text)
+    POSSIBLE_PASSWORDS = MERCURY_DIC['passwords']
+    KNOWN_PODS_DIC = MERCURY_DIC['pods']
+    KNOWN_NETWORKS_DIC = MERCURY_DIC['networks']
     ROLE_ID_TO_CLASS_DIC = {x.__name__: x for x in [MercuryMgm, MercuryVts, MercuryCeph, MercuryCompute, MercuryController, Vtc, VtcIndividual, Vtsr, VtsrIndividual, Tor, VimTor, VimCat, Oob, UnknownN9]}
 
     @staticmethod
@@ -42,48 +45,71 @@ class WithMercury(object):
         return klass
 
     @staticmethod
-    def create(lab_name, allowed_drivers, is_interactive=False):
+    def create(lab_name, allowed_drivers=None, is_mgm_only=False, is_interactive=False):
         import validators
         import yaml
-        import time
         from lab.laboratory import Laboratory
-        from lab.server import Server
 
-        ip = WithMercury.MERCURY_DIC.get(lab_name, {'mgm_ip': lab_name})['mgm_ip']
-        if not validators.ipv4(ip):
-            raise ValueError('"{}" is not resolved as valid IPv4'.format(ip))
+        if not validators.ipv4(lab_name):
+            if lab_name not in WithMercury.KNOWN_PODS_DIC:
+                raise ValueError('"{}" unknown, possible names are {}'.format(lab_name, WithMercury.KNOWN_PODS_DIC.keys()))
+            else:
+                ip = WithMercury.KNOWN_PODS_DIC[lab_name]['mgm_ip']
+        else:
+            ip = lab_name
 
-        ans = ''
-        mgm = Server(ip=ip, username='root', password=None)
+
+        mgm = WithMercury.check_mgm_node(ip=ip)
+
         separator = 'separator'
-        for password in [None, WithMercury.MERCURY_DIC['default_password'], 'cisco123']:  # first try to exe with key pair, if failed, second try with default password
-            mgm.password = password
-            cmds = ['ciscovim install-status', 'cat /root/openstack-configs/setup_data.yaml', 'hostname', 'grep -E "image_tag|RELEASE_TAG" /root/openstack-configs/defaults.yaml']
-            cmd = ' && echo {} && '.format(separator).join(cmds)
-            ans = mgm.exe(cmd=cmd, is_warn_only=True)
-            if 'Stages' in ans:
-                break
-            time.sleep(1)
-            time.sleep(1)
-
-        if not is_interactive and '| ORCHESTRATION          | Success |' not in ans:
+        cmds = ['ciscovim install-status', 'cat setup_data.yaml', 'hostname', 'grep -E "image_tag|RELEASE_TAG" defaults.yaml']
+        cmd = ' && echo {} && '.format(separator).join(cmds)
+        a = mgm.exe(cmd, is_warn_only=True)
+        if not is_interactive and '| ORCHESTRATION          | Success |' not in a:
             raise RuntimeError('{} is not properly installed'.format(lab_name))
-
-        _, setup_data_text, hostname, grep = ans.split(separator)
+        _, setup_data_text, hostname, grep = a.split(separator)
         setup_data_dic = yaml.load(setup_data_text)
         driver = setup_data_dic['MECHANISM_DRIVERS']
-        assert driver.lower() in allowed_drivers, 'driver {} not in {}'.format(driver, allowed_drivers)
+        if allowed_drivers:
+            assert driver.lower() in allowed_drivers, 'driver {} not in {}'.format(driver, allowed_drivers)
         pod = Laboratory(name=lab_name,
                          driver=driver,
-                         release_tag=grep.split('\r\n')[1].split(':')[-1].strip(),
-                         gerrit_tag=grep.split('\r\n')[2].split(':')[-1].strip(),
+                         release_tag=grep.split('\n')[1].split(':')[-1].strip(),
+                         gerrit_tag=grep.split('\n')[2].split(':')[-1].strip(),
                          setup_data_dic=setup_data_dic)
+        if is_mgm_only:
+            return mgm
         WithMercury.create_from_setup_data(pod=pod, mgm=mgm, is_interactive=is_interactive)
         if pod.driver == WithMercury.VTS:
             pod.driver_version = pod.vtc.r_vtc_get_version()
         else:
             pod.driver_version = 'vpp XXXX'
         return pod
+
+    @staticmethod
+    def check_mgm_node(ip):
+        import StringIO
+        import paramiko
+        from lab.server import Server
+
+        pkey = paramiko.RSAKey.from_private_key(StringIO.StringIO(WithConfig.PRIVATE_KEY))
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        try:
+            client.connect(hostname=ip, username=WithConfig.SQE_USERNAME, pkey=pkey, timeout=2)
+        except paramiko.AuthenticationException:  # user SQE yet, create it
+            for password in WithMercury.POSSIBLE_PASSWORDS:
+                try:
+                    client.connect(hostname=ip, username='root', password=password, timeout=2)
+                    Server(ip=ip, username='root', password=password).create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY, private_key=WithConfig.PRIVATE_KEY)
+                    break
+                except paramiko.AuthenticationException:
+                    continue
+            else:
+                raise RuntimeError('failed to connect to {} with {}'.format(ip, WithMercury.POSSIBLE_PASSWORDS))
+        return Server(ip=ip, username=WithConfig.SQE_USERNAME, password=None)
+
 
     @staticmethod
     def create_from_setup_data(pod, mgm, is_interactive):
@@ -188,8 +214,8 @@ class WithMercury(object):
                 if cidr:
                     net.net = IPNetwork(cidr)
                     net.is_via_tor = cidr[:2] not in ['11', '22', '33', '44', '55']
-                elif vlan_id in WithMercury.MERCURY_DIC['networks']:  # some vlan ids might be known from networks assignment, so use it if such vlan_id specified while cidr is not
-                    net.net = IPNetwork(WithMercury.MERCURY_DIC['networks'][vlan_id])
+                elif vlan_id in WithMercury.KNOWN_NETWORKS_DIC:  # some vlan ids might be known from networks assignment, so use it if such vlan_id specified while cidr is not
+                    net.net = IPNetwork(WithMercury.KNOWN_NETWORKS_DIC[vlan_id])
 
         pod.networks.update(Network.add_networks(pod=pod, nets_cfg=[{'id': x.id, 'vlan': x.vlan, 'cidr': x.net.cidr, 'roles': x.roles_must_present, 'is-via-tor': x.is_via_tor} for x in WithMercury.NETWORKS_DIC.values()]))
 
@@ -198,7 +224,7 @@ class WithMercury(object):
         from lab.nodes.others import UnknownN9, VimTor, VimCat
         from lab.wire import Wire
 
-        known_info = WithMercury.MERCURY_DIC[pod.name.rsplit('-', 1)[0]]
+        known_info = WithMercury.KNOWN_PODS_DIC[pod.name.rsplit('-', 1)[0]]
         switches = []
         username, password = None, None
         for sw in pod.setup_data_dic['TORSWITCHINFO']['SWITCHDETAILS']:

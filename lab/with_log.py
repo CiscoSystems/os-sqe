@@ -81,17 +81,6 @@ class WithLogMixIn(object):
         cmd += 'sed -n "/^$(date +%Y-%m-%d\ %H:%M --date="{min} min ago")/, /^$(date +%Y-%m-%d\ %H:%M)/p" '.format(min=minutes) if minutes else ''
         return cmd
 
-    @staticmethod
-    def upload_artifacts_to_our_server():
-        """Store $REPO/*.log and $REPO/artifacts/* on file storage server"""
-        from lab.server import Server
-
-        destination_dir = '/var/www/artifacts'
-        server = Server(ip='172.29.173.233', username='localadmin', password='ubuntu')
-        server.exe(cmd='mkdir -p {0}'.format(destination_dir))
-        server.put(local_path='*.log', remote_path=destination_dir, is_sudo=False)
-        server.put(local_path='artifacts/*', remote_path=destination_dir, is_sudo=False)
-
     def log(self, message):
         lab_logger.info(str(self) + ': ' + message)
 
@@ -103,12 +92,6 @@ class WithLogMixIn(object):
 
     def log_exception(self):
         lab_logger.exception(str(self) + ': EXCEPTION')
-
-    def raise_value_error(self, message):
-        raise ValueError(str(self) + ': ' + message)
-
-    def raise_runtime_error(self, message):
-        raise RuntimeError(str(self) + ': ' + message)
 
 
 class Logger(object):

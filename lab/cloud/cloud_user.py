@@ -19,7 +19,7 @@ class CloudUser(object):
 
     @staticmethod
     def create(cloud, username, password):
-        return CloudUser(cloud=cloud, dic=cloud.os_cmd('openstack user create --password {} {} -f json'.format(password, username)))
+        return CloudUser(cloud=cloud, dic=cloud.os_cmd('openstack user create --password {} {} '.format(password, username)))
 
     @staticmethod
     @section(message='cleanup users (estimate 5 secs)')
@@ -36,4 +36,4 @@ class CloudUser(object):
 
     @staticmethod
     def list(cloud):
-        return [CloudUser(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack user list -f json')]
+        return [CloudUser(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack user list ')]

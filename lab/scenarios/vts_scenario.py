@@ -101,15 +101,16 @@ class VtsScenario(TestCaseWorker):
         from lab.cloud.cloud_server import CloudServer
 
         self.servers = CloudServer.create(how_many=self.n_servers, flavor=self.flavor, image=self.image, on_nets=on_nets, key=self.keypair, timeout=self.timeout, cloud=self.cloud)
+        _, servers = self.pod.vtc.r_vtc_get_openstack()
+        pass
 
     @section('Ping servers')
     def ping_servers(self):
-        for server in self.servers:
-            n_packets = 50
-            for ip in server.get_ssh_ip():
-                ans = self.pod.mgm.exe('ping -c {} {}'.format(n_packets, ip), is_warn_only=True)
-                if '{0} packets transmitted, {0} received, 0% packet loss'.format(n_packets) not in ans:
-                    raise RuntimeError(ans)
+        n_packets = 50
+
+        ans = self.servers[0].console_exe('ping -c {} {}'.format(n_packets, self.servers[1].ips[0]))
+        if '{0} packets transmitted, {0} received, 0% packet loss'.format(n_packets) not in ans:
+            raise RuntimeError(ans)
         return '50 packets send'
 
     @section('Iperf servers')
@@ -130,7 +131,7 @@ class VtsScenario(TestCaseWorker):
         nets = self.network_part()
 
         self.create_servers(on_nets=nets)
-        self.attach_border_leaf(nets=nets)
+        # self.attach_border_leaf(nets=nets)
 
         start_time = time.time()
 

@@ -45,7 +45,7 @@ class CloudRouter(object):
             names = [s.name for s in routers]
             for r_id, name in zip(ids, names):
                 routers[0].cloud.os_cmd('neutron router-gateway-clear ' + r_id, comment=name)
-                ans = routers[0].cloud.os_cmd('neutron router-port-list {} -f json'.format(r_id), comment=name)
+                ans = routers[0].cloud.os_cmd('neutron router-port-list {} '.format(r_id), comment=name)
                 subnet_ids = [x['fixed_ips'].split(',')[0].split(':')[-1] for x in ans]
                 map(lambda subnet_id: routers[0].cloud.os_cmd('neutron router-interface-delete {} {}'.format(r_id, subnet_id), comment=name), subnet_ids)
             for i in range(10):
@@ -62,4 +62,4 @@ class CloudRouter(object):
 
     @staticmethod
     def list(cloud):
-        return [CloudRouter(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack router list -f json')]
+        return [CloudRouter(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack router list ')]

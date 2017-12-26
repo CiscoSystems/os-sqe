@@ -1,13 +1,17 @@
 from lab.with_config import WithConfig
+from lab.with_log import WithLogMixIn
 
 
-class Server(WithConfig):
+class Server(WithConfig, WithLogMixIn):
     N_CONNECTION_ATTEMPTS = 200
 
     def __init__(self, ip, username, password):
         self._tmp_dir_exists = False
         self._package_manager = None
         self.ip, self.username, self.password = ip, username, password
+
+    def __repr__(self):
+        return 'Server {} {}/{}'.format(self.ip, self.username, self.password)
 
     def exe(self, cmd, in_dir='.', is_warn_only=False, n_attempts=N_CONNECTION_ATTEMPTS):
         from fabric.api import run, settings, cd
@@ -71,6 +75,7 @@ class Server(WithConfig):
         :param wait: wait for the server to come up
         """
         from fabric.api import reboot, settings
+
         with settings(**self.construct_settings(is_warn_only=True, n_attempts=self.N_CONNECTION_ATTEMPTS)):
             reboot(wait=wait)
 
@@ -92,3 +97,16 @@ class Server(WithConfig):
         for package_name in package_names.split():
             if self.exe(cmd='whereis {0}'.format(package_name)) == package_name + ':':
                 self.exe(cmd='sudo {0} install -y {1}'.format(pm, package_names))
+
+    def create_user(self, username, public_key, private_key):
+        tmp_password = 'tmp-password'
+        encrypted_password = self.exe(cmd='openssl passwd -crypt ' + tmp_password).split()[-1]  # encrypted password may contain Warning
+        self.exe(cmd='adduser -p ' + encrypted_password + ' ' + WithConfig.SQE_USERNAME)
+        self.exe(cmd='echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(username))
+        self.exe(cmd='chmod 0440 /etc/sudoers.d/' + username)
+        self.exe('mkdir -p ~{0}/.ssh && chmod 700 ~{0}/.ssh && cp .ssh/{{authorized_keys,id_rsa,id_rsa.pub}} ~{0}/.ssh && chown -R {0}.{0} ~{0}/.ssh'.format(WithConfig.SQE_USERNAME))
+        self.exe(cmd='[ -d  openstack-configs ] && cp openstack-configs/{{openrc,secrets.yaml,setup_data.yaml,defaults.yaml}} ~{0}/ && chown -R {0}.{0} ~{0}/*'.format(username))
+
+        sqe = Server(ip=self.ip, username=username, password=tmp_password)
+        gitlab_public = 'wwwin-gitlab-sjc.cisco.com,10.22.31.77 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJZlfIFWs5/EaXGnR9oXp6mCtShpvO2zKGqJxNMvMJmixdkdW4oPjxYEYP+2tXKPorvh3Wweol82V3KOkB6VhLk='
+        sqe.exe('echo {} > .ssh/known_hosts'.format(gitlab_public))

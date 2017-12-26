@@ -1,59 +1,43 @@
-from lab.server import Server
 from lab.decorators import section
+from lab.with_log import WithLogMixIn
 
 
-class CloudServer(Server):
+class CloudServer(WithLogMixIn):
     STATUS_ACTIVE = 'ACTIVE'
     STATUS_BUILD = 'BUILD'
     STATUS_DELETED = 'DELETED'
     STATUS_SUSPENDED = 'SUSPENDED'
 
-    def __init__(self, cloud, image, dic):
+    def __init__(self, cloud, dic):
         self.cloud = cloud
-        self.server_id = dic['id']
-        self.server_name = dic['name']
-        self.server_status = dic['status']
-        self.libvirt_name = dic['OS-EXT-SRV-ATTR:instance_name']
-        self.image = image
-        self.compute = filter(lambda x: x.id == dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)[0]
+        self.srv_id = dic['id']
+        self.srv_name = dic['name']
+        self.srv_status = dic['status']
+        self.srv_libvirt = dic['OS-EXT-SRV-ATTR:instance_name']
+        self.image = [x for x in cloud.images if x.img_id == dic['image'].split()[-1].strip('()')][0]
+        self.compute = filter(lambda c: c.host_id == dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)[0]
         self.ips = [x.split('=')[-1] for x in dic['addresses'].split(',')]
-
-        super(CloudServer, self).__init__(ip=self.ips, username=self.image.username, password=self.image.password)
+        grep = self.compute.host_exe('libvirt virsh dumpxml ' + self.srv_libvirt + ' | grep "source mode="')
+        self.srv_serial = grep.split('service=\'')[-1].split('\'')[0]
+        self.srv_ip = self.ips[0]
+        self.srv_username = self.image.img_username
+        self.srv_password = self.image.img_password
 
     def __repr__(self):
-        return self.server_name or 'No name yet'
-
-    def os_server_reboot(self, hard=False):
-        flags = '--hard ' if hard else '--soft '
-        self.cloud.os_cmd('openstack server reboot ' + flags + self.server_id, comment=self.server_name)
-        self.wait(servers=[self], status=self.STATUS_ACTIVE)
-
-    def os_server_rebuild(self, image):
-        self.cloud.os_cmd('openstack server rebuild ' + self.server_id + ' --image ' + image.name, comment=self.server_name)
-        self.wait(servers=[self], status=self.STATUS_ACTIVE)
-
-    def os_server_suspend(self):
-        self.cloud.os_cmd('openstack server suspend ' + self.server_id, comment=self.server_name)
-        self.wait(servers=[self], status=self.STATUS_SUSPENDED)
-
-    def os_server_resume(self):
-        self.cloud.os_cmd('openstack server resume ' + self.server_id, comment=self.server_name)
-        self.wait(servers=[self], status=self.STATUS_ACTIVE)
+        return self.srv_name + ' ' + self.srv_status
 
     @staticmethod
-    def wait(servers, status, timeout=100):
+    def wait(cloud, srv_id_name_dic, status, timeout=100):
         import time
 
-        if not servers:
+        if not srv_id_name_dic:
             return
-        cloud = servers[0].cloud
-        required_n_servers = 0 if status == CloudServer.STATUS_DELETED else len(servers)
+        required_n_servers = 0 if status == CloudServer.STATUS_DELETED else len(srv_id_name_dic)
         start_time = time.time()
-        srv_ids = map(lambda x: x.server_id, servers)
         while True:
-            our = filter(lambda x: x.server_id in srv_ids, CloudServer.list(cloud=cloud))
-            in_error = filter(lambda x: x.server_status == 'ERROR', our)
-            in_status = filter(lambda x: x.server_status == status, our) if status != CloudServer.STATUS_DELETED else our
+            our = filter(lambda x: x[1] in srv_id_name_dic, cloud.os_cmd(cmd='openstack server list '))
+            in_error = filter(lambda x: x[2] == 'ERROR', our)
+            in_status = filter(lambda x: x[2] == status, our) if status != CloudServer.STATUS_DELETED else our
             if len(in_status) == required_n_servers:
                 return in_status  # all successfully reached the status
             if in_error:
@@ -76,47 +60,98 @@ class CloudServer(Server):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
         from lab.cloud.cloud_port import CloudPort
 
-        servers = []
+        srv_id_name_dic = {}
         for n, comp in [(y, cloud.computes[y % len(cloud.computes)]) for y in range(1, how_many + 1)]:  # distribute servers per compute host in round robin
             ports = CloudPort.create(cloud=cloud, server_number=n, on_nets=on_nets)
             ports_part = ' '.join(map(lambda x: '--nic port-id=' + x.port_id, ports))
             name = UNIQUE_PATTERN_IN_NAME + str(n)
-            dic1 = cloud.os_cmd('openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name {} {} -f json'.format(name, flavor.name, image.name, comp.id, key.keypair_name, ports_part))
-            dic2 = cloud.os_cmd('openstack server show -f json {} #  {}'.format(dic1['id'], dic1['name']))
-
-            server = CloudServer(cloud=cloud, image=image, dic=dic2)
-            servers.append(server)
-        CloudServer.wait(servers, status=CloudServer.STATUS_ACTIVE, timeout=timeout)
-
-        return servers
-
-    @staticmethod
-    def list(cloud):
-        class Tmp:
-            def __init__(self, cloud, dic):
-                self.cloud = cloud
-                self.server_id = dic['ID']
-                self.server_name= dic['Name']
-                self.server_status = dic['Status']
-        return [Tmp(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack server list -f json')]
+            cmd = 'openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name {} {} '.format(name, flavor.name, image.name, comp.id, key.keypair_name, ports_part)
+            dic = cloud.os_cmd([cmd])
+            srv_id_name_dic[dic['id']] = dic['name']
+        CloudServer.wait(cloud=cloud, srv_id_name_dic=srv_id_name_dic, status=CloudServer.STATUS_ACTIVE, timeout=timeout)
+        a = cloud.os_cmd(['for id in {}; do openstack server show $id -f json; done'.format(' '.join(srv_id_name_dic.keys()))])
+        return map(lambda x: CloudServer(cloud=cloud, dic=x), a)
 
     @staticmethod
     @section(message='cleanup servers (estimate 10 secs)')
-    def cleanup(cloud, is_all):
+    def srv_cleanup(cloud, is_all):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
 
-        lst = CloudServer.list(cloud=cloud)
-        if not is_all:
-            lst = filter(lambda x: UNIQUE_PATTERN_IN_NAME in x.server_name, lst)
-        CloudServer.delete(servers=lst)
+        cmd = 'openstack server list | grep  -vE "\+|ID" {} | cut -c 3-38 | while read id; do openstack server delete $id; done'.format('| grep ' + UNIQUE_PATTERN_IN_NAME if not is_all else '')
+        cloud.os_cmd([cmd])
 
     @staticmethod
-    def delete(servers):
+    def delete(cloud, srv_id_name_dic):
         import time
 
-        if len(servers):
-            ids = [s.server_id for s in servers]
-            names = [s.server_name for s in servers]
-            servers[0].cloud.os_cmd('openstack server delete ' + ' '.join(ids), comment=' '.join(names))
+        if srv_id_name_dic:
+            cloud.os_cmd('openstack server delete ' + ' '.join(srv_id_name_dic.keys()), comment=' '.join(srv_id_name_dic.values()))
             time.sleep(5)
-            CloudServer.wait(servers=servers, status=CloudServer.STATUS_DELETED)
+            CloudServer.wait(cloud=cloud, srv_id_name_dic=srv_id_name_dic, status=CloudServer.STATUS_DELETED)
+
+    def console_exe(self, cmd, timeout=20):
+        import paramiko
+        import StringIO
+        import time
+        from lab.with_config import WithConfig
+
+        ch = paramiko.SSHClient()
+        ch.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        pkey = paramiko.RSAKey.from_private_key(StringIO.StringIO(WithConfig.PRIVATE_KEY))
+        ch.connect(hostname=self.cloud.mediator.ip, username=self.cloud.mediator.username, pkey=pkey, timeout=10)  # connect to mediator
+        shell = ch.invoke_shell(width=1024)
+        shell.settimeout(60)
+
+        nc = 'nc {} {}'.format(self.compute, self.srv_serial)
+
+        started = time.time()
+
+        try:
+            a = ''
+            while True:
+                if shell.recv_ready():
+                    a += shell.recv(1024)
+                else:
+                    if '~]$' in a:
+                        break
+                    time.sleep(1)
+                    if time.time() > started + int(timeout):
+                        raise RuntimeError('{}: timeout when waiting for proxy prompt'.format(self))
+
+            shell.send(nc)  # start nc session
+
+            a = ''
+            while True:
+                if shell.recv_ready():
+                    a += shell.recv(1024)
+                else:
+                    if '~]$' in a:  # we got a prompt from server
+                        break
+                    if nc in a:
+                        shell.send('\n')  # sometimes one needs to say Enter few times to get nc prompt
+                    if 'login:' in a:
+                        a = ''
+                        shell.send(self.srv_username + '\n')
+                    if 'Password' in a:
+                        shell.send(self.srv_password + '\n')
+                    time.sleep(1)
+                    if time.time() > started + int(timeout):
+                        raise RuntimeError('{}: timeout when waiting for server prompt'.format(self))
+
+            a = ''
+            while True:
+                if shell.recv_ready():
+                    a += shell.recv(1024)
+                else:
+                    if cmd not in a:
+                        shell.send(cmd + '\n')  # send command
+                        a = ''
+                    if '~]$' in a:  # we got a prompt from server after command complete
+                        shell.send('exit\n')
+                        break
+                    time.sleep(1)
+                    if time.time() > started + int(timeout):
+                        raise RuntimeError('{}: timeout when waiting for {} completion'.format(self, cmd))
+            return a
+        finally:
+            ch.close()

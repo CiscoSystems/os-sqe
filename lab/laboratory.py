@@ -42,6 +42,7 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
         self.wires = []
         self.is_sqe_user_created = False
         self.tims = Tims(version=self.version)
+        self.log('release {} gerrit tag {} driver {}'.format(release_tag, gerrit_tag, driver))
 
     @property
     def version(self):
@@ -156,8 +157,3 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
         from lab.nodes.lab_server import LabServer
 
         return {node.id: node.exe(cmd) for node in self.nodes_dic.values() if isinstance(node, LabServer)}
-
-    def check_create_sqe_user(self):
-        if not self.is_sqe_user_created:
-            self.mgm.r_create_sqe_user()
-            self.is_sqe_user_created = True

@@ -31,12 +31,12 @@ class CloudSecurityGroup(object):
         CloudSecurityGroup.delete(sec_groups=lst)
 
         for sg in filter(lambda y: y.project_id in special_ids, lst):
-            rules = cloud.os_cmd(cmd='openstack security group rule list -f json ' + sg.id)
+            rules = cloud.os_cmd(cmd='openstack security group rule list  ' + sg.id)
             cloud.os_cmd(cmd='openstack security group rule delete ' + ' '.join([x['ID'] for x in rules if x['IP Protocol']]))
 
     @staticmethod
     def list(cloud):
-        return [CloudSecurityGroup(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack security group list -f json')]
+        return [CloudSecurityGroup(cloud=cloud, dic=x) for x in cloud.os_cmd('openstack security group list ')]
 
     @staticmethod
     def delete(sec_groups):

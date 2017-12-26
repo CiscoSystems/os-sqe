@@ -4,7 +4,9 @@ from fabric.api import task
 if '.' not in sys.path:
     sys.path.append('.')
 
+
 from tools.fabric_test import test
+
 
 @task
 def cmd():
@@ -13,67 +15,37 @@ def cmd():
     import inspect
     from fabric.operations import prompt
     import time
-    from lab.deployers.deployer_existing_cloud import DeployerExistingCloud
+    from lab.deployers.deployer_existing_light import DeployerExistingLight
     from lab.with_log import lab_logger
     from lab.laboratory import Laboratory
 
-    def get_node_methodes(o, name):
-        if name == 'cloud':
-            deployer = DeployerExistingCloud(ip=o.mgmt.ssh_ip)
-            d = deployer.execute({'clouds': [], 'servers': []})
-        elif device_name == 'lab':
-            d = o
-        else:
-            d = o.nodes[name]
-
-        meth_names_lst = []
-        for attr in sorted(dir(d)):  # print all attributes of current object
-            print attr
-            meth_names_lst.append(attr)
-
-        return d, meth_names_lst
-
-    def execute(d, name):
+    pod_names = Laboratory.MERCURY_DIC['pods'].keys()
+    l_and_s_names = map(lambda x: 'l' + x, pod_names) + map(lambda x: 's' + x, pod_names)
+    _, pod_name = get_user_input(obj=l_and_s_names)
+    root = Laboratory.create(lab_name=pod_name[1:], is_interactive=True) if pod_name[0] == 'l' else DeployerExistingLight(pod_name[1:])()
+    obj = root
+    while True:
+        obj, method = get_user_input(obj=obj)
         try:
-            if name == 'dir':
-                d.log('\n'.join(dir(d)))
-                return
-            method_to_execute = getattr(d, name)
-            if inspect.ismethod(method_to_execute):
-                d.log('executing method {} {}'.format(name, 10 * ':'))
-                time.sleep(1)
-                parameters = method_to_execute.func_code.co_varnames[1:method_to_execute.func_code.co_argcount]
-                arguments = []
-                for parameter in parameters:
-                    argument = prompt(text='{p}=? '.format(p=parameter))
-                    if argument.startswith('['):
-                        argument = argument.strip('[]').split(',')
-                    elif argument in ['True', 'true', 'yes']:
-                        argument = True
-                    elif argument in ['False', 'false', 'no']:
-                        argument = False
-                    arguments.append(argument)
-                results = method_to_execute(*arguments) if arguments else method_to_execute()
-                d.log('{}() returns:\n\n {}\n'.format(name, results))
-            else:
-                d.log('property {}={}\n\n'.format(name, method_to_execute))
+            obj.log('{} executing ......................'.format(method))
+            time.sleep(1)
+            parameters = method.func_code.co_varnames[1:method.func_code.co_argcount]
+            arguments = []
+            for parameter in parameters:
+                argument = prompt(text='{p}=? '.format(p=parameter))
+                if argument.startswith('['):
+                    argument = argument.strip('[]').split(',')
+                elif argument in ['True', 'true', 'yes']:
+                    argument = True
+                elif argument in ['False', 'false', 'no']:
+                    argument = False
+                arguments.append(argument)
+            results = method(*arguments) if arguments else method()
+            time.sleep(1)
+            obj.log('{}() returns:\n\n {}\n'.format(method, results))
         except Exception as ex:
             lab_logger.exception('\n Exception: {0}'.format(ex))
-
-    pod_name = get_user_input(options_lst=Laboratory.MERCURY_DIC.keys())
-    pod = Laboratory.create(lab_name=pod_name, is_interactive=True)
-    while True:
-        device_name = get_user_input(owner=pod, options_lst=['lab', 'cloud'] + pod.nodes.keys())
-        if device_name == 'level_up':
-            break
-        device, method_names = get_node_methodes(o=pod, name=device_name)
-        while True:
-            method_name = get_user_input(owner=device, options_lst=method_names)
-            if method_name == 'level_up':
-                break
-            execute(d=device, name=method_name)
-            time.sleep(1)  # sleep to prevent fabric prompt clashing with
-            prompt('continue? >')
+        prompt('')
 
 
 @task
@@ -136,54 +108,6 @@ def run(config_path):
 
 
 @task
-def ansible():
-    from collections import namedtuple
-    from ansible.parsing.dataloader import DataLoader
-    from ansible.vars import VariableManager
-    from ansible.inventory import Inventory
-    from ansible.playbook.play import Play
-    from ansible.executor.task_queue_manager import TaskQueueManager
-    from ansible.plugins.callback import CallbackBase
-    from lab.with_log import lab_logger
-
-    class ResultCallback(CallbackBase):
-        def __init__(self):
-            super(ResultCallback, self).__init__()
-
-        def v2_runner_on_ok(self, result, **kwargs):
-            lab_logger.info(result)
-
-    variable_manager = VariableManager()
-    loader = DataLoader()
-    options = namedtuple('Options', ['connection', 'module_path', 'forks', 'become', 'become_method', 'become_user', 'check'])(connection='local',
-                                                                                                                               module_path=None,
-                                                                                                                               forks=100,
-                                                                                                                               become=None,
-                                                                                                                               become_method=None,
-                                                                                                                               become_user=None,
-                                                                                                                               check=False)
-    passwords = dict(vault_pass='secret')
-
-    # create inventory and pass to var manager
-    inventory = Inventory(loader=loader, variable_manager=variable_manager, host_list=['10.23.221.142'])
-    variable_manager.set_inventory(inventory)
-
-    # create play with tasks
-    play_source = dict(name="Ansible Play", hosts='10.23.221.142', gather_facts='no', tasks=[dict(action=dict(module='shell', args='ls'), register='shell_out'),
-                                                                                             dict(action=dict(module='debug', args=dict(msg='{{shell_out.stdout}}')))])
-    play = Play().load(play_source, variable_manager=variable_manager, loader=loader)
-
-    tqm = None
-    try:
-        tqm = TaskQueueManager(inventory=inventory, variable_manager=variable_manager, loader=loader, options=options, passwords=passwords, stdout_callback=ResultCallback())
-        res = tqm.run(play)
-        lab_logger.info('Ansible Result: {}'.format(res))
-    finally:
-        if tqm is not None:
-            tqm.cleanup()
-
-
-@task
 def info(pod_name=None, regex=None):
     """fab info:g10,regex\t\t\tExec grep regex
     """
@@ -193,32 +117,62 @@ def info(pod_name=None, regex=None):
     pod.r_collect_info(regex=regex, comment=regex)
 
 
-def get_user_input(options_lst, owner=None):
+def get_user_input(obj, parent=None):
     from fabric.operations import prompt
     import sys
+    import inspect
+    from prettytable import PrettyTable
+
+    if type(obj) is list:
+        if len(obj) == 0:
+            print 'The list is empty, back to {}'.format(parent)
+            return get_user_input(obj=parent)
+        fields_dic = {str(x): x for x in obj}
+        all_names = sorted(fields_dic.keys())
+        methods_dic = {}
+    elif type(obj) in [str, unicode, basestring]:
+        return obj, obj
+    else:
+        methods = [x for x in inspect.getmembers(obj, predicate=lambda x: inspect.isfunction(x) or inspect.ismethod(x)) if not x[0].startswith('__')]
+        fields = [x for x in inspect.getmembers(obj, predicate=lambda x: not inspect.isfunction(x) and not inspect.ismethod(x)) if not x[0].startswith('__')]
+
+        tbl = PrettyTable(['', str(obj), str(obj.__class__)])
+        map(lambda x: tbl.add_row(['method', x[0], '']), methods)
+        tbl.add_row(['', '', ''])
+        map(lambda x: tbl.add_row(['field', x[0], str(x[1])]), fields)
+        print tbl
+        methods_dic = {x[0]: x[1] for x in methods}
+        fields_dic = {x[0]: x[1] for x in fields}
+        all_names = [x[0] for x in methods + fields]
 
     def chunks(lst, n):
         for i in range(0, len(lst), n):
             yield ' * '.join(lst[i:i + n])
 
-    sub_list = options_lst
+    sub_names = all_names
     while True:
-        sub_list_str = '\n'.join(chunks(lst=sub_list, n=14))
-        choice = prompt(text='choose one of:\n\n{}\n\nq to quit {}>'.format(sub_list_str, 'u to level up for {}'.format(owner) if owner else ''))
+        sub_list_str = '\n'.join(chunks(lst=sub_names, n=14))
+        print '\n'
+        choice = prompt(text='{} * a * q: '.format(sub_list_str))
         if choice == 'q':
             sys.exit(2)
-        if owner and choice == 'u':
-            return 'level_up'
-        sub_list = filter(lambda x: choice in x, sub_list)
+        if choice == 'a':
+            sub_names = all_names
+            continue
+        sub_list = filter(lambda x: choice in x, sub_names)
         if len(sub_list) == 1:
-            return sub_list[0]  # unique match , return it
-        elif choice in sub_list:
-            return choice  # exact match with one item in sublist
+            choice = sub_list[0]
+        if choice in sub_list:
+            print 'Using:', choice, '\n'
+            if choice in methods_dic:
+                return obj, methods_dic[choice]
+            if choice in fields_dic:
+                return get_user_input(obj=fields_dic[choice], parent=obj)
         elif len(sub_list) == 0:
-            sub_list = options_lst
-            continue  # wrong input ask again with full list of options
+            continue  # wrong input ask again with the same list of names
         else:
-            continue  # ask again with restricted list of options
+            sub_names = sub_list
+            continue  # ask again with restricted list of names
 
 
 @task
@@ -228,7 +182,7 @@ def bash():
     from lab.nodes.lab_server import LabServer
     from lab.nodes.virtual_server import VirtualServer
 
-    pod = Laboratory.create(lab_name=get_user_input(options_lst=Laboratory.MERCURY_DIC.keys()))
+    pod = Laboratory.create(lab_name=get_user_input(obj=Laboratory.MERCURY_DIC.keys()))
     aliases = []
     for node in pod.nodes.values():
         if not isinstance(node, VirtualServer):

@@ -127,7 +127,7 @@ if __name__ == '__main__':
     from lab.test_case import TestCase, TestCaseResult
 
     tims = Tims(version='2.2.5(11577)VTS')
-    tc = TestCase(path='ha01-containers-ctl-reboot.yaml', is_debug=True, is_noclean=False, cloud=None)
+    tc = TestCase(path='all01-containers-ctl-reboot.yaml', is_debug=True, is_noclean=False, cloud=None)
     tcr = TestCaseResult(tc=tc)
     tcr.status = tcr.FAILED
     tcr.text = 'run to test TIMS from tims.py'
