@@ -71,7 +71,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         if len(test_paths) == 1 and test_paths[0] == 'dev01-test-parallel.yaml':  # special test case to test infrastructure itself, does not require cloud
             self.cloud = FakeCloud()
         else:
-            self.cloud = self.init_cloud(pod_name=pod_name, is_debug=is_debug, possible_drivers=possible_drivers)
+            self.cloud = self.init_cloud(pod_name=pod_name, possible_drivers=possible_drivers)
 
         start_time = time.time()
         map(lambda x: self.execute_single_test(test_case=x), tests)
@@ -86,11 +86,12 @@ class RunnerHA(WithConfig, WithLogMixIn):
         print self.table
 
     @staticmethod
-    def init_cloud(pod_name, is_debug, possible_drivers):
+    def init_cloud(pod_name, possible_drivers):
         from lab.deployers.deployer_existing_cloud import DeployerExistingCloud
 
         deployer = DeployerExistingCloud(lab_name=pod_name, allowed_drivers=possible_drivers)
         cloud = deployer.execute({'clouds': [], 'servers': []})
+        cloud.os_all()
         if len(cloud.computes) < 2:
             raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(cloud))
         return cloud
