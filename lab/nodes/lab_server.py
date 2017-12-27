@@ -115,7 +115,7 @@ class LabServer(LabNode):
         if 'sudo' in cmd and 'sudo -p "" -S ' not in cmd:
             cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.ssh_password))
         if self.proxy:
-            cmd = 'ssh -o StrictHostKeyChecking=no ' + (self.ssh_ip or self.id) + " '" + cmd + "'"
+            cmd = 'ssh -o StrictHostKeyChecking=no ' +  self.ssh_username + '@' + (self.ssh_ip or self.id) + " '" + cmd + "'"
             comment += ' ssh ' + self.id
         comment += ' # ' + self.id + '@' + self.pod.name
 

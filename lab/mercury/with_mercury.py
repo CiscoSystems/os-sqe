@@ -143,7 +143,7 @@ class WithMercury(object):
                    'role': node_id_vs_node_class[node_id].__name__,
                    'proxy': None if node_id == 'mgm' else pod.mgm,
                    'ssh-ip': node_dic.get('management_ip'),
-                   'ssh-username': None if node_id != 'mgm' else node_dic['ssh_username'],
+                   'ssh-username': 'root' if node_id != 'mgm' else node_dic['ssh_username'],
                    'ssh-password': None if node_id != 'mgm' else node_dic['ssh_password'],
                    'oob-ip': node_dic['cimc_info']['cimc_ip'],
                    'oob-username': node_dic['cimc_info'].get('cimc_username') or pod.setup_data_dic['CIMC-COMMON']['cimc_username'],
