@@ -7,7 +7,8 @@ class CloudHost(Server):
         self.cloud = cloud
         self.host_ip = host_ip
         self.host_id = host_id
-        super(CloudHost, self).__init__(ip=cloud.mediator.ip, username=self.SQE_USERNAME, password=None)
+        ip = cloud.mediator.ip if type(cloud.mediator) is Server else cloud.mediator.ssh_ip
+        super(CloudHost, self).__init__(ip=ip, username=self.SQE_USERNAME, password=None)
 
     def __repr__(self):
         return self.host_id or 'No yet '

@@ -6,8 +6,12 @@ class OS(WithLogMixIn):
         return u'cloud {}'.format(self.name)
 
     def __init__(self, name, mediator, openrc_path):
+        from lab.mercury.nodes import MercuryMgm
+
         self.name = name
         self.mediator = mediator    # Instance of Server to be used to execute CLI commands for this cloud
+        if type(mediator) is MercuryMgm:
+            self.pod = mediator.pod
         self.openrc_path = openrc_path
         self.controls, self.computes, self.images, self.servers = [], [], [], []
 
