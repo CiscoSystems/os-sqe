@@ -1,8 +1,9 @@
 from lab.decorators import section
 from lab.with_log import WithLogMixIn
+from lab.cloud import CloudObject
 
 
-class CloudServer(WithLogMixIn):
+class CloudServer(CloudObject, WithLogMixIn):
     STATUS_ACTIVE = 'ACTIVE'
     STATUS_BUILD = 'BUILD'
     STATUS_DELETED = 'DELETED'
@@ -10,9 +11,7 @@ class CloudServer(WithLogMixIn):
 
     def __init__(self, cloud, dic):
         self.cloud = cloud
-        self.srv_id = dic['id']
-        self.srv_name = dic['name']
-        self.srv_status = dic['status']
+        super(CloudServer, self).__init__(dic=dic)
         self.srv_libvirt = dic['OS-EXT-SRV-ATTR:instance_name']
         self.image = [x for x in cloud.images if x.img_id == dic['image'].split()[-1].strip('()')][0]
         self.compute = filter(lambda c: c.host_id == dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)[0]

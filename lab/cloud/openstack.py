@@ -13,7 +13,7 @@ class OS(WithLogMixIn):
         if type(mediator) is MercuryMgm:
             self.pod = mediator.pod
         self.openrc_path = openrc_path
-        self.controls, self.computes, self.images, self.servers = [], [], [], []
+        self.controls, self.computes, self.images, self.servers, self.keypairs, self.nets, self.subnets, self.ports = [], [], [], [], [], [], [], []
 
     @staticmethod
     def _add_name_prefix(name):
@@ -22,11 +22,12 @@ class OS(WithLogMixIn):
 
     def os_cmd(self, cmds, comment='', server=None, is_warn_only=False):
         server = server or self.mediator
-        cmd = 'source ' + self.openrc_path + ' && ' + ' && '.join(cmds) + ('# ' + comment if comment else '')
+        cmd = 'source ' + self.openrc_path + ' && ' + ' ; '.join(cmds) + (' # ' + comment if comment else '')
         ans = server.exe(cmd=cmd, is_warn_only=is_warn_only)
-        if ans.failed:
-            return ans
-        return self._process_output(answer=ans)
+        if ans:
+            return self._process_output(answer=ans)
+        else:
+            return []
 
     @staticmethod
     def _process_output(answer):
@@ -34,9 +35,10 @@ class OS(WithLogMixIn):
 
         if not answer:
             return {}
+        if '{' not in answer:
+            return answer.split('\r\n')
         answer = '[' + answer.replace('}{', '},{') + ']'
         return json.loads(answer)
-
 
     def get_fip_network(self):
         ans = self.os_cmd('neutron net-list --router:external=True -c name')
@@ -96,35 +98,8 @@ class OS(WithLogMixIn):
         return positions
 
     def os_create_fips(self, fip_net, how_many):
-        cmds = ['neutron floatingip-create ' + fip_net.get_net_name() for _ in  range(how_many)]
+        cmds = ['neutron floatingip-create ' + fip_net.get_net_name() for _ in range(how_many)]
         return self.os_cmd(cmds=cmds)
-
-    def os_cleanup(self, is_all=False):
-        from lab.cloud.cloud_server import CloudServer
-        from lab.cloud.cloud_image import CloudImage
-        from lab.cloud.cloud_router import CloudRouter
-        from lab.cloud.cloud_network import CloudNetwork
-        from lab.cloud.cloud_flavor import CloudFlavor
-        from lab.cloud.cloud_project import CloudProject
-        from lab.cloud.cloud_security_group import CloudSecurityGroup
-        from lab.cloud.cloud_user import CloudUser
-        from lab.cloud.cloud_key_pair import CloudKeyPair
-        from lab.cloud.cloud_port import CloudPort
-        from lab.cloud.cloud_server_group import CloudServerGroup
-
-        CloudServer.srv_cleanup(cloud=self, is_all=is_all)
-
-        CloudPort.cleanup(cloud=self, is_all=is_all)
-        CloudRouter.cleanup(cloud=self, is_all=is_all)
-        CloudPort.cleanup(cloud=self, is_all=is_all)
-        CloudNetwork.cleanup(cloud=self, is_all=is_all)
-        CloudKeyPair.cleanup(cloud=self, is_all=is_all)
-        CloudImage.img_cleanup(cloud=self, is_all=is_all)
-        CloudFlavor.cleanup(cloud=self, is_all=is_all)
-        CloudProject.cleanup(cloud=self, is_all=is_all)
-        CloudSecurityGroup.cleanup(cloud=self, is_all=is_all)
-        CloudServerGroup.cleanup(cloud=self, is_all=is_all)
-        CloudUser.cleanup(cloud=self, is_all=is_all)
 
     def os_quota_set(self):
         from lab.cloud.cloud_project import CloudProject
@@ -132,18 +107,49 @@ class OS(WithLogMixIn):
         admin_id = [x.id for x in CloudProject.list(cloud=self) if x.name == 'admin'][0]
         self.os_cmd(cmds=['openstack quota set --instances 1000 --cores 2000 --ram 512000 --networks 100 --subnets 300 --ports 500 {}'.format(admin_id)])
 
+    def os_cleanup(self, is_all=False):
+        from lab.cloud import UNIQUE_PATTERN_IN_NAME
+
+        f = '' if is_all else UNIQUE_PATTERN_IN_NAME
+        objs = filter(lambda x: f in x.name, self.servers + self.ports + self.subnets + self.nets + self.images + self.keypairs)
+
+        ids = map(lambda x: '"' + x.role + ' delete ' + x.id + '"', objs)
+        if not ids:  # nothing to clean
+            return
+        names = map(lambda x: x.name, objs)
+        cmd = 'for cmd in ' + ' '.join(ids) + '; do openstack $cmd; done'
+        self.os_cmd(cmds=[cmd], comment=' '.join(names))
+        self.os_all()
+
     def os_all(self):
         from lab.cloud.cloud_host import CloudHost
         from lab.cloud.cloud_server import CloudServer
         from lab.cloud.cloud_image import CloudImage
+        from lab.cloud.cloud_key_pair import CloudKeyPair
+        from lab.cloud.cloud_network import CloudNetwork
+        from lab.cloud.cloud_subnet import CloudSubnet
 
         self.controls, self.computes = CloudHost.host_list(cloud=self)
 
-        a = self.os_cmd(cmds=['openstack image list | grep  -vE "\+|ID" |cut -c 3-38 | while read id; do openstack image show $id -f json; done',
-                              'openstack server list | grep  -vE "\+|ID" |cut -c 3-38 | while read id; do openstack server show $id -f json; done'])
+        self.images, self.servers, self.ports, self.subnets, self.nets, self.keypairs = [], [], [], [], [], []
+        pattern = 'openstack {0} list | grep  -vE "\+|ID|Fingerprint" {{}} | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack {0} {{}} $id -f json; done'
+        map(lambda x: pattern.format(x), ['image', 'network', 'subnet', 'port', 'keypair', 'server'])
+
+        cmds = map(lambda x: x.format('', 'show'), self._cmds())
+        a = self.os_cmd(cmds=cmds, is_warn_only=True)
+        count = 0
         for dic in a:
+            count += 1
             if 'disk_format' in dic:
                 self.images.append(CloudImage(cloud=self, dic=dic))
             elif 'hostId' in dic:
                 self.servers.append(CloudServer(cloud=self, dic=dic))
-        return self
+            elif 'fingerprint' in dic:
+                self.keypairs.append(CloudKeyPair(cloud=self, dic=dic))
+            elif 'provider:network_type' in dic:
+                self.nets.append(CloudNetwork(cloud=self, net_dic=dic))
+            elif 'subnetpool_id' in dic:
+                self.subnets.append(CloudSubnet(cloud=self, dic=dic))
+            else:
+                raise RuntimeError('{}: unknown dic comes from openstack list/show: {}'.format(self, dic))
+        return count

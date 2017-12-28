@@ -71,7 +71,7 @@ class VtsScenario(TestCaseWorker):
         from lab.cloud.cloud_image import CloudImage
         from lab.cloud.cloud_key_pair import CloudKeyPair
 
-        self.pod.vtc.r_vtc_setup()
+        # self.pod.vtc.r_vtc_setup()
         self.cleanup()
         self.keypair = CloudKeyPair.create(cloud=self.cloud)
         self.image = CloudImage.create(cloud=self.cloud, image_name=CloudImage.SQE_PERF)
@@ -147,7 +147,7 @@ class VtsScenario(TestCaseWorker):
         self.cloud.os_server_delete(servers=self.servers)
 
     def cleanup(self):
-        self.pod.vtc.r_vtc_del_border_leaf_ports()
+        # self.pod.vtc.r_vtc_del_border_leaf_ports()
         self.cloud.os_cleanup(is_all=True)
 
     @section(message='Assert no network in VTC')

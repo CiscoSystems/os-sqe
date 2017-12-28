@@ -1,7 +1,8 @@
 from lab.decorators import section
+from lab.cloud import CloudObject
 
 
-class CloudImage(object):
+class CloudImage(CloudObject):
     STATUS_ACTIVE = 'active'
 
     IMAGES = {'sqe-iperf': 'http://172.29.173.233/cloud-images/os-sqe-localadmin-ubuntu.qcow2',
@@ -12,18 +13,12 @@ class CloudImage(object):
     FOR_CSR = 'sqe-csr'
 
     def __init__(self, cloud, dic):
-        self.cloud = cloud
-        self.img_id = dic['id']
-        self.img_name = dic['name']
-        self.img_checksum = dic['checksum']
-        self.img_status = dic['status']
-        self.img_username = None
-        self.img_password = None
-        if self.img_name in self.IMAGES:
-            _, checksum, _, self.img_username, self.img_password = self.read_image_properties(self.img_name)
-
-    def __repr__(self):
-        return self.img_name + ' ' + self.img_status
+        super(CloudImage, self).__init__(cloud=cloud, dic=dic)
+        self.checksum = dic['checksum']
+        self.username = None
+        self.password = None
+        if self.name in self.IMAGES:
+            _, checksum, _, self.username, self.password = self.read_image_properties(self.name)
 
     @staticmethod
     def read_image_properties(name):
@@ -61,13 +56,5 @@ class CloudImage(object):
         return image
 
     def analyse_problem(self):
-        self.cloud.pod.r_collect_info(regex=self.img_id, comment='image ' + self.img_name + ' problem')
-        raise RuntimeError('image ' + self.img_name + ' failed')
-
-    @staticmethod
-    @section(message='cleanup images (estimate 10 secs)')
-    def img_cleanup(cloud, is_all):
-        from lab.cloud import UNIQUE_PATTERN_IN_NAME
-
-        cmd = 'openstack image list | grep  -vE "\+|ID" {} | cut -c 3-38 | while read id; do openstack image delete $id; done'.format('| grep ' + UNIQUE_PATTERN_IN_NAME if not is_all else '')
-        cloud.os_cmd([cmd])
+        self.cloud.pod.r_collect_info(regex=self.id, comment='image ' + self.name + ' problem')
+        raise RuntimeError('image ' + self.name + ' failed')

@@ -1,32 +1,39 @@
-from lab.decorators import section
+from lab.cloud import CloudObject
 
 
-class CloudNetwork(object):
+class CloudNetwork(CloudObject):
     STATUS_ACTIVE = 'ACTIVE'
 
     def __init__(self, cloud, net_dic, subnet_dic=None):
-        self.cloud = cloud
-        self.net_id = net_dic.get('id') or net_dic['ID']
-        self.net_name = net_dic.get('name') or net_dic['Name']
+        super(CloudNetwork, self).__init__(cloud=cloud, dic=net_dic)
         self.segmentation_id = str(net_dic.get('provider:segmentation_id') or net_dic.get('provider-segmentation-id'))
         self.network_type = net_dic.get('provider:network_type') or net_dic.get('provider-network-type').strip('cisco-vts-identities:')
         self.physnet = net_dic.get('provider:physical_network') or net_dic.get('provider-physical-network')
         self.net_status = net_dic['status'].strip('cisco-vts-openstack-identities:')
-        self.mtu = str(net_dic['mtu'])
-        if subnet_dic:
-            assert self.net_id == (subnet_dic.get('network_id') or subnet_dic.get('network-id')), 'network id in subnet dic not coincide with id in network dic'
-            self.cidr = subnet_dic['cidr']
-            self.subnet_id = subnet_dic['id']
-            self.subnet_name = subnet_dic['name']
-            self.gateway_ip = subnet_dic.get('gateway_ip') or subnet_dic.get('gateway-ip')
-            self.allocation_pool = subnet_dic.get('allocation_pools') or (subnet_dic.get('allocation-pools')[0]['start'] + '-' + subnet_dic.get('allocation-pools')[0]['end'])
+        self.mtu = None
+        self.cidr = None
+        self.subnet_id = None
+        self.subnet_name = None
+        self.gateway_ip = None
+        self.allocation_pool = None
         self.ports = []
+        if subnet_dic:
+            self.update_subnet(dic=subnet_dic)
 
     def __hash__(self):
-        return hash(self.net_id)
+        return hash(self.id)
 
     def __eq__(self, other):
-        return self.net_id == other.net_id
+        return self.id == other.id
+
+
+    def update_subnet(self, dic):
+        assert self.net_id == (dic.get('network_id') or dic.get('network-id')), 'network id in subnet dic not coincide with id in network dic'
+        self.cidr = dic['cidr']
+        self.subnet_id = dic['id']
+        self.subnet_name = dic['name']
+        self.gateway_ip = dic.get('gateway_ip') or dic.get('gateway-ip')
+        self.allocation_pool = dic.get('allocation_pools') or (dic.get('allocation-pools')[0]['start'] + '-' + dic.get('allocation-pools')[0]['end'])
 
     def calc_ip_and_mac(self, index):
         from netaddr import IPNetwork
@@ -66,7 +73,6 @@ class CloudNetwork(object):
         return nets
 
     @staticmethod
-    @section(message='cleanup networks (estimate 10 secs)')
     def cleanup(cloud, is_all):
         from lab.cloud import UNIQUE_PATTERN_IN_NAME
 
