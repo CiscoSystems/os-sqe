@@ -9,4 +9,3 @@ class CloudSubnet(CloudObject):
         self.cidr = dic['cidr']
         self.gateway_ip = dic.get('gateway_ip') or dic.get('gateway-ip')
         self.allocation_pool = dic.get('allocation_pools') or (dic.get('allocation-pools')[0]['start'] + '-' + dic.get('allocation-pools')[0]['end'])
-        self.net = filter(lambda x: x.id == dic['network_id'], self.cloud.nets)[0]

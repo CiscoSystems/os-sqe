@@ -89,7 +89,7 @@ class Vtc(VipServer):
         nets = []
         for subnet_dic in a.get('subnet', []):
             net_dic = [x for x in net_dics if x['id'] == subnet_dic['network-id']][0]
-            nets.append(CloudNetwork(cloud=None, net_dic=net_dic, subnet_dic=subnet_dic))
+            nets.append(CloudNetwork(cloud=None, dic=net_dic, subnet_dic=subnet_dic))
         return nets, servers
 
     def __init__(self, pod, dic):

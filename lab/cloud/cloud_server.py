@@ -10,8 +10,7 @@ class CloudServer(CloudObject, WithLogMixIn):
     STATUS_SUSPENDED = 'SUSPENDED'
 
     def __init__(self, cloud, dic):
-        self.cloud = cloud
-        super(CloudServer, self).__init__(dic=dic)
+        super(CloudServer, self).__init__(cloud=cloud, dic=dic)
         self.srv_libvirt = dic['OS-EXT-SRV-ATTR:instance_name']
         self.image = [x for x in cloud.images if x.img_id == dic['image'].split()[-1].strip('()')][0]
         self.compute = filter(lambda c: c.host_id == dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)[0]
@@ -21,9 +20,6 @@ class CloudServer(CloudObject, WithLogMixIn):
         self.srv_ip = self.ips[0]
         self.srv_username = self.image.img_username
         self.srv_password = self.image.img_password
-
-    def __repr__(self):
-        return self.srv_name + ' ' + self.srv_status
 
     @staticmethod
     def wait(cloud, srv_id_name_dic, status, timeout=100):
@@ -56,37 +52,19 @@ class CloudServer(CloudObject, WithLogMixIn):
     @staticmethod
     @section(message='create servers (estimate 60 secs)')
     def create(how_many, flavor, image, key, on_nets, timeout, cloud):
-        from lab.cloud import UNIQUE_PATTERN_IN_NAME
         from lab.cloud.cloud_port import CloudPort
 
         srv_id_name_dic = {}
         for n, comp in [(y, cloud.computes[y % len(cloud.computes)]) for y in range(1, how_many + 1)]:  # distribute servers per compute host in round robin
             ports = CloudPort.create(cloud=cloud, server_number=n, on_nets=on_nets)
             ports_part = ' '.join(map(lambda x: '--nic port-id=' + x.port_id, ports))
-            name = UNIQUE_PATTERN_IN_NAME + str(n)
+            name = CloudObject.UNIQUE_PATTERN_IN_NAME + str(n)
             cmd = 'openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name {} {} '.format(name, flavor.name, image.name, comp.id, key.keypair_name, ports_part)
             dic = cloud.os_cmd([cmd])
             srv_id_name_dic[dic['id']] = dic['name']
         CloudServer.wait(cloud=cloud, srv_id_name_dic=srv_id_name_dic, status=CloudServer.STATUS_ACTIVE, timeout=timeout)
         a = cloud.os_cmd(['for id in {}; do openstack server show $id -f json; done'.format(' '.join(srv_id_name_dic.keys()))])
         return map(lambda x: CloudServer(cloud=cloud, dic=x), a)
-
-    @staticmethod
-    @section(message='cleanup servers (estimate 10 secs)')
-    def srv_cleanup(cloud, is_all):
-        from lab.cloud import UNIQUE_PATTERN_IN_NAME
-
-        cmd = 'openstack server list | grep  -vE "\+|ID" {} | cut -c 3-38 | while read id; do openstack server delete $id; done'.format('| grep ' + UNIQUE_PATTERN_IN_NAME if not is_all else '')
-        cloud.os_cmd([cmd])
-
-    @staticmethod
-    def delete(cloud, srv_id_name_dic):
-        import time
-
-        if srv_id_name_dic:
-            cloud.os_cmd('openstack server delete ' + ' '.join(srv_id_name_dic.keys()), comment=' '.join(srv_id_name_dic.values()))
-            time.sleep(5)
-            CloudServer.wait(cloud=cloud, srv_id_name_dic=srv_id_name_dic, status=CloudServer.STATUS_DELETED)
 
     def console_exe(self, cmd, timeout=20):
         import paramiko

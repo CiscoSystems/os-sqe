@@ -12,8 +12,6 @@ class CloudKeyPair(CloudObject):
     @section('Creating key pair (estimate 5 secs)')
     def create(cloud):
         from lab.with_config import WithConfig
-        from lab.cloud import UNIQUE_PATTERN_IN_NAME
 
         rem_abs_path = cloud.mediator.r_put_string_to_file_in_dir(str_to_put=WithConfig.PUBLIC_KEY, rem_file_name='sqe_public_key', is_as_sqe=True)
-        dic = cloud.os_cmd('openstack keypair create {} --public-key {} '.format(UNIQUE_PATTERN_IN_NAME + 'key', rem_abs_path))
-        return CloudKeyPair(cloud=cloud, dic=dic)
+        return CloudKeyPair(cloud=cloud, dic=cloud.os_cmd(['openstack keypair create {} --public-key {} -f json'.format(CloudObject.UNIQUE_PATTERN_IN_NAME + 'key', rem_abs_path)])[0])

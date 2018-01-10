@@ -49,9 +49,8 @@ class CloudImage(CloudObject):
         if im:
             cloud.os_cmd(cmd='openstack image delete ' + im[0].img_id, comment=im[0].img_name)
         abs_path = cloud.mediator.r_curl(url=url, size=size, checksum=checksum)
-        created = cloud.os_cmd('openstack image create {} --public --disk-format qcow2 --container-format bare --file {} '.format(image_name, abs_path))
-        image = CloudImage(cloud=cloud, dic=created)
-        if created['status'] == 'ERROR':
+        image = CloudImage(cloud=cloud, dic=cloud.os_cmd(['openstack image create {} --public --disk-format qcow2 --container-format bare --file {} -f json'.format(image_name, abs_path)])[0])
+        if image.status == 'ERROR':
             image.analyse_problem()
         return image
 

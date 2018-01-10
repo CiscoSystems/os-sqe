@@ -1,27 +1,14 @@
 from lab.decorators import section
+from lab.cloud import CloudObject
 
 
-class CloudServerGroup(object):
-    def __init__(self, cloud, dic):
-        self.cloud = cloud
-        self._dic = dic
-
-    @property
-    def id(self):
-        return self._dic['ID']
-
-    @property
-    def name(self):
-        return self._dic['Name']
-
+class CloudServerGroup(CloudObject):
     @staticmethod
     @section(message='cleanup server groups (estimate 5 secs)')
     def cleanup(cloud, is_all):
-        from lab.cloud import UNIQUE_PATTERN_IN_NAME
-
         lst = CloudServerGroup.list(cloud=cloud)
         if not is_all:
-            lst = filter(lambda s: UNIQUE_PATTERN_IN_NAME in s['Name'], lst)
+            lst = filter(lambda s: CloudObject.UNIQUE_PATTERN_IN_NAME in s['Name'], lst)
         CloudServerGroup.delete(server_groups=lst)
 
     @staticmethod
