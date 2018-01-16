@@ -125,6 +125,8 @@ class VtsScenario(TestCaseWorker):
         nets = self.network_part()
         self.servers = CloudServer.create(how_many=self.n_servers, flavor=self.flavor, image=self.image, on_nets=nets, key=self.keypair, timeout=self.timeout, cloud=self.cloud)
 
+        self.log('Waiting 100 sec to settle servers...')
+        time.sleep(100)
         start_time = time.time()
 
         while time.time() - start_time < self.uptime:

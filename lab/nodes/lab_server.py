@@ -115,7 +115,7 @@ class LabServer(LabNode):
         if 'sudo' in cmd and 'sudo -p "" -S ' not in cmd:
             cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.password))
         if self.proxy:
-            cmd = 'ssh -o StrictHostKeyChecking=no ' +  self.username + '@' + (self.ip or self.id) + " '" + cmd + "'"
+            cmd = 'ssh -o StrictHostKeyChecking=no ' + self.username + '@' + (self.ip or self.id) + " '" + cmd + "'"
             comment += ' ssh ' + self.id
         comment += ' # ' + self.id + '@' + self.pod.name
 
@@ -200,7 +200,7 @@ class LabServer(LabNode):
                 else:
                     raise RuntimeError('image described here {}.txt has wrong checksum. Check it manually'.format(url))
 
-        self.exe('rm -f {l} && cp {c} {l}'.format(l=abs_path, c=cache_abs_path), is_as_sqe=True)
+        self.exe('rm -f {0} && cp {1} {0}'.format(abs_path, cache_abs_path), is_as_sqe=True)
         return abs_path
 
     def r_get_file_from_dir(self, rem_rel_path, in_dir='.', loc_abs_path=None):
@@ -220,6 +220,7 @@ class LabServer(LabNode):
         :param str_to_put: string
         :param rem_file_name: remote file name without path
         :param in_dir: absolute or relative to ~ path to remote folder
+        :param is_as_sqe: execute as user 'sqe'
         :return: abs remote path
         """
         if '/' in rem_file_name:
@@ -236,7 +237,7 @@ class LabServer(LabNode):
         import socket
 
         if self.proxy:
-            ans = self.proxy.exe(cmd='ping -c 1 {}'.format(self.ssh_ip), is_warn_only=True)
+            ans = self.proxy.exe(cmd='ping -c 1 {}'.format(self.ip), is_warn_only=True)
             return '1 received, 0% packet loss' in ans
         else:
             port = 22

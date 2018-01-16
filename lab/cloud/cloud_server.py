@@ -68,7 +68,7 @@ class CloudServer(CloudObject, WithLogMixIn):
         a = cloud.os_cmd(['for id in {}; do openstack server show $id -f json; done'.format(' '.join(srv_id_name_dic.keys()))])
         return map(lambda x: CloudServer(cloud=cloud, dic=x), a)
 
-    def console_exe(self, cmd, timeout=20):
+    def console_exe(self, cmd, timeout=200):
         import paramiko
         import StringIO
         import time
