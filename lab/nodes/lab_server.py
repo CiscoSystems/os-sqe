@@ -5,7 +5,7 @@ class LabServer(LabNode):
     def __init__(self, pod, dic):
         super(LabServer, self).__init__(pod=pod, dic=dic)
 
-        self.ssh_ip, self.ssh_username, self.ssh_password = dic['ssh-ip'], dic['ssh-username'], dic['ssh-password']  # if password is None - use sqe ssh key
+        self.ip, self.username, self.password = dic['ssh-ip'], dic['ssh-username'], dic['ssh-password']  # if password is None - use sqe ssh key
         self._package_manager = None
         self.virtual_servers = set()  # virtual servers running on this hardware server
         self.intel_nics_dic = {}
@@ -104,7 +104,7 @@ class LabServer(LabNode):
         import time
         from lab.server import Server
 
-        ip, username, password = (self.proxy.ssh_ip, self.proxy.ssh_username, self.proxy.ssh_password) if self.proxy else (self.ssh_ip, self.ssh_username, self.ssh_password)
+        ip, username, password = (self.proxy.ip, self.proxy.username, self.proxy.password) if self.proxy else (self.ip, self.username, self.password)
         if is_as_sqe:
             username, password = self.pod.SQE_USERNAME, None
         srv = Server(ip=ip, username=username, password=password)
@@ -113,9 +113,9 @@ class LabServer(LabNode):
         comment += ' ssh ' + username + '@' + ip
 
         if 'sudo' in cmd and 'sudo -p "" -S ' not in cmd:
-            cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.ssh_password))
+            cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.password))
         if self.proxy:
-            cmd = 'ssh -o StrictHostKeyChecking=no ' +  self.ssh_username + '@' + (self.ssh_ip or self.id) + " '" + cmd + "'"
+            cmd = 'ssh -o StrictHostKeyChecking=no ' +  self.username + '@' + (self.ip or self.id) + " '" + cmd + "'"
             comment += ' ssh ' + self.id
         comment += ' # ' + self.id + '@' + self.pod.name
 
@@ -130,7 +130,7 @@ class LabServer(LabNode):
     def get_as_sqe(self, rem_rel_path, in_dir, loc_abs_path):
         from lab.server import Server
 
-        return Server(ip=self.ssh_ip, username='sqe', password=None).get(rem_rel_path, in_dir, loc_abs_path)
+        return Server(ip=self.ip, username='sqe', password=None).get(rem_rel_path, in_dir, loc_abs_path)
 
     def file_append(self, file_path, data, in_directory='.', is_warn_only=False, n_attempts=100):
         from lab.server import Server
@@ -138,7 +138,7 @@ class LabServer(LabNode):
         if self.proxy:
             raise NotImplemented()
         else:
-            ans = Server(ip=self.ssh_ip, username=self.ssh_username, password=self.ssh_password).file_append(file_path=file_path, data=data, in_directory=in_directory, is_warn_only=is_warn_only, n_attempts=n_attempts)
+            ans = Server(ip=self.ip, username=self.username, password=self.password).file_append(file_path=file_path, data=data, in_directory=in_directory, is_warn_only=is_warn_only, n_attempts=n_attempts)
         return ans
 
     def r_register_rhel(self, rhel_subscription_creds_url):
@@ -243,7 +243,7 @@ class LabServer(LabNode):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(1)
             try:
-                s.connect((self.ssh_ip, port))
+                s.connect((self.ip, port))
                 res = True
             except (socket.timeout, socket.error):
                 res = False

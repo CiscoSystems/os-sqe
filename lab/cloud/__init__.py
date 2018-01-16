@@ -7,6 +7,8 @@ class CloudObject(object):
         self.name = dic['name']
         self.role = self.__class__.__name__.replace('Cloud', '').lower()
         self.status = dic.get('status', '')
+        if not cloud:
+            return
         if self.role == 'keypair':
             self.cloud.keypairs.append(self)
         elif self.role == 'flavor':
@@ -25,6 +27,7 @@ class CloudObject(object):
             self.cloud.images.append(self)
         elif self.role == 'server':
             self.cloud.servers.append(self)
+            self.image = [x for x in self.cloud.images if x.id == dic['image'].split()[-1].strip('()')][0]
         else:
             raise RuntimeError('{}: add role to this if!'.format(self))
 

@@ -107,16 +107,11 @@ class OS(WithLogMixIn):
     def os_cleanup(self, is_all=False):
         from lab.cloud import CloudObject
 
-        f = '' if is_all else CloudObject.UNIQUE_PATTERN_IN_NAME
-        objs = filter(lambda x: f in x.name, self.servers + self.ports + self.subnets + self.nets + self.images + self.keypairs + self.flavors)
+        grep = 'grep  -vE "\+|ID|Fingerprint"' if is_all else ('grep ' + CloudObject.UNIQUE_PATTERN_IN_NAME)
+        pattern = 'openstack {0} list | ' + grep + ' | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack {0} delete $id; done'
+        cmds = map(lambda x: x.format('', 'show'), map(lambda x: pattern.format(x), ['server', 'port', 'subnet', 'network', 'port', 'keypair', 'image', 'flavor']))
 
-        ids = map(lambda x: '"' + x.role + ' delete ' + x.id + '"', objs)
-        if not ids:  # nothing to clean
-            return
-        names = map(lambda x: x.name, objs)
-        cmd = 'for cmd in ' + ' '.join(ids) + '; do openstack $cmd; done'
-        self.os_cmd(cmds=[cmd], comment=' '.join(names))
-        self.os_all()
+        self.os_cmd(cmds=cmds, is_warn_only=True)
 
     @decorators.section('Investigate cloud')
     def os_all(self):
@@ -127,6 +122,7 @@ class OS(WithLogMixIn):
         from lab.cloud.cloud_subnet import CloudSubnet
         from lab.cloud.cloud_key_pair import CloudKeyPair
         from lab.cloud.cloud_flavor import CloudFlavor
+        from lab.cloud.cloud_port import CloudPort
 
         self.controls, self.computes = CloudHost.host_list(cloud=self)
 
@@ -147,6 +143,8 @@ class OS(WithLogMixIn):
                 CloudNetwork(cloud=self, dic=dic)
             elif 'subnetpool_id' in dic:
                 CloudSubnet(cloud=self, dic=dic)
+            elif 'port_security_enabled' in dic:
+                CloudPort(cloud=self, dic=dic)
             elif 'os-flavor-access:is_public' in dic:
                 CloudFlavor(cloud=self, dic=dic)
             else:

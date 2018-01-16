@@ -91,9 +91,6 @@ class RunnerHA(WithConfig, WithLogMixIn):
 
         deployer = DeployerExistingCloud(lab_name=pod_name, allowed_drivers=possible_drivers)
         cloud = deployer.execute({'clouds': [], 'servers': []})
-        cloud.os_all()
-        if len(cloud.computes) < 2:
-            raise RuntimeError('{}: not possible to run on this cloud, number of compute hosts less then 2'.format(cloud))
         return cloud
 
     def create_tests(self, test_paths, is_noclean, is_debug):

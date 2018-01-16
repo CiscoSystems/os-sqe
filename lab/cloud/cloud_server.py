@@ -12,14 +12,15 @@ class CloudServer(CloudObject, WithLogMixIn):
     def __init__(self, cloud, dic):
         super(CloudServer, self).__init__(cloud=cloud, dic=dic)
         self.srv_libvirt = dic['OS-EXT-SRV-ATTR:instance_name']
-        self.image = [x for x in cloud.images if x.img_id == dic['image'].split()[-1].strip('()')][0]
-        self.compute = filter(lambda c: c.host_id == dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)[0]
         self.ips = [x.split('=')[-1] for x in dic['addresses'].split(',')]
-        grep = self.compute.host_exe('libvirt virsh dumpxml ' + self.srv_libvirt + ' | grep "source mode="')
-        self.srv_serial = grep.split('service=\'')[-1].split('\'')[0]
         self.srv_ip = self.ips[0]
-        self.srv_username = self.image.img_username
-        self.srv_password = self.image.img_password
+        self.srv_username = self.image.username
+        self.srv_password = self.image.password
+        filtered = filter(lambda c: c.id == dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)
+        if filtered:
+            self.compute = filtered[0]
+            grep = self.compute.host_exe('libvirt virsh dumpxml ' + self.srv_libvirt + ' | grep "source mode="')
+            self.srv_serial = grep.split('service=\'')[-1].split('\'')[0]
 
     @staticmethod
     def wait(cloud, srv_id_name_dic, status, timeout=100):
@@ -30,9 +31,10 @@ class CloudServer(CloudObject, WithLogMixIn):
         required_n_servers = 0 if status == CloudServer.STATUS_DELETED else len(srv_id_name_dic)
         start_time = time.time()
         while True:
-            our = filter(lambda x: x[1] in srv_id_name_dic, cloud.os_cmd(cmd='openstack server list '))
-            in_error = filter(lambda x: x[2] == 'ERROR', our)
-            in_status = filter(lambda x: x[2] == status, our) if status != CloudServer.STATUS_DELETED else our
+            a = cloud.os_cmd(cmds=['openstack server list -f json'])
+            our = filter(lambda x: x['ID'] in srv_id_name_dic, a[0])
+            in_error = filter(lambda x: x['Status'] == 'ERROR', our)
+            in_status = filter(lambda x: x['Status'] == status, our) if status != CloudServer.STATUS_DELETED else our
             if len(in_status) == required_n_servers:
                 return in_status  # all successfully reached the status
             if in_error:
@@ -41,7 +43,7 @@ class CloudServer(CloudObject, WithLogMixIn):
             if time.time() > start_time + timeout:
                 CloudServer.analyse_servers_problems(servers=our)
                 raise RuntimeError('Instances {} are not {} after {} secs'.format(our, status, timeout))
-            time.sleep(30)
+            time.sleep(15)
 
     @staticmethod
     def analyse_servers_problems(servers):
@@ -57,11 +59,11 @@ class CloudServer(CloudObject, WithLogMixIn):
         srv_id_name_dic = {}
         for n, comp in [(y, cloud.computes[y % len(cloud.computes)]) for y in range(1, how_many + 1)]:  # distribute servers per compute host in round robin
             ports = CloudPort.create(cloud=cloud, server_number=n, on_nets=on_nets)
-            ports_part = ' '.join(map(lambda x: '--nic port-id=' + x.port_id, ports))
+            ports_part = ' '.join(map(lambda x: '--nic port-id=' + x.id, ports))
             name = CloudObject.UNIQUE_PATTERN_IN_NAME + str(n)
-            cmd = 'openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name {} {} '.format(name, flavor.name, image.name, comp.id, key.keypair_name, ports_part)
+            cmd = 'openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name {} {} -f json'.format(name, flavor.name, image.name, comp.id, key.name, ports_part)
             dic = cloud.os_cmd([cmd])
-            srv_id_name_dic[dic['id']] = dic['name']
+            srv_id_name_dic[dic[0]['id']] = dic[0]['name']
         CloudServer.wait(cloud=cloud, srv_id_name_dic=srv_id_name_dic, status=CloudServer.STATUS_ACTIVE, timeout=timeout)
         a = cloud.os_cmd(['for id in {}; do openstack server show $id -f json; done'.format(' '.join(srv_id_name_dic.keys()))])
         return map(lambda x: CloudServer(cloud=cloud, dic=x), a)

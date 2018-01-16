@@ -121,7 +121,7 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
             #     for mac in nic.get_macs():
             #         self.make_sure_that_object_is_unique(obj=mac.lower(), node_id=node.get_node_id())  # check that all MAC are unique
             try:
-                self.make_sure_that_object_is_unique(obj=node.ssh_ip, obj_type='ssh_ip', owner=node)
+                self.make_sure_that_object_is_unique(obj=node.ip, obj_type='ssh_ip', owner=node)
             except IndexError:
                 raise ValueError('{}: no NIC is marked as is_ssh'.format(node))
             # for wire in node.get_all_wires():

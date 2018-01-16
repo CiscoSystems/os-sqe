@@ -73,6 +73,7 @@ class VtsScenario(TestCaseWorker):
 
         # self.pod.vtc.r_vtc_setup()
         self.cleanup()
+        self.cloud.os_all()
         self.keypair = CloudKeyPair.create(cloud=self.cloud)
         self.image = CloudImage.create(cloud=self.cloud, image_name=CloudImage.SQE_PERF)
         self.flavor = CloudFlavor.create(cloud=self.cloud, flavor_type=CloudFlavor.TYPE_VTS)
@@ -90,19 +91,12 @@ class VtsScenario(TestCaseWorker):
         import time
 
         for i in range(10):
-            vts_nets, _ = self.pod.vtc.r_vtc_get_openstack()
+            vts_nets, _ = self.pod.vtc.api_openstack()
             if set(nets) == set(vts_nets):
                 break
             time.sleep(5)
         else:
             raise RuntimeError('{}: VTC failed to register networks'.format(self))
-
-    def create_servers(self, on_nets):
-        from lab.cloud.cloud_server import CloudServer
-
-        self.servers = CloudServer.create(how_many=self.n_servers, flavor=self.flavor, image=self.image, on_nets=on_nets, key=self.keypair, timeout=self.timeout, cloud=self.cloud)
-        _, servers = self.pod.vtc.r_vtc_get_openstack()
-        pass
 
     @section('Ping servers')
     def ping_servers(self):
@@ -119,19 +113,17 @@ class VtsScenario(TestCaseWorker):
         server_same = [x for x in self.servers if x.get_compute_host() == server_passive.get_compute_host()][0]
         server_other = [x for x in self.servers if x.get_compute_host() != server_passive.get_compute_host()][0]
 
-        ip = server_passive.get_ssh_ip()
         server_passive.exe('iperf -s -p 1111 &')  # run iperf in listening mode on first server of first compute host
-        a = [x.exe('{} -c {} -p 1111'.format(self.run_inside, ip)) for x in [server_same, server_other]]
+        a = [x.exe('{} -c {} -p 1111'.format(self.run_inside, server_passive.ip)) for x in [server_same, server_other]]
         return a
 
     @section('Running test')
     def loop_worker(self):
         import time
+        from lab.cloud.cloud_server import CloudServer
 
         nets = self.network_part()
-
-        self.create_servers(on_nets=nets)
-        # self.attach_border_leaf(nets=nets)
+        self.servers = CloudServer.create(how_many=self.n_servers, flavor=self.flavor, image=self.image, on_nets=nets, key=self.keypair, timeout=self.timeout, cloud=self.cloud)
 
         start_time = time.time()
 

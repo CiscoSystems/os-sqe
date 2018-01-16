@@ -188,7 +188,7 @@ def bash():
         if not isinstance(node, VirtualServer):
             aliases.append('alias z{n}="sshpass -p {p} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}"'.format(n=node.id, p=node.oob_password, u=node.oob_username, ip=node.oob_ip))  # cimc
         if isinstance(node, LabServer):
-            ip, username, password = (node.proxy.ssh_ip + ' ' + 'ssh -o StrictHostKeyChecking=no ' + node.id, node.proxy.ssh_username, node.proxy.ssh_password) if node.proxy else (node.ssh_ip, node.ssh_username, node.ssh_password)
+            ip, username, password = (node.proxy.ip + ' ' + 'ssh -o StrictHostKeyChecking=no ' + node.id, node.proxy.username, node.proxy.password) if node.proxy else (node.ip, node.username, node.password)
             password = ' sshpass -p ' + password + ' ' if password else ''  # if password is None use the key pair to ssh
             aliases.append('alias {n}="{p}ssh -t -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no {u}@{ip}"'.format(p=password, n=node.id, u=username, ip=ip))  # ssh
 

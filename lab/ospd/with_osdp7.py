@@ -85,12 +85,12 @@ class WithOspd7(object):
 
             nexus_servers_section = ',\n\t\t\t\t\t\t'.join(mac_port_lines)
 
-            ssh_ip, ssh_username, ssh_password, hostname = n9.get_ssh()
-            switch_tempest_section.append({'hostname': hostname, 'username': ssh_username, 'password': ssh_password, 'sw': str(ssh_ip)})
+            ip, username, password, hostname = n9.get_ssh()
+            switch_tempest_section.append({'hostname': hostname, 'username': username, 'password': password, 'sw': str(ip)})
             n9k_description = ['"' + hostname + '": {',
-                               '"ip_address": "' + str(ssh_ip) + '",',
-                               '"username": "' + ssh_username + '",',
-                               '"password": "' + ssh_password + '",',
+                               '"ip_address": "' + str(ip) + '",',
+                               '"username": "' + username + '",',
+                               '"password": "' + password + '",',
                                '"nve_src_intf": 2,',
                                '"ssh_port": 22,',
                                '"physnet": "datacentre",',

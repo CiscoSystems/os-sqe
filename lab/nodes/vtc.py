@@ -33,8 +33,18 @@ class Vtc(VipServer):
 
     def api_openstack(self):
         # show configuration openstack vmm
+        from lab.cloud.cloud_network import CloudNetwork
+        from lab.cloud.cloud_subnet import CloudSubnet
+
         cmd = '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/openstack?deep'
-        return self.cmd(cmd)
+        a = self.cmd(cmd)['cisco-vts-openstack:openstack']['vmm'][0]
+
+        nets = []
+        subnets = []
+        nets.extend([CloudNetwork(cloud=None, dic=x) for x in a.get('network', [])])
+        subnets.extend([CloudSubnet(cloud=None, dic=x) for x in a.get('subnet', [])])
+        servers = a.get('servers', [])
+        return nets, servers
 
     def api_pool_lst(self):
         # show configuration resource-pools
@@ -80,18 +90,6 @@ class Vtc(VipServer):
         cmd = '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/cisco-vts/uuid-servers?deep'
         return self.cmd(cmd)['cisco-vts:uuid-servers']['uuid-server']
 
-    def r_vtc_get_openstack(self):
-        from lab.cloud.cloud_network import CloudNetwork
-
-        a = self.api_openstack()['cisco-vts-openstack:openstack']['vmm'][0]
-        net_dics = a.get('network', [])
-        servers = a.get('servers', [])
-        nets = []
-        for subnet_dic in a.get('subnet', []):
-            net_dic = [x for x in net_dics if x['id'] == subnet_dic['network-id']][0]
-            nets.append(CloudNetwork(cloud=None, dic=net_dic, subnet_dic=subnet_dic))
-        return nets, servers
-
     def __init__(self, pod, dic):
         super(Vtc, self).__init__(pod=pod, dic=dic)
         self.vtc_username = dic['vtc-username']
@@ -100,7 +98,7 @@ class Vtc(VipServer):
     def cmd(self, cmd):
         import json
 
-        cmd = 'curl -s -k -u {u}:{p} '.format(u=self.vtc_username, p=self.vtc_password) + cmd.replace('{ip}', self.ssh_ip)
+        cmd = 'curl -s -k -u {u}:{p} '.format(u=self.vtc_username, p=self.vtc_password) + cmd.replace('{ip}', self.ip)
         for i in range(10):
             ans = self.exe(cmd, is_warn_only=True)
             if ans.failed:
@@ -168,7 +166,7 @@ class Vtc(VipServer):
         mx_ip, mx_net_mask = mx_nic.get_ip_and_mask()
         mx_vlan = mx_nic.get_net().get_vlan_id()
 
-        cfg_body = cfg_tmpl.format(vtc_a_ip=a_ip, a_net_mask=a_net_mask, a_gw=a_gw, vtc_mx_ip=mx_ip, mx_net_mask=mx_net_mask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=self.ssh_username, password=self.ssh_password, hostname=hostname)
+        cfg_body = cfg_tmpl.format(vtc_a_ip=a_ip, a_net_mask=a_net_mask, a_gw=a_gw, vtc_mx_ip=mx_ip, mx_net_mask=mx_net_mask, dns_ip=dns_ip, ntp_ip=ntp_ip, username=self.username, password=self.password, hostname=hostname)
         net_part = net_part_tmpl.format(a_nic_name='a', mx_nic_name='mx', mx_vlan=mx_vlan)
 
         with with_config.WithConfig.open_artifact(hostname, 'w') as f:
@@ -178,7 +176,7 @@ class Vtc(VipServer):
     def get_cluster_conf_body(self):
         from lab import with_config
 
-        vip_a, vip_mx = self.ssh_ip
+        vip_a, vip_mx = self.ip
         a_ip = []
         mx_ip = []
         mx_gw = None
@@ -205,15 +203,15 @@ class Vtc(VipServer):
         if default_username != self.oob_username:
             raise ValueError
 
-        api_security_check = 'https://{}:8443/VTS/j_spring_security_check'.format(self.ssh_ip)
-        api_java_servlet = 'https://{}:8443/VTS/JavaScriptServlet'.format(self.ssh_ip)
-        api_update_password = 'https://{}:8443/VTS/rs/ncs/user?updatePassword=true&isEnforcePassword=true'.format(self.ssh_ip)
+        api_security_check = 'https://{}:8443/VTS/j_spring_security_check'.format(self.ip)
+        api_java_servlet = 'https://{}:8443/VTS/JavaScriptServlet'.format(self.ip)
+        api_update_password = 'https://{}:8443/VTS/rs/ncs/user?updatePassword=true&isEnforcePassword=true'.format(self.ip)
 
         while True:
             # noinspection PyBroadException
             try:
                 self.log(message='Waiting for VTC service up...')
-                requests.get('https://{}:8443/VTS/'.format(self.ssh_ip), verify=False, timeout=300)  # First try to open to check that Tomcat is indeed started
+                requests.get('https://{}:8443/VTS/'.format(self.ip), verify=False, timeout=300)  # First try to open to check that Tomcat is indeed started
                 break
             except:
                 sleep(100)
@@ -375,11 +373,6 @@ class Vtc(VipServer):
             tor_name = dic['hostname']
             if not [s for s in servers if tor_name in s['torname'] and tor_port in s['portname']]:
                 self.pod.vtc.r_vtc_add_host_to_inventory(server_name='vmtp', tor_name=tor_name, tor_port=tor_port)
-
-    @decorators.section(message='Detach border leaf')
-    def r_vtc_del_border_leaf_ports(self):
-        os = self.r_vtc_get_openstack()
-        pass
 
 
 class VtcIndividual(LibVirtServer):

@@ -71,11 +71,11 @@ class Configurator(WithConfig, WithLogMixIn):
 
         cimc_username = pod.setup_data['CIMC-COMMON']['cimc_username']
         cimc_password = pod.setup_data['CIMC-COMMON']['cimc_password']
-        ssh_username = pod.setup_data['COBBLER']['admin_username']
+        username = pod.setup_data['COBBLER']['admin_username']
 
         nodes = [{'id': 'mgm', 'role': 'CimcDirector',
                   'oob-ip': pod.setup_data['TESTING_MGMT_NODE_CIMC_IP'], 'oob-username': pod.setup_data['TESTING_MGMT_CIMC_USERNAME'], 'oob-password': pod.setup_data['TESTING_MGMT_CIMC_PASSWORD'],
-                  'ssh-username': ssh_username, 'ssh-password': None, 'proxy': None,
+                  'ssh-username': username, 'ssh-password': None, 'proxy': None,
                   'nics': [{'id': 'a', 'ip': pod.setup_data['TESTING_MGMT_NODE_API_IP'].split('/')[0], 'is-ssh': True},
                            {'id': 'm', 'ip': pod.setup_data['TESTING_MGMT_NODE_MGMT_IP'].split('/')[0], 'is-ssh': False}]}]
 
@@ -99,7 +99,7 @@ class Configurator(WithConfig, WithLogMixIn):
                         ip = mercury_srv_cfg.get(mercury_net_id + '_ip', str(net.get_ip_for_index(ip_base + i)))
                         nics.append({'id': mercury_net_id[0], 'ip': ip, 'is-ssh': mercury_net_id == 'management'})
 
-                    nodes.append({'id': node_id, 'role': sqe_role_id, 'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'proxy': 'mgm', 'nics': nics})
+                    nodes.append({'id': node_id, 'role': sqe_role_id, 'oob-ip': oob_ip, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': username, 'proxy': 'mgm', 'nics': nics})
 
                     if mercury_role_id == 'vts':
                         vtc_nics = [{'id': 'a', 'ip': pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_IPS'][i-1], 'is-ssh': True},
@@ -110,7 +110,7 @@ class Configurator(WithConfig, WithLogMixIn):
                         virtuals.append({'id': 'vtc' + str(i), 'role': 'vtc', 'oob-ip': None, 'oob-username': None, 'oob-password': None,
                                          'ssh-username': pod.setup_data['VTS_PARAMETERS']['VTC_SSH_USERNAME'], 'ssh-password': pod.setup_data['VTS_PARAMETERS']['VTC_SSH_PASSWORD'],
                                          'virtual-on': node_id, 'vip_a': pod.setup_data['VTS_PARAMETERS']['VTS_VTC_API_VIP'], 'vip_m': pod.setup_data['VTS_PARAMETERS']['VTS_NCS_IP'], 'proxy': None, 'nics': vtc_nics})
-                        virtuals.append({'id': 'xrvr' + str(i), 'role': 'xrvr', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': ssh_username, 'ssh-password': Configurator.DEFAULT_PASSWORD,
+                        virtuals.append({'id': 'xrvr' + str(i), 'role': 'xrvr', 'oob-ip': None, 'oob-username': oob_username, 'oob-password': oob_password, 'ssh-username': username, 'ssh-password': Configurator.DEFAULT_PASSWORD,
                                          'virtual-on': node_id, 'proxy': 'mgm', 'nics': xrvr_nics})
                 except KeyError as ex:
                     raise KeyError('{}: no {}'.format(node_id, ex))
