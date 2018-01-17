@@ -104,7 +104,7 @@ class Server(WithConfig, WithLogMixIn):
         self.exe(cmd='adduser -p ' + encrypted_password + ' ' + WithConfig.SQE_USERNAME)
         self.exe(cmd='echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(username))
         self.exe(cmd='chmod 0440 /etc/sudoers.d/' + username)
-        self.exe('mkdir -p ~{0}/.ssh && chmod 700 ~{0}/.ssh && cp .ssh/{{authorized_keys,id_rsa,id_rsa.pub}} ~{0}/.ssh && chown -R {0}.{0} ~{0}/.ssh'.format(WithConfig.SQE_USERNAME))
+        self.exe('mkdir -p ~{0}/.ssh && chmod 700 ~{0}/.ssh && cp .ssh/* ~{0}/.ssh && chown -R {0}.{0} ~{0}/.ssh'.format(WithConfig.SQE_USERNAME))
         self.exe(cmd='[ -d  openstack-configs ] && cp openstack-configs/{{openrc,secrets.yaml,setup_data.yaml,defaults.yaml}} ~{0}/ && chown -R {0}.{0} ~{0}/*'.format(username))
 
         sqe = Server(ip=self.ip, username=username, password=tmp_password)
