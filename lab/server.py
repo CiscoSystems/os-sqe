@@ -107,4 +107,4 @@ class Server(WithConfig, WithLogMixIn):
 
         sqe = Server(ip=self.ip, username=username, password=tmp_password)
         gitlab_public = 'wwwin-gitlab-sjc.cisco.com,10.22.31.77 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJZlfIFWs5/EaXGnR9oXp6mCtShpvO2zKGqJxNMvMJmixdkdW4oPjxYEYP+2tXKPorvh3Wweol82V3KOkB6VhLk='
-        sqe.exe('echo {} > .ssh/known_hosts && echo {} > authorized_keys && chmod 600 .ssh/authorized_keys'.format(gitlab_public, public_key))  # after this point key access is ok
+        sqe.exe('echo {} > .ssh/known_hosts ; echo "{}" > aaa; cp aaa .ssh/authorized_keys; chmod 600 .ssh/authorized_keys'.format(gitlab_public, public_key))  # after this point key access is ok
