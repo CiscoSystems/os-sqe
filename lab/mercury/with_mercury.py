@@ -98,11 +98,11 @@ class WithMercury(object):
 
         try:
             client.connect(hostname=ip, username=WithConfig.SQE_USERNAME, pkey=pkey, timeout=2)
-        except paramiko.AuthenticationException:  # user SQE yet, create it
+        except paramiko.AuthenticationException:  # no user SQE yet, create it
             for password in WithMercury.POSSIBLE_PASSWORDS:
                 try:
                     client.connect(hostname=ip, username='root', password=password, timeout=2)
-                    Server(ip=ip, username='root', password=password).create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY, private_key=WithConfig.PRIVATE_KEY)
+                    Server(ip=ip, username='root', password=password).create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY)
                     break
                 except paramiko.AuthenticationException:
                     continue

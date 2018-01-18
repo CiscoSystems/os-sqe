@@ -98,15 +98,13 @@ class Server(WithConfig, WithLogMixIn):
             if self.exe(cmd='whereis {0}'.format(package_name)) == package_name + ':':
                 self.exe(cmd='sudo {0} install -y {1}'.format(pm, package_names))
 
-    def create_user(self, username, public_key, private_key):
-        tmp_password = 'tmp-password'
-        encrypted_password = self.exe(cmd='openssl passwd -crypt ' + tmp_password).split()[-1]  # encrypted password may contain Warning
-        self.exe(cmd='adduser -p ' + encrypted_password + ' ' + WithConfig.SQE_USERNAME)
-        self.exe(cmd='echo "{0} ALL=(root) NOPASSWD:ALL" | tee -a /etc/sudoers.d/{0}'.format(username))
-        self.exe(cmd='chmod 0440 /etc/sudoers.d/' + username)
-        self.exe('mkdir -p ~{0}/.ssh && chmod 700 ~{0}/.ssh && cp .ssh/* ~{0}/.ssh && chown -R {0}.{0} ~{0}/.ssh'.format(WithConfig.SQE_USERNAME))
-        self.exe(cmd='[ -d  openstack-configs ] && cp openstack-configs/{{openrc,secrets.yaml,setup_data.yaml,defaults.yaml}} ~{0}/ && chown -R {0}.{0} ~{0}/*'.format(username))
+    def create_user(self, username, public_key):
+        tmp_password = 'password'
+
+        a = 'grep {1} /etc/passwd || openssl passwd -crypt {0} | while read p; do adduser -p $p {1}; echo "{1} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/{1}; '.format(tmp_password, username)
+        b = 'mkdir -p ~{0}/.ssh ; chmod 700 ~{0}/.ssh ; cp .ssh/* ~{0}/.ssh ; cp openstack-configs/{{*.yaml,openrc}} ~{0}/ ; chown -R {0}.{0} ~{0}; done'.format(username)
+        self.exe(cmd=a + b)
 
         sqe = Server(ip=self.ip, username=username, password=tmp_password)
         gitlab_public = 'wwwin-gitlab-sjc.cisco.com,10.22.31.77 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJZlfIFWs5/EaXGnR9oXp6mCtShpvO2zKGqJxNMvMJmixdkdW4oPjxYEYP+2tXKPorvh3Wweol82V3KOkB6VhLk='
-        sqe.exe('echo {} > .ssh/known_hosts'.format(gitlab_public))
+        sqe.exe('echo {} > .ssh/known_hosts && echo {} > authorized_keys && chmod 600 .ssh/authorized_keys'.format(gitlab_public, public_key))  # after this point key access is ok
