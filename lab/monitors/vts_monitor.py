@@ -12,4 +12,4 @@ class VtsMonitor(TestCaseWorker):
     def loop_worker(self):
         self.log('cluster={}'.format(self.pod.vtc.api_vtc_ha()))
         self.log('openstack={}'.format(self.pod.vtc.api_openstack()))
-        self.log('ports={}'.format(self.pod.vtc.api_port_lst()))
+
