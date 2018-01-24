@@ -98,7 +98,7 @@ class Server(WithConfig, WithLogMixIn):
             if self.exe(cmd='whereis {0}'.format(package_name)) == package_name + ':':
                 self.exe(cmd='sudo {0} install -y {1}'.format(pm, package_names))
 
-    def create_user(self, username, public_key):
+    def create_user(self, username, public_key, private_key):
         tmp_password = 'password'
 
         a = 'grep {1} /etc/passwd || openssl passwd -crypt {0} | while read p; do adduser -p $p {1}; echo "{1} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/{1}; '.format(tmp_password, username)
@@ -107,4 +107,5 @@ class Server(WithConfig, WithLogMixIn):
 
         sqe = Server(ip=self.ip, username=username, password=tmp_password)
         gitlab_public = 'wwwin-gitlab-sjc.cisco.com,10.22.31.77 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJZlfIFWs5/EaXGnR9oXp6mCtShpvO2zKGqJxNMvMJmixdkdW4oPjxYEYP+2tXKPorvh3Wweol82V3KOkB6VhLk='
-        sqe.exe('echo {} > .ssh/known_hosts ; echo "{}" > aaa; cp aaa .ssh/authorized_keys; chmod 600 .ssh/authorized_keys'.format(gitlab_public, public_key))  # after this point key access is ok
+        sqe.exe('echo "{}" > .ssh/known_hosts ; echo "{}" > aaa; cp aaa .ssh/authorized_keys; echo "{}" > .ssh/sqe_private; chmod 600 .ssh/authorized_keys .ssh/sqe_private'.format(gitlab_public, public_key, private_key))
+        pass
