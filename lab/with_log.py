@@ -117,7 +117,7 @@ class Logger(object):
         console.setFormatter(logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s: %(message)s'))
         logger.addHandler(console)
 
-        if 'vmtp' in os.listdir('/var/log'):
+        if os.path.isdir('/var/log') and 'vmtp' in os.listdir('/var/log'):
             logstash = logging.FileHandler('/var/log/vmtp/sqe.log')
             logstash.setLevel(logging.INFO)
             logstash.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s [%(name)s] %(message)s'))  # the format is important for logstash processing
