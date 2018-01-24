@@ -14,7 +14,7 @@ class OS(WithLogMixIn):
         if type(mediator) is MercuryMgm:
             self.pod = mediator.pod
         self.openrc_path = openrc_path
-        self.controls, self.computes, self.images, self.servers, self.keypairs, self.nets, self.subnets, self.ports, self.flavors = [], [], [], [], [], [], [], [], []
+        self.controls, self.computes, self.images, self.servers, self.keypairs, self.nets, self.subnets, self.ports, self.flavors, self.projects = [], [], [], [], [], [], [], [], [], []
 
     def os_cmd(self, cmds, comment='', server=None, is_warn_only=False):
         server = server or self.mediator
@@ -98,10 +98,7 @@ class OS(WithLogMixIn):
         return self.os_cmd(cmds=cmds)
 
     def os_quota_set(self):
-        from lab.cloud.cloud_project import CloudProject
-
-        admin_id = [x.id for x in CloudProject.list(cloud=self) if x.name == 'admin'][0]
-        self.os_cmd(cmds=['openstack quota set --instances 1000 --cores 2000 --ram 512000 --networks 100 --subnets 300 --ports 500 {}'.format(admin_id)])
+        self.os_cmd(cmds=['openstack quota set --instances 1000 --cores 2000 --ram 512000 --networks 100 --subnets 300 --ports 500 admin'])
 
     @decorators.section('Clean cloud')
     def os_cleanup(self, is_all=False):
@@ -126,9 +123,9 @@ class OS(WithLogMixIn):
 
         self.controls, self.computes = CloudHost.host_list(cloud=self)
 
-        self.images, self.servers, self.ports, self.subnets, self.nets, self.keypairs, self.flavors = [], [], [], [], [], [], []
+        self.images, self.servers, self.ports, self.subnets, self.nets, self.keypairs, self.flavors, self.projects = [], [], [], [], [], [], [], []
         pattern = 'openstack {0} list | grep  -vE "\+|ID|Fingerprint" {{}} | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack {0} {{}} $id -f json; done'
-        cmds = map(lambda x: x.format('', 'show'), map(lambda x: pattern.format(x), ['image', 'network', 'subnet', 'port', 'keypair', 'server', 'flavor']))
+        cmds = map(lambda x: x.format('', 'show'), map(lambda x: pattern.format(x), ['image', 'network', 'subnet', 'port', 'keypair', 'server', 'flavor', 'projects']))
         a = self.os_cmd(cmds=cmds, is_warn_only=True)
         count = 0
         for dic in a:
