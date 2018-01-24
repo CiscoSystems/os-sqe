@@ -86,8 +86,8 @@ class NttScenario(TestCaseWorker):
             errors = [x for x in errors if 'No hypervisor matching' not in x]
             if errors:
                 self.fail('# errors {} the first is {}'.format(len(errors), errors[0]), is_stop_running=True)
-        servers = CloudServer.list(cloud=self.cloud)
-        CloudServer.wait(servers=servers, status='ACTIVE')
+        self.cloud.os_all()
+        self.cloud.seCloudServer.wait(servers=servers, status='ACTIVE')
 
     def nfvbench_run(self, is_sriov):
         from os import path
@@ -115,8 +115,9 @@ class NttScenario(TestCaseWorker):
             json_name1 = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             date = ans.split('Date: ')[-1][:19].replace(' ', '-').replace(':', '-')
             json_name2 = ('SRIOV-' if is_sriov else '') + json_name1 + '.' + date + '.' + self.pod.name
-            self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && git pull && echo {1} >> catalog && git add --all && git commit -m "report on $(hostname) at $(date)" && git push'.format(json_name1, json_name2),
+            self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && echo {1} >> catalog && git add --all && git commit -m "report on $(hostname) at $(date)"'.format(json_name1, json_name2),
                              in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
+            self.pod.mgm.exe(cmd="ssh-agent bash -c 'ssh-add .ssh/sqe_private; git push'", in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
             res_json_body = self.pod.mgm.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.perf_reports_repo_dir)
             self.process_nfvbench_json(res_json_body=res_json_body)
 
