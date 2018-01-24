@@ -166,8 +166,8 @@ class LabServer(LabNode):
         local_repo_dir = local_repo_dir or repo_url.split('/')[-1].strip('.git')
 
         # self.check_or_install_packages(package_names='git')
-        self.exe(cmd='test -d {0} || git clone -q {1} {0}'.format(local_repo_dir, repo_url), is_as_sqe=is_as_sqe)
-        repo_abs_path = self.exe(cmd='git pull -q && pwd', in_dir=local_repo_dir, is_as_sqe=is_as_sqe)
+        self.exe(cmd="test -d {0} ||  ssh-agent bash -c 'ssh-add ~/.ssh/sqe_private; git clone -q {1} {0}'".format(local_repo_dir, repo_url), is_as_sqe=is_as_sqe)
+        repo_abs_path = self.exe(cmd="ssh-agent bash -c 'ssh-add ~/.ssh/sqe_private; git pull -q' && pwd", in_dir=local_repo_dir, is_as_sqe=is_as_sqe)
         if patch:
             self.exe(cmd='git fetch {0} && git checkout FETCH_HEAD'.format(patch), is_as_sqe=is_as_sqe)
         elif tags:
