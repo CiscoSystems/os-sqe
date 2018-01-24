@@ -18,7 +18,7 @@ Workers:
   pause: 10
   timeout: 1000
   n_networks: 1
-  n_servers: 1
+  n_servers: 2
   uptime: 30
   run_inside: ping
 
