@@ -58,11 +58,10 @@ class WithMercury(object):
         else:
             ip = lab_name
 
-
         mgm = WithMercury.check_mgm_node(ip=ip)
 
         separator = 'separator'
-        cmds = ['ciscovim install-status', 'cat setup_data.yaml', 'hostname', 'grep -E "image_tag|RELEASE_TAG" defaults.yaml']
+        cmds = ['ciscovim install-status', 'cat ~/openstack-configs/setup_data.yaml', 'hostname', 'grep -E "image_tag|RELEASE_TAG" ~/openstack-configs/defaults.yaml']
         cmd = ' && echo {} && '.format(separator).join(cmds)
         a = mgm.exe(cmd, is_warn_only=True)
         if not is_interactive and '| ORCHESTRATION          | Success |' not in a:
@@ -98,18 +97,23 @@ class WithMercury(object):
 
         try:
             client.connect(hostname=ip, username=WithConfig.SQE_USERNAME, pkey=pkey, timeout=2)
+            is_sqe_user_exist = True
+            client.close()
         except paramiko.AuthenticationException:  # no user SQE yet, create it
-            for password in WithMercury.POSSIBLE_PASSWORDS:
-                try:
-                    client.connect(hostname=ip, username='root', password=password, timeout=2)
-                    Server(ip=ip, username='root', password=password).create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY, private_key=WithConfig.PRIVATE_KEY)
-                    break
-                except paramiko.AuthenticationException:
-                    continue
-            else:
-                raise RuntimeError('failed to connect to {} with {}'.format(ip, WithMercury.POSSIBLE_PASSWORDS))
-        return Server(ip=ip, username=WithConfig.SQE_USERNAME, password=None)
+            is_sqe_user_exist = False
 
+        for password in WithMercury.POSSIBLE_PASSWORDS:
+            try:
+                client.connect(hostname=ip, username='root', password=password, timeout=2)
+                srv = Server(ip=ip, username='root', password=password)
+                if not is_sqe_user_exist:
+                    srv.create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY, private_key=WithConfig.PRIVATE_KEY)
+                break
+            except paramiko.AuthenticationException:
+                continue
+        else:
+            raise RuntimeError('failed to connect to {} with {}'.format(ip, WithMercury.POSSIBLE_PASSWORDS))
+        return srv
 
     @staticmethod
     def create_from_setup_data(pod, mgm, is_interactive):

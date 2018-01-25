@@ -19,7 +19,7 @@ class OS(WithLogMixIn):
     def os_cmd(self, cmds, comment='', server=None, is_warn_only=False):
         server = server or self.mediator
         cmd = 'source ' + self.openrc_path + ' && ' + ' ; '.join(cmds) + (' # ' + comment if comment else '')
-        ans = server.exe(cmd=cmd, is_warn_only=is_warn_only)
+        ans = server.exe(cmd=cmd, is_warn_only=is_warn_only, is_as_sqe=True)
         if ans:
             return self._process_output(answer=ans)
         else:
