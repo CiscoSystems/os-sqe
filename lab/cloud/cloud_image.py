@@ -40,7 +40,7 @@ class CloudImage(CloudObject):
     @section('Creating custom image (estimate 30 sec)')
     def create(image_name, cloud):
         url, checksum, size, username, password = CloudImage.read_image_properties(name=image_name)
-        im = filter(lambda x: x.img_name == 'image_name', cloud.images)
+        im = filter(lambda x: x.name == 'image_name', cloud.images)
 
         if im and im[0].img_status == CloudImage.STATUS_ACTIVE and im[0].img_checksum == checksum:
             cloud.log('image already registered in the cloud with correct checksum: {}'.format(checksum))
