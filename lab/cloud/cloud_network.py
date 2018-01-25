@@ -7,7 +7,7 @@ class CloudNetwork(CloudObject):
     def __init__(self, cloud, dic):
         super(CloudNetwork, self).__init__(cloud=cloud, dic=dic)
         self.segmentation_id = str(dic.get('provider:segmentation_id') or dic.get('provider-segmentation-id'))
-        self.network_type = dic.get('provider:network_type') or dic.get('provider-network-type').strip('cisco-vts-identities:')
+        self.network_type = dic.get('provider:network_type') or dic.get('provider-network-type', '').strip('cisco-vts-identities:')
         self.physnet = dic.get('provider:physical_network') or dic.get('provider-physical-network')
         self.net_status = dic['status'].strip('cisco-vts-openstack-identities:')
         self.mtu = None

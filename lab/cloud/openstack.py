@@ -14,7 +14,7 @@ class OS(WithLogMixIn):
         if type(mediator) is MercuryMgm:
             self.pod = mediator.pod
         self.openrc_path = openrc_path
-        self.controls, self.computes, self.images, self.servers, self.keypairs, self.nets, self.subnets, self.ports, self.flavors, self.projects = [], [], [], [], [], [], [], [], [], []
+        self.controls, self.computes, self.images, self.servers, self.keypairs, self.networks, self.subnets, self.ports, self.flavors, self.projects = [], [], [], [], [], [], [], [], [], []
 
     def os_cmd(self, cmds, comment='', server=None, is_warn_only=False):
         server = server or self.mediator
@@ -117,12 +117,11 @@ class OS(WithLogMixIn):
 
         self.controls, self.computes = CloudHost.host_list(cloud=self)
 
-        self.images, self.servers, self.ports, self.subnets, self.nets, self.keypairs, self.flavors, self.projects = [], [], [], [], [], [], [], []
         pattern = 'openstack {0} list | grep  -vE "\+|ID|Fingerprint" {{}} | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack {0} {{}} $id -f json; done'
         cmds = map(lambda x: x.format('', 'show'), map(lambda x: pattern.format(x), ['image', 'network', 'subnet', 'port', 'keypair', 'server', 'flavor', 'project']))
         a = self.os_cmd(cmds=cmds, is_warn_only=True)
         count = 0
         for dic in a:
-            CloudObject.create(cloud=self, dic=dic)
+            CloudObject.from_dic(cloud=self, dic=dic)
             count += 1
         return count

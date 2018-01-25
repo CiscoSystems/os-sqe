@@ -8,7 +8,7 @@ class CloudPort(CloudObject):
         super(CloudPort, self).__init__(cloud=cloud, dic=dic)
         self.mac = dic['mac_address']
         self.ip = dic['fixed_ips'].split(',')[0].strip('ip_address=\'\\')
-        self.net = filter(lambda x: x.id == dic['network_id'], self.cloud.nets)[0]
+        self.net = filter(lambda x: x.id == dic['network_id'], self.cloud.networks)[0]
 
     @staticmethod
     def create(cloud, server_number, on_nets, sriov=False):

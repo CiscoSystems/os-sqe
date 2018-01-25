@@ -92,7 +92,7 @@ class VtsScenario(TestCaseWorker):
 
         for i in range(10):
             vts_nets, _ = self.pod.vtc.api_openstack()
-            if set(nets) == set(vts_nets):
+            if {x.id for x in nets}.issubset({x.id for x in vts_nets}):
                 break
             time.sleep(5)
         else:
