@@ -78,7 +78,7 @@ class CloudServer(CloudObject, WithLogMixIn):
         ch = paramiko.SSHClient()
         ch.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         pkey = paramiko.RSAKey.from_private_key(StringIO.StringIO(WithConfig.PRIVATE_KEY))
-        ch.connect(hostname=self.cloud.mediator.ip, username=self.cloud.mediator.username, pkey=pkey, timeout=10)  # connect to mediator
+        ch.connect(hostname=self.cloud.mediator.ip, username=WithConfig.SQE_USERNAME, pkey=pkey, timeout=10)  # connect to mediator
         shell = ch.invoke_shell(width=1024)
         shell.settimeout(60)
 
