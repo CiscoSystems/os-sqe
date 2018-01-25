@@ -14,6 +14,7 @@ class CloudServer(CloudObject, WithLogMixIn):
         self.srv_libvirt = dic['OS-EXT-SRV-ATTR:instance_name']
         self.ips = [x.split('=')[-1] for x in dic['addresses'].split(',')]
         self.srv_ip = self.ips[0]
+        self.image = [x for x in self.cloud.images if x.id == dic['image'].split()[-1].strip('()')][0]
         self.srv_username = self.image.username
         self.srv_password = self.image.password
         filtered = filter(lambda c: c.id == dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)

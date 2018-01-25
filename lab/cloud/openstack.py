@@ -113,37 +113,16 @@ class OS(WithLogMixIn):
     @decorators.section('Investigate cloud')
     def os_all(self):
         from lab.cloud.cloud_host import CloudHost
-        from lab.cloud.cloud_server import CloudServer
-        from lab.cloud.cloud_image import CloudImage
-        from lab.cloud.cloud_network import CloudNetwork
-        from lab.cloud.cloud_subnet import CloudSubnet
-        from lab.cloud.cloud_key_pair import CloudKeyPair
-        from lab.cloud.cloud_flavor import CloudFlavor
-        from lab.cloud.cloud_port import CloudPort
+        from lab.cloud import CloudObject
 
         self.controls, self.computes = CloudHost.host_list(cloud=self)
 
         self.images, self.servers, self.ports, self.subnets, self.nets, self.keypairs, self.flavors, self.projects = [], [], [], [], [], [], [], []
         pattern = 'openstack {0} list | grep  -vE "\+|ID|Fingerprint" {{}} | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack {0} {{}} $id -f json; done'
-        cmds = map(lambda x: x.format('', 'show'), map(lambda x: pattern.format(x), ['image', 'network', 'subnet', 'port', 'keypair', 'server', 'flavor', 'projects']))
+        cmds = map(lambda x: x.format('', 'show'), map(lambda x: pattern.format(x), ['image', 'network', 'subnet', 'port', 'keypair', 'server', 'flavor', 'project']))
         a = self.os_cmd(cmds=cmds, is_warn_only=True)
         count = 0
         for dic in a:
+            CloudObject.create(cloud=self, dic=dic)
             count += 1
-            if 'disk_format' in dic:
-                CloudImage(cloud=self, dic=dic)
-            elif 'hostId' in dic:
-                CloudServer(cloud=self, dic=dic)
-            elif 'fingerprint' in dic:
-                CloudKeyPair(cloud=self, dic=dic)
-            elif 'provider:network_type' in dic:
-                CloudNetwork(cloud=self, dic=dic)
-            elif 'subnetpool_id' in dic:
-                CloudSubnet(cloud=self, dic=dic)
-            elif 'port_security_enabled' in dic:
-                CloudPort(cloud=self, dic=dic)
-            elif 'os-flavor-access:is_public' in dic:
-                CloudFlavor(cloud=self, dic=dic)
-            else:
-                raise RuntimeError('{}: add this ^^^ dic to this if!')
         return count
