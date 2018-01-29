@@ -53,10 +53,10 @@ class NttScenario(TestCaseWorker):
                 raise RuntimeError('{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgmt))
             self.args['is-sriov'] = len(self.pod.computes[0].intel_virtual_nics_dic) >= 8
             self.pod.mgm.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
-            if self.pod.driver == 'vts':
-                for tor_name, tor_port in self.pod.setup_data_dic['NFVBENCH']['tor_info'].items():
-                    tor_port = 'Ethernet' + tor_port[-4:]
-                    self.pod.vtc.r_vtc_add_host_to_inventory(server_name='nfvbench_tg', tor_name=tor_name, tor_port=tor_port)
+            # if self.pod.driver == 'vts':
+            #     for tor_name, tor_port in self.pod.setup_data_dic['NFVBENCH']['tor_info'].items():
+            #         tor_port = 'Ethernet' + tor_port[-4:]
+            #         self.pod.vtc.r_vtc_add_host_to_inventory(server_name='nfvbench_tg', tor_name=tor_name, tor_port=tor_port)
 
             # trex_mode = VimTor.TREX_MODE_CSR if self.what_to_run == 'both' else VimTor.TREX_MODE_NFVBENCH
             # [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
