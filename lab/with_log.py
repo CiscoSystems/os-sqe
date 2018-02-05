@@ -125,12 +125,12 @@ class Logger(object):
 
         sqe_log_name, json_log_name = WithConfig.get_log_file_names()
 
-        artifacts_sqe = logging.FileHandler(sqe_log_name)
+        artifacts_sqe = logging.FileHandler(sqe_log_name, mode='w')
         artifacts_sqe.setLevel(logging.INFO)
         artifacts_sqe.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s [%(name)s] %(message)s'))
         logger.addHandler(artifacts_sqe)
 
-        artifacts_json = logging.FileHandler(json_log_name)
+        artifacts_json = logging.FileHandler(json_log_name, mode='w')
         artifacts_json.setLevel(logging.INFO)
         artifacts_json.setFormatter(JsonFormatter())
         artifacts_json.addFilter(JsonFilter())

@@ -52,6 +52,9 @@ class RunnerHA(WithConfig, WithLogMixIn):
 
         test_case.after_run(results=results, pretty_table=self.table)
 
+        with self.open_artifact('main_results.txt', 'w') as f:
+            f.write(self.table.get_string())
+
         if not test_case.is_debug:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
 
@@ -73,16 +76,13 @@ class RunnerHA(WithConfig, WithLogMixIn):
         else:
             self.cloud = self.init_cloud(pod_name=pod_name, possible_drivers=possible_drivers)
 
-        start_time = time.time()
+        # start_time = time.time()
         map(lambda x: self.execute_single_test(test_case=x), tests)
 
-        with self.open_artifact('main_results.txt', 'w') as f:
-            f.write(self.table.get_string())
-
-        if type(self.cloud) is not FakeCloud:
-            elk = Elk(proxy=self.cloud.mediator)
-            elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
-            self.cloud.pod.r_collect_info(regex='error', comment=test_regex)
+        # if type(self.cloud) is not FakeCloud:
+        #     elk = Elk(proxy=self.cloud.mediator)
+        #     elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
+        #     self.cloud.pod.r_collect_info(regex='error', comment=test_regex)
         print self.table
 
     @staticmethod

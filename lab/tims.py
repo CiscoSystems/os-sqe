@@ -1,3 +1,4 @@
+import unittest
 from lab.with_log import WithLogMixIn
 from lab.with_config import WithConfig
 
@@ -18,7 +19,6 @@ class Tims(WithLogMixIn, WithConfig):
         self.tims_project_id = cfg_dic['tims']['project_id']
         self.tims_db_name = cfg_dic['tims']['db_name']
         self.tims_folders = cfg_dic['tims']['folders']
-        self.tims_project_id = cfg_dic['tims']['project_id']
 
         self.version = version
 
@@ -119,16 +119,22 @@ class Tims(WithLogMixIn, WithConfig):
             tcr_id = self.create_update_result(tc_id=tc_id, tc_unique_id=tc.unique_id, status=tcr.status, text=tcr.text)
             self.log('<{}|{}>: <{}|{}> {}'.format(url_tmpl + tc_id, tc.path, url_tmpl + tcr_id, tcr.status, tcr.text))
             return url_tmpl + tcr_id
-        except Exception:
+        except RuntimeError:
             self.log_exception()
 
 
-if __name__ == '__main__':
-    from lab.test_case import TestCase, TestCaseResult
+class TestTims(unittest.TestCase):
+    def setUp(self):
+        from lab.test_case import TestCase, TestCaseResult
 
-    tims = Tims(version='2.2.5(11577)VTS')
-    tc = TestCase(path='all01-containers-ctl-reboot.yaml', is_debug=True, is_noclean=False, cloud=None)
-    tcr = TestCaseResult(tc=tc)
-    tcr.status = tcr.FAILED
-    tcr.text = 'run to test TIMS from tims.py'
-    tims.publish_tcr(tc=tc, tcr=tcr)
+        self.tims = Tims(version='2.2.5(11577)VTS')
+        self.tc = TestCase(path='all01-containers-ctl-reboot.yaml', is_debug=True, is_noclean=False, cloud=None)
+        self.tcr = TestCaseResult(tc=self.tc)
+        self.tcr.status = self.tcr.FAILED
+        self.tcr.text = 'run to test TIMS from tims.py'
+
+    def test_publish_tcr(self):
+        self.tims.publish_tcr(tc=self.tc, tcr=self.tcr)
+
+    def test_create_update_test_case(self):
+        self.tims.create_update_test_case(tc=self.tc)
