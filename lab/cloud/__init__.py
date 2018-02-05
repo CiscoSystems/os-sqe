@@ -31,7 +31,7 @@ class CloudObject(object):
         elif 'fingerprint' in dic:
             CloudKeyPair(cloud=cloud, dic=dic)
         elif 'provider:network_type' in dic:
-            cloud.nets.append(CloudNetwork(cloud=cloud, dic=dic))
+            CloudNetwork(cloud=cloud, dic=dic)
         elif 'subnetpool_id' in dic:
             CloudSubnet(cloud=cloud, dic=dic)
         elif 'port_security_enabled' in dic:

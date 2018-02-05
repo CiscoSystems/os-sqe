@@ -13,6 +13,8 @@ class CloudNetwork(CloudObject):
         self.mtu = None
         self.subnets = []
         self.ports = []
+        if cloud:
+            cloud.networks.appens(self)
 
     def __hash__(self):
         return hash(self.id)

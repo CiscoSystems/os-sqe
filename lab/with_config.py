@@ -5,7 +5,6 @@ import requests
 class WithConfig(object):
     SQE_USERNAME = 'sqe'
     REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    ARTIFACTS_DIR = os.path.abspath(os.path.join(REPO_DIR, 'artifacts'))
     CONFIG_DIR = os.path.abspath(os.path.join(REPO_DIR, 'configs'))
     CONFIGS_REPO_URL = 'https://wwwin-gitlab-sjc.cisco.com/mercury/configs/raw/master'
 
@@ -25,9 +24,7 @@ class WithConfig(object):
 
     @staticmethod
     def get_log_file_names():
-        if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
-            os.makedirs(WithConfig.ARTIFACTS_DIR)
-        return os.path.join(WithConfig.ARTIFACTS_DIR, 'sqe.log'), os.path.join(WithConfig.ARTIFACTS_DIR, 'json.log')
+        return 'a_sqe.log', 'a_json.log'
 
     @staticmethod
     def ls_configs(directory=''):
@@ -46,19 +43,7 @@ class WithConfig(object):
 
     @staticmethod
     def get_artifact_file_path(short_name):
-        if not os.path.isdir(WithConfig.ARTIFACTS_DIR):
-            os.makedirs(WithConfig.ARTIFACTS_DIR)
-
-        return os.path.join(WithConfig.ARTIFACTS_DIR, short_name)
-
-    @staticmethod
-    def get_remote_store_file_to_artifacts(path):
-        from fabric.api import local
-        import os
-
-        loc = path.split('/')[-1]
-        local('test -e {a}/{l} || curl -s -R http://{ip}/{p} -o {a}/{l}'.format(a=WithConfig.ARTIFACTS_DIR, l=loc, ip=WithConfig.REMOTE_FILE_STORE_IP, p=path))
-        return os.path.join(WithConfig.ARTIFACTS_DIR, loc)
+        return 'a_' + short_name
 
     @staticmethod
     def save_self_config(p):
