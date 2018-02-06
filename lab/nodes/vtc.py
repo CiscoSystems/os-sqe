@@ -41,7 +41,6 @@ class Vtc(VipServer):
         nets = [CloudNetwork(cloud=None, dic=x) for x in a.get('network', [])]
         subnets = [CloudSubnet(cloud=None, dic=x) for x in a.get('subnet', [])]
         for net, sub in zip(nets, subnets):
-            assert sub.network_id == net.id
             net.subnets.append(sub)
         servers = a.get('servers', [])
         return nets, servers

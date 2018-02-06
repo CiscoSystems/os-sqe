@@ -47,7 +47,7 @@ class TestCase(WithConfig, WithLogMixIn):
         self.workers = self.create_test_workers(test_dic.pop('Workers'))  # should be after self.cloud is assigned
 
     def __repr__(self):
-        return 'TC ' + self.path.split('-')[0] + ' ' + self.tims_url
+        return self.path.split('-')[0] + ' ' + self.tims_url
 
     def create_test_workers(self, workers_lst):
         import importlib

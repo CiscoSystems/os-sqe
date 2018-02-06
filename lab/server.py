@@ -20,17 +20,20 @@ class Server(WithConfig, WithLogMixIn):
             return self._exe_local(cmd, in_directory=in_dir, warn_only=is_warn_only)
 
         pass_dic = {'password': self.password} if self.password else {'key': self.PUBLIC_KEY}
-        with settings(hide('output', 'running'),
-                      abort_on_prompts=True,
-                      disable_known_hosts=True,
-                      connection_attempts=n_attempts,
-                      warn_only=is_warn_only,
-                      host_string=self.username + '@' + self.ip,
-                      **pass_dic), cd(in_dir):
-            res = run(cmd)
-            if res.failed and not is_warn_only:
-                raise RuntimeError(res.stderr)
-            return res
+        try:
+            with settings(hide('output', 'running'),
+                          abort_on_prompts=True,
+                          disable_known_hosts=True,
+                          connection_attempts=n_attempts,
+                          warn_only=is_warn_only,
+                          host_string=self.username + '@' + self.ip,
+                          **pass_dic), cd(in_dir):
+                res = run(cmd)
+                if res.failed and not is_warn_only:
+                    raise RuntimeError(res.stderr)
+                return res
+        except SystemExit:
+            raise RuntimeError('{}: fabric {} failed'.format(self, cmd))
 
     def get_package_manager(self):
         if not self._package_manager:
@@ -52,42 +55,6 @@ class Server(WithConfig, WithLogMixIn):
         with settings(warn_only=warn_only):
             with lcd(in_directory):
                 return local(command=command, capture=True)
-
-    def file_append(self, file_path, data, in_directory='.', is_warn_only=False, n_attempts=N_CONNECTION_ATTEMPTS):
-        from fabric.api import settings, cd
-        from fabric.contrib import files
-        from fabric.exceptions import NetworkError
-
-        with settings(**self.construct_settings(is_warn_only=is_warn_only, n_attempts=n_attempts)):
-            with cd(in_directory):
-                try:
-                    return files.append(file_path, data)
-                except NetworkError:
-                    if is_warn_only:
-                        return ''
-                    else:
-                        raise
-
-    def reboot(self, wait=300):
-        """Reboot this server
-        :param wait: wait for the server to come up
-        """
-        from fabric.api import reboot, settings
-
-        with settings(**self.construct_settings(is_warn_only=True, n_attempts=self.N_CONNECTION_ATTEMPTS)):
-            reboot(wait=wait)
-
-    def put(self, local_path, remote_path, is_sudo):
-        """Faced the normal fabric put to provide server details from the class
-        :param local_path:
-        :param remote_path:
-        :param is_sudo:
-        :return:
-        """
-        from fabric.api import put, settings
-
-        with settings(**self.construct_settings(is_warn_only=False, n_attempts=self.N_CONNECTION_ATTEMPTS)):
-            return put(local_path=local_path, remote_path=remote_path, use_sudo=is_sudo)
 
     def check_or_install_packages(self, package_names):
         pm = self.get_package_manager()

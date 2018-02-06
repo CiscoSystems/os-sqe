@@ -132,7 +132,6 @@ def read_config_from_file(cfg_path, folder='', is_as_string=False):
     """
     import yaml
     import requests
-    from lab.with_log import lab_logger
     from os import path
 
     actual_path = None
@@ -153,7 +152,4 @@ def read_config_from_file(cfg_path, folder='', is_as_string=False):
             cfg_txt = f.read()
     if not cfg_txt:
         raise ValueError('{0} is empty!'.format(actual_path))
-
-    lab_logger.debug('CFG taken from {}'.format(actual_path))
-
     return cfg_txt if is_as_string else yaml.load(cfg_txt)

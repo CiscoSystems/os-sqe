@@ -27,6 +27,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         import fabric.network
         import time
 
+        self.log('status=start test={}'.format(test_case))
         test_case.time = time.time()  # used to calculate duration of test
         test_case.cloud = self.cloud
         manager = multiprocessing.Manager()
@@ -57,6 +58,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
 
         if not test_case.is_debug:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
+        self.log('status=finish test={}'.format(test_case))
 
     def run(self, pod_name, test_regex, is_noclean, is_debug):
         import time
@@ -68,6 +70,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         if not test_paths:
             raise ValueError('Provided regexp "{}" does not match any tests'.format(test_regex))
 
+        self.log('Running n_tests={}'.format(len(test_paths)))
         tests = self.create_tests(test_paths=test_paths, is_noclean=is_noclean, is_debug=is_debug)
 
         possible_drivers = set(reduce(lambda l,x: x.possible_drivers + l, tests, []))
