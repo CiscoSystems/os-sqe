@@ -5,14 +5,14 @@ UniqueID: os-sqe-vts25
 PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
-  name: VtsMonitor
+  name: mon
   delay: 0
-  run: [VtsScenario]
+  run: [sce]
   pause: 2
   timeout: 1000
 
 - class: lab.scenarios.vts_scenario.VtsScenario
-  name: VtsScenario
+  name: sce
   delay: 00
   run: 1
   pause: 0
@@ -23,7 +23,7 @@ Workers:
   uptime: 400
 
 - class: lab.disruptors.cloud_disruptor.CloudDisruptor
-  name: CtlRebootDisruptor
+  name: dis
   delay: 200
   run: 1
   pause: 0

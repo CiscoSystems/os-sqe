@@ -5,16 +5,16 @@ UniqueID: os-sqe-vts26
 PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
-  name: VtsMonitor
+  name: mon
   delay: 0
-  run: [VtsDisruptor]
+  run: [dis]
   pause: 2
   timeout: 1000
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
-  name: VtsDisruptor
+  name: dis
   delay: 0
-  run: [VtsDeleteCompute, VtsAddCompute]
+  run: [del_comp, add_comp]
   pause: 10
   timeout: 1000
   disrupt_time: 60
@@ -22,15 +22,15 @@ Workers:
   method_to_disrupt: vm-shutdown
 
 - class: lab.scenarios.vts_delete_compute.VtsDeleteCompute
-  name: VtsDeleteCompute
+  name: del_comp
   delay: 0
   run: 1
   pause: 10
   timeout: 1000
 
 - class: lab.scenarios.vts_add_compute.VtsAddCompute
-  name: VtsAddCompute
-  delay: [VtsDeleteCompute]
+  name: add_comp
+  delay: [del_comp]
   run: 1
   pause: 10
   timeout: 1000

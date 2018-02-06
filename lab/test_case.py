@@ -69,7 +69,7 @@ class TestCase(WithConfig, WithLogMixIn):
                 raise ValueError('Please create class {} in {}.py'.format(class_name, path_to_module))
             worker = klass(test_case=self, args_dict=worker_dic)
             if worker.name in worker_names_already_seen:
-                worker.raise_exception('uses name which is not unique in this test')
+                raise ValueError('{} uses name which is not unique in this test'.format(worker))
             else:
                 worker_names_already_seen.append(worker.name)
             workers.append(worker)

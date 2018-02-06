@@ -5,15 +5,15 @@ UniqueID: os-sqe-vts18
 PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
-  name: VtsMonitor
+  name: mon
   delay: 0
-  run: [VtsScenario]
+  run: [sce]
   pause: 2
   timeout: 1000
 
 - class: lab.scenarios.vts_scenario.VtsScenario
-  name: VtsScenario
-  delay: [VtsDisruptorVtcMaster, VtsDisruptorVtcSlave]
+  name: sce
+  delay: [vtc_master, vtc_slave]
   run: 1
   pause: 0
   timeout: 1000
@@ -23,7 +23,7 @@ Workers:
   uptime: 20
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
-  name: VtsDisruptorVtcMaster
+  name: vtc_master
   delay: 0
   run: 1
   pause: 0
@@ -33,8 +33,8 @@ Workers:
   disrupt_time: 20
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
-  name: VtsDisruptorVtcSlave
-  delay: [VtsDisruptorVtcMaster]
+  name: vtc_slave
+  delay: [vtc_master]
   run: 1
   pause: 0
   timeout: 1000

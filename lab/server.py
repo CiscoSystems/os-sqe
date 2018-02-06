@@ -14,7 +14,7 @@ class Server(WithConfig, WithLogMixIn):
         return 'Server {} {}/{}'.format(self.ip, self.username, self.password)
 
     def exe(self, cmd, in_dir='.', is_warn_only=False, n_attempts=N_CONNECTION_ATTEMPTS):
-        from fabric.api import run, settings, cd, hide
+        from fabric.api import run, settings, cd, hide, env
 
         if str(self.ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(cmd, in_directory=in_dir, warn_only=is_warn_only)
