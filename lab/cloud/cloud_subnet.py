@@ -7,7 +7,7 @@ class CloudSubnet(CloudObject):
     def __init__(self, cloud, dic):
         super(CloudSubnet, self).__init__(cloud=cloud, dic=dic)
         self.cidr = dic['cidr']
-        self.network_id = dic['network-id']
+        self.network_id = dic.get('network_id') or dic.get('network-id')
         if cloud:
             self.net = filter(lambda x: x.id == self.network_id, self.cloud.networks)[0]
             self.net.subnets.append(self)
