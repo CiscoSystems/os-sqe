@@ -13,9 +13,7 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
     def sample_config():
         return 'path to lab config'
 
-    def __init__(self, name='g72', release_tag='9.9.9', gerrit_tag=99, driver='vts', setup_data_dic=None):
-        from lab.tims import Tims
-
+    def __init__(self, name='', release_tag='', gerrit_tag=0, driver='', setup_data_dic=None):
         self._unique_dict = dict()  # to make sure that all needed objects are unique
         self.name = name + '-' + driver
         self.setup_data_dic = setup_data_dic
@@ -23,7 +21,6 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
         self.driver_version = None
         self.gerrit_tag = gerrit_tag
         self.release_tag = release_tag
-        self.os_code_name = self.VIM_NUM_VS_OS_NAME_DIC[release_tag.rsplit('.', 1)[0]]
         self.dns = []
         self.ntp = []
         self.networks = {}
@@ -41,8 +38,10 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
         self.unknowns = []  # nodes detected to be connected to some switches, which is not a part of the lab
         self.wires = []
         self.is_sqe_user_created = False
-        self.tims = Tims(version=self.version)
-        self.log('release {} gerrit tag {} driver {}'.format(release_tag, gerrit_tag, driver))
+        self.tims = None
+        if release_tag:
+            self.os_code_name = self.VIM_NUM_VS_OS_NAME_DIC[release_tag.rsplit('.', 1)[0]]
+            self.log(5 * '>' + self.version + 5 * '<')
 
     @property
     def version(self):

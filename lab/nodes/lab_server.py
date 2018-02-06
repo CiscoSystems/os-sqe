@@ -8,14 +8,13 @@ class LabServer(LabNode):
         self.ip, self.username, self.password = dic['ssh-ip'], dic['ssh-username'], dic['ssh-password']  # if password is None - use sqe ssh key
         self._package_manager = None
         self.virtual_servers = set()  # virtual servers running on this hardware server
-        self.intel_nics_dic = {}
-        self.intel_virtual_nics_dic = {}
-        self.cisco_vics_dic = {}
-        self.lom_nics_dic = {}
-        self.libvirt_nics_dic = {}
+        self.nics_dic = {'X710': [], 'X510': [], 'VF': [], 'CVIC': [], 'LOM': [], 'LibVirt': []}
+        self.comment = self.proxy.comment.replace(str(self.proxy), str(self)) + ' ssh root@' + self.ip if self.proxy else (' sshpass -p ' + self.password if self.password else '') + ' ssh ' + self.username + '@' + self.ip
+        self.srv = None
+
 
     @property
-    def networks_dic(self):  # this Labserver must be conneected to this networks
+    def networks_dic(self):  # this LabServer must be connected to this networks
         return {x.id: x for x in self.pod.networks.values() if type(self) in x.roles_must_present}
 
     def add_virtual_server(self, server):
@@ -24,13 +23,13 @@ class LabServer(LabNode):
     def cmd(self, cmd):
         raise NotImplementedError
 
-    def r_build_online(self, n_attempts=100):
+    def r_build_online(self):
         import re
 
         separator = 'SEPARATOR'
         cmds = ['grep -c ^core /proc/cpuinfo', 'cat /proc/meminfo', '(lspci | grep Ethernet)', 'ip -o a', 'ip -o l', 'ip -o r', 'cat /etc/hosts']
         cmd = ' && echo {} && '.format(separator).join(cmds)
-        ans = self.exe(cmd=cmd, n_attempts=n_attempts, is_warn_only=True)
+        ans = self.exe(cmd=cmd, is_warn_only=True)
         if not ans or 'No route to host' in ans:
             return {}
         result = {'ips': {}, 'macs': {}, 'etc_hosts': {}, 'ifaces': {}, 'networks': {}}
@@ -38,7 +37,6 @@ class LabServer(LabNode):
         cpu, mem, lspci, ip_o_a, ip_o_l, ip_o_r, cat_etc_hosts = ans.split(separator)
         n_cpu = re.findall('(\d{1,10})', cpu)[-1]  # -1 since sometimes here goes a string likes 'Warning: Permanently added \\'ctl1\\' (ECDSA) to the list of known hosts. \r\n32\r\n
         memory = re.findall('(\d{1,10})', mem)
-        self.hardware = '{} cpu {} MB'.format(int(n_cpu), int(memory[0])/1024)
 
         for line in lspci.split('\r\n'):
             if not line or line.startswith('Warning'):
@@ -48,20 +46,20 @@ class LabServer(LabNode):
             manufacturer = split[3]
             iface = 'enp{bus}s{card}p{port}'.format(bus=int(pci_addr[:2], 16), card=int(pci_addr[3:5], 16),  port=int(pci_addr[6:], 16))
             if manufacturer == 'Cisco':
-                self.cisco_vics_dic[iface] = {'model': 'Cisco VIC', 'line': line}
+                self.nics_dic['CVIC'].append({'iface': iface, 'model': 'Cisco VIC', 'lspci': line})
             elif manufacturer == 'Intel':
                 if 'XL710/X710' in line:
-                    self.intel_virtual_nics_dic[iface] = {'model': 'Intel XL710/X710 VF', 'line': line}
+                    self.nics_dic['VF'].append({'iface': iface, 'model': 'Intel XL710/X710 VF', 'line': line})
                 elif 'X710' in line:
-                    self.intel_nics_dic[iface] = {'model': 'Intel X710', 'line': line}
+                    self.nics_dic['X710'].append({'iface': iface, 'model': 'Intel X710', 'line': line})
                 elif 'SFP+' in line:
-                    self.intel_nics_dic[iface] = {'model': 'Intel X510', 'line': line}
+                    self.nics_dic['X510'].append({'iface': iface, 'model': 'Intel X510', 'line': line})
                 elif 'I350' in line:
-                    self.lom_nics_dic[iface] = {'model': 'Intel I350', 'line': line}
+                    self.nics_dic['LOM'].append({'iface': iface, 'model': 'Intel I350', 'line': line})
                 else:
                     raise RuntimeError('Not known NIC model in {}'.format(line))
             elif 'Virtio' in line:
-                self.libvirt_nics_dic[iface] = {'model': 'Virtio', 'line': line}
+                self.nics_dic['LibVirt'].append({'iface': iface, 'model': 'LibVirt', 'line': line})
             else:
                 raise RuntimeError('Not known NIC manufacturer: {} in {}'.format(manufacturer, line))
             #     ans = self.exe('ethtool -i enp{}s{}f{}'.format(bus, card, port), is_warn_only=True)
@@ -99,6 +97,8 @@ class LabServer(LabNode):
         #             result['ifaces'][br_name]['slaves'].append(ifaces)
         #             result['ifaces'][ifaces]['master'] = br_name
         result['etc_hosts'] = {x.split()[1]: x.split()[0] for x in cat_etc_hosts.split('\r\n') if x}
+        self.hardware = '{}xCPU {}GB '.format(int(n_cpu), int(memory[0])/1024/1024) + ' '.join([str(len(y)) + 'x' + x for x,y in self.nics_dic.items() if len(y)])
+        self.log(self.hardware)
 
     def exe(self, cmd, in_dir='.', is_warn_only=False, is_as_sqe=False, n_attempts=100, estimated_time=None):
         import time

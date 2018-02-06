@@ -2,20 +2,11 @@ import logging
 
 
 class JsonFormatter(logging.Formatter):
-    def __init__(self):
-        import os
-
-        self._jenkins_tag = os.getenv('BUILD_TAG', 'no_jenkins')
-        self._deployer_tag = 'not implemented'
-
-        super(JsonFormatter, self).__init__()
-
     def format(self, record):
-        import re
         import json
 
         def split_pairs():
-            for key_value in re.split(pattern=';', string=record.message):  # 'a=b  ; c=d=43 ; k=5' will produce {'a':'b', 'c': 'd=43', 'k':5}
+            for key_value in record.message.split():  # 'a=b   c=d=43  k=5 all bla ...' will produce {'a':'b', 'c': 'd=43', 'k':5}
                 if '=' in key_value:
                     key, value = key_value.split('=', 1)
                     key = key.strip()
@@ -36,9 +27,6 @@ class JsonFormatter(logging.Formatter):
         split_pairs()
         if '@timestamp' not in d:
             d['@timestamp'] = self.formatTime(record=record, datefmt="%Y-%m-%dT%H:%M:%S.000Z")
-        d['name'] = record.name
-        d['deployer-info'] = self._deployer_tag
-        d['jenkins'] = self._jenkins_tag
         return json.dumps(d)
 
 

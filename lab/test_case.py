@@ -85,6 +85,7 @@ class TestCase(WithConfig, WithLogMixIn):
 
     def after_run(self, results, pretty_table):
         import time
+        from lab.tims import Tims
 
         execution_time = time.time() - self.time
         tcr = TestCaseResult(tc=self)
@@ -99,5 +100,7 @@ class TestCase(WithConfig, WithLogMixIn):
                 tcr.text += exceptions_text + '\n'
                 w.log('EXCEPTION {}'.format(exceptions_text))
 
+        if not self.cloud.pod.tims:
+            self.cloud.pod.tims = Tims(self.cloud.pod.version)
         tims_url = self.cloud.pod.tims.publish_tcr(tc=self, tcr=tcr)
         pretty_table.add_row([self.path, execution_time, tcr.status, tcr.text, tims_url])

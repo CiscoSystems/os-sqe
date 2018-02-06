@@ -64,9 +64,9 @@ class WithMercury(object):
         cmds = ['ciscovim install-status', 'cat ~/openstack-configs/setup_data.yaml', 'hostname', 'grep -E "image_tag|RELEASE_TAG" ~/openstack-configs/defaults.yaml']
         cmd = ' && echo {} && '.format(separator).join(cmds)
         a = mgm.exe(cmd, is_warn_only=True)
-        if not is_interactive and '| ORCHESTRATION          | Success |' not in a:
-            raise RuntimeError('{} is not properly installed'.format(lab_name))
-        _, setup_data_text, hostname, grep = a.split(separator)
+        status, setup_data_text, hostname, grep = a.split(separator)
+        if not is_interactive and '| ORCHESTRATION          | Success |' not in status:
+            raise RuntimeError('{} is not properly installed: {}'.format(lab_name, status))
         setup_data_dic = yaml.load(setup_data_text)
         driver = setup_data_dic['MECHANISM_DRIVERS']
         if allowed_drivers:
@@ -166,11 +166,11 @@ class WithMercury(object):
                 pod.mgm = node
             elif type(node) == MercuryVts:
                 pod.vts.append(node)
+            node.r_build_online()
 
         pod.controls[0].cimc_deduce_wiring_by_lldp(pod=pod)
         if is_interactive:
             map(lambda x: x.n9_validate(), pod.vim_tors)
-        map(lambda x: x.r_build_online(), pod.cimc_servers_dic.values())
         map(lambda x: WithMercury.process_vts_virtuals(pod=pod, vts=x), pod.vts)
         # pod.validate_config()
         pod.save_self_config(p=pod)
@@ -201,7 +201,6 @@ class WithMercury(object):
             # node.r_build_online()
             pod.virtuals.append(node)
             pod.vtc.individuals[node.id] = node
-            pod.log(str(node) + ' processed\n\n')
 
     @staticmethod
     def process_nets(pod):

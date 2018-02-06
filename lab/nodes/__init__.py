@@ -7,27 +7,25 @@ class LabNode(WithLogMixIn):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, pod, dic):
-        self.pod = pod                                 # link to parent Laboratory object
+        self.pod = pod                                 # parent Laboratory object
         self.id = str(dic['id'])                       # some id which unique in the given role, usually role + some small integer
-        self.role = dic['role'].strip()                # which role this node plays, possible roles are defined in get_role_class()
+        self.role = dic['role'].strip()                # the role this node belongs
         self._proxy = dic.get('proxy')                 # LabNode object or node id (lazy init), will be used as proxy node to this node
         self.oob_ip, self.oob_username, self.oob_password = dic['oob-ip'], dic['oob-username'], dic['oob-password']
-        self.hardware = ''                             # some description which might be useful for debugging
-        self.log('created')
+        self.hardware = ''                             # some hardware related info which might be useful for debugging
 
     def __repr__(self):
-        return self.id
+        return self.id + '@' + self.pod.name
 
     @property
-    def proxy(self):  # lazy initialisation, node_id until the first use, then convert it to node reference
+    def proxy(self):  # lazy initialisation, node_id until the first use, then convert it to node object
         if type(self._proxy) is str:
             self._proxy = self.pod.nodes[self._proxy] if self._proxy in self.pod.nodes else None
         return self._proxy
 
     @staticmethod
     def create_node(pod, dic):
-        """Fabric to create a LabServer() or derived
-
+        """Fabric to create a LabNode() or derived
         :param pod: lab.laboratory.Laboratory()
         :param dic: {'id': , 'role': , 'proxy': , 'oob-ip':, 'oob-username': , 'oob-password':, 'ssh-username':, 'ssh-password':, 'nics': [check in lab.network.Nic]}
         :return:

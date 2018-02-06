@@ -6,7 +6,7 @@ class CloudObject(object):
         self.id = str(dic.get('id', ''))
         self.name = dic['name']
         self.role = self.__class__.__name__.replace('Cloud', '').lower()
-        self.status = dic.get('status', '')
+        self.status = dic.get('status', '').strip('cisco-vts-openstack-identities:')
         if cloud:
             getattr(cloud, self.role + 's').append(self)
 

@@ -19,7 +19,6 @@ class Wire(WithLogMixIn):
         self._is_intentionally_down = False
         self._nics = set()  # list of NICs sitting on this wire, many to many relations
         self.pc_id = pc_id
-        self.log('created')
 
     @staticmethod
     def add_wire(pod, wire_cfg):

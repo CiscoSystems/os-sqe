@@ -110,7 +110,7 @@ class TestCaseWorker(WithLogMixIn):
                 time_passed += 1
                 if time_passed == self.timeout:
                     raise RuntimeError('Waiting for {} to be all False exceeded {} secs'.format(self.delay, self.timeout))
-            self.log('{} finished, worker now active'.format(self.delay))
+            self.log('{}=finished, worker now active'.format(self.delay))
         else:
             self.log('delay by {} secs...'.format(self.delay))
             time.sleep(self.delay)
@@ -131,18 +131,18 @@ class TestCaseWorker(WithLogMixIn):
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
-                self.log('{:6} loop out of {}   {} ...'.format(self.loop_counter, self.run, self.status_dict))
+                self.log(' loop={:6} of total={} {} ...'.format(self.loop_counter, self.run, self.status_dict))
 
                 if not self.test_case.is_debug:
                     self.loop_worker()
 
                 if self.pause > 0:
-                    self.log('{:6} loop pausing {} sec ...'.format(self.loop_counter, self.pause ))
+                    self.log(' loop={:6} pausing={} sec ...'.format(self.loop_counter, self.pause ))
                     time.sleep(self.pause)
 
                 self.loop_counter += 1
 
-            self.log('finished after {} loops out of {} with data "{}", {}'.format(self.loop_counter, self.run, self.worker_data, self.status_dict))
+            self.log('status=finished after loop={} of total={} with data="{}", {}'.format(self.loop_counter, self.run, self.worker_data, self.status_dict))
         except Exception as ex:
             frame = sys.exc_traceback
             while frame.tb_next:

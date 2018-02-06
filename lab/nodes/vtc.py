@@ -1,4 +1,3 @@
-from lab import decorators
 from lab.nodes.virtual_server import VipServer, LibVirtServer
 
 
@@ -39,10 +38,11 @@ class Vtc(VipServer):
         cmd = '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/openstack?deep'
         a = self.cmd(cmd)['cisco-vts-openstack:openstack']['vmm'][0]
 
-        nets = []
-        subnets = []
-        nets.extend([CloudNetwork(cloud=None, dic=x) for x in a.get('network', [])])
-        subnets.extend([CloudSubnet(cloud=None, dic=x) for x in a.get('subnet', [])])
+        nets = [CloudNetwork(cloud=None, dic=x) for x in a.get('network', [])]
+        subnets = [CloudSubnet(cloud=None, dic=x) for x in a.get('subnet', [])]
+        for net, sub in zip(nets, subnets):
+            assert sub.network_id == net.id
+            net.subnets.append(sub)
         servers = a.get('servers', [])
         return nets, servers
 
@@ -67,7 +67,7 @@ class Vtc(VipServer):
                         'mac-address': 'unknown-' + str(uuid.uuid4())
                         }
                }
-        cmd = "-XPUT -H 'Content-Type: application/vnd.yang.data+json' https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/" + portid + " -d '" + json.dumps(dic) + "'" # page29
+        cmd = "-XPUT -H 'Content-Type: application/vnd.yang.data+json' https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/" + portid + " -d '" + json.dumps(dic) + "'"  # page29
         return self.cmd(cmd)
 
     def api_dev_lst(self):
@@ -76,14 +76,14 @@ class Vtc(VipServer):
         return self.cmd(cmd)
 
     def api_port_get(self, uuid):
-        return '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/' + uuid  # page 30
+        return self.cmd('-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/' + uuid)
 
     def api_port_lst(self):
         cmd = '-XGET -H "Accept: application/vnd.yang.data+json" https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/'  # page 30
         return self.cmd(cmd)
 
     def api_port_del(self, uuid):
-        return '-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/' + uuid  # page 31
+        self.cmd('-XDELETE https://{ip}:8888/api/running/cisco-vts/tenants/tenant/admin/topologies/topology/admin/ports/port/' + uuid)
 
     def api_srv_lst(self):
         # show configuration cisco-vts uuid-servers
@@ -158,11 +158,11 @@ class Vtc(VipServer):
         dns_ip, ntp_ip = self.pod.get_dns()[0], self.pod.get_ntp()[0]
         hostname = '{id}-{lab}'.format(lab=self.pod, id=self.id)
 
-        a_nic = self.get_nic('a')  # Vtc sits on out-of-tor network marked is_ssh
+        a_nic = self.nics_dic('a')  # Vtc sits on out-of-tor network marked is_ssh
         a_ip, a_net_mask = a_nic.get_ip_and_mask()
         a_gw = a_nic.get_net().get_gw()
 
-        mx_nic = self.get_nic('mx')  # also sits on mx network
+        mx_nic = self.nics_dic('mx')  # also sits on mx network
         mx_ip, mx_net_mask = mx_nic.get_ip_and_mask()
         mx_vlan = mx_nic.get_net().get_vlan_id()
 
@@ -192,52 +192,6 @@ class Vtc(VipServer):
             f.write(cfg_body)
         return cfg_body
 
-    def vtc_change_default_password(self):
-        import json
-        import re
-        import requests
-        from time import sleep
-
-        default_username, default_password = 'admin', 'admin'
-
-        if default_username != self.oob_username:
-            raise ValueError
-
-        api_security_check = 'https://{}:8443/VTS/j_spring_security_check'.format(self.ip)
-        api_java_servlet = 'https://{}:8443/VTS/JavaScriptServlet'.format(self.ip)
-        api_update_password = 'https://{}:8443/VTS/rs/ncs/user?updatePassword=true&isEnforcePassword=true'.format(self.ip)
-
-        while True:
-            # noinspection PyBroadException
-            try:
-                self.log(message='Waiting for VTC service up...')
-                requests.get('https://{}:8443/VTS/'.format(self.ip), verify=False, timeout=300)  # First try to open to check that Tomcat is indeed started
-                break
-            except:
-                sleep(100)
-
-        session = requests.Session()
-        auth = session.post(api_security_check, data={'j_username': default_username, 'j_password': default_password, 'Submit': 'Login'}, verify=False)
-        if 'Invalid username or passphrase' in auth.text:
-            raise ValueError(auth.text)
-
-        java_script_servlet = session.get(api_java_servlet, verify=False)
-        owasp_csrftoken = ''.join(re.findall(r'OWASP_CSRFTOKEN", "(.*?)", requestPageTokens', java_script_servlet.text))
-
-        response = session.put(api_update_password,
-                               data=json.dumps({'resource': {'user': {'user_name': self.oob_username, 'password': self.oob_password, 'currentPassword': default_password}}}),
-                               headers={'OWASP_CSRFTOKEN': owasp_csrftoken,
-                                        'X-Requested-With': 'OWASP CSRFGuard Project',
-                                        'Accept': 'application/json, text/plain, */*',
-                                        'Accept-Encoding': 'gzip, deflate, sdch, br',
-                                        'Content-Type': 'application/json;charset=UTF-8'})
-
-        if response.status_code == 200 and 'Error report' not in response.text:
-            self.log(message='password changed')
-            return response.text
-        else:
-            raise RuntimeError(response.text)
-
     def r_vtc_wait_cluster_formed(self, n_retries=1):
         import requests.exceptions
 
@@ -266,66 +220,13 @@ class Vtc(VipServer):
             body += self.single_cmd_output(cmd=cmd, ans=ans)
         return body
 
-    def r_vtc_day0_config(self):  # https://cisco.jiveon.com/docs/DOC-1469629
-        import jinja2
-
-        domain = jinja2.Template('''
-            set resource-pools vni-pool vnipool range 4096 65535
-
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters distribution-mode decentralized-l2
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters control-plane-protocol bgp-evpn
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters arp-suppression
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 policy-parameters packet-replication ingress-replication
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters distribution-mode decentralized-l3
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters control-plane-protocol bgp-evpn
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters arp-suppression
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l3-gateway-groups l3-gateway-group L3GW-0 policy-parameters packet-replication ingress-replication
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 ad-l3-gw-parent L3GW-0''')
-        xrvr = jinja2.Template('''{% for xrvr_name in xrvr_names %}
-            request devices device {{ xrvr_name }} sync-from
-            set devices device {{ xrvr_name }} asr9k-extension:device-info device-use leaf
-            set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
-            set devices device {{ xrvr_name }} asr9k-extension:device-info bgp-peering-info loopback-if-num 0
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ xrvr_name }}
-            {% endfor %}''')
-        tmpl_switches = jinja2.Template('''
-            {% for switch in switches %}
-            set devices authgroups group {{ switch['id'] }} umap admin remote-name {{ switch['username'] }}
-            set devices authgroups group {{ switch['id'] }} umap admin remote-password {{ switch['password'] }}
-            set resource-pools vlan-pool {{ switch['id'] }} range 3000 3999
-            set devices device {{ switch['id'] }} address {{ switch['ip'] }}
-            set devices device {{ switch['id'] }} authgroup {{ switch['id'] }}
-            set devices device {{ switch['id'] }} device-type cli ned-id cisco-nx
-            set devices device {{ switch['id'] }} device-type cli protocol telnet
-            set devices device {{ switch['id'] }} n9k-extension:device-info platform N9K
-            set devices device {{ switch['id'] }} n9k-extension:device-info device-use leaf
-            set devices device {{ switch['id'] }} state admin-state unlocked
-            commit
-            request devices device {{ switch['id'] }} sync-from
-            set devices device {{ switch['id'] }} n9k-extension:device-info bgp-peering-info bgp-asn {{ bgp_asn }}
-            set devices device {{ switch['id'] }} n9k-extension:device-info bgp-peering-info loopback-if-num 0
-            set cisco-vts infra-policy admin-domains admin-domain {{ domain_group }} l2-gateway-groups l2-gateway-group L2GW-0 devices device {{ switch['id'] }}
-            {% endfor %}''')
-        sync = jinja2.Template('''
-            {% for name in names %}
-            request devices device {{ name }} sync-from
-            {% endfor %}''')
-
-        map(lambda y: y.r_xrvr_day0_config(), self.pod.get_xrvr())
-        self.r_vtc_ncs_cli(command=domain.render(domain_group='D1'))
-        self.r_vtc_ncs_cli(command=xrvr.render(xrvr_names=['xrvr1', 'xrvr2'], domain_group='D1', bgp_asn=23))
-
-        switches = [{'id': x.get_id(), 'ip': x.get_oob()[0], 'username': x.get_oob()[1], 'password': x.get_oob()[2]} for x in self.pod.tors]
-        self.r_vtc_ncs_cli(command=tmpl_switches.render(switches=switches, domain_group='D1', bgp_asn=23))
-
-        self.r_vtc_ncs_cli(command=sync.render(names=['xrvr1', 'xrvr2'] + ['n91', 'n92']))
-
     def r_vtc_ncs_cli(self, command):
         self.exe('ncs_cli << EOF\nconfigure\n{}\ncommit\nexit\nexit\nEOF'.format(command))
 
-    @decorators.section('Get VTS version')
     def r_vtc_get_version(self):
-        return self.exe('version_info')
+        version = self.exe('/opt/vts/bin/version_info')
+        self.log(version.split('\r\n')[0])
+        return version
 
     def r_vtc_show_tech_support(self):
         wild_card = 'VTS*tar.bz2'
@@ -340,16 +241,6 @@ class Vtc(VipServer):
 
     def r_vtc_cluster_status(self):
         return self.exe('sudo crm status', is_warn_only=True)
-
-    @decorators.section('Add baremetal to VTC host inventory')
-    def r_vtc_add_host_to_inventory(self, server_name, tor_name, tor_port):
-        """
-        :param server_name: name of server as you need to have it in bare metal inventory, e.g. nfvbench_tg
-        :param tor_name: name of TOR as it's seen in VTC api_dev_lst API CALL, e.g. TORSWITCHA
-        :param tor_port: TOR switch port to which this server is connected e.g. Ethernet1/19
-        :return: json with result of operation
-        """
-        return self.cmd(cmd='patch_device_port', uuid=tor_name, dic=self.API_CALLS['patch_device_port']['json'].replace('NAME', server_name).replace('PORT', tor_port))
 
     def r_vtc_create_border_leaf_port(self, os_networks):
         pools = self.api_pool_lst()

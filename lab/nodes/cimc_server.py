@@ -300,14 +300,15 @@ class CimcServer(LabServer):
         import yaml
         from lab.wire import Wire
 
-        cimc_info_yaml = pod.get_artifact_file_path('cimc-{}.yaml'.format(pod))
+        cimc_info_file_path = pod.get_artifact_file_path('cimc-{}.yaml'.format(pod))
         try:
-            cimc_info_dic = pod.read_config_from_file(config_path=cimc_info_yaml)
-        except ValueError:
+            with open(cimc_info_file_path) as f:
+                cimc_info_dic = yaml.load(f.read())
+        except IOError:
             cimc_info_dic = {}
             for cimc in sorted(pod.cimc_servers_dic.values()):
                 cimc_info_dic[cimc.oob_ip] = cimc.cimc_list_all_nics()  # returns dic of {port_id: mac}
-            with pod.open_artifact(name=cimc_info_yaml, mode='w') as f:
+            with open(cimc_info_file_path, mode='w') as f:
                 yaml.dump(cimc_info_dic, f)
 
         wires_cfg = []

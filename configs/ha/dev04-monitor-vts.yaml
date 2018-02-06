@@ -7,7 +7,7 @@ PossibleDrivers: [vts]
 Workers:
 
 - class: lab.monitors.vts_monitor.VtsMonitor
-  name: VtsMonitor
+  name: vts-mon
   run: 10
   pause: 2
   delay: 1

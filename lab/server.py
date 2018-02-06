@@ -14,25 +14,23 @@ class Server(WithConfig, WithLogMixIn):
         return 'Server {} {}/{}'.format(self.ip, self.username, self.password)
 
     def exe(self, cmd, in_dir='.', is_warn_only=False, n_attempts=N_CONNECTION_ATTEMPTS):
-        from fabric.api import run, settings, cd
+        from fabric.api import run, settings, cd, hide
 
         if str(self.ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(cmd, in_directory=in_dir, warn_only=is_warn_only)
 
-        with settings(**self.construct_settings(is_warn_only=is_warn_only, n_attempts=n_attempts)), cd(in_dir):
+        pass_dic = {'password': self.password} if self.password else {'key': self.PUBLIC_KEY}
+        with settings(hide('output', 'running'),
+                      abort_on_prompts=True,
+                      disable_known_hosts=True,
+                      connection_attempts=n_attempts,
+                      warn_only=is_warn_only,
+                      host_string=self.username + '@' + self.ip,
+                      **pass_dic), cd(in_dir):
             res = run(cmd)
             if res.failed and not is_warn_only:
                 raise RuntimeError(res.stderr)
             return res
-
-    def construct_settings(self, is_warn_only, n_attempts):
-        env = {'host_string': self.username + '@' + self.ip,
-               'disable_known_hosts': True, 'abort_on_prompts': True, 'connection_attempts': n_attempts, 'warn_only': is_warn_only}
-        if self.password is None:
-            env['key'] = self.PRIVATE_KEY
-        else:
-            env['password'] = self.password
-        return env
 
     def get_package_manager(self):
         if not self._package_manager:
