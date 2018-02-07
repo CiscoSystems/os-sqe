@@ -113,7 +113,7 @@ class TestCaseWorker(WithLogMixIn):
             self.log('{}=finish, worker now active'.format(self.delay))
         else:
             self.log('delay by {} secs...'.format(self.delay))
-            time.sleep(self.delay)
+            time.sleep(1 if self.test_case.is_debug else self.delay)
 
     def start_worker_parallel(self):
         """This code is executed once when subprocess starts. This is the only entry point to the worker loop."""
@@ -131,18 +131,17 @@ class TestCaseWorker(WithLogMixIn):
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
-                self.log(' loop={} of total={} {} ...'.format(self.loop_counter, self.run, self.status_dict))
+                self.log(' loop={} until={} {} ...'.format(self.loop_counter + 1, self.run, self.status_dict))
 
                 if not self.test_case.is_debug:
                     self.loop_worker()
 
                 if self.pause > 0:
-                    self.log(' loop={} pausing={} sec ...'.format(self.loop_counter, self.pause ))
+                    self.log(' loop={} pause={} sec ...'.format(self.loop_counter + 1, self.pause ))
                     time.sleep(1 if self.test_case.is_debug else self.pause)
 
                 self.loop_counter += 1
 
-            self.log('status=finish after loop={} of total={} with data={}, {}'.format(self.loop_counter, self.run, self.worker_data, self.status_dict))
         except Exception as ex:
             frame = sys.exc_traceback
             while frame.tb_next:
@@ -152,6 +151,7 @@ class TestCaseWorker(WithLogMixIn):
         finally:
             time.sleep(1)  # sleep to align log output
             self.set_status(status=self.STATUS_FINISHED)
+            self.log('status=finish after loop={} until={} with data={}, {}'.format(self.loop_counter, self.run, self.worker_data, self.status_dict))
             return self
 
     def fail(self, message, is_stop_running):

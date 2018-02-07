@@ -49,9 +49,9 @@ class RunnerHA(WithConfig, WithLogMixIn):
         time.sleep(2)
 
         pool = multiprocessing.Pool(len(workers))
-        self.log('\n\n***AFTER THIS LINE PARALLEL EXECUTION STARTS***\n\n')
+        self.log('\n\n***AFTER THIS LINE PARALLEL EXECUTION OF {} STARTS***\n\n'.format(test_case))
         results = pool.map(starter, workers)
-        self.log('\n\n***PARALLEL EXECUTION FINISHED***\n\n')
+        self.log('\n\n***PARALLEL EXECUTION OF {} FINISHED***\n\n'.format(test_case))
 
         test_case.after_run(results=results, status_tbl=self.status_tbl, err_tbl=self.err_tbl)
 

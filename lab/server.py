@@ -19,7 +19,6 @@ class Server(WithConfig, WithLogMixIn):
         if str(self.ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(cmd, in_directory=in_dir, warn_only=is_warn_only)
 
-        pass_dic = {'password': self.password} if self.password else {'key': self.PUBLIC_KEY}
         try:
             with settings(hide('output', 'running'),
                           abort_on_prompts=True,
@@ -27,7 +26,8 @@ class Server(WithConfig, WithLogMixIn):
                           connection_attempts=n_attempts,
                           warn_only=is_warn_only,
                           host_string=self.username + '@' + self.ip,
-                          **pass_dic), cd(in_dir):
+                          password=self.password,
+                          key=None if self.password else self.PUBLIC_KEY), cd(in_dir):
                 res = run(cmd)
                 if res.failed and not is_warn_only:
                     raise RuntimeError(res.stderr)
