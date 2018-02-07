@@ -15,8 +15,10 @@ class RunnerHA(WithConfig, WithLogMixIn):
     def __init__(self):
         from prettytable import PrettyTable
 
-        self.table = PrettyTable()
-        self.table.field_names = ['path', 'time', 'status', 'result', 'tims']
+        self.status_tbl = PrettyTable()
+        self.status_tbl.field_names = ['name', 'status', 'time, sec']
+        self.err_tbl = PrettyTable()
+        self.err_tbl.field_names = ['name', 'text']
         self.cloud = None
 
     def __repr__(self):
@@ -51,19 +53,19 @@ class RunnerHA(WithConfig, WithLogMixIn):
         results = pool.map(starter, workers)
         self.log('\n\n***PARALLEL EXECUTION FINISHED***\n\n')
 
-        test_case.after_run(results=results, pretty_table=self.table)
+        test_case.after_run(results=results, status_tbl=self.status_tbl, err_tbl=self.err_tbl)
 
         with self.open_artifact('main_results.txt', 'w') as f:
-            f.write(self.table.get_string())
+            f.write(self.status_tbl.get_string())
+            if self.err_tbl._rows:
+                f.write('\n\n')
+                f.write(self.err_tbl.get_string())
 
         if not test_case.is_debug:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
         self.log('status=finish test={}'.format(test_case))
 
     def run(self, pod_name, test_regex, is_noclean, is_debug):
-        import time
-        from lab.elk import Elk
-
         available_tc = self.ls_configs(directory='ha')
         test_paths = sorted(filter(lambda x: test_regex in x, available_tc))
 
@@ -86,7 +88,6 @@ class RunnerHA(WithConfig, WithLogMixIn):
         #     elk = Elk(proxy=self.cloud.mediator)
         #     elk.filter_error_warning_in_last_seconds(seconds=time.time() - start_time)
         #     self.cloud.pod.r_collect_info(regex='error', comment=test_regex)
-        print self.table
 
     @staticmethod
     def init_cloud(pod_name, possible_drivers):

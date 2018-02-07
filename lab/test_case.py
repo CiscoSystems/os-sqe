@@ -23,8 +23,6 @@ class TestCase(WithConfig, WithLogMixIn):
         import yaml
         import time
 
-        self.tims_id = None
-        self.tims_url = ''
         self.path = path
         self.is_noclean = is_noclean
         self.is_debug = is_debug
@@ -47,7 +45,7 @@ class TestCase(WithConfig, WithLogMixIn):
         self.workers = self.create_test_workers(test_dic.pop('Workers'))  # should be after self.cloud is assigned
 
     def __repr__(self):
-        return self.path.split('-')[0] + ' ' + self.tims_url
+        return self.path.split('-')[0]
 
     def create_test_workers(self, workers_lst):
         import importlib
@@ -83,9 +81,8 @@ class TestCase(WithConfig, WithLogMixIn):
                 assert len(wrong_names) == 0, '{}.{} has invalid names: "{}". Valid: {}'.format(worker, attr_name, wrong_names, worker_names_already_seen)
         return workers
 
-    def after_run(self, results, pretty_table):
+    def after_run(self, results, status_tbl, err_tbl):
         import time
-        from lab.tims import Tims
 
         execution_time = time.time() - self.time
         tcr = TestCaseResult(tc=self)
@@ -100,7 +97,6 @@ class TestCase(WithConfig, WithLogMixIn):
                 tcr.text += exceptions_text + '\n'
                 w.log('EXCEPTION {}'.format(exceptions_text))
 
-        if not self.cloud.pod.tims:
-            self.cloud.pod.tims = Tims(self.cloud.pod.version)
-        tims_url = self.cloud.pod.tims.publish_tcr(tc=self, tcr=tcr)
-        pretty_table.add_row([self.path, execution_time, tcr.status, tcr.text, tims_url])
+        status_tbl.add_row([str(self), tcr.status, int(execution_time)])
+        if tcr.text:
+            err_tbl.add_row([str(self), tcr.text])
