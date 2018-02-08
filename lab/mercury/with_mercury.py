@@ -96,15 +96,16 @@ class WithMercury(object):
                 release_tag = grep.split('\n')[1].split(':')[-1].strip()
                 gerrit_tag = grep.split('\n')[2].split(':')[-1].strip()
                 return srv, status, setup_data_dic, release_tag, gerrit_tag
-            except SystemExit:  # no user SQE yet, create it
+            except RuntimeError:  # no user SQE yet, create it
                 for password in WithMercury.POSSIBLE_PASSWORDS:
                     try:
                         srv = Server(ip=ip, username='root', password=password)
-                        srv.create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY, private_key=WithConfig.PRIVATE_KEY)
-                    except SystemExit:
+                        srv.create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY)
+                        break
+                    except RuntimeError:
                         continue
                 else:
-                    raise RuntimeError('failed to connect to {} with {}'.format(ip, WithMercury.POSSIBLE_PASSWORDS))
+                    raise RuntimeError('failed to connect to root@{} with {}'.format(ip, WithMercury.POSSIBLE_PASSWORDS))
 
 
     @staticmethod
