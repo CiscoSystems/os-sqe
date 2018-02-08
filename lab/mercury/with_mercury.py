@@ -47,7 +47,6 @@ class WithMercury(object):
     @staticmethod
     def create(lab_name, allowed_drivers=None, is_mgm_only=False, is_interactive=False):
         import validators
-        import yaml
         from lab.laboratory import Laboratory
 
         if not validators.ipv4(lab_name):
@@ -58,23 +57,17 @@ class WithMercury(object):
         else:
             ip = lab_name
 
-        mgm = WithMercury.check_mgm_node(ip=ip)
-
-        separator = 'separator'
-        cmds = ['ciscovim install-status', 'cat ~/openstack-configs/setup_data.yaml', 'hostname', 'grep -E "image_tag|RELEASE_TAG" ~/openstack-configs/defaults.yaml']
-        cmd = ' && echo {} && '.format(separator).join(cmds)
-        a = mgm.exe(cmd, is_warn_only=True)
-        status, setup_data_text, hostname, grep = a.split(separator)
+        mgm, status, setup_data_dic, release_tag, gerrit_tag = WithMercury.check_mgm_node(ip=ip)
         if not is_interactive and '| ORCHESTRATION          | Success |' not in status:
             raise RuntimeError('{} is not properly installed: {}'.format(lab_name, status))
-        setup_data_dic = yaml.load(setup_data_text)
         driver = setup_data_dic['MECHANISM_DRIVERS']
         if allowed_drivers:
             assert driver.lower() in allowed_drivers, 'driver {} not in {}'.format(driver, allowed_drivers)
+
         pod = Laboratory(name=lab_name,
                          driver=driver,
-                         release_tag=grep.split('\n')[1].split(':')[-1].strip(),
-                         gerrit_tag=grep.split('\n')[2].split(':')[-1].strip(),
+                         release_tag=release_tag,
+                         gerrit_tag=gerrit_tag,
                          setup_data_dic=setup_data_dic)
         if is_mgm_only:
             return mgm
@@ -87,33 +80,32 @@ class WithMercury(object):
 
     @staticmethod
     def check_mgm_node(ip):
-        import StringIO
-        import paramiko
+        import yaml
         from lab.server import Server
 
-        pkey = paramiko.RSAKey.from_private_key(StringIO.StringIO(WithConfig.PRIVATE_KEY))
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        separator = 'separator'
+        cmds = ['ciscovim install-status', 'cat setup_data.yaml', 'grep -E "image_tag|RELEASE_TAG" defaults.yaml']
+        cmd = ' ; echo {} ; '.format(separator).join(cmds)
 
-        try:
-            client.connect(hostname=ip, username=WithConfig.SQE_USERNAME, pkey=pkey, timeout=2)
-            is_sqe_user_exist = True
-            client.close()
-        except paramiko.AuthenticationException:  # no user SQE yet, create it
-            is_sqe_user_exist = False
-
-        for password in WithMercury.POSSIBLE_PASSWORDS:
+        srv = Server(ip=ip, username=WithConfig.SQE_USERNAME, password=None)
+        while True:
             try:
-                client.connect(hostname=ip, username='root', password=password, timeout=2)
-                srv = Server(ip=ip, username='root', password=password)
-                if not is_sqe_user_exist:
-                    srv.create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY, private_key=WithConfig.PRIVATE_KEY)
-                break
-            except paramiko.AuthenticationException:
-                continue
-        else:
-            raise RuntimeError('failed to connect to {} with {}'.format(ip, WithMercury.POSSIBLE_PASSWORDS))
-        return srv
+                a = srv.exe(cmd, is_warn_only=True)
+                status, setup_data_body, grep = a.split('separator')
+                setup_data_dic = yaml.load(setup_data_body)
+                release_tag = grep.split('\n')[1].split(':')[-1].strip()
+                gerrit_tag = grep.split('\n')[2].split(':')[-1].strip()
+                return srv, status, setup_data_dic, release_tag, gerrit_tag
+            except SystemExit:  # no user SQE yet, create it
+                for password in WithMercury.POSSIBLE_PASSWORDS:
+                    try:
+                        srv = Server(ip=ip, username='root', password=password)
+                        srv.create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY, private_key=WithConfig.PRIVATE_KEY)
+                    except SystemExit:
+                        continue
+                else:
+                    raise RuntimeError('failed to connect to {} with {}'.format(ip, WithMercury.POSSIBLE_PASSWORDS))
+
 
     @staticmethod
     def create_from_setup_data(pod, mgm, is_interactive):

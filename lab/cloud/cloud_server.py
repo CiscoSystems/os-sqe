@@ -83,7 +83,7 @@ class CloudServer(CloudObject, WithLogMixIn):
         shell.settimeout(60)
 
         nc = 'nc {} {}'.format(self.compute, self.srv_serial)
-
+        self.log_debug(nc + cmd)
         started = time.time()
 
         try:
