@@ -22,14 +22,15 @@ class RunnerHA(WithConfig, WithLogMixIn):
         self.cloud = None
 
     def __repr__(self):
-        return u'RunnerHA'
+        return u''
 
     def execute_single_test(self, test_case):
         import multiprocessing
         import fabric.network
         import time
 
-        self.log('status=start test={}'.format(test_case))
+        self.log('\n\n')
+        test_case.log('status=start')
         test_case.time = time.time()  # used to calculate duration of test
         test_case.cloud = self.cloud
         manager = multiprocessing.Manager()
@@ -49,9 +50,9 @@ class RunnerHA(WithConfig, WithLogMixIn):
         time.sleep(2)
 
         pool = multiprocessing.Pool(len(workers))
-        self.log('\n\n***AFTER THIS LINE PARALLEL EXECUTION OF {} STARTS***\n\n'.format(test_case))
+        test_case.log('***AFTER THIS LINE PARALLEL EXECUTION STARTS***')
         results = pool.map(starter, workers)
-        self.log('\n\n***PARALLEL EXECUTION OF {} FINISHED***\n\n'.format(test_case))
+        test_case.log('***PARALLEL EXECUTION FINISHED***')
 
         test_case.after_run(results=results, status_tbl=self.status_tbl, err_tbl=self.err_tbl)
 
@@ -63,7 +64,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
 
         if not test_case.is_debug:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
-        self.log('status=finish test={}'.format(test_case))
+        test_case.log('status=finish')
 
     def run(self, pod_name, test_regex, is_noclean, is_debug):
         available_tc = self.ls_configs(directory='ha')

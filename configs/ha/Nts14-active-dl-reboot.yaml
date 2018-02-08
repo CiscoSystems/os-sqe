@@ -5,7 +5,7 @@ UniqueID: os-sqe-vts14
 PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
-  name: VtsMonitor
+  name: mon
   delay: 0
   run: [sce]
   pause: 2

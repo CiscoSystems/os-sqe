@@ -7,13 +7,13 @@ Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
   name: mon
   delay: 0
-  run: [del_comp]
+  run: [dis]
   pause: 2
   timeout: 1000
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
-  name: VtsDisruptor
-  delay: 0
+  name: dis
+  delay: 20
   run: [del_comp, add_comp]
   pause: 20
   timeout: 1000

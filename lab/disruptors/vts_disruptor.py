@@ -28,7 +28,7 @@ class VtsDisruptor(TestCaseWorker):
 
     def setup_worker(self):
         if len(self.pod.vts) < 2:
-            raise RuntimeError('This pod has no actual HA, single host runs all VTC virtuals: {}'.format(self.pod.vts[0].virtual_servers))
+            raise RuntimeError('This pod has no actual HA, single host runs all VTS VMs: {}'.format(self.pod.vts[0].virtual_servers))
 
     def loop_worker(self):
         self.pod.vtc.disrupt(node_to_disrupt=self.node_to_disrupt, method_to_disrupt=self.method_to_disrupt, downtime=self.disrupt_time)  # chekc inside that node is back after disruption
