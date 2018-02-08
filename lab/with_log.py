@@ -124,7 +124,7 @@ class Logger(object):
         json_h.setLevel(logging.INFO)
         slack_h.setLevel(logging.INFO)
 
-        console.setFormatter(logging.Formatter(fmt='[%(asctime)s %(message)s'))
+        console.setFormatter(logging.Formatter(fmt='%(message)s'))
         debug_h.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
         json_h.setFormatter(JsonFormatter())
 
@@ -170,7 +170,7 @@ class Logger(object):
 
     def _for_section(self, message, is_start):
         if self._logger:
-            self._logger.info('{} {} {}'.format(message, 'START ' if is_start else 'FINISH', (200 - len(message)) * '-'))
+            self._logger.info('{} {} {}'.format(message, 'START ' if is_start else 'FINISH', (80 - len(message)) * '-'))
 
     def section_start(self, message):
         self._for_section(message=message, is_start=True)
