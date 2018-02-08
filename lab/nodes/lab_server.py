@@ -109,15 +109,11 @@ class LabServer(LabNode):
             username, password = self.pod.SQE_USERNAME, None
         srv = Server(ip=ip, username=username, password=password)
 
-        comment = ' # sshpass -p ' + password if password else ' # '
-        comment += ' ssh ' + username + '@' + ip
-
         if 'sudo' in cmd and 'sudo -p "" -S ' not in cmd:
             cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.password))
         if self.proxy:
             cmd = 'ssh -o StrictHostKeyChecking=no ' + self.username + '@' + (self.ip or self.id) + " '" + cmd + "'"
-            comment += ' ssh ' + self.id
-        comment += ' # ' + self.id + '@' + self.pod.name
+        comment = ' # ' + self.id + '@' + self.pod.name
 
         if estimated_time:
             self.log('Running {}... (usually it takes {} secs)'.format(cmd, estimated_time))

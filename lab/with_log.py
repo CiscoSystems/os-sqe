@@ -35,6 +35,16 @@ class JsonFilter(logging.Filter):
         return record.exc_text or '=' in record.message
 
 
+class CheckStringFilter(logging.Filter):
+    def __init__(self, name):
+        super(CheckStringFilter, self).__init__()
+        self.check_name = name
+
+    def filter(self, record):
+        return self.check_name in record.message
+
+
+
 class SlackHandler(logging.Handler):
     def handle(self, record):
         import requests
@@ -70,16 +80,19 @@ class WithLogMixIn(object):
         return cmd
 
     def log(self, message):
-        lab_logger.info(str(self) + ': ' + message)
+        lab_logger.info(str(self) + ' ' + message)
 
     def log_warning(self, message):
-        lab_logger.warning(str(self) + ': ' + message)
+        lab_logger.warning(str(self) + ' ' + message)
 
     def log_error(self, message):
-        lab_logger.error(str(self) + ': ' + message)
+        lab_logger.error(str(self) + ' ' + message)
 
     def log_exception(self):
-        lab_logger.exception(str(self) + ': EXCEPTION')
+        lab_logger.exception(str(self) + ' EXCEPTION')
+
+    def log_debug(self, message):
+        lab_logger.debug(str(self) + ' ' + message)
 
 
 class Logger(object):
@@ -94,39 +107,43 @@ class Logger(object):
     def _create_logger(self, name):
         import inspect
         import os
-        from lab.with_config import WithConfig
 
         stack = inspect.stack()
         logger = logging.getLogger(name or stack[1][3])
         logger.setLevel(level=logging.DEBUG)
 
         console = logging.StreamHandler()
-        console.setLevel(logging.DEBUG)
-        console.setFormatter(logging.Formatter(fmt='[%(asctime)s %(levelname)s] %(name)s: %(message)s'))
+        debug_h = logging.FileHandler('a_debug.log', mode='w')
+        json_h = logging.FileHandler('a_json.log', mode='w')
+        cmd_vts_h = logging.FileHandler('a_cmd_vts.log', mode='w')
+        cmd_os_h = logging.FileHandler('a_cmd_os.log', mode='w')
+        slack_h = SlackHandler()
+
+        console.setLevel(logging.INFO)
+        debug_h.setLevel(logging.DEBUG)
+        json_h.setLevel(logging.INFO)
+        slack_h.setLevel(logging.INFO)
+
+        console.setFormatter(logging.Formatter(fmt='[%(asctime)s %(message)s'))
+        debug_h.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
+        json_h.setFormatter(JsonFormatter())
+
+        json_h.addFilter(JsonFilter())
+        cmd_os_h.addFilter(CheckStringFilter('openrc'))
+        cmd_vts_h.addFilter(CheckStringFilter('8888'))
+
         logger.addHandler(console)
+        logger.addHandler(debug_h)
+        logger.addHandler(json_h)
+        logger.addHandler(cmd_vts_h)
+        logger.addHandler(cmd_os_h)
+        logger.addHandler(slack_h)
 
         if os.path.isdir('/var/log') and 'vmtp' in os.listdir('/var/log'):
             logstash = logging.FileHandler('/var/log/vmtp/sqe.log')
             logstash.setLevel(logging.INFO)
             logstash.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s [%(name)s] %(message)s'))  # the format is important for logstash processing
             logger.addHandler(logstash)
-
-        sqe_log_name, json_log_name = WithConfig.get_log_file_names()
-
-        artifacts_sqe = logging.FileHandler(sqe_log_name, mode='w')
-        artifacts_sqe.setLevel(logging.INFO)
-        artifacts_sqe.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s [%(name)s] %(message)s'))
-        logger.addHandler(artifacts_sqe)
-
-        artifacts_json = logging.FileHandler(json_log_name, mode='w')
-        artifacts_json.setLevel(logging.INFO)
-        artifacts_json.setFormatter(JsonFormatter())
-        artifacts_json.addFilter(JsonFilter())
-        logger.addHandler(artifacts_json)
-
-        slack = SlackHandler()
-        slack.setLevel(logging.INFO)
-        logger.addHandler(slack)
 
         logging.captureWarnings(True)
         self._logger = logger
@@ -153,7 +170,7 @@ class Logger(object):
 
     def _for_section(self, message, is_start):
         if self._logger:
-            self._logger.info('{} {} {}'.format('START ' if is_start else 'FINISH', message, (200 - len(message)) * '-'))
+            self._logger.info('{} {} {}'.format(message, 'START ' if is_start else 'FINISH', (200 - len(message)) * '-'))
 
     def section_start(self, message):
         self._for_section(message=message, is_start=True)

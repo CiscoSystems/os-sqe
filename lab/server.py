@@ -11,7 +11,7 @@ class Server(WithConfig, WithLogMixIn):
         self.ip, self.username, self.password = ip, username, password
 
     def __repr__(self):
-        return 'Server {} {}/{}'.format(self.ip, self.username, self.password)
+        return ('sshpass -p ' + self.password + ' ' if self.password else '') + 'ssh {}@{}'.format(self.username, self.ip)
 
     def exe(self, cmd, in_dir='.', is_warn_only=False, n_attempts=N_CONNECTION_ATTEMPTS):
         from fabric.api import run, settings, cd, hide, env
@@ -20,7 +20,7 @@ class Server(WithConfig, WithLogMixIn):
             return self._exe_local(cmd, in_directory=in_dir, warn_only=is_warn_only)
 
         try:
-            with settings(hide('output', 'running'),
+            with settings(hide('output', 'running', 'warnings'),
                           abort_on_prompts=True,
                           disable_known_hosts=True,
                           connection_attempts=n_attempts,
@@ -28,6 +28,7 @@ class Server(WithConfig, WithLogMixIn):
                           host_string=self.username + '@' + self.ip,
                           password=self.password,
                           key=None if self.password else self.PUBLIC_KEY), cd(in_dir):
+                self.log_debug(cmd)
                 res = run(cmd)
                 if res.failed and not is_warn_only:
                     raise RuntimeError(res.stderr)

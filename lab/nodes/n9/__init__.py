@@ -81,7 +81,7 @@ class N9(LabNode):
             commands = [commands]
         else:
             is_not_list = False
-        self.log('executing ' + ' '.join(commands))
+        self.log_debug('executing ' + ' '.join(commands))
         results = self._rest_api(commands=[commands] if type(commands) is not list else commands, timeout=timeout)
         if is_not_list:
             results = [results]
@@ -213,7 +213,7 @@ class N9(LabNode):
         import time
 
         self.log('{} do: {}'.format(msg, ' '.join(cmd)))
-        time.sleep(1)  # prevent prompt message interlacing with log output
+        time.sleep(1)  # prevent prompt message interlacing
         if prompt('say y if you want to fix it: ') == 'y':
             self.n9_cmd(cmd)
 
@@ -240,7 +240,7 @@ class N9(LabNode):
 
     def n9_configure_asr1k(self):
         self.cmd(['conf t', 'int po{0}'.format(self.get_peer_link_id()), 'shut'])
-        asr = filter(lambda x: x.is_n9_asr(), self._wires)
+        asr = filter(lambda x: x.is_n9_asr(), self.wires)
         self.n9_configure_vxlan(asr[0].get_own_port(self))
 
     def cleanup(self):

@@ -8,12 +8,12 @@ def section(message):
         @functools.wraps(fun)
         def decorated_func(*args, **kwargs):
             time.sleep(2)
-            lab_logger.section_start(message=message)
+            lab_logger.section_start(fun.func_name)
             time.sleep(2)  # sleep to allow printing comes first
             start_time = time.time()
             result = fun(*args, **kwargs)
             time.sleep(2)
-            lab_logger.section_end(message=message + ' (actually it took {} secs)'.format(int(time.time() - start_time)))
+            lab_logger.section_end(fun.func_name + ' (actually it took {} secs)'.format(int(time.time() - start_time)))
             time.sleep(2)
             return result
         return decorated_func
