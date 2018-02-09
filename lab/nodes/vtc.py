@@ -128,9 +128,9 @@ class Vtc(VipServer):
         vts_host = node_disrupt.hard
 
         if method_to_disrupt == 'vm-shutdown':
-            vts_host.exe(cmd='virsh suspend {}'.format(self.id))
+            vts_host.exe(cmd='virsh suspend {}'.format(node_disrupt.id))
             time.sleep(downtime)
-            vts_host.exe(cmd='virsh resume {}'.format(self.id))
+            vts_host.exe(cmd='virsh resume {}'.format(node_disrupt.id))
         elif method_to_disrupt == 'isolate-from-mx':
             ans = vts_host.exe('ip l | grep mgmt | grep {0}'.format(self.id))
             if_name = ans.split()[1][:-1]

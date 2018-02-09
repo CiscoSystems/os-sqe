@@ -7,14 +7,35 @@ PossibleDrivers: [vts]
 Workers:
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
-  name: slv-vtsr-mx
+  name: vtc-slave-shut
   delay: 0
+  run: 1
+  pause: 20
+  node_to_disrupt: slave-vtc
+  method_to_disrupt: vm-shutdown
+  disrupt_time: 60
+  timeout: 1000
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: vtc-master-shut
+  delay: [vtc-slave-shut]
+  run: 1
+  pause: 20
+  node_to_disrupt: master-vtc
+  method_to_disrupt: vm-shutdown
+  disrupt_time: 60
+  timeout: 1000
+
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: slv-vtsr-mx
+  delay: [vtc-master-shut]
   run: 1
   pause: 20
   node_to_disrupt: slave-vtsr
   method_to_disrupt: isolate-from-mx
   disrupt_time: 60
-  timeout: 360
+  timeout: 1000
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   name: slv-vtsr-api
@@ -24,7 +45,7 @@ Workers:
   node_to_disrupt: slave-vtsr
   method_to_disrupt: isolate-from-api
   disrupt_time: 60
-  timeout: 360
+  timeout: 1000
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   name: slv-vtc-mx
@@ -34,7 +55,7 @@ Workers:
   method_to_disrupt: isolate-from-mx
   disrupt_time: 60
   pause: 20
-  timeout: 360
+  timeout: 1000
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   name: slv-vtc-api
@@ -44,4 +65,4 @@ Workers:
   method_to_disrupt: isolate-from-api
   disrupt_time: 60
   pause: 20
-  timeout: 360
+  timeout: 1000

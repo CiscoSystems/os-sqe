@@ -35,7 +35,7 @@ class Server(WithConfig, WithLogMixIn):
                     raise RuntimeError(res.stderr)
                 return res
         except SystemExit as ex:
-            raise RuntimeError('{} {}: failed due to {}'.format(self, cmd, ex))
+            raise RuntimeError('{} {}: \n {}'.format(self, cmd, ex.message))
 
     def get_package_manager(self):
         if not self._package_manager:
