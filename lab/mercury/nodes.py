@@ -19,6 +19,36 @@ class MercuryCeph(CimcCeph):
 
 
 class MercuryMgm(CimcServer):
+    @staticmethod
+    def create_from_actual(ip, password):
+        from lab.with_config import WithConfig
+        from lab.server import Server
+        import yaml
+
+        separator = 'separator'
+        cmds = ['ciscovim install-status', 'cat setup_data.yaml', 'grep -E "image_tag|RELEASE_TAG" defaults.yaml']
+        cmd = ' ; echo {} ; '.format(separator).join(cmds)
+
+        mgm = Server(ip=ip, username=WithConfig.SQE_USERNAME, password=None)
+
+        while True:
+            try:
+                a = mgm.exe(cmd)
+                status, setup_data_body, grep = a.split('separator')
+                setup_data_dic = yaml.load(setup_data_body)
+                release_tag = grep.split('\n')[1].split(':')[-1].strip()
+                gerrit_tag = grep.split('\n')[2].split(':')[-1].strip()
+                mgm.username = 'root'
+                mgm.password = password
+                return mgm, status, setup_data_dic, release_tag, gerrit_tag
+            except ValueError:  # means username/password combination wrong
+                mgm.username = 'root'
+                mgm.password = password
+                mgm.create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY, private_key=WithConfig.PRIVATE_KEY)
+                continue
+
+
+
     def r_collect_info(self, regex):
         body = ''
         for cmd in [self.log_grep_cmd(log_files='/var/log/mercury/*', regex=regex)]:

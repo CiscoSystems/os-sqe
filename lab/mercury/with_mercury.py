@@ -23,7 +23,7 @@ class WithMercury(object):
     }
 
     MERCURY_DIC = json.loads(requests.get(url=WithConfig.CONFIGS_REPO_URL + '/mercury.json').text)
-    POSSIBLE_PASSWORDS = MERCURY_DIC['passwords']
+    MGM_ROOT_PASSWORD = MERCURY_DIC['mgm_root_password']
     KNOWN_PODS_DIC = MERCURY_DIC['pods']
     KNOWN_NETWORKS_DIC = MERCURY_DIC['networks']
     ROLE_ID_TO_CLASS_DIC = {x.__name__: x for x in [MercuryMgm, MercuryVts, MercuryCeph, MercuryCompute, MercuryController, Vtc, VtcIndividual, Vtsr, VtsrIndividual, Tor, VimTor, VimCat, Oob, UnknownN9]}
@@ -48,6 +48,7 @@ class WithMercury(object):
     def create(lab_name, allowed_drivers=None, is_mgm_only=False, is_interactive=False):
         import validators
         from lab.laboratory import Laboratory
+        from lab.mercury.nodes import MercuryMgm
 
         if not validators.ipv4(lab_name):
             if lab_name not in WithMercury.KNOWN_PODS_DIC:
@@ -57,7 +58,7 @@ class WithMercury(object):
         else:
             ip = lab_name
 
-        mgm, status, setup_data_dic, release_tag, gerrit_tag = WithMercury.check_mgm_node(ip=ip)
+        mgm, status, setup_data_dic, release_tag, gerrit_tag = MercuryMgm.create_from_actual(ip=ip, password=WithMercury.MGM_ROOT_PASSWORD)
         if not is_interactive and '| ORCHESTRATION          | Success |' not in status:
             raise RuntimeError('{} is not properly installed: {}'.format(lab_name, status))
         driver = setup_data_dic['MECHANISM_DRIVERS']
@@ -77,36 +78,6 @@ class WithMercury(object):
         else:
             pod.driver_version = 'vpp XXXX'
         return pod
-
-    @staticmethod
-    def check_mgm_node(ip):
-        import yaml
-        from lab.server import Server
-
-        separator = 'separator'
-        cmds = ['ciscovim install-status', 'cat setup_data.yaml', 'grep -E "image_tag|RELEASE_TAG" defaults.yaml']
-        cmd = ' ; echo {} ; '.format(separator).join(cmds)
-
-        srv = Server(ip=ip, username=WithConfig.SQE_USERNAME, password=None)
-        while True:
-            try:
-                a = srv.exe(cmd, is_warn_only=True)
-                status, setup_data_body, grep = a.split('separator')
-                setup_data_dic = yaml.load(setup_data_body)
-                release_tag = grep.split('\n')[1].split(':')[-1].strip()
-                gerrit_tag = grep.split('\n')[2].split(':')[-1].strip()
-                return srv, status, setup_data_dic, release_tag, gerrit_tag
-            except RuntimeError:  # no user SQE yet, create it
-                for password in WithMercury.POSSIBLE_PASSWORDS:
-                    try:
-                        srv = Server(ip=ip, username='root', password=password)
-                        srv.create_user(username=WithConfig.SQE_USERNAME, public_key=WithConfig.PUBLIC_KEY)
-                        break
-                    except RuntimeError:
-                        continue
-                else:
-                    raise RuntimeError('failed to connect to root@{} with {}'.format(ip, WithMercury.POSSIBLE_PASSWORDS))
-
 
     @staticmethod
     def create_from_setup_data(pod, mgm, is_interactive):
