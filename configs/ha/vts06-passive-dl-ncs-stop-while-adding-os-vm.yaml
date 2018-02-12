@@ -25,7 +25,7 @@ Workers:
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
   name: dis
   delay: 10
-  run: 10
+  run: 3
   pause: 30
   timeout: 1000
   node_to_disrupt: slave-vtsr
