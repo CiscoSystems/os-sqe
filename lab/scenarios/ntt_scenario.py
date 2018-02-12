@@ -49,9 +49,9 @@ class NttScenario(TestCaseWorker):
             loc_abs_path = path.join(self.csr_repo_dir, path.basename(loc_rel_path))
             self.pod.mgm.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=loc_abs_path)
         if self.run_inside in ['both', 'nfvbench']:
-            if len(self.pod.mgm.intel_nics_dic) < 2:
+            if len(self.pod.mgm.nics_dic.get('X710', [])) + len(self.pod.mgm.nics_dic.get('X510', [])) < 2:
                 raise RuntimeError('{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgmt))
-            self.args['is-sriov'] = len(self.pod.computes[0].intel_virtual_nics_dic) >= 8
+            self.args['is-sriov'] = len(self.pod.computes[0].nics_dic.get('VF', [])) >= 8
             self.pod.mgm.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             # if self.pod.driver == 'vts':
             #     for tor_name, tor_port in self.pod.setup_data_dic['NFVBENCH']['tor_info'].items():

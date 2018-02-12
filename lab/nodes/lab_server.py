@@ -113,7 +113,7 @@ class LabServer(LabNode):
             cmd = cmd.replace('sudo ', 'echo {} | sudo -p "" -S '.format(self.password))
         if self.proxy:
             cmd = 'ssh -o StrictHostKeyChecking=no ' + self.username + '@' + (self.ip or self.id) + " '" + cmd + "'"
-        comment = ' # ' + self.id + '@' + self.pod.name
+        comment = ' # ' + self.id + ' ' + self.pod.name
 
         if estimated_time:
             self.log('Running {}... (usually it takes {} secs)'.format(cmd, estimated_time))
@@ -162,6 +162,7 @@ class LabServer(LabNode):
         local_repo_dir = local_repo_dir or repo_url.split('/')[-1].strip('.git')
 
         # self.check_or_install_packages(package_names='git')
+        self.log('Clone ' + repo_url)
         self.exe(cmd="test -d {0} ||  ssh-agent bash -c 'ssh-add ~/.ssh/sqe_private; git clone -q {1} {0}'".format(local_repo_dir, repo_url), is_as_sqe=is_as_sqe)
         repo_abs_path = self.exe(cmd="ssh-agent bash -c 'ssh-add ~/.ssh/sqe_private; git pull -q' && pwd", in_dir=local_repo_dir, is_as_sqe=is_as_sqe)
         if patch:
