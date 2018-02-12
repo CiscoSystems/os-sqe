@@ -14,7 +14,7 @@ class Server(WithConfig, WithLogMixIn):
         return ('sshpass -p ' + self.password + ' ' if self.password else '') + 'ssh {}@{}'.format(self.username, self.ip)
 
     def exe(self, cmd, in_dir='.', is_warn_only=False, n_attempts=N_CONNECTION_ATTEMPTS):
-        from fabric.api import run, settings, cd, hide, env
+        from fabric.api import run, settings, cd, hide
 
         if str(self.ip) in ['localhost', '127.0.0.1']:
             return self._exe_local(cmd, in_directory=in_dir, warn_only=is_warn_only)
@@ -35,7 +35,10 @@ class Server(WithConfig, WithLogMixIn):
                     raise RuntimeError(res.stderr)
                 return res
         except SystemExit as ex:
-            raise RuntimeError('{} {}: \n {}'.format(self, cmd, ex.message))
+            if 'Needed to prompt' in ex.message:
+                raise ValueError('{}: username/password wrong'.format(self))
+            else:
+                raise RuntimeError('{} {}: \n {}'.format(self, cmd, ex.message))
 
     def get_package_manager(self):
         if not self._package_manager:
@@ -65,14 +68,19 @@ class Server(WithConfig, WithLogMixIn):
             if self.exe(cmd='whereis {0}'.format(package_name)) == package_name + ':':
                 self.exe(cmd='sudo {0} install -y {1}'.format(pm, package_names))
 
-    def create_user(self, username, public_key):
+    def create_user(self, username, public_key, private_key):
         tmp_password = 'password'
 
         a = 'grep {1} /etc/passwd || openssl passwd -crypt {0} | while read p; do adduser -p $p {1}; echo "{1} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/{1}; '.format(tmp_password, username)
         b = 'mkdir -p ~{0}/.ssh ; chmod 700 ~{0}/.ssh ; cp .ssh/* ~{0}/.ssh ; cp openstack-configs/{{*.yaml,openrc}} ~{0}/ ; chown -R {0}.{0} ~{0}; done'.format(username)
         self.exe(cmd=a + b)
 
-        sqe = Server(ip=self.ip, username=username, password=tmp_password)
+        self.username=username
+        self.password=tmp_password
+
+        # it's Local gitlab server key
         gitlab_public = 'wwwin-gitlab-sjc.cisco.com,10.22.31.77 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJZlfIFWs5/EaXGnR9oXp6mCtShpvO2zKGqJxNMvMJmixdkdW4oPjxYEYP+2tXKPorvh3Wweol82V3KOkB6VhLk='
-        sqe.exe('echo "{}" > .ssh/known_hosts ; echo "{}" > aaa; cp aaa .ssh/authorized_keys; chmod 600 .ssh/authorized_keys'.format(gitlab_public, public_key))
+        # private key is needed to commit to local github
+        self.exe('echo "{}" > known_hosts ; echo "{}" > ~/aaa; cp ~/aaa authorized_keys; echo "{}" > sqe_private; chmod 600 *'.format(gitlab_public, public_key, private_key), in_dir='.ssh')
+        self.password = None
         self.log('Created user ' + username)
