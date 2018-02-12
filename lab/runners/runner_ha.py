@@ -64,6 +64,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
 
         if not test_case.is_debug:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
+        fabric.network.disconnect_all()
         test_case.log('status=finish')
 
     def run(self, pod_name, test_regex, is_noclean, is_debug):
