@@ -14,7 +14,7 @@ class Xrvr(VirtualServer):
         import time
 
         vts_host = self.get_hardware_server()
-        if method_to_disrupt == 'vm-shutdown':
+        if method_to_disrupt == 'libvirt-suspend':
             # self.get_id()[-1] if id is "xrnc1" => 1, "xrnc2" => 2
             vts_host.exe(command='virsh suspend xrnc{}'.format(self.get_node_id()[-1]))
             time.sleep(downtime)

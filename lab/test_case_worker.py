@@ -104,15 +104,15 @@ class TestCaseWorker(WithLogMixIn):
 
         time_passed = 0
         if type(self.delay) is list:
-            self.log('delay while {} not yet {}'.format(self.delay, self.STATUS_FINISHED))
+            self.log('status=delayed until other={} finish'.format(self.delay, self.STATUS_FINISHED))
             while all([self.status_dict[x] != self.STATUS_FINISHED for x in self.delay]):
                 time.sleep(1)
                 time_passed += 1
                 if time_passed == self.timeout:
                     raise RuntimeError('Waiting for {} to be all False exceeded {} secs'.format(self.delay, self.timeout))
-            self.log('{}=finish, worker now active'.format(self.delay))
+            self.log('status=active since other={} finished'.format(self.delay))
         else:
-            self.log('delay by {} secs...'.format(self.delay))
+            self.log('status=delayed for time={} secs...'.format(self.delay))
             time.sleep(1 if self.test_case.is_debug else self.delay)
 
     def start_worker_parallel(self):
@@ -120,6 +120,7 @@ class TestCaseWorker(WithLogMixIn):
         import os
         import time
         import sys
+        import fabric.network
 
         worker_parameters = 'ppid={} pid={} {}'.format(os.getppid(), os.getpid(), self.description)
         self.log(worker_parameters)
@@ -131,15 +132,16 @@ class TestCaseWorker(WithLogMixIn):
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
-                self.log(' loop={} until={} {} ...'.format(self.loop_counter + 1, self.run, self.status_dict))
+                self.log('loop={} status=start until={} other={}'.format(self.loop_counter + 1, self.run, self.status_dict))
 
                 if not self.test_case.is_debug:
                     self.loop_worker()
 
                 if self.pause > 0:
-                    self.log(' loop={} pause={} sec ...'.format(self.loop_counter + 1, self.pause ))
+                    self.log(' loop={} status=pause time={} sec ...'.format(self.loop_counter + 1, self.pause ))
                     time.sleep(1 if self.test_case.is_debug else self.pause)
 
+                self.log('loop={} status=finish until={} {} ...'.format(self.loop_counter + 1, self.run, self.status_dict))
                 self.loop_counter += 1
 
         except Exception as ex:
@@ -148,6 +150,7 @@ class TestCaseWorker(WithLogMixIn):
                 frame = frame.tb_next
             self.exceptions.append(str(ex).replace('\\', '') + ' ' + frame.tb_frame.f_code.co_filename + ':' + str(frame.tb_lineno))
             self.log_exception()
+            fabric.network.disconnect_all()
         finally:
             time.sleep(1)  # sleep to align log output
             self.set_status(status=self.STATUS_FINISHED)

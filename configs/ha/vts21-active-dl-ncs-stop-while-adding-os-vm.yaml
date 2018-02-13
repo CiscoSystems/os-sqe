@@ -33,4 +33,4 @@ Workers:
   disrupt_time: 20
 
 # Possible nodes to disrupt: 'active-vtc', 'passive-vtc', 'active-dl', 'passive-dl'
-# Possible methods:  'isolate-from-mx', 'isolate-from-api', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop'
+# Possible methods:  'isolate-from-mx', 'isolate-from-api', 'libvirt-suspend', 'vm-reboot', 'corosync-stop', 'ncs-stop'

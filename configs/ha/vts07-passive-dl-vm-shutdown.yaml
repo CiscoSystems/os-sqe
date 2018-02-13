@@ -5,7 +5,7 @@ UniqueID: os-sqe-vts07
 PossibleDrivers: [vts]
 Workers:
 - class: lab.monitors.vts_monitor.VtsMonitor
-  name: VtsMonitor
+  name: mon
   delay: 0
   run: [sce]
   pause: 2
@@ -29,6 +29,6 @@ Workers:
   pause: 0
   timeout: 1000
   node_to_disrupt: slave-vtsr
-  method_to_disrupt: vm-shutdown
+  method_to_disrupt: libvirt-suspend
   run: 2
   disrupt_time: 20

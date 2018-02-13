@@ -19,7 +19,7 @@ Workers:
   timeout: 1000
   disrupt_time: 60
   node_to_disrupt: master-vtsr
-  method_to_disrupt: vm-shutdown
+  method_to_disrupt: libvirt-suspend
 
 - class: lab.scenarios.vts_delete_compute.VtsDeleteCompute
   name: del_comp

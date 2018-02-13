@@ -11,7 +11,9 @@ class MercuryCompute(CimcCompute):
 
 
 class MercuryVts(CimcVts):
-    pass
+    """ Host which hosts a number of VTS related libvirt VMs, usually vtcX and vtsrX.
+        Normal VTS installation consists from 2 such hosts
+    """
 
 
 class MercuryCeph(CimcCeph):

@@ -114,8 +114,6 @@ class Vtc(VipServer):
         return map(lambda vtf: vtf.show_vxlan_tunnel(), self.pod.get_vft())
 
     def disrupt(self, node_to_disrupt, method_to_disrupt, downtime):
-        import time
-
         is_master = node_to_disrupt.startswith('master')
         node_class = node_to_disrupt.split('-')[-1]
         cluster = self.api_vtc_ha()
@@ -123,30 +121,15 @@ class Vtc(VipServer):
         node_id = [x['hostname'] for x in cluster['vtc-ha:vtc-ha']['nodes']['node'] if x['original-state'] == ('Master' if is_master else 'Slave')][0]
         node_id = node_id.replace('vtc', node_class)  # node_id might by vtcXX or vtsrXX
 
-        node_disrupt = self.individuals[node_id]
+        vtc_individual = self.individuals[node_id]
 
-        vts_host = node_disrupt.hard
-
-        if method_to_disrupt == 'vm-shutdown':
-            vts_host.exe(cmd='virsh suspend {}'.format(node_disrupt.id))
-            time.sleep(downtime)
-            vts_host.exe(cmd='virsh resume {}'.format(node_disrupt.id))
-        elif method_to_disrupt == 'isolate-from-mx':
-            ans = vts_host.exe('ip l | grep mgmt | grep {0}'.format(self.id))
-            if_name = ans.split()[1][:-1]
-            vts_host.exe('ip l s dev {} down'.format(if_name))
-            time.sleep(downtime)
-            vts_host.exe('ip l s dev {} up'.format(if_name))
-        elif method_to_disrupt == 'isolate-from-api':
-            ans = vts_host.exe('ip l | grep api | grep {0}'.format(self.id))
-            if_name = ans.split()[1][:-1]
-            vts_host.exe('ip l s dev {} down'.format(if_name))
-            time.sleep(downtime)
-            vts_host.exe('ip l s dev {} up'.format(if_name))
+        if method_to_disrupt == 'libvirt-suspend':
+            vtc_individual.disrupt_libvirt(downtime=downtime)
+        elif method_to_disrupt in ['isolate-from-mx', 'isolate-from-api']:
+            vtc_individual.disrupt_nic(method_to_disrupt=method_to_disrupt, downtime=downtime)
         elif method_to_disrupt == 'vm-reboot':
             # 'set -m' because of http://stackoverflow.com/questions/8775598/start-a-background-process-with-nohup-using-fabric
-            node_disrupt.exe('shutdown -r now')
-            time.sleep(downtime)
+            vtc_individual.exe('shutdown -r now')
 
     def get_config_and_net_part_bodies(self):
         from lab import with_config

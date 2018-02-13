@@ -80,7 +80,7 @@ class WithLogMixIn(object):
         return cmd
 
     def log(self, message):
-        lab_logger.info(str(self) + ' ' + message)
+        lab_logger.info('{:30} {}'.format(self, message))
 
     def log_warning(self, message):
         lab_logger.warning(str(self) + ' ' + message)

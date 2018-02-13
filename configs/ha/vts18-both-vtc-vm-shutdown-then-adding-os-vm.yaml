@@ -29,7 +29,7 @@ Workers:
   pause: 0
   timeout: 1000
   node_to_disrupt: master-vtc
-  method_to_disrupt: vm-shutdown
+  method_to_disrupt: libvirt-suspend
   disrupt_time: 20
 
 - class: lab.disruptors.vts_disruptor.VtsDisruptor
@@ -39,5 +39,5 @@ Workers:
   pause: 0
   timeout: 1000
   node_to_disrupt: slave-vtc
-  method_to_disrupt: vm-shutdown
+  method_to_disrupt: libvirt-suspend
   disrupt_time: 20

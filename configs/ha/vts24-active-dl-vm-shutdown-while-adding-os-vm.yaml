@@ -29,5 +29,5 @@ Workers:
   pause: 10
   timeout: 1000
   node_to_disrupt: master-vtsr
-  method_to_disrupt: vm-shutdown
+  method_to_disrupt: libvirt-suspend
   disrupt_time: 30

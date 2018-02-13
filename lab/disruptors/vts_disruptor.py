@@ -20,10 +20,12 @@ class VtsDisruptor(TestCaseWorker):
 
     def check_arguments(self):
         possible_nodes = ['master-vtc', 'slave-vtc', 'master-vtsr', 'slave-vtsr']
-        possible_methods = ['isolate-from-mx', 'isolate-from-api', 'isolate-from-t', 'vm-shutdown', 'vm-reboot', 'corosync-stop', 'ncs-stop']
+        possible_methods = ['isolate-from-mx', 'isolate-from-api', 'isolate-from-t', 'libvirt-suspend', 'vm-reboot', 'corosync-stop', 'ncs-stop']
 
         assert self.disrupt_time > 0
         assert self.node_to_disrupt in possible_nodes, '{} not in {}, check {}'.format(self.node_to_disrupt, possible_nodes, self.test_case.path)
+        if self.node_to_disrupt in ['master-vtsr', 'slave-vtsr']:
+          assert self.method_to_disrupt not in ['isolate-from-api', 'isolate-from-t'], '{} for VTSR is not allowed, check {}'.format(self.method_to_disrupt, self.test_case.path)
         assert self.method_to_disrupt in possible_methods, '{} not in {}, check {}'.format(self.method_to_disrupt, possible_methods, self.test_case.path)
 
     def setup_worker(self):
