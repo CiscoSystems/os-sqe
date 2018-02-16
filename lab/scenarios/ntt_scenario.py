@@ -99,7 +99,7 @@ class NttScenario(TestCaseWorker):
 
         cmd = 'nfvbench ' + cfg + self.nfvbench_args + ' --std-json /tmp/nfvbench '
         ans = self.pod.mgm.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
-        with self.pod.open_artifact('nfvbench_' + self.nfvbench_args.replace(' ', '_').replace('/', '_') + ('_sriov' if is_sriov else '') + '.txt', 'w') as f:
+        with self.pod.open_artifact(str(self.test_case) + '_nfvbench_' + self.nfvbench_args.replace(' ', '_').replace('/', '_') + ('_sriov' if is_sriov else '') + '.txt', 'w') as f:
             f.write(cmd + '\n')
             f.write(ans)
 
@@ -117,7 +117,7 @@ class NttScenario(TestCaseWorker):
             json_name2 = ('SRIOV-' if is_sriov else '') + json_name1 + '.' + date + '.' + self.pod.name
             self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && echo {1} >> catalog && git add --all && git commit -m "report on $(hostname) at $(date)"'.format(json_name1, json_name2),
                              in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
-            self.pod.mgm.exe(cmd="ssh-agent bash -c 'ssh-add .ssh/sqe_private; git push'", in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
+            self.pod.mgm.exe(cmd="ssh-agent bash -c 'ssh-add ~/.ssh/sqe_private; git push'", in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
             res_json_body = self.pod.mgm.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.perf_reports_repo_dir)
             self.process_nfvbench_json(res_json_body=res_json_body)
 
