@@ -10,7 +10,6 @@ class VtsMonitor(TestCaseWorker):
         pass
 
     def loop_worker(self):
-        ha = self.pod.vtc.api_vtc_ha()
-        master_name = [x['hostname'] for x in ha['vtc-ha:vtc-ha']['nodes']['node'] if x['original-state'] == 'Master'][0]
         nets, srvs = self.pod.vtc.api_openstack()
-        self.log('master={} n_nets={}'.format(master_name, len(nets)))
+        self.pod.vtc.r_vtc_crm_mon('monitor'),
+        self.log('n_nets={}'.format(len(nets)))

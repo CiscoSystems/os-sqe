@@ -56,3 +56,20 @@ Workers:
   disrupt_time: 60
   pause: 20
   timeout: 1000
+
+- class: lab.disruptors.vts_disruptor.VtsDisruptor
+  name: vtcMmx
+  delay: [vtcSapi]
+  run: 1
+  node_to_disrupt: master-vtc
+  method_to_disrupt: isolate-from-mx
+  disrupt_time: 60
+  pause: 20
+  timeout: 1000
+
+- class: lab.monitors.vts_monitor.VtsMonitor
+  name: mon
+  run: [vtcMmx]
+  pause: 10
+  delay: 1
+  timeout: 360

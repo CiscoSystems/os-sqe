@@ -20,7 +20,7 @@ class Server(WithConfig, WithLogMixIn):
             return self._exe_local(cmd, in_directory=in_dir, warn_only=is_warn_only)
 
         try:
-            with settings(hide('output', 'running', 'warnings', 'aborts'),
+            with settings(hide('warnings', 'aborts', 'output', 'running'),
                           abort_on_prompts=True,
                           disable_known_hosts=True,
                           connection_attempts=n_attempts,

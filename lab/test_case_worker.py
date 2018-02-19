@@ -138,7 +138,7 @@ class TestCaseWorker(WithLogMixIn):
                     self.loop_worker()
 
                 if self.pause > 0:
-                    self.log(' loop={} status=pause time={} sec ...'.format(self.loop_counter + 1, self.pause ))
+                    self.log('loop={} status=pause time={} sec ...'.format(self.loop_counter + 1, self.pause ))
                     time.sleep(1 if self.test_case.is_debug else self.pause)
 
                 self.log('loop={} status=finish until={} {} ...'.format(self.loop_counter + 1, self.run, self.status_dict))

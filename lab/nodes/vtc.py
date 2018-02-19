@@ -96,17 +96,22 @@ class Vtc(VipServer):
 
     def cmd(self, cmd):
         import json
+        import time
 
         cmd = 'curl -s -k -u {u}:{p} '.format(u=self.vtc_username, p=self.vtc_password) + cmd.replace('{ip}', self.ip)
         for i in range(10):
-            ans = self.exe(cmd, is_warn_only=True)
-            if ans.failed:
-                raise RuntimeError(ans)
-            else:
-                try:  # sometimes the answer is not fully formed (usually happens with server list), simply repeat
-                    return json.loads(ans) if ans else {}  # it might be empty
-                except ValueError:  # something like ValueError: Unterminated string starting at: line 65 column 11 (char 4086)
-                    continue
+            try:
+                ans = self.exe(cmd, is_warn_only=True)
+                if ans.failed:
+                    raise RuntimeError(ans)
+                else:
+                    try:  # sometimes the answer is not fully formed (usually happens with server list), simply repeat
+                        return json.loads(ans) if ans else {}  # it might be empty
+                    except ValueError:  # something like ValueError: Unterminated string starting at: line 65 column 11 (char 4086)
+                        continue
+            except:  # might happen when corosync switches to new master
+                time.sleep(1)
+                continue
         else:
             raise RuntimeError('Failed after 10 attempts: ' + cmd)
 
@@ -114,13 +119,8 @@ class Vtc(VipServer):
         return map(lambda vtf: vtf.show_vxlan_tunnel(), self.pod.get_vft())
 
     def disrupt(self, node_to_disrupt, method_to_disrupt, downtime):
-        is_master = node_to_disrupt.startswith('master')
-        node_class = node_to_disrupt.split('-')[-1]
-        cluster = self.api_vtc_ha()
-
-        node_id = [x['hostname'] for x in cluster['vtc-ha:vtc-ha']['nodes']['node'] if x['original-state'] == ('Master' if is_master else 'Slave')][0]
-        node_id = node_id.replace('vtc', node_class)  # node_id might by vtcXX or vtsrXX
-
+        st1 = self.r_vtc_crm_mon('before')
+        node_id = st1[node_to_disrupt.split('-')[0]].replace('vtc', node_to_disrupt.split('-')[-1])
         vtc_individual = self.individuals[node_id]
 
         if method_to_disrupt == 'libvirt-suspend':
@@ -130,6 +130,8 @@ class Vtc(VipServer):
         elif method_to_disrupt == 'vm-reboot':
             # 'set -m' because of http://stackoverflow.com/questions/8775598/start-a-background-process-with-nohup-using-fabric
             vtc_individual.exe('shutdown -r now')
+        st2 = self.r_vtc_crm_mon('after')
+        assert st1['master'] != st2['master'], 'Somehting stange VTC master is not changed'
 
     def get_config_and_net_part_bodies(self):
         from lab import with_config
@@ -217,12 +219,19 @@ class Vtc(VipServer):
         self.r_get_file_from_dir(rem_rel_path=ans, loc_abs_path='artifacts/vst_tech_support.bz2')
         self.exe('rm -r ' + wild_card)
 
-    def r_vtc_get_all(self):
-        self.r_vtc_cluster_status()
-        [self.cmd(x) for x in sorted(self.API_CALLS.keys()) if x.startswith('get_')]
+    def r_vtc_crm_mon(self, when):
+        import fabric.network
 
-    def r_vtc_cluster_status(self):
-        return self.exe('sudo crm status', is_warn_only=True)
+        try:
+            ans = self.exe('sudo crm_mon -1', is_warn_only=True).split('\r\n')
+            d = {'online': ans[5].strip('Online:').strip(' []').split(),
+                 'master': ans[8].strip(' Masters:').strip('[] '),
+                 'slave': ans[9].strip(' Slaves:').strip('[] ')}
+            self.log('master={} slave={} online={} when={}'.format(d['master'], d['slave'], d['online'], when))
+            return d
+        except:
+            fabric.network.disconnect_all()
+            return self.r_vtc_crm_mon(when=when)
 
     def r_vtc_create_border_leaf_port(self, os_networks):
         pools = self.api_pool_lst()
