@@ -109,7 +109,7 @@ class TestCaseWorker(WithLogMixIn):
                 time.sleep(1)
                 time_passed += 1
                 if time_passed == self.timeout:
-                    raise RuntimeError('Waiting for {} to be all False exceeded {} secs'.format(self.delay, self.timeout))
+                    raise RuntimeError('{} not finished in {} secs'.format(self.delay, self.timeout))
             self.log('status=active since other={} finished'.format(self.delay))
         else:
             self.log('status=delayed for time={} secs...'.format(self.delay))
@@ -122,7 +122,7 @@ class TestCaseWorker(WithLogMixIn):
         import sys
         import fabric.network
 
-        worker_parameters = 'ppid={} pid={} {}'.format(os.getppid(), os.getpid(), self.description)
+        worker_parameters = 'parameters ppid={} pid={} {}'.format(os.getppid(), os.getpid(), self.description)
         self.log(worker_parameters)
         time.sleep(1)
 
@@ -132,16 +132,16 @@ class TestCaseWorker(WithLogMixIn):
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
-                self.log('loop={} status=start until={} other={}'.format(self.loop_counter + 1, self.run, self.status_dict))
+                self.log('status=loop{}start until={} other={}'.format(self.loop_counter + 1, self.run, self.status_dict))
 
                 if not self.test_case.is_debug:
                     self.loop_worker()
 
                 if self.pause > 0:
-                    self.log('loop={} status=pause time={} sec ...'.format(self.loop_counter + 1, self.pause ))
+                    self.log(' status=loop{}pause time={} sec ...'.format(self.loop_counter + 1, self.pause ))
                     time.sleep(1 if self.test_case.is_debug else self.pause)
 
-                self.log('loop={} status=finish until={} {} ...'.format(self.loop_counter + 1, self.run, self.status_dict))
+                self.log('status=loop{}finish until={} {} ...'.format(self.loop_counter + 1, self.run, self.status_dict))
                 self.loop_counter += 1
 
         except Exception as ex:

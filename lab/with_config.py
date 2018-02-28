@@ -58,7 +58,7 @@ class WithConfig(object):
             return '{{id: {:3}, ip: {:20}, is-ssh: {:6} }}'.format(nic.id, nic.ip, nic.is_ssh)
 
         def node_yaml_body(node):
-            a = ' {{id: {:8}, hard: "{:25}", role: {:18}, proxy: {:5}'.format(node.id, node.hardware, node.role, node.proxy.id if node.proxy is not None else None)
+            a = ' {{id: {:22}, hard: "{:30}", role: {:18}, proxy: {:5}'.format(node.id, node.hardware, node.role, node.proxy.id if node.proxy is not None else None)
             a += ', oob-ip: {:15}, oob-username: {:9}, oob-password: {:9}'.format(node.oob_ip, node.oob_username, node.oob_password)
             a += ', ssh-ip: {:15}, ssh-username: {:9}, ssh-password: {:9} '.format(node.ip, node.username, node.password) if isinstance(node, LabServer) else ''
             a += ', virtual-on: {:5}, '.format(node.hard.id) if isinstance(node, VirtualServer) else ''
