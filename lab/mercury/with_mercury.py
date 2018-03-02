@@ -130,11 +130,12 @@ class WithMercury(object):
                 pod.mgm = node
             elif type(node) == MercuryVts:
                 pod.vts.append(node)
-            node.r_build_online()
 
-        pod.controls[0].cimc_deduce_wiring_by_lldp(pod=pod)
-        if is_interactive:
-            map(lambda x: x.n9_validate(), pod.vim_tors)
+        map(lambda x: x.r_verify_oob(), [pod.mgm] + pod.controls + pod.computes + pod.vts)
+        pod.mgm.cimc_deduce_wiring_by_lldp(pod=pod)
+        # map(lambda x: x.n9_validate(), pod.vim_tors + [pod.vim_cat])
+        map(lambda x: x.r_build_online(), pod.nodes_dic.values())
+
         map(lambda x: WithMercury.process_vts_virtuals(pod=pod, vts=x), pod.vts)
         # pod.validate_config()
         pod.save_self_config(p=pod)
@@ -191,7 +192,7 @@ class WithMercury(object):
         from lab.nodes.others import UnknownN9, VimTor, VimCat
         from lab.wire import Wire
 
-        known_info = WithMercury.KNOWN_PODS_DIC[pod.name.rsplit('-', 1)[0]]
+        known_info = WithMercury.KNOWN_PODS_DIC.get(pod.name.rsplit('-', 1)[0], {})
         switches = []
         username, password = None, None
         for sw in pod.setup_data_dic['TORSWITCHINFO']['SWITCHDETAILS']:
@@ -219,6 +220,8 @@ class WithMercury(object):
                             node2_id = 'tor'
                             if node2_id not in pod.nodes_dic:
                                 pod.tor = Tor.create_node(pod=pod, dic={'id': node2_id, 'role': Tor.__name__, 'oob-ip': nei.ipv4, 'oob-username': 'openstack-read', 'oob-password': password})
+                        elif nei.device_id == 'VPP':
+                            continue
                         else:
                             node2_id = nei.ipv4
                             if node2_id not in pod.nodes_dic:
