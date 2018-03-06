@@ -24,6 +24,7 @@ class Vtc(VipServer):
                                  }
     }
 
+    short = 'V'
     # https://www.cisco.com/c/dam/en/us/td/docs/net_mgmt/virtual_topology_system/2_5_2/api/Cisco_VTS_2_5_2_API_Doc.pdf
     def api_vtc_ha(self):
         # show configuration vtc-ha
@@ -118,21 +119,6 @@ class Vtc(VipServer):
     def show_vxlan_tunnel(self):
         return map(lambda vtf: vtf.show_vxlan_tunnel(), self.pod.get_vft())
 
-    def disrupt(self, node_to_disrupt, method_to_disrupt, downtime):
-        st1 = self.r_vtc_crm_mon('before')
-        node_id = st1[node_to_disrupt.split('-')[0]].replace('vtc', node_to_disrupt.split('-')[-1])
-        vtc_individual = self.individuals[node_id]
-
-        if method_to_disrupt == 'libvirt-suspend':
-            vtc_individual.disrupt_libvirt(downtime=downtime)
-        elif method_to_disrupt in ['isolate-from-mx', 'isolate-from-api']:
-            vtc_individual.disrupt_nic(method_to_disrupt=method_to_disrupt, downtime=downtime)
-        elif method_to_disrupt == 'vm-reboot':
-            # 'set -m' because of http://stackoverflow.com/questions/8775598/start-a-background-process-with-nohup-using-fabric
-            vtc_individual.exe('shutdown -r now')
-        st2 = self.r_vtc_crm_mon('after')
-        assert st1['master'] != st2['master'], 'Somehting stange VTC master is not changed'
-
     def get_config_and_net_part_bodies(self):
         from lab import with_config
 
@@ -219,19 +205,25 @@ class Vtc(VipServer):
         self.r_get_file_from_dir(rem_rel_path=ans, loc_abs_path='artifacts/vst_tech_support.bz2')
         self.exe('rm -r ' + wild_card)
 
-    def r_vtc_crm_mon(self, when):
+    def r_vtc_crm_mon(self):
         import fabric.network
 
         try:
-            ans = self.exe('sudo crm_mon -1', is_warn_only=True).split('\r\n')
-            d = {'online': ans[5].strip('Online:').strip(' []').split(),
-                 'master': ans[8].strip(' Masters:').strip('[] '),
-                 'slave': ans[9].strip(' Slaves:').strip('[] ')}
-            self.log('master={} slave={} online={} when={}'.format(d['master'], d['slave'], d['online'], when))
+            ans = self.exe('sudo crm_mon -1', is_warn_only=True)
+            d = {'master': None, 'slave': None, 'online': None, 'offline': None}
+            for line in ans.split('\r\n'):
+                if 'Online:' in line:
+                    d['online'] = line.strip('Online:').strip(' []').split()
+                elif 'OFFLINE:' in line:
+                    d['offline'] = line.strip('OFFLINE:').strip('[] ')
+                elif 'Masters:' in line:
+                    d['master'] = line.strip(' Masters:').strip('[] ')
+                elif 'Slaves:' in line:
+                    d['slave'] = line.strip(' Slaves:').strip('[] ')
             return d
-        except:
+        except:  # during disruption, VTC VIP might be temporarily offline, reset paramico session and try again
             fabric.network.disconnect_all()
-            return self.r_vtc_crm_mon(when=when)
+            return self.r_vtc_crm_mon()
 
     def r_vtc_create_border_leaf_port(self, os_networks):
         pools = self.api_pool_lst()

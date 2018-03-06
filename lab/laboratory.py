@@ -142,10 +142,6 @@ class Laboratory(WithMercury, WithOspd7, WithLogMixIn, WithConfig):
         else:
             self._unique_dict[key] = owner
 
-    def lab_validate(self):
-        map(lambda x: x.r_verify_oob(), self.nodes_dic.values())
-        map(lambda x: x.n9_validate(), self.vim_tors + [self.vim_cat])
-
     def r_collect_info(self, regex, comment):
         body = ''
         for node in self.computes + self.controls + self.cephs + ([self.vtc] if self.vtc else []):

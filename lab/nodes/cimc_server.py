@@ -294,7 +294,6 @@ class CimcServer(LabServer):
         else:
             self.logger(message='hostname is already {}'.format(new_cimc_hostname))
 
-
     @staticmethod
     def cimc_deduce_wiring_by_lldp(pod):
         import yaml

@@ -3,24 +3,27 @@ from lab import decorators
 
 
 class MercuryController(CimcController):
-    pass
+    short = 'C'
 
 
 class MercuryCompute(CimcCompute):
-    pass
+    short = 'c'
 
 
 class MercuryVts(CimcVts):
     """ Host which hosts a number of VTS related libvirt VMs, usually vtcX and vtsrX.
         Normal VTS installation consists from 2 such hosts
     """
+    short = 'v'
 
 
 class MercuryCeph(CimcCeph):
-    pass
+    short = 's'
 
 
 class MercuryMgm(CimcServer):
+    short = 'm'
+
     @staticmethod
     def create_from_actual(ip, password):
         from lab.with_config import WithConfig

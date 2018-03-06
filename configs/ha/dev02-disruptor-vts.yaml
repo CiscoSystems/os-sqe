@@ -67,9 +67,9 @@ Workers:
   pause: 20
   timeout: 1000
 
-- class: lab.monitors.vts_monitor.VtsMonitor
-  name: mon
-  run: [vtcMmx]
-  pause: 10
-  delay: 1
-  timeout: 360
+#- class: lab.monitors.vts_monitor.VtsMonitor
+#  name: mon
+#  run: [vtcMmx]
+#  pause: 10
+#  delay: 1
+#  timeout: 360

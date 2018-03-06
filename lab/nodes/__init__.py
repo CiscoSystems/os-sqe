@@ -10,6 +10,7 @@ class LabNode(WithLogMixIn):
         self.pod = pod                                 # parent Laboratory object
         self.id = str(dic['id'])                       # some id which unique in the given role, usually role + some small integer
         self.role = dic['role'].strip()                # the role this node belongs
+        self.short = self.short + self.id[-1]          # short single letter and digit name used in TOR descr
         self._proxy = dic.get('proxy')                 # LabNode object or node id (lazy init), will be used as proxy node to this node
         self.oob_ip, self.oob_username, self.oob_password = dic['oob-ip'], dic['oob-username'], dic['oob-password']
         self.hardware = ''                             # some hardware related info which might be useful for debugging

@@ -51,18 +51,22 @@ class N9neighbourLLDP(object):
 class N9neighbourCDP(object):
     def __init__(self, n9, dic):
         self.n9 = n9
-        self._dic = dic
+        self.dic = dic
 
     def __repr__(self):
-        return u'{} {} {} {}'.format(self.n9, self.port_id, self.ipv4, self.peer_port_id)
+        return u'{} {} {} {} {}'.format(self.n9, self.port_id, self.device_id, self.peer_port_id, self.ipv4)
 
     @property
     def ipv4(self):
-        return self._dic.get('v4mgmtaddr', 'NoIP')
+        return self.dic.get('v4mgmtaddr', 'NoIP')
 
     @property
     def port_id(self):
-        return self._dic['intf_id']
+        return self.dic['intf_id']
+
+    @property
+    def device_id(self):
+        return self.dic['device_id']
 
     @property
     def pc_id(self):
@@ -70,8 +74,8 @@ class N9neighbourCDP(object):
 
     @property
     def peer_port_id(self):
-        return self._dic['port_id']
+        return self.dic['port_id']
 
     @staticmethod
     def process_n9_answer(n9, answer):
-        return [N9neighbourCDP(n9=n9, dic=x) for x in answer] # cdp returns list
+        return [N9neighbourCDP(n9=n9, dic=x) for x in answer]  # sh cdp  nei returns list

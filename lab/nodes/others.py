@@ -3,23 +3,23 @@ from lab.nodes.n9 import N9
 
 
 class Tor(N9):
-    pass
+    short = 'T'
 
 
 class Oob(N9):
-    pass
+    short = 'o'
 
 
 class VimCat(N9):
-    pass
+    short = 'a'
 
 
 class UnknownN9(N9):
-    pass
+    short = 'x'
 
 
 class Pxe(N9):
-    pass
+    short = 'p'
 
 
 class Terminal(LabNode):
@@ -32,6 +32,7 @@ class Terminal(LabNode):
 class VimTor(N9):
     TREX_MODE_CSR = 'access'
     TREX_MODE_NFVBENCH = 'trunck'
+    short = 't'
 
     def n9_border_leaf(self):
         tenant_vlan_ids = [vlan_id for vlan_id, name_and_others in vlans.items() if name_and_others['name'] == '{}-t'.format(self.pod)]

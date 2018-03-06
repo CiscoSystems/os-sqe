@@ -134,9 +134,9 @@ class WithMercury(object):
         map(lambda x: x.r_verify_oob(), [pod.mgm] + pod.controls + pod.computes + pod.vts)
         pod.mgm.cimc_deduce_wiring_by_lldp(pod=pod)
         # map(lambda x: x.n9_validate(), pod.vim_tors + [pod.vim_cat])
-        map(lambda x: x.r_build_online(), pod.nodes_dic.values())
-
         map(lambda x: WithMercury.process_vts_virtuals(pod=pod, vts=x), pod.vts)
+        map(lambda x: x.r_build_online(), [pod.mgm] + pod.controls + pod.computes + pod.virtuals)
+
         # pod.validate_config()
         pod.save_self_config(p=pod)
 

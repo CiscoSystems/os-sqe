@@ -168,43 +168,50 @@ class N9(LabNode):
         from lab.nodes.n9.n9_port_channel import N9PortChannel
         from lab.nodes.n9.n9_port import N9Port
 
-        map(lambda v: self.vlans.get(str(v.vlan), N9Vlan.create(n9=self, vlan_id=v.vlan)).handle_vlan(vlan_name=self.pod.name[:3] + '-' + v.id), self.pod.networks.values())
+        special_pod_name = self.pod.name.replace('-', '').replace('vts', '').replace('vpp', '')[:3]
+        map(lambda v: self.vlans.get(str(v.vlan), N9Vlan.create(n9=self, vlan_id=v.vlan)).handle_vlan(vlan_name=special_pod_name + '-' + v.id), self.pod.networks.values())
 
+        checked = []
         for wire in [x for x in self.pod.wires if self in [x.n1, x.n2]]:
             own_port_id = wire.get_own_port(node=self)
             if wire.is_n9_ucs():  # it's a potential connection to our node
                 if 'adaptor-MLOM' in wire.port_id1:
-                    a = ' MLOM' + wire.port_id1[-1]
+                    a = 'M' + wire.port_id1[-1]
                     port_mode = 'trunk'
                 elif 'adapter-L' in wire.port_id1:
-                    a = ' LOM' + wire.port_id1[-1]
+                    a = 'L' + wire.port_id1[-1]
                     port_mode = 'trunk'
                 else:
                     a = ' TREX' + wire.port_id1[-1]
                     port_mode = 'trunk'
-                desc = self.pod.name[:3] + ' ' + wire.n1.id + a + ' ' + wire.mac
+
+                desc_port = special_pod_name + wire.n1.short + ' ' + a + ' ' + wire.mac + ' ' + wire.n1.oob_ip
+                desc_pc = desc_port
                 pc_id = wire.pc_id
                 vlans = ','.join(sorted([str(x.vlan) for x in wire.n1.networks_dic.values()])) + ',' + self.pod.setup_data_dic['TENANT_VLAN_RANGES'].replace(':', '-')
             elif wire.is_n9_oob():
                 continue
             elif wire.is_n9_n9():  # it's a potential peer link
                 pc_id = wire.pc_id
-                desc = 'peer-link'
+                desc_port = 'peerlink ' + wire.port_id2.strip('Ethernet')
+                desc_pc = 'peerlink'
                 port_mode = 'trunk'
                 vlans = 'all'
             elif wire.is_n9_tor():
                 pc_id = wire.pc_id
-                desc = 'uplink ' + wire.n2.id + ' ' + wire.port_id2.replace('Ethernet', '')
+                desc_port = 'uplink ' + wire.port_id2.strip('Ethernet')
+                desc_pc = desc_port
                 port_mode = 'trunk'
                 vlans = 'all'
             else:
                 pc_id = None
                 port_mode = None
                 vlans = None
-                desc = 'XXX'
-            if pc_id:
-                N9PortChannel.check_create(n9=self, pc_id=pc_id, desc=desc, mode=port_mode, vlans=vlans)
-            self.ports[own_port_id].check(pc_id=pc_id, port_name=desc, port_mode=port_mode, vlans=vlans)
+                desc_port = 'XXX'
+                desc_pc = desc_port
+            if pc_id and pc_id not in checked:
+                N9PortChannel.check_create(n9=self, pc_id=pc_id, desc=desc_pc, mode=port_mode, vlans=vlans)
+            self.ports[own_port_id].check(pc_id=pc_id, port_name=desc_port, port_mode=port_mode, vlans=vlans)
 
         self.log(60 * '-')
 
