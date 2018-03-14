@@ -49,7 +49,7 @@ class VtsDisruptor(TestCaseWorker):
             api_or_mgmt = 'api' if 'api' in self.method_to_disrupt else 'mgmt'
             ans = vtc_individual.hard.exe('ip a | grep {}-{}'.format(vtc_individual.id, api_or_mgmt))
             if_name = ans.split()[1][:-1]
-            ans = vtc_individual.exe('ip l s dev {0} down; ip a s dev {0}'.format(if_name))
+            ans = vtc_individual.hard.exe('ip l s dev {0} down; ip a s dev {0}'.format(if_name))
             if 'state DOWN' not in ans:
                 raise RuntimeError('{}: failed to down iface: {}'.format(vtc_individual, ans))
             self.log('iface={} status=down for downtime={}'.format(if_name, self.disrupt_time))
@@ -58,8 +58,6 @@ class VtsDisruptor(TestCaseWorker):
             if 'UP' not in ans:
                 raise RuntimeError('{}: failed to down iface: {}'.format(vtc_individual, ans))
             self.log('iface={} status=up after downtime={}'.format(if_name, self.disrupt_time))
-
-            vtc_individual.disrupt_nic(method_to_disrupt=self.method_to_disrupt, downtime=self.disrupt_time)
         elif self.method_to_disrupt == 'vm-reboot':
             # 'set -m' because of http://stackoverflow.com/questions/8775598/start-a-background-process-with-nohup-using-fabric
             vtc_individual.exe('shutdown -r now')

@@ -29,10 +29,6 @@ class LibVirtServer(VirtualServer):
         mgmt_ip = self.pod.get_director().get_ip_api()
         os.system('ssh -2NfL {port}:{vts}:{port} root@{mgmt}'.format(port=port, vts=vts_host_ip, mgmt=mgmt_ip))
 
-    def disrupt_libvirt(self, downtime):
-        import time
-
-
 
 class VipServer(LabServer):
     def __init__(self, pod, dic):

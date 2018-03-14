@@ -56,4 +56,4 @@ class Vtsr(VirtualServer):
 
 
 class VtsrIndividual(LibVirtServer):
-    pass
+    short = 'r'

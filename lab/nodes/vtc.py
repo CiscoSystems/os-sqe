@@ -250,5 +250,7 @@ class Vtc(VipServer):
 
 
 class VtcIndividual(LibVirtServer):
+    short = 'v'
+
     def cmd(self, cmd):
         pass

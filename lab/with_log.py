@@ -44,7 +44,6 @@ class CheckStringFilter(logging.Filter):
         return self.check_name in record.message
 
 
-
 class SlackHandler(logging.Handler):
     def handle(self, record):
         import requests
@@ -124,7 +123,7 @@ class Logger(object):
         json_h.setLevel(logging.INFO)
         slack_h.setLevel(logging.INFO)
 
-        console.setFormatter(logging.Formatter(fmt='%(message)s'))
+        console.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
         debug_h.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
         json_h.setFormatter(JsonFormatter())
 
