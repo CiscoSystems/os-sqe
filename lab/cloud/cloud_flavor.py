@@ -5,7 +5,9 @@ from lab.cloud import CloudObject
 class CloudFlavor(CloudObject):
     TYPE_VTS = 'vts'
     FLAVOR_TYPES = {'vts': {'cmd': 'openstack flavor create {} --vcpu 2 --ram 4096 --disk 20 --public -f json', 'opt': 'openstack flavor set {} --property hw:mem_page_size=large'},
-                    'old': {'cmd': 'openstack flavor create {} --vcpu 2 --ram 4096 --disk 20 --public -f json', 'opt': 'openstack flavor set {} --property hw:numa_nodes=1'}}
+                    'old': {'cmd': 'openstack flavor create {} --vcpu 2 --ram 4096 --disk 20 --public -f json', 'opt': 'openstack flavor set {} --property hw:numa_nodes=1'},
+                    'm1.large': {'cmd': 'openstack flavor create {} --vcpu 4 --ram 8192 --disk 80 --public -f json'}
+                    }
 
     def __init__(self, cloud, dic):
         super(CloudFlavor, self).__init__(cloud=cloud, dic=dic)
