@@ -11,7 +11,7 @@ class WithConfig(object):
     PRIVATE_KEY = requests.get(url=CONFIGS_REPO_URL + '/' + 'private.key').text
     PUBLIC_KEY = requests.get(url=CONFIGS_REPO_URL + '/' + 'public.key').text
 
-    VIM_NUM_VS_OS_NAME_DIC = {'2.3': 'master', '2.2': 'newton', '2.1': 'newton', '2.0': 'newton', '1.0': 'liberty', '9.9': 'fake'}
+    VIM_NUM_VS_OS_NAME_DIC = {'2.4': 'newton', '2.3': 'newton', '2.2': 'newton', '2.1': 'newton', '2.0': 'newton', '1.5': 'liberty', '1.0': 'liberty', '9.9': 'fake'}
 
     def verify_config(self, sample_config, config):
         from lab.config_verificator import verify_config

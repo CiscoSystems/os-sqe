@@ -6,6 +6,7 @@ class TestCaseResult(WithLogMixIn):
     PASSED = 'passed'
     FAILED = 'failed'
     SKIPED = 'skipped'
+    ERRORED = 'errored'
 
     def __init__(self, tc):
         self.name = 'TCR ' + tc.path.split('-')[0] + ' '
@@ -45,7 +46,11 @@ class TestCase(WithConfig, WithLogMixIn):
         self.workers = self.create_test_workers(test_dic.pop('Workers'))  # should be after self.cloud is assigned
 
     def __repr__(self):
-        return self.path.split('-')[0]
+        return 'TC=' + self.path.split('-')[0]
+
+    @property
+    def is_failed(self):
+        return any(map(lambda x: x.is_failed, self.workers))
 
     def create_test_workers(self, workers_lst):
         import importlib
@@ -60,7 +65,7 @@ class TestCase(WithConfig, WithLogMixIn):
             try:
                 mod = importlib.import_module(path_to_module)
             except ImportError:
-                raise ValueError('{}: tries to run {}.py which does not exist'.format(self.path, path_to_module))
+                raise ValueError('{}: tries to import {}.py which does not exist'.format(self.path, path_to_module))
             try:
                 klass = getattr(mod, class_name)
             except AttributeError:
@@ -73,7 +78,7 @@ class TestCase(WithConfig, WithLogMixIn):
             workers.append(worker)
 
         for worker in workers:
-            for attr_name in [worker.ARG_RUN, worker.ARG_DELAY]:
+            for attr_name in [worker.ARG_MANDATORY_RUN, worker.ARG_MANDATORY_DELAY]:
                 value = getattr(worker, attr_name)
                 if type(value) is int:
                     continue
@@ -81,21 +86,23 @@ class TestCase(WithConfig, WithLogMixIn):
                 assert len(wrong_names) == 0, '{}.{} has invalid names: "{}". Valid: {}'.format(worker, attr_name, wrong_names, worker_names_already_seen)
         return workers
 
-    def after_run(self, results, status_tbl, err_tbl):
+    def after_run(self, status_tbl, err_tbl):
         import time
 
         execution_time = time.time() - self.time
         tcr = TestCaseResult(tc=self)
         tcr.status = tcr.PASSED
-        for w in results:
+        for w in self.workers:
             tcr.text += str(w.worker_data)
             if w.is_failed:
                 tcr.status = tcr.FAILED
-            exceptions_text = '\n'.join(w.exceptions)
-            if exceptions_text:
+                failures_txt = '\n'.join(w.failures)
+                tcr.text += failures_txt + '\n'
+            errors_txt = '\n'.join(w.errors)
+            if errors_txt:
                 tcr.status = tcr.FAILED
-                tcr.text += exceptions_text + '\n'
-                w.log('EXCEPTION {}'.format(exceptions_text))
+                tcr.text += errors_txt + '\n'
+                w.log('EXCEPTION {}'.format(errors_txt))
 
         status_tbl.add_row([str(self), tcr.status, int(execution_time)])
         if tcr.text:

@@ -8,7 +8,6 @@ Workers:
   name: VtsScenario
   delay: 0
   timeout: 1000
-  pause: 0
   n_networks: 1
   n_servers: 2
   run_inside: iperf -n 10G  -M 9000

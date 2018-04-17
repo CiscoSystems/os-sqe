@@ -42,25 +42,26 @@ class RunnerHA(WithConfig, WithLogMixIn):
             worker.status_dict = status_dict
             worker.set_status(worker.STATUS_CREATED)
             if not test_case.is_debug:
-                worker.setup_worker()  # run all setup_worker in non-parallel
+                try:
+                    worker.setup_worker()  # run all setup_worker in non-parallel
+                except RuntimeError:    # just collect all exception messages in TCWs
+                    pass
             else:
                 worker.log('Setup...')
+        if not test_case.is_failed:
+            time.sleep(2)
+            fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
+            time.sleep(2)
 
-        fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
-        time.sleep(2)
+            pool = multiprocessing.Pool(len(workers))
+            test_case.log('******* PARALLEL EXECUTION STARTS *******')
+            pool.map(starter, workers)
+            test_case.log('******* PARALLEL EXECUTION FINISH *******')
 
-        pool = multiprocessing.Pool(len(workers))
-        test_case.log('***AFTER THIS LINE PARALLEL EXECUTION STARTS***')
-        results = pool.map(starter, workers)
-        test_case.log('***PARALLEL EXECUTION FINISHED***')
+        test_case.after_run(status_tbl=self.status_tbl, err_tbl=self.err_tbl)
 
-        test_case.after_run(results=results, status_tbl=self.status_tbl, err_tbl=self.err_tbl)
-
-        with self.open_artifact('main_results.txt', 'w') as f:
-            f.write(self.status_tbl.get_string())
-            if self.err_tbl._rows:
-                f.write('\n\n')
-                f.write(self.err_tbl.get_string())
+        self.log(self.status_tbl.get_string())
+        self.log(self.err_tbl.get_string())
 
         if not test_case.is_debug:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers

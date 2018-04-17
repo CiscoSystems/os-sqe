@@ -8,7 +8,6 @@ Workers:
   name: NttScenario
   delay: 0
   timeout: 1000
-  pause: 0
   run: 1
   run_inside: both  # might by nfvbench, csr, both
   csr_args: csr_create.sh 10 1 5 # <number of CSRs> <number of CSR per compute> <total time to sleep between successive nova boot

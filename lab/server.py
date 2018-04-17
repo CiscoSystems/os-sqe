@@ -33,6 +33,7 @@ class Server(WithConfig, WithLogMixIn):
                 if res.failed and not is_warn_only:
                     self.log_debug('fail: {}'.format(res))
                     raise RuntimeError(res.stderr)
+                self.log_debug(res + 'openrc' if 'openrc' in cmd else '')
                 return res
         except SystemExit as ex:
             if 'Needed to prompt' in ex.message:

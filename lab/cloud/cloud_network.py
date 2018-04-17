@@ -13,8 +13,6 @@ class CloudNetwork(CloudObject):
         self.mtu = None
         self.subnets = []
         self.ports = []
-        if cloud:
-            cloud.networks.append(self)
 
     def __hash__(self):
         return hash(self.id)
@@ -35,27 +33,24 @@ class CloudNetwork(CloudObject):
         from netaddr import IPNetwork
         from lab.cloud.cloud_subnet import CloudSubnet
 
-        dns = '171.70.168.183'
-
-        d_h = '--dns-nameserver ' + dns
-        d_h += '--dhcp' if is_dhcp else ' --no-dhcp'  # '' if is_dhcp else '--disable-dhcp'
-        # net_cmd = 'neutron net-create {} {} '
+        dns = ' --dns-nameserver 171.70.168.183' if class_a == 99 else ''
+        dhcp = ' --dhcp' if is_dhcp else ' --no-dhcp'
         net_cmd = 'openstack network create {net_name} {phys} -f json'
-        # sub_cmd = 'neutron subnet-create            {net_name}                {cidr} --gateway {gw} --allocation-pool start={p1},end={p2} ' + d_h + ' --name {subnet_name} '
-        sub_cmd = 'openstack subnet create --network {net_name} --subnet-range {cidr} --gateway {gw} --allocation-pool start={p1},end={p2} ' + d_h + ' {subnet_name} -f json'
+        a_pool = '--allocation-pool start={p1},end={p2}' if class_a == 99 else ''
+
+        sub_cmd = 'openstack subnet create --network {net_name} --subnet-range {cidr} --gateway {gw}' + a_pool + dhcp + dns + ' {subnet_name} -f json'
 
         def phys(a):
             return '--provider:physical_network=physnet1 --provider:network_type=vlan --provider:segmentation_id=' + str(vlan_id + a) if vlan_id else ''
 
         nets = []
         for i in range(1, how_many+1):
-            net_name = '{}{}-net-{}'.format(CloudObject.UNIQUE_PATTERN_IN_NAME, common_part_of_name, i)
-            subnet_name = net_name.replace('-net-', '-subnet-')
+            net_name = '{}{}net{}'.format(CloudObject.UNIQUE_PATTERN_IN_NAME, common_part_of_name, i)
+            subnet_name = net_name.replace('net', 'subnet')
             network = IPNetwork('{}.{}.0.0/16'.format(class_a, i))
 
             cidr, gw, start, stop = network, network[-10], network[10], network[100]
-            l = cloud.os_cmd([net_cmd.format(net_name=net_name, phys=phys(i)), sub_cmd.format(net_name=net_name, cidr=cidr, subnet_name=subnet_name, gw=gw, p1=start, p2=stop)])
-            nets.append(CloudNetwork(cloud=cloud, dic=l[0]))
-            CloudSubnet(cloud=cloud, dic=l[1])
-
+            ans = cloud.os_cmd([net_cmd.format(net_name=net_name, phys=phys(i)), sub_cmd.format(net_name=net_name, cidr=cidr, subnet_name=subnet_name, gw=gw, p1=start, p2=stop)])
+            nets.append(CloudNetwork(cloud=cloud, dic=ans[0]))
+            CloudSubnet(cloud=cloud, dic=ans[1])
         return nets

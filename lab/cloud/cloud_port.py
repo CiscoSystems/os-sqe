@@ -17,7 +17,7 @@ class CloudPort(CloudObject):
         for net in on_nets:
             ip, mac = net.calc_ip_and_mac(server_number)
             fixed_ip_addon = '--fixed-ip ip-address={ip} --mac-address {mac}'.format(ip=ip, mac=mac) if ip else ''
-            port_name = CloudObject.UNIQUE_PATTERN_IN_NAME + '-p' + str(server_number) + ('-srvio' if sriov else '') + '-on-' + net.name
+            port_name = CloudObject.UNIQUE_PATTERN_IN_NAME + 'p' + str(server_number) + ('-srvio' if sriov else '') + '-' + net.name
             l = cloud.os_cmd(['openstack port create {} --network {} {} {} -f json'.format(port_name, net.name, fixed_ip_addon, sriov_addon)])
             port = CloudPort(cloud=cloud, dic=l[0])
             ports.append(port)

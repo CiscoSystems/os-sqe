@@ -23,7 +23,7 @@ class WithMercury(object):
     }
 
     MERCURY_DIC = json.loads(requests.get(url=WithConfig.CONFIGS_REPO_URL + '/mercury.json').text)
-    MGM_ROOT_PASSWORD = MERCURY_DIC['mgm_root_password']
+    COMMON_PASSWORD = MERCURY_DIC['common_password']
     KNOWN_PODS_DIC = MERCURY_DIC['pods']
     KNOWN_NETWORKS_DIC = MERCURY_DIC['networks']
     ROLE_ID_TO_CLASS_DIC = {x.__name__: x for x in [MercuryMgm, MercuryVts, MercuryCeph, MercuryCompute, MercuryController, Vtc, VtcIndividual, Vtsr, VtsrIndividual, Tor, VimTor, VimCat, Oob, UnknownN9]}
@@ -58,7 +58,7 @@ class WithMercury(object):
         else:
             ip = lab_name
 
-        mgm, status, setup_data_dic, release_tag, gerrit_tag = MercuryMgm.create_from_actual(ip=ip, password=WithMercury.MGM_ROOT_PASSWORD)
+        mgm, status, setup_data_dic, release_tag, gerrit_tag = MercuryMgm.create_from_actual(ip=ip, password=WithMercury.COMMON_PASSWORD)
         if not is_interactive and '| ORCHESTRATION          | Success |' not in status:
             raise RuntimeError('{} is not properly installed: {}'.format(lab_name, status))
         driver = setup_data_dic['MECHANISM_DRIVERS']
@@ -86,6 +86,8 @@ class WithMercury(object):
         WithMercury.process_nets(pod=pod)
         WithMercury.process_switches(pod=pod)
 
+        private_pod_dic = WithMercury.KNOWN_PODS_DIC.get(pod.name.rsplit('-', 1)[0])
+
         if pod.driver == WithMercury.VTS:
             cfg = {'id': 'vtc', 'role': Vtc.__name__,
                    'ssh-ip': pod.setup_data_dic['VTS_PARAMETERS']['VTS_VTC_API_VIP'],
@@ -97,14 +99,15 @@ class WithMercury(object):
             pod.vtc = Vtc.create_node(pod=pod, dic=cfg)
 
         mgm_cfg = {'management_ip': mgm.ip, 'ssh_username': mgm.username, 'ssh_password': mgm.password,
-                   'cimc_info': {'cimc_ip': pod.setup_data_dic['TESTING_MGMT_NODE_CIMC_IP'],
-                                 'cimc_username': pod.setup_data_dic['TESTING_MGMT_CIMC_USERNAME'],
-                                 'cimc_password': pod.setup_data_dic['TESTING_MGMT_CIMC_PASSWORD']}}
+                   'cimc_info': {'cimc_ip': pod.setup_data_dic.get('TESTING_MGMT_NODE_CIMC_IP', private_pod_dic.get('mgm_cimc_ip')),
+                                 'cimc_username': pod.setup_data_dic.get('TESTING_MGMT_CIMC_USERNAME', 'admin'),
+                                 'cimc_password': pod.setup_data_dic.get('TESTING_MGMT_CIMC_PASSWORD', WithMercury.COMMON_PASSWORD)}}
 
         node_id_vs_node_class = {'mgm': MercuryMgm}
         for role_name, node_names_lst in pod.setup_data_dic['ROLES'].items():
-            for node_name in node_names_lst:
-                node_id_vs_node_class[node_name] = {'control': MercuryController, 'compute': MercuryCompute, 'block_storage': MercuryCeph, 'vts': MercuryVts}[role_name]
+            if node_names_lst:
+                for node_name in node_names_lst:
+                    node_id_vs_node_class[node_name] = {'control': MercuryController, 'compute': MercuryCompute, 'block_storage': MercuryCeph, 'vts': MercuryVts}[role_name]
 
         for node_id, node_dic in [('mgm', mgm_cfg)] + sorted(pod.setup_data_dic['SERVERS'].items()):
             cfg = {'id': node_id,
@@ -195,7 +198,7 @@ class WithMercury(object):
         known_info = WithMercury.KNOWN_PODS_DIC.get(pod.name.rsplit('-', 1)[0], {})
         switches = []
         username, password = None, None
-        for sw in pod.setup_data_dic['TORSWITCHINFO']['SWITCHDETAILS']:
+        for sw in pod.setup_data_dic.get('TORSWITCHINFO', {}).get('SWITCHDETAILS', []):
             username, password = sw['username'], sw['password']
             switches.append({'id': 'n' + sw['hostname'][-1].lower(), 'role': 'VimTor', 'oob-ip': sw['ssh_ip'], 'oob-username': username, 'oob-password': password})
 

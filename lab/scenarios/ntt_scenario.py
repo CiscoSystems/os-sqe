@@ -1,12 +1,11 @@
 from lab.test_case_worker import TestCaseWorker
-from lab.decorators import section
 
 
 class NttScenario(TestCaseWorker):
 
-    ARG_RUN_INSIDE = 'run_inside'
-    ARG_CSR_ARGS = 'csr_args'
-    ARG_NFVBENCH_ARGS = 'nfvbench_args'
+    ARG_MANDATORY_RUN_INSIDE = 'run_inside'
+    ARG_OPTIONAL_CSR_ARGS = 'csr_args'
+    ARG_OPTIONAL_NFVBENCH_ARGS = 'nfvbench_args'
 
     def check_arguments(self):
         possible_modes = ['csr', 'nfvbench', 'both']
@@ -14,15 +13,15 @@ class NttScenario(TestCaseWorker):
 
     @property
     def run_inside(self):
-        return self.args[self.ARG_RUN_INSIDE]
+        return self.args[self.ARG_MANDATORY_RUN_INSIDE]
 
     @property
     def csr_args(self):
-        return self.args[self.ARG_CSR_ARGS]
+        return self.args.get(self.ARG_OPTIONAL_CSR_ARGS, '')
 
     @property
     def nfvbench_args(self):
-        return self.args[self.ARG_NFVBENCH_ARGS] + (' --no-cleanup' if self.test_case.is_noclean else '')
+        return self.args.get(self.ARG_OPTIONAL_CSR_ARGS, '') + (' --no-cleanup' if self.test_case.is_noclean else '')
 
     @property
     def perf_reports_repo_dir(self):
@@ -36,12 +35,12 @@ class NttScenario(TestCaseWorker):
     def is_sriov(self):
         return self.args['is-sriov']
 
-    @section(message='Setting up (estimate 100 secs)')
     def setup_worker(self):
         from os import path
         from lab.cloud.cloud_image import CloudImage
 
         # self.pod.mgmt.r_configure_mx_and_nat()
+        self.log(self.STATUS_SETUP_RUNING)
         if self.run_inside in ['both', 'csr']:
             self.pod.mgm.r_clone_repo(repo_url='https://wwwin-gitlab-sjc.cisco.com/openstack-perf/nfvi-test.git', local_repo_dir=self.csr_repo_dir)
 
@@ -50,7 +49,7 @@ class NttScenario(TestCaseWorker):
             self.pod.mgm.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=loc_abs_path)
         if self.run_inside in ['both', 'nfvbench']:
             if len(self.pod.mgm.nics_dic.get('X710', [])) + len(self.pod.mgm.nics_dic.get('X510', [])) < 2:
-                raise RuntimeError('{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgmt))
+                self.fail(message='{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgm), is_stop_running=True)
             self.args['is-sriov'] = len(self.pod.computes[0].nics_dic.get('VF', [])) >= 8
             self.pod.mgm.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             # if self.pod.driver == 'vts':
@@ -62,6 +61,7 @@ class NttScenario(TestCaseWorker):
             # [x.n9_trex_port(mode=trex_mode) for x in self.pod.vim_tors]
         self.pod.mgm.exe(cmd='git config --global user.name "Performance team" && git config --global user.email "perf-team@cisco.com" && git config --global push.default simple', is_as_sqe=True)
         self.cloud.os_quota_set()
+        self.log(self.STATUS_SETUP_FINISHED)
 
     def loop_worker(self):
         if self.run_inside in ['csr', 'both']:

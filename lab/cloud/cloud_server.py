@@ -1,4 +1,3 @@
-from lab.decorators import section
 from lab.with_log import WithLogMixIn
 from lab.cloud import CloudObject
 
@@ -53,7 +52,6 @@ class CloudServer(CloudObject, WithLogMixIn):
             srv.cloud.pod.r_collect_info(regex=srv.id, comment='fail-of-' + srv.name)
 
     @staticmethod
-    @section(message='create servers (estimate 60 secs)')
     def create(how_many, flavor, image, key, on_nets, timeout, cloud):
         from lab.cloud.cloud_port import CloudPort
 
@@ -68,6 +66,14 @@ class CloudServer(CloudObject, WithLogMixIn):
         CloudServer.wait(cloud=cloud, srv_id_name_dic=srv_id_name_dic, status=CloudServer.STATUS_ACTIVE, timeout=timeout)
         a = cloud.os_cmd(['for id in {}; do openstack server show $id -f json; done'.format(' '.join(srv_id_name_dic.keys()))])
         return map(lambda x: CloudServer(cloud=cloud, dic=x), a)
+
+    def migrate(self, how):
+        other_compute = [x for x in self.cloud.computes if x != self.compute][0]
+        live_option = '--live ' + other_compute.name if how == 'live' else ''
+        self.cloud.os_cmd(['openstack server migrate {} {} '.format(live_option, self.name)])
+
+    def snapshot(self):
+        self.cloud.od_cmd('nova image-create {0} {0}-snap'.format(self.name))
 
     def console_exe(self, cmd, timeout=200):
         import paramiko

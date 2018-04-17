@@ -1,5 +1,4 @@
 from lab.with_log import WithLogMixIn
-from lab import decorators
 
 
 class OS(WithLogMixIn):
@@ -100,7 +99,6 @@ class OS(WithLogMixIn):
     def os_quota_set(self):
         self.os_cmd(cmds=['openstack quota set --instances 1000 --cores 2000 --ram 512000 --networks 100 --subnets 300 --ports 500 admin'])
 
-    @decorators.section('Clean cloud')
     def os_cleanup(self, is_all=False):
         from lab.cloud import CloudObject
 
@@ -110,7 +108,6 @@ class OS(WithLogMixIn):
 
         self.os_cmd(cmds=cmds, is_warn_only=True)
 
-    @decorators.section('Investigate cloud')
     def os_all(self):
         from lab.cloud.cloud_host import CloudHost
         from lab.cloud import CloudObject

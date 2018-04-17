@@ -1,0 +1,49 @@
+Folder: Live Migration
+Title: Cold Migration
+Description: Creates 2 large servers on single nework, start ping from first to second, does cold migration, check that after migration ping is resumed
+UniqueID: os-sqe-lm01
+PossibleDrivers: [vpp]
+
+Workers:
+- class: lab.scenarios.networks_scenario.NetworksScenario # create number of networks
+  name: net                                               # unique name
+  delay: 0                                                # start immediately
+  run: 1                                                  # run once
+  uptime: forever                                         # just finish scenario after creation, leaving all networks forever
+  timeout: 1000                                           # fail if not finished in 1000 secs
+  n_networks: 1                                           # how many network
+
+- class: lab.scenarios.servers_scenario.ServersScenario   # create number of servers
+  name: srv                                               # unique name
+  delay: [net]                                            # start after net is finished
+  run: 1                                                  # run once
+  uptime: forever                                         # and finish leaving all created servers forever
+  n_servers: 2                                            # 2 servers
+  flavor: m1.large
+  image: sqe-iperf
+
+- class: lab.scenarios.ping_scenario.PingScenario         # ping servers to make sure all is ok
+  name: p1                                                # unique name
+  delay: [srv]                                            # start after srv is finished
+  run: 1                                                  # run once
+  n_packets: 20                                           # ping sends 20 packets
+  how: internal                                           # ssh to the first server and ping the second one
+
+- class: lab.scenarios.live_migration_scenario.LiveMigrationScenario
+  name: lm                                                # unique name
+  delay: [p1]                                             # delay until cr is finished
+  migration: cold                                         # during cold migration ssh and pings will be lost
+  run: 1                                                  # run once
+
+- class: lab.scenarios.ping_scenario.PingScenario         # after cold live migration ping are ok again
+  name: p2                                                # unique name
+  delay: [lm]                                             # delay until cold live migration is finished
+  run: 1                                                  # run once
+  n_packets: 20                                           # ping sends 20 packets
+  how: internal                                           # ssh to the first server and ping the second one
+
+- class: lab.scenarios.delete_scenario.DeleteScenario     # delete all created objects
+  name: del                                               # unique name
+  delay: [p2]                                             # delay until p2 is finished
+  run: 1                                                  # run once
+  delete: all                                             # delete all OS objects

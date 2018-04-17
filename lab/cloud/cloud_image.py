@@ -1,4 +1,3 @@
-from lab.decorators import section
 from lab.cloud import CloudObject
 
 
@@ -37,7 +36,6 @@ class CloudImage(CloudObject):
             raise ValueError(url_txt + ' has wrong body, expected checksum file_name size username password')
 
     @staticmethod
-    @section('Creating custom image (estimate 30 sec)')
     def create(image_name, cloud):
         url, checksum, size, username, password = CloudImage.read_image_properties(name=image_name)
         im = filter(lambda x: x.name == 'image_name', cloud.images)
