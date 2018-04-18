@@ -13,11 +13,14 @@ class CloudImage(CloudObject):
 
     def __init__(self, cloud, dic):
         super(CloudImage, self).__init__(cloud=cloud, dic=dic)
-        self.checksum = dic['checksum']
-        self.username = None
-        self.password = None
         if self.name in self.IMAGES:
-            _, checksum, _, self.username, self.password = self.read_image_properties(self.name)
+            _, checksum, _, self.username, self.password = CloudImage.read_image_properties(name=self.name)
+            if self.status != self.STATUS_ACTIVE or self.checksum != checksum:
+                cloud.os_cmd(cmds=['openstack image delete ' + self.id], comment=self.name)
+
+    @property
+    def checksum(self):
+        return self.dic_from_os['checksum']
 
     @staticmethod
     def read_image_properties(name):
@@ -38,14 +41,12 @@ class CloudImage(CloudObject):
     @staticmethod
     def create(image_name, cloud):
         url, checksum, size, username, password = CloudImage.read_image_properties(name=image_name)
-        im = filter(lambda x: x.name == 'image_name', cloud.images)
+        im = filter(lambda x: x.name == image_name, cloud.images)
 
-        if im and im[0].img_status == CloudImage.STATUS_ACTIVE and im[0].img_checksum == checksum:
+        if im:
             cloud.log('image already registered in the cloud with correct checksum: {}'.format(checksum))
             return im[0]
 
-        if im:
-            cloud.os_cmd(cmd='openstack image delete ' + im[0].img_id, comment=im[0].img_name)
         abs_path = cloud.mediator.r_curl(url=url, size=size, checksum=checksum)
         image = CloudImage(cloud=cloud, dic=cloud.os_cmd(['openstack image create {} --public --disk-format qcow2 --container-format bare --file {} -f json'.format(image_name, abs_path)])[0])
         if image.status == 'ERROR':

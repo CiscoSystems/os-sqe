@@ -63,7 +63,6 @@ class ServersFromImageScenario(TestCaseWorker):
 
         self.log(self.STATUS_SETUP_RUNING)
         self.log('getting cloud status')
-        self.cloud.os_all()
 
         self.log(self.STATUS_KEYPAIR_CREATING)
         self.keypair = CloudKeyPair.create(cloud=self.cloud)
@@ -83,7 +82,6 @@ class ServersFromImageScenario(TestCaseWorker):
         from lab.cloud.cloud_server import CloudServer
 
         self.log(self.STATUS_SERVER_CREATING + ' n=' + str(self.n_servers))
-        self.cloud.os_all()
         self.servers = CloudServer.create(how_many=self.n_servers, flavor=self.flavor, image=self.image, on_nets=self.cloud.networks, key=self.keypair, timeout=self.timeout, cloud=self.cloud)
         self.log('Waiting 30 sec to settle servers...')
         time.sleep(30)

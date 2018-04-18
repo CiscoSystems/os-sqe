@@ -4,8 +4,10 @@ from lab.cloud import CloudObject
 class CloudKeyPair(CloudObject):
     def __init__(self, cloud, dic):
         super(CloudKeyPair, self).__init__(cloud=cloud, dic=dic)
-        self.fingerprint = dic['fingerprint']
-        self.id = self.name
+
+    @property
+    def fingerprint(self):
+        return self.dic_from_os['fingerprint']
 
     @staticmethod
     def create(cloud):

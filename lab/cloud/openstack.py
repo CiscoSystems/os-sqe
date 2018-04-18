@@ -112,8 +112,8 @@ class OS(WithLogMixIn):
         from lab.cloud.cloud_host import CloudHost
         from lab.cloud import CloudObject
 
+        self.controls, self.computes, self.images, self.servers, self.keypairs, self.networks, self.subnets, self.ports, self.flavors, self.projects = [], [], [], [], [], [], [], [], [], []
         self.controls, self.computes = CloudHost.host_list(cloud=self)
-
         pattern = 'openstack {0} list | grep  -vE "\+|ID|Fingerprint" {{}} | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack {0} {{}} $id -f json; done'
         cmds = map(lambda x: x.format('', 'show'), map(lambda x: pattern.format(x), ['image', 'network', 'subnet', 'port', 'keypair', 'server', 'flavor', 'project']))
         a = self.os_cmd(cmds=cmds, is_warn_only=True)

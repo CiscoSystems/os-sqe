@@ -14,6 +14,10 @@ class CloudNetwork(CloudObject):
         self.subnets = []
         self.ports = []
 
+    @property
+    def is_external(self):
+        return self.dic_from_os['router:external'] == 'External'
+
     def __hash__(self):
         return hash(self.id)
 

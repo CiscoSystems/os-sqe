@@ -167,6 +167,7 @@ class TestCaseWorker(WithLogMixIn):
         try:
             self.delay_execution()
 
+            self.cloud.os_all()  # warm up to current cloud status
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
@@ -203,11 +204,11 @@ class TestCaseWorker(WithLogMixIn):
             return self
 
     def failed(self, message, is_stop_running):
-        self.log(self.STATUS_FAILED + message)
-        self.failures.append(message)
+        self.log(self.STATUS_FAILED + str(message))
+        self.failures.append(str(message))
         if is_stop_running:
             raise RuntimeError(str(message))
 
     def passed(self, message):
         self.log(self.STATUS_PASSED + message)
-        self.successes.append(message)
+        self.successes.append(str(message))

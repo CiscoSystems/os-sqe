@@ -25,7 +25,6 @@ class ServersFromSnapshotScenario(TestCaseWorker):
         from lab.cloud.cloud_server import CloudServer
 
         self.log(self.STATUS_SERVER_CREATING + ' n=' + str(self.n_servers))
-        self.cloud.os_all()
         flavor = self.cloud.flavors[0]
         image = self.cloud.images[0]
         keypair = self.cloud.keypairs[0]

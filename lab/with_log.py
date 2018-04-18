@@ -129,7 +129,7 @@ class Logger(object):
         json_h.setLevel(logging.INFO)
         slack_h.setLevel(logging.INFO)
 
-        console.setFormatter(MainLogFormatter(fmt='{time} {msg}', datefmt='%mm%d %H:%M:%S'))
+        console.setFormatter(MainLogFormatter(fmt='{time} {msg}', datefmt='%b%d %H:%M:%S'))
         debug_h.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
         json_h.setFormatter(JsonFormatter())
 

@@ -96,7 +96,7 @@ class TestCase(WithConfig, WithLogMixIn):
             successes_txt = '\n'.join(w.successes)
             failures_txt = '\n'.join(w.failures)
             errors_txt = '\n'.join(w.errors)
-            tcr.text += successes_txt + '\n' + failures_txt + '\n' + errors_txt
+            tcr.text += '\n'.join([successes_txt, failures_txt, errors_txt])
             if errors_txt + failures_txt:
                 tcr.status = tcr.FAILED
 

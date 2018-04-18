@@ -28,12 +28,12 @@ class Server(WithConfig, WithLogMixIn):
                           host_string=self.username + '@' + self.ip,
                           password=self.password,
                           key=None if self.password else self.PRIVATE_KEY), cd(in_dir):
-                self.log_debug(cmd)
+                self.log_debug(cmd + ' running...')
                 res = run(cmd)
                 if res.failed and not is_warn_only:
                     self.log_debug('fail: {}'.format(res))
                     raise RuntimeError(res.stderr)
-                self.log_debug(res + 'openrc' if 'openrc' in cmd else '')
+                self.log_debug(cmd + ' answer:\n' + res)
                 return res
         except SystemExit as ex:
             if 'Needed to prompt' in ex.message:

@@ -86,7 +86,6 @@ class NttScenario(TestCaseWorker):
             errors = [x for x in errors if 'No hypervisor matching' not in x]
             if errors:
                 self.failed('# errors {} the first is {}'.format(len(errors), errors[0]), is_stop_running=True)
-        self.cloud.os_all()
         self.cloud.seCloudServer.wait(servers=servers, status='ACTIVE')
 
     def nfvbench_run(self, is_sriov):

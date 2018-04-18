@@ -73,7 +73,6 @@ class VtsScenario(TestCaseWorker):
 
         # self.pod.vtc.r_vtc_setup()
         self.cleanup()
-        self.cloud.os_all()
         self.keypair = CloudKeyPair.create(cloud=self.cloud)
         self.image = CloudImage.create(cloud=self.cloud, image_name=CloudImage.SQE_PERF)
         self.flavor = CloudFlavor.create(cloud=self.cloud, flavor_type=CloudFlavor.TYPE_VTS)

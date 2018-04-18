@@ -5,15 +5,21 @@ UniqueID: os-sqe-lm01
 PossibleDrivers: [vpp]
 
 Workers:
+- class: lab.scenarios.delete_scenario.DeleteScenario     # delete all created objects
+  name: del0                                              # unique name
+  delay: 0                                                # start immediately
+  run: 1                                                  # run once
+  delete: sqe                                             # delete sqe-* OS objects
+
 - class: lab.scenarios.networks_scenario.NetworksScenario # create number of networks
   name: net                                               # unique name
-  delay: 0                                                # start immediately
+  delay: [del0]                                           # delay until clenaup finish
   run: 1                                                  # run once
   uptime: forever                                         # just finish scenario after creation, leaving all networks forever
   timeout: 1000                                           # fail if not finished in 1000 secs
   n_networks: 1                                           # how many network
 
-- class: lab.scenarios.servers_scenario.ServersScenario   # create number of servers
+- class: lab.scenarios.servers_from_image_scenario.ServersFromImageScenario   # create number of servers
   name: srv                                               # unique name
   delay: [net]                                            # start after net is finished
   run: 1                                                  # run once
@@ -31,7 +37,7 @@ Workers:
 
 - class: lab.scenarios.live_migration_scenario.LiveMigrationScenario
   name: lm                                                # unique name
-  delay: [p1]                                             # delay until cr is finished
+  delay: [p1]                                             # delay until p1 is finished
   migration: cold                                         # during cold migration ssh and pings will be lost
   run: 1                                                  # run once
 
@@ -41,9 +47,3 @@ Workers:
   run: 1                                                  # run once
   n_packets: 20                                           # ping sends 20 packets
   how: internal                                           # ssh to the first server and ping the second one
-
-- class: lab.scenarios.delete_scenario.DeleteScenario     # delete all created objects
-  name: del                                               # unique name
-  delay: [p2]                                             # delay until p2 is finished
-  run: 1                                                  # run once
-  delete: all                                             # delete all OS objects

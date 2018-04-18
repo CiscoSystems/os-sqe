@@ -2,13 +2,23 @@ class CloudObject(object):
     UNIQUE_PATTERN_IN_NAME = 'sqe-'
 
     def __init__(self, cloud, dic):
+        self.dic_from_os = dic
         self.cloud = cloud
-        self.id = str(dic.get('id', ''))
-        self.name = dic['name']
         self.role = self.__class__.__name__.replace('Cloud', '').lower()
-        self.status = dic.get('status', '').strip('cisco-vts-openstack-identities:')
         if cloud:
             getattr(cloud, self.role + 's').append(self)
+
+    @property
+    def id(self):
+        return str(self.dic_from_os.get('id', ''))
+
+    @property
+    def name(self):
+        return self.dic_from_os['name']
+
+    @property
+    def status(self):
+        return self.dic_from_os.get('status', '')
 
     def __repr__(self):
         return self.name + ' ' + self.status

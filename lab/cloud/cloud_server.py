@@ -7,15 +7,20 @@ class CloudServer(CloudObject, WithLogMixIn):
     STATUS_BUILD = 'BUILD'
     STATUS_DELETED = 'DELETED'
     STATUS_SUSPENDED = 'SUSPENDED'
+    STATUS_VERIFY_RESIZE = 'VERIFY_RESIZE'
+
+    def __repr__(self):
+        return self.name + '@' + str(self.compute) + ' ' + self.status
 
     def __init__(self, cloud, dic):
         super(CloudServer, self).__init__(cloud=cloud, dic=dic)
         self.srv_libvirt = dic['OS-EXT-SRV-ATTR:instance_name']
         self.ips = [x.split('=')[-1] for x in dic['addresses'].split(',')]
         self.srv_ip = self.ips[0]
-        self.image = [x for x in self.cloud.images if x.id == dic['image'].split()[-1].strip('()')][0]
-        self.srv_username = self.image.username
-        self.srv_password = self.image.password
+        if dic['image']:
+            self.image = [x for x in self.cloud.images if x.id == dic['image'].split()[-1].strip('()')][0]
+            self.srv_username = self.image.username
+            self.srv_password = self.image.password
         filtered = filter(lambda c: c.id == dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)
         if filtered:
             self.compute = filtered[0]
@@ -68,9 +73,18 @@ class CloudServer(CloudObject, WithLogMixIn):
         return map(lambda x: CloudServer(cloud=cloud, dic=x), a)
 
     def migrate(self, how):
+        import time
+
         other_compute = [x for x in self.cloud.computes if x != self.compute][0]
-        live_option = '--live ' + other_compute.name if how == 'live' else ''
+        live_option = '--live ' + other_compute.name if how == 'live' else '--block-migration'
+        msg = '{} {} migrate from {}'.format(time.strftime('%b%d %H:%M:%S'), how, self.compute)
+        self.console_exe('echo {} >> migration_history'.format(msg))
         self.cloud.os_cmd(['openstack server migrate {} {} '.format(live_option, self.name)])
+        self.wait(cloud=self.cloud, srv_id_name_dic={self.id: self.name}, status=self.STATUS_VERIFY_RESIZE)
+        self.cloud.os_cmd(['openstack server resize --confirm {}'.format(self.id)], comment=self.name)
+        self.wait(cloud=self.cloud, srv_id_name_dic={self.id: self.name}, status=self.STATUS_ACTIVE)
+        a = self.console_exe('cat migration_history')
+        return True
 
     def snapshot(self):
         self.cloud.od_cmd('nova image-create {0} {0}-snap'.format(self.name))
