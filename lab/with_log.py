@@ -30,6 +30,11 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(d)
 
 
+class MainLogFormatter(logging.Formatter):
+    def format(self, record):
+        return self._fmt.format(time='' if '+-' in record.msg else self.formatTime(record, datefmt=self.datefmt), msg=record.msg).strip()
+
+
 class JsonFilter(logging.Filter):
     def filter(self, record):
         return record.exc_text or '=' in record.message
@@ -116,6 +121,7 @@ class Logger(object):
         json_h = logging.FileHandler('a_json.log', mode='w')
         cmd_vts_h = logging.FileHandler('a_cmd_vts.log', mode='w')
         cmd_os_h = logging.FileHandler('a_cmd_os.log', mode='w')
+        nfvbench_h = logging.FileHandler('a_nfvbench.log', mode='w')
         slack_h = SlackHandler()
 
         console.setLevel(logging.INFO)
@@ -123,13 +129,14 @@ class Logger(object):
         json_h.setLevel(logging.INFO)
         slack_h.setLevel(logging.INFO)
 
-        console.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
+        console.setFormatter(MainLogFormatter(fmt='{time} {msg}', datefmt='%mm%d %H:%M:%S'))
         debug_h.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
         json_h.setFormatter(JsonFormatter())
 
         json_h.addFilter(JsonFilter())
         cmd_os_h.addFilter(CheckStringFilter('openrc'))
         cmd_vts_h.addFilter(CheckStringFilter('8888'))
+        nfvbench_h.addFilter(CheckStringFilter('nfvbench'))
 
         logger.addHandler(console)
         logger.addHandler(debug_h)
@@ -137,6 +144,7 @@ class Logger(object):
         logger.addHandler(cmd_vts_h)
         logger.addHandler(cmd_os_h)
         logger.addHandler(slack_h)
+        logger.addHandler(nfvbench_h)
 
         if os.path.isdir('/var/log') and 'vmtp' in os.listdir('/var/log'):
             logstash = logging.FileHandler('/var/log/vmtp/sqe.log')
