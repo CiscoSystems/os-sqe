@@ -48,14 +48,14 @@ class RunnerHA(WithConfig, WithLogMixIn):
                     pass
             else:
                 worker.log('Setup...')
-        if not test_case.is_failed:
+        if test_case.is_success:
             time.sleep(2)
             fabric.network.disconnect_all()  # we do that since URL: http://stackoverflow.com/questions/29480850/paramiko-hangs-at-get-channel-while-using-multiprocessing
             time.sleep(2)
 
             pool = multiprocessing.Pool(len(workers))
             test_case.log('******* PARALLEL EXECUTION STARTS *******')
-            pool.map(starter, workers)
+            test_case.workers = pool.map(starter, workers)  # returning TCW is needed since in pool TCW is deep copied
             test_case.log('******* PARALLEL EXECUTION FINISH *******')
 
         test_case.after_run(status_tbl=self.status_tbl, err_tbl=self.err_tbl)

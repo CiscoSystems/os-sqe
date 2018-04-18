@@ -9,6 +9,8 @@ class TestCaseWorker(WithLogMixIn):
     STATUS_DELAYED = 'delayed'
     STATUS_LOOPING = 'looping'
     STATUS_FINISHED = 'finished'
+    STATUS_FAILED = 'status=FAILED message='
+    STATUS_PASSED = 'status=PASSED message='
 
     STATUS_IMAGE_CREATING = 'status=ImageCreating'
     STATUS_IMAGE_CREATED = 'status=ImageCreated'
@@ -45,10 +47,9 @@ class TestCaseWorker(WithLogMixIn):
         """
         self.test_case = test_case
         self.name = args_dict.pop('name')
-        self.worker_data = ''                                                  # might be set to some arbotrary object in worker_loop()
-        self.is_failed = False                                                 # might be set by self.fail()
-        self.failures = []                                                     # any failures (problems in soft under test) will be collected here
-        self.errors = []                                                       # any errors (problems in this code) will be collected here
+        self.successes = []                                                    # succeses will be collected here in self.passed()
+        self.failures = []                                                     # failures (problems in soft under test) will be collected here in self.failed()
+        self.errors = []                                                       # errors (problems in this code) will be collected here self.start_worker_parallel()
         self.status_dict = None                                                # will be set just before running multiprocessing.Pool.map() to multiprocessing.Manager().dict()
         self.cloud = test_case.cloud
         self.args = {}                                                         # all arguments will be kept in this dict
@@ -197,13 +198,16 @@ class TestCaseWorker(WithLogMixIn):
         finally:
             time.sleep(1)  # sleep to align log output
             self.set_status(status=self.STATUS_FINISHED)
-            self.log('status=finish after loop={} until={} with data={}, {}'.format(self.loop_counter, self.run, self.worker_data, self.status_dict))
+            self.log('status=finish after loop={} until={} {}'.format(self.loop_counter, self.run, self.status_dict))
             self.log(80*'-')
             return self
 
-    def fail(self, message, is_stop_running):
-        self.is_failed = True
-        self.log(message)
+    def failed(self, message, is_stop_running):
+        self.log(self.STATUS_FAILED + message)
         self.failures.append(message)
         if is_stop_running:
             raise RuntimeError(str(message))
+
+    def passed(self, message):
+        self.log(self.STATUS_PASSED + message)
+        self.successes.append(message)

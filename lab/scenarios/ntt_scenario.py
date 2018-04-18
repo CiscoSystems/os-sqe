@@ -21,7 +21,7 @@ class NttScenario(TestCaseWorker):
 
     @property
     def nfvbench_args(self):
-        return self.args.get(self.ARG_OPTIONAL_CSR_ARGS, '') + (' --no-cleanup' if self.test_case.is_noclean else '')
+        return self.args.get(self.ARG_OPTIONAL_NFVBENCH_ARGS, '') + (' --no-cleanup' if self.test_case.is_noclean else '')
 
     @property
     def perf_reports_repo_dir(self):
@@ -49,7 +49,7 @@ class NttScenario(TestCaseWorker):
             self.pod.mgm.r_curl(url='http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2', size=size, checksum=checksum, loc_abs_path=loc_abs_path)
         if self.run_inside in ['both', 'nfvbench']:
             if len(self.pod.mgm.nics_dic.get('X710', [])) + len(self.pod.mgm.nics_dic.get('X510', [])) < 2:
-                self.fail(message='{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgm), is_stop_running=True)
+                self.failed(message='{}: there is no Intel NIC to inject T-Rex traffic'.format(self.pod.mgm), is_stop_running=True)
             self.args['is-sriov'] = len(self.pod.computes[0].nics_dic.get('VF', [])) >= 8
             self.pod.mgm.r_clone_repo(repo_url='git@wwwin-gitlab-sjc.cisco.com:mercury/perf-reports.git', local_repo_dir=self.perf_reports_repo_dir)
             # if self.pod.driver == 'vts':
@@ -85,7 +85,7 @@ class NttScenario(TestCaseWorker):
             errors = [x.split('\r\n')[0] for x in ans.split('ERROR')[1:]]
             errors = [x for x in errors if 'No hypervisor matching' not in x]
             if errors:
-                self.fail('# errors {} the first is {}'.format(len(errors), errors[0]), is_stop_running=True)
+                self.failed('# errors {} the first is {}'.format(len(errors), errors[0]), is_stop_running=True)
         self.cloud.os_all()
         self.cloud.seCloudServer.wait(servers=servers, status='ACTIVE')
 
@@ -99,25 +99,19 @@ class NttScenario(TestCaseWorker):
 
         cmd = 'nfvbench ' + cfg + self.nfvbench_args + ' --std-json /tmp/nfvbench '
         ans = self.pod.mgm.exe(cmd, is_warn_only=True)  # nfvbench --service-chain EXT --rate 1Mpps --duration 10 --std-json /tmp/nfvbench
-        with self.pod.open_artifact(str(self.test_case) + '_nfvbench_' + self.nfvbench_args.replace(' ', '_').replace('/', '_') + ('_sriov' if is_sriov else '') + '.txt', 'w') as f:
-            f.write(cmd + '\n')
-            f.write(ans)
+        self.log(ans)
 
-        if 'ERROR' in ans:
-            self.fail(ans.split('ERROR')[-1][-200:], is_stop_running=True)
-        elif 'Error' in ans:
-            self.fail(ans, is_stop_running=True)
-        else:
-            with self.pod.open_artifact('final_report.txt', 'a') as f:
-                f.write('csr: ' + self.csr_args + ' nfvbench ' + self.nfvbench_args + '\n')
-                f.write(ans.split('Run Summary:')[-1])
-                f.write('\n' + 80 * '=' + '\n\n')
+        if 'Run Summary' in ans:
             json_name1 = path.basename(ans.split('Saving results in json file:')[-1].split('...')[0].strip())
             date = ans.split('Date: ')[-1][:19].replace(' ', '-').replace(':', '-')
             json_name2 = ('SRIOV-' if is_sriov else '') + json_name1 + '.' + date + '.' + self.pod.name
             self.pod.mgm.exe(cmd='sudo mv /root/nfvbench/{0} {1} && echo {1} >> catalog && git add --all && git commit -m "report on $(hostname) at $(date)"'.format(json_name1, json_name2),
                              in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
             self.pod.mgm.exe(cmd="ssh-agent bash -c 'ssh-add ~/.ssh/sqe_private; git push'", in_dir=self.perf_reports_repo_dir, is_as_sqe=True)
+            self.passed(message=ans.split('Run Summary:')[-1])
+        else:
+            self.failed(ans.split('ERROR')[-1][-200:] + ' when ' + cmd + ' on ' + str(self.pod.mgm), is_stop_running=True)
+
 #            res_json_body = self.pod.mgm.r_get_file_from_dir(rem_rel_path=json_name2, in_dir=self.perf_reports_repo_dir)
 #            self.process_nfvbench_json(res_json_body=res_json_body)
 
@@ -136,7 +130,7 @@ class NttScenario(TestCaseWorker):
                     la_min, la_avg, la_max = di[t]['stats']['overall']['min_delay_usec'], di[t]['stats']['overall']['avg_delay_usec'], di[t]['stats']['overall']['max_delay_usec']
                     gbps = di[t]['rate_bps'] / 1e9
                     if gbps < 1.2:
-                        self.fail('GBPS < 1.2', is_stop_running=False)
+                        self.failed('GBPS < 1.2', is_stop_running=False)
                     drop_thr = di[t]['stats']['overall']['drop_percentage']
                     res.append('size={} {}({:.4f}) rate={:.4f} Gbps latency={:.1f} {:.1f} {:.1f} usec\n'.format(mtu, t, drop_thr, gbps, la_min, la_avg, la_max))
             else:

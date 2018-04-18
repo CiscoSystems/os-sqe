@@ -49,8 +49,8 @@ class TestCase(WithConfig, WithLogMixIn):
         return 'TC=' + self.path.split('-')[0]
 
     @property
-    def is_failed(self):
-        return any(map(lambda x: x.is_failed, self.workers))
+    def is_success(self):
+        return all(map(lambda x: len(x.failures) == 0 and len(x.errors) == 0, self.workers))
 
     def create_test_workers(self, workers_lst):
         import importlib
@@ -93,16 +93,12 @@ class TestCase(WithConfig, WithLogMixIn):
         tcr = TestCaseResult(tc=self)
         tcr.status = tcr.PASSED
         for w in self.workers:
-            tcr.text += str(w.worker_data)
-            if w.is_failed:
-                tcr.status = tcr.FAILED
-                failures_txt = '\n'.join(w.failures)
-                tcr.text += failures_txt + '\n'
+            successes_txt = '\n'.join(w.successes)
+            failures_txt = '\n'.join(w.failures)
             errors_txt = '\n'.join(w.errors)
-            if errors_txt:
+            tcr.text += successes_txt + '\n' + failures_txt + '\n' + errors_txt
+            if errors_txt + failures_txt:
                 tcr.status = tcr.FAILED
-                tcr.text += errors_txt + '\n'
-                w.log('EXCEPTION {}'.format(errors_txt))
 
         status_tbl.add_row([str(self), tcr.status, int(execution_time)])
         if tcr.text:
