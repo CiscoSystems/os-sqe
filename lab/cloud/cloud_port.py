@@ -15,7 +15,7 @@ class CloudPort(CloudObject):
         sriov_addon = '--binding:vnic-type direct' if sriov else ''
         ports = []
         for net in on_nets:
-            if net.external:  # don't create ports on external network
+            if net.is_external:  # don't create ports on external network
                 continue
             ip, mac = net.calc_ip_and_mac(server_number)
             fixed_ip_addon = '--fixed-ip ip-address={ip} --mac-address {mac}'.format(ip=ip, mac=mac) if ip else ''

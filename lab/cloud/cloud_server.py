@@ -77,14 +77,16 @@ class CloudServer(CloudObject, WithLogMixIn):
 
         other_compute = [x for x in self.cloud.computes if x != self.compute][0]
         live_option = '--live ' + other_compute.name if how == 'live' else '--block-migration'
-        msg = '{} {} migrate from {}'.format(time.strftime('%b%d %H:%M:%S'), how, self.compute)
+        msg = '{} {} migrating from {}'.format(time.strftime('%b%d %H:%M:%S'), how, self.compute)
         self.console_exe('echo {} >> migration_history'.format(msg))
         self.cloud.os_cmd(['openstack server migrate {} {} '.format(live_option, self.name)])
         self.wait(cloud=self.cloud, srv_id_name_dic={self.id: self.name}, status=self.STATUS_VERIFY_RESIZE)
         self.cloud.os_cmd(['openstack server resize --confirm {}'.format(self.id)], comment=self.name)
         self.wait(cloud=self.cloud, srv_id_name_dic={self.id: self.name}, status=self.STATUS_ACTIVE)
+        msg = '{} now {} migrated to {}'.format(time.strftime('%b%d %H:%M:%S'), how, self.compute)
+        self.console_exe('echo {} >> migration_history'.format(msg))
         a = self.console_exe('cat migration_history')
-        return True
+        return a
 
     def snapshot(self):
         self.cloud.od_cmd('nova image-create {0} {0}-snap'.format(self.name))
