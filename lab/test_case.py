@@ -10,9 +10,19 @@ class TestCaseResult(WithLogMixIn):
 
     def __init__(self, tc):
         self.name = 'TCR ' + tc.path.split('-')[0] + ' '
-        self.text = ''
-        self.status = ''
+        self.successes = []
+        self.failures = []
+        self.errors = []
         self.tims_url = ''
+
+    @property
+    def status(self):
+        if self.errors:
+            return self.ERRORED
+        elif self.failures:
+            return self.FAILED
+        else:
+            return self.PASSED
 
     def __repr__(self):
         return self.name + self.status.upper() + ' ' + self.tims_url
@@ -91,15 +101,10 @@ class TestCase(WithConfig, WithLogMixIn):
 
         execution_time = time.time() - self.time
         tcr = TestCaseResult(tc=self)
-        tcr.status = tcr.PASSED
         for w in self.workers:
-            successes_txt = '\n'.join(w.successes)
-            failures_txt = '\n'.join(w.failures)
-            errors_txt = '\n'.join(w.errors)
-            tcr.text += '\n'.join([successes_txt, failures_txt, errors_txt])
-            if errors_txt + failures_txt:
-                tcr.status = tcr.FAILED
+            tcr.successes.extend(w.successes)
+            tcr.failures.extend(w.failures)
+            tcr.errors.extend(w.errors)
 
         status_tbl.add_row([str(self), tcr.status, int(execution_time)])
-        if tcr.text:
-            err_tbl.add_row([str(self), tcr.text])
+        err_tbl.add_row([str(self), '\n'.join(tcr.successes), '\n'.join(tcr.failures), '\n'.join(tcr.errors)])

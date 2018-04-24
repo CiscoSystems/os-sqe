@@ -18,5 +18,5 @@ class LiveMigrationScenario(TestCaseWorker):
     def loop_worker(self):
         server = self.cloud.servers[0]
 
-        res = server.migrate(self.migration)
-        self.failed(message=res, is_stop_running=True) if 'error' in res else self.passed(message=res)
+        res = ' '.join(server.migrate(self.migration))
+        self.passed(message=res) if 'migrated' in res else self.failed(message=res, is_stop_running=True)

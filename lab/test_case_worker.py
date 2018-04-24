@@ -193,7 +193,7 @@ class TestCaseWorker(WithLogMixIn):
             frame = sys.exc_traceback
             while frame.tb_next:
                 frame = frame.tb_next
-            self.errors.append(str(ex).replace('\\', '') + ' ' + frame.tb_frame.f_code.co_filename + ':' + str(frame.tb_lineno))
+            self.errors.append(str(self) + ': ' + str(ex).replace('\\', '') + ' ' + frame.tb_frame.f_code.co_filename + ':' + str(frame.tb_lineno))
             self.log_exception()
             fabric.network.disconnect_all()
         finally:
@@ -205,10 +205,10 @@ class TestCaseWorker(WithLogMixIn):
 
     def failed(self, message, is_stop_running):
         self.log(self.STATUS_FAILED + str(message))
-        self.failures.append(str(message))
+        self.failures.append('{}: {}'.format(self, message))
         if is_stop_running:
             raise RuntimeError(str(message))
 
     def passed(self, message):
         self.log(self.STATUS_PASSED + message)
-        self.successes.append(str(message))
+        self.successes.append('{}: {}'.format(self, message))

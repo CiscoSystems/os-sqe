@@ -24,9 +24,10 @@ class PingScenario(TestCaseWorker):
     def internal(self):
         srv1, srv2 = self.cloud.servers[0], self.cloud.servers[1]
         ans = srv1.console_exe('ping -c {} {}'.format(self.n_packets, srv2.ips[0]))
-        if '{0} packets transmitted, {0} received, 0% packet loss'.format(self.n_packets) not in ans:
-            self.failed(message=ans.split('\n')[-1],is_stop_running=False)
-        self.passed('ping {} {} -> {} {} ok'.format(srv1, srv1.ips[0], srv2, srv2.ips[0]))
+        if 'rtt min' in ans[-1]:
+            self.passed('{} {} -> {} {} {}'.format(srv1, srv1.ips[0], srv2, srv2.ips[0], ans[-2]))
+        else:
+            self.failed(message=ans[-1],is_stop_running=False)
 
     def loop_worker(self):
         if self.how == 'internal':

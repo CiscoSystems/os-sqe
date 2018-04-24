@@ -18,7 +18,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         self.status_tbl = PrettyTable()
         self.status_tbl.field_names = ['name', 'status', 'time, sec']
         self.err_tbl = PrettyTable()
-        self.err_tbl.field_names = ['name', 'text']
+        self.err_tbl.field_names = ['name', 'messages', 'failures', 'errors']
         self.cloud = None
 
     def __repr__(self):
@@ -44,8 +44,8 @@ class RunnerHA(WithConfig, WithLogMixIn):
             if not test_case.is_debug:
                 try:
                     worker.setup_worker()  # run all setup_worker in non-parallel
-                except RuntimeError:    # just collect all exception messages in TCWs
-                    pass
+                except RuntimeError as ex:    # just collect all exception messages in TCWs
+                    worker.failed(ex.message, is_stop_running=False)
             else:
                 worker.log('Setup...')
         if test_case.is_success:

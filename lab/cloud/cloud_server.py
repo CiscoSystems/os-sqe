@@ -14,18 +14,29 @@ class CloudServer(CloudObject, WithLogMixIn):
 
     def __init__(self, cloud, dic):
         super(CloudServer, self).__init__(cloud=cloud, dic=dic)
-        self.srv_libvirt = dic['OS-EXT-SRV-ATTR:instance_name']
         self.ips = [x.split('=')[-1] for x in dic['addresses'].split(',')]
         self.srv_ip = self.ips[0]
-        if dic['image']:
+        if dic.get('image'):
             self.image = [x for x in self.cloud.images if x.id == dic['image'].split()[-1].strip('()')][0]
             self.srv_username = self.image.username
             self.srv_password = self.image.password
-        filtered = filter(lambda c: c.id == dic['OS-EXT-SRV-ATTR:host'], self.cloud.computes)
-        if filtered:
-            self.compute = filtered[0]
+        self._srv_serial = None
+
+    @property
+    def srv_libvirt(self):
+        return self.dic_from_os['OS-EXT-SRV-ATTR:instance_name']
+
+    @property
+    def compute(self):
+        comp_candidates = filter(lambda c: c.name == self.dic_from_os['OS-EXT-SRV-ATTR:host'], self.cloud.computes)
+        return comp_candidates[0] if comp_candidates else None
+
+    @property
+    def srv_serial(self):
+        if not self._srv_serial:
             grep = self.compute.host_exe('libvirt virsh dumpxml ' + self.srv_libvirt + ' | grep "source mode="')
-            self.srv_serial = grep.split('service=\'')[-1].split('\'')[0]
+            self._srv_serial = grep.split('service=\'')[-1].split('\'')[0]
+        return self._srv_serial
 
     @staticmethod
     def wait(cloud, srv_id_name_dic, status, timeout=100):
@@ -36,7 +47,7 @@ class CloudServer(CloudObject, WithLogMixIn):
         required_n_servers = 0 if status == CloudServer.STATUS_DELETED else len(srv_id_name_dic)
         start_time = time.time()
         while True:
-            a = cloud.os_cmd(cmds=['openstack server list -f json'])
+            a = cloud.os_cmd(cmds=['openstack server list --long -f json'])
             our = filter(lambda x: x['ID'] in srv_id_name_dic, a[0])
             in_error = filter(lambda x: x['Status'] == 'ERROR', our)
             in_status = filter(lambda x: x['Status'] == status, our) if status != CloudServer.STATUS_DELETED else our
@@ -65,7 +76,7 @@ class CloudServer(CloudObject, WithLogMixIn):
             ports = CloudPort.create(cloud=cloud, server_number=n, on_nets=on_nets)
             ports_part = ' '.join(map(lambda x: '--nic port-id=' + x.id, ports))
             name = CloudObject.UNIQUE_PATTERN_IN_NAME + str(n)
-            cmd = 'openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name {} {} -f json'.format(name, flavor.name, image.name, comp.id, key.name, ports_part)
+            cmd = 'openstack server create {} --flavor {} --image "{}" --availability-zone nova:{} --security-group default --key-name {} {} -f json'.format(name, flavor.name, image.name, comp.name, key.name, ports_part)
             dic = cloud.os_cmd([cmd])
             srv_id_name_dic[dic[0]['id']] = dic[0]['name']
         CloudServer.wait(cloud=cloud, srv_id_name_dic=srv_id_name_dic, status=CloudServer.STATUS_ACTIVE, timeout=timeout)
@@ -77,16 +88,18 @@ class CloudServer(CloudObject, WithLogMixIn):
 
         other_compute = [x for x in self.cloud.computes if x != self.compute][0]
         live_option = '--live ' + other_compute.name if how == 'live' else '--block-migration'
-        msg = '{} {} migrating from {}'.format(time.strftime('%b%d %H:%M:%S'), how, self.compute)
+        msg = '{} {} migrating from {}{}'.format(time.strftime('%b%d %H:%M:%S'), how, self.compute, ' to {}'.format(other_compute) if how == 'live' else '')
         self.console_exe('echo {} >> migration_history'.format(msg))
         self.cloud.os_cmd(['openstack server migrate {} {} '.format(live_option, self.name)])
-        self.wait(cloud=self.cloud, srv_id_name_dic={self.id: self.name}, status=self.STATUS_VERIFY_RESIZE)
-        self.cloud.os_cmd(['openstack server resize --confirm {}'.format(self.id)], comment=self.name)
-        self.wait(cloud=self.cloud, srv_id_name_dic={self.id: self.name}, status=self.STATUS_ACTIVE)
-        msg = '{} now {} migrated to {}'.format(time.strftime('%b%d %H:%M:%S'), how, self.compute)
+        self.wait(cloud=self.cloud, srv_id_name_dic={self.id: self.name}, status=self.STATUS_ACTIVE if how == 'live' else self.STATUS_VERIFY_RESIZE)
+        if how == 'cold':
+            self.cloud.os_cmd(['openstack server resize --confirm {}'.format(self.id)], comment=self.name)
+            self.wait(cloud=self.cloud, srv_id_name_dic={self.id: self.name}, status=self.STATUS_ACTIVE)
+        ans = self.cloud.os_cmd(['openstack server show {} -f json'.format(self.id)], comment=self.name)
+        self.dic_from_os = ans[0]
+        msg = '{} {} migrated to {}'.format(time.strftime('%b%d %H:%M:%S'), how, self.compute)
         self.console_exe('echo {} >> migration_history'.format(msg))
-        a = self.console_exe('cat migration_history')
-        return a
+        return self.console_exe('cat migration_history')
 
     def snapshot(self):
         self.cloud.od_cmd('nova image-create {0} {0}-snap'.format(self.name))
@@ -140,20 +153,19 @@ class CloudServer(CloudObject, WithLogMixIn):
                     if time.time() > started + int(timeout):
                         raise RuntimeError('{}: timeout when waiting for server prompt'.format(self))
 
+            shell.send(cmd + '\n')  # send command
+
             a = ''
             while True:
                 if shell.recv_ready():
-                    a += shell.recv(1024)
+                    a += shell.recv(10000)
                 else:
-                    if cmd not in a:
-                        shell.send(cmd + '\n')  # send command
-                        a = ''
                     if '~]$' in a:  # we got a prompt from server after command complete
                         shell.send('exit\n')
                         break
                     time.sleep(1)
                     if time.time() > started + int(timeout):
                         raise RuntimeError('{}: timeout when waiting for {} completion'.format(self, cmd))
-            return a
+            return filter(lambda x: x and '~]$' not in x, a.replace(cmd, '').replace('\r','').split('\n'))
         finally:
             ch.close()

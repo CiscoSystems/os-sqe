@@ -19,10 +19,9 @@ class OS(WithLogMixIn):
         server = server or self.mediator
         cmd = 'source ' + self.openrc_path + ' && ' + ' ; '.join(cmds) + (' # ' + comment if comment else '')
         ans = server.exe(cmd=cmd, is_warn_only=is_warn_only, is_as_sqe=True)
-        if ans:
-            return self._process_output(answer=ans)
-        else:
-            return []
+        if 'error' in ans:
+            raise RuntimeError(ans)
+        return self._process_output(answer=ans)
 
     @staticmethod
     def _process_output(answer):
