@@ -123,20 +123,24 @@ class Logger(object):
         cmd_os_h = logging.FileHandler('a_cmd_os.log', mode='w')
         nfvbench_h = logging.FileHandler('a_nfvbench.log', mode='w')
         slack_h = SlackHandler()
+        results_h = logging.FileHandler('a_results.log', mode='w')
 
         console.setLevel(logging.INFO)
         debug_h.setLevel(logging.DEBUG)
         json_h.setLevel(logging.INFO)
         slack_h.setLevel(logging.INFO)
+        results_h.setLevel(logging.INFO)
 
         console.setFormatter(MainLogFormatter(fmt='{time} {msg}', datefmt='%b%d %H:%M:%S'))
         debug_h.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s'))
         json_h.setFormatter(JsonFormatter())
+        results_h.setFormatter(logging.Formatter(fmt='%(message)s'))
 
         json_h.addFilter(JsonFilter())
         cmd_os_h.addFilter(CheckStringFilter('openrc'))
         cmd_vts_h.addFilter(CheckStringFilter('8888'))
         nfvbench_h.addFilter(CheckStringFilter('nfvbench'))
+        results_h.addFilter(CheckStringFilter('+--'))
 
         logger.addHandler(console)
         logger.addHandler(debug_h)
@@ -145,6 +149,7 @@ class Logger(object):
         logger.addHandler(cmd_os_h)
         logger.addHandler(slack_h)
         logger.addHandler(nfvbench_h)
+        logger.addHandler(results_h)
 
         if os.path.isdir('/var/log') and 'vmtp' in os.listdir('/var/log'):
             logstash = logging.FileHandler('/var/log/vmtp/sqe.log')
