@@ -1,7 +1,7 @@
 Folder: Live Migration
 Title: Live Migration
 Description: Creates 2 large servers on single nework, start ping from first to second, does live migration, check ping suspends just for a while
-UniqueID: os-sqe-lm01
+UniqueID: os-sqe-lm02
 PossibleDrivers: [vpp]
 
 Workers:
