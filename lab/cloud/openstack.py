@@ -13,7 +13,7 @@ class OS(WithLogMixIn):
         if type(mediator) is MercuryMgm:
             self.pod = mediator.pod
         self.openrc_path = openrc_path
-        self.controls, self.computes, self.images, self.servers, self.keypairs, self.networks, self.subnets, self.ports, self.flavors, self.projects = [], [], [], [], [], [], [], [], [], []
+        self.controls, self.computes, self.images, self.servers, self.keypairs, self.routers, self.networks, self.subnets, self.ports, self.flavors, self.projects = [], [], [], [], [], [], [], [], [], [], []
 
     def os_cmd(self, cmds, comment='', server=None, is_warn_only=False):
         server = server or self.mediator
@@ -103,7 +103,7 @@ class OS(WithLogMixIn):
 source openrc 
 
 for router in $(openstack router list | grep sqe- | cut -d " " -f 4); do
-        for subnet in $(neutron router-port-list $router | grep -E "subnet" | grep -v HA | cut -d '"' -f 4); do
+        for subnet in $(neutron router-port-list $router | grep subnet | grep -v HA | cut -d '"' -f 4); do
                 openstack router remove subnet $router $subnet
         done
         openstack router delete $router
@@ -120,7 +120,7 @@ openstack image list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id
 openstack flavor list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack flavor delete $id; done  
 openstack security group list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack security group delete $id; done
 '''
-        self.os_cmd(cmds=["echo '{}' > os_cleanup".format(cmd), '. os_cleanup'])
+        self.os_cmd(cmds=['. clean-os'])
 
     def os_all(self):
         from lab.cloud.cloud_host import CloudHost

@@ -165,7 +165,7 @@ class CloudServer(CloudObject, WithLogMixIn):
                         break
                     time.sleep(1)
                     if time.time() > started + int(timeout):
-                        raise RuntimeError('{}: timeout when waiting for {} completion'.format(self, cmd))
+                        raise RuntimeError('{}: timeout when waiting for {} completion, collected so far {}'.format(self, cmd, a))
             return filter(lambda x: x and '~]$' not in x, a.replace(cmd, '').replace('\r','').split('\n'))
         finally:
             ch.close()

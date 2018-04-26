@@ -14,6 +14,6 @@ class CloudRouter(CloudObject):
         cmds = ['openstack router create ' + name + ' -f json']
         for net in cloud.networks:
             for subnet in net.subnets:
-                cmds.append('openstack router add subnet ' + name + ' ' + subnet.name + ' -f json')
+                cmds.append('openstack router add subnet ' + name + ' ' + subnet.name)
         ans = cloud.os_cmd(cmds=cmds)
-        CloudRouter(cloud=cloud, dic=ans)
+        CloudRouter(cloud=cloud, dic=ans[0])
