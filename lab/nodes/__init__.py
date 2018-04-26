@@ -75,5 +75,5 @@ class LabNode(WithLogMixIn):
         except (socket.timeout, socket.error):
             ok = 'FAILED'
         finally:
-            self.log('OOB ({}) is {}'.format(self.oob_ip, ok))
+            self.log('OOB={:15} status={}'.format(self.oob_ip, ok))
             s.close()

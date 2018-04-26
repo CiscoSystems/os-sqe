@@ -5,6 +5,10 @@ class NetworksScenario(TestCaseWorker):
     ARG_MANDATORY_N_NETWORKS = 'n_networks'
     ARG_MANDATORY_UPTIME = 'uptime'
 
+    STATUS_NETWORK_CREATING = 'status=NetworkCreating'
+    STATUS_NETWORK_CREATED = 'status=NetworkCreated'
+    STATUS_NETWORK_DELETED = 'status=NetworkDeleted'
+
     def check_arguments(self):
         assert self.n_networks >= 1
         assert self.uptime > 10
@@ -28,22 +32,15 @@ class NetworksScenario(TestCaseWorker):
     def setup_worker(self):
         pass
 
-    def create_networks(self):
+    def loop_worker(self):
         from lab.cloud.cloud_network import CloudNetwork
+        from lab.cloud.cloud_router import CloudRouter
 
         self.log('status=creating {} network{{s}}'.format(self.n_networks))
         self.nets = CloudNetwork.create(common_part_of_name='', how_many=self.n_networks, class_a=10, cloud=self.cloud)
-
-    def delete_networks(self):
-        from lab.cloud.cloud_network import CloudNetwork
-
-        CloudNetwork.delete(nets=self.nets, cloud=self.cloud)
-
-    def loop_worker(self):
-        import time
-
-        self.create_networks()
-
-        if str(self.uptime) != 'forever':
-            time.sleep(self.uptime)
-            self.delete_networks()
+        self.passed(self.STATUS_NETWORK_CREATED)
+        exts = [x for x in self.cloud.networks if x.is_external]
+        if exts:
+            self.log(CloudRouter.STATUS_ROUTER_CREATING)
+            CloudRouter.create(cloud=self.cloud)
+            self.passed(CloudRouter.STATUS_ROUTER_CREATED)

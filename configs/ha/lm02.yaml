@@ -39,4 +39,5 @@ Workers:
   name: lm                                                # unique name
   delay: [srv]                                            # delay until p1 is finished
   migration: live                                         # during cold migration ssh and pings will be lost
+  pause_at_start: 20                                      # wait before starting loop
   run: 1                                                  # run once

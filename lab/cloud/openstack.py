@@ -99,13 +99,28 @@ class OS(WithLogMixIn):
         self.os_cmd(cmds=['openstack quota set --instances 1000 --cores 2000 --ram 512000 --networks 100 --subnets 300 --ports 500 admin'])
 
     def os_cleanup(self, is_all=False):
-        from lab.cloud import CloudObject
+        cmd = '''
+source openrc 
 
-        grep = 'grep  -vE "\+|ID|Fingerprint"' if is_all else ('grep ' + CloudObject.UNIQUE_PATTERN_IN_NAME)
-        pattern = 'openstack {0} list | ' + grep + ' | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack {0} delete $id; done'
-        cmds = map(lambda x: x.format('', 'show'), map(lambda x: pattern.format(x), ['server', 'port', 'subnet', 'network', 'port', 'keypair', 'image', 'flavor']))
+for router in $(openstack router list | grep sqe- | cut -d " " -f 4); do
+        for subnet in $(neutron router-port-list $router | grep -E "subnet" | grep -v HA | cut -d '"' -f 4); do
+                openstack router remove subnet $router $subnet
+        done
+        openstack router delete $router
+done
 
-        self.os_cmd(cmds=cmds, is_warn_only=True)
+subnets=$(openstack subnet list | grep -E "sqe-|ext" | cut -d " " -f 4)
+openstack server list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack server delete $id; done 
+openstack port list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack port delete $id; done 
+openstack subnet list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack subnet delete $id; done 
+openstack network list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack network delete $id; done  
+openstack port list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack port delete $id; done 
+openstack keypair list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack keypair delete $id; done 
+openstack image list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack image delete $id; done 
+openstack flavor list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack flavor delete $id; done  
+openstack security group list | grep sqe- | cut -d " " -f 2 | while read id; do [ -n "$id" ] && openstack security group delete $id; done
+'''
+        self.os_cmd(cmds=["echo '{}' > os_cleanup".format(cmd), '. os_cleanup'])
 
     def os_all(self):
         from lab.cloud.cloud_host import CloudHost

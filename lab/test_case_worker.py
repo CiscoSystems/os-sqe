@@ -21,9 +21,6 @@ class TestCaseWorker(WithLogMixIn):
     STATUS_KEYPAIR_CREATING = 'status=KeyPairCreating'
     STATUS_KEYPAIR_CREATED = 'status=KeyPairCreated'
 
-    STATUS_NETWORK_CREATING = 'status=NetworkCreating'
-    STATUS_NETWORK_CREATED = 'status=NetworkCreated'
-
     STATUS_SERVER_CREATING = 'status=ServerCreating'
     STATUS_SERVER_CREATED = 'status=ServerCreated'
     STATUS_SERVER_SNAPSHOTING = 'status=ServerSnapshoting'
@@ -171,24 +168,24 @@ class TestCaseWorker(WithLogMixIn):
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
-                self.log('status=loop{}start until={} other={}'.format(self.loop_counter + 1, self.run, self.status_dict))
-
                 if self.pause_at_start > 0:
-                    self.log(' status=loop{}pause_at_start time={} sec ...'.format(self.loop_counter + 1, self.pause_at_start))
+                    self.log('status=pause_loop{}_at_start time={} sec ...'.format(self.loop_counter + 1, self.pause_at_start))
                     time.sleep(1 if self.test_case.is_debug else self.pause_at_start)
+
+                self.log('status=looping{} until={} other={}'.format(self.loop_counter + 1, self.run, self.status_dict))
 
                 if not self.test_case.is_debug:
                     self.loop_worker()
 
                 if self.pause_at_end > 0:
-                    self.log(' status=loop{}pause_at_end time={} sec ...'.format(self.loop_counter + 1, self.pause_at_end))
+                    self.log('status=pause_loop{}_at_end time={} sec ...'.format(self.loop_counter + 1, self.pause_at_end))
                     time.sleep(1 if self.test_case.is_debug else self.pause_at_end)
 
-                self.log('status=loop{}finish until={} {} ...'.format(self.loop_counter + 1, self.run, self.status_dict))
+                self.log('status=finish_loop{} until={} {} ...'.format(self.loop_counter + 1, self.run, self.status_dict))
                 self.loop_counter += 1
 
-        except RuntimeError:
-            pass
+        except RuntimeError as ex:
+            self.log_exception()
         except Exception as ex:
             frame = sys.exc_traceback
             while frame.tb_next:

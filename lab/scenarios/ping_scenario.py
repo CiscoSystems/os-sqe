@@ -5,6 +5,7 @@ from lab.decorators import section
 class PingScenario(TestCaseWorker):
     ARG_MANDATORY_HOW = 'how'
     ARG_MANDATORY_N_PACKETS = 'n_packets'
+    STATUS_PING_START = 'status=PingStart'
 
     @property
     def how(self):
@@ -23,7 +24,9 @@ class PingScenario(TestCaseWorker):
 
     def internal(self):
         srv1, srv2 = self.cloud.servers[0], self.cloud.servers[1]
-        ans = srv1.console_exe('ping -c {} {}'.format(self.n_packets, srv2.ips[0]))
+        cmd = 'ping -c {} {}'.format(self.n_packets, srv2.ips[0])
+        self.log(self.STATUS_PING_START + ' ' + cmd)
+        ans = srv1.console_exe(cmd)
         if 'rtt min' in ans[-1]:
             self.passed('{} {} -> {} {} {}'.format(srv1, srv1.ips[0], srv2, srv2.ips[0], ans[-2]))
         else:
