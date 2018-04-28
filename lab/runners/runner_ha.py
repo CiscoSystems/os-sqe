@@ -60,8 +60,9 @@ class RunnerHA(WithConfig, WithLogMixIn):
 
         test_case.after_run(status_tbl=self.status_tbl, err_tbl=self.err_tbl)
 
-        self.log(self.status_tbl.get_string())
-        self.log(self.err_tbl.get_string())
+        with self.open_artifact('results.txt', 'w') as f:
+            f.write(self.status_tbl.get_string() + '\n\n')
+            f.write(self.err_tbl.get_string())
 
         if not test_case.is_debug:
             map(lambda x: x.teardown_worker(), workers)  # run all teardown_workers
