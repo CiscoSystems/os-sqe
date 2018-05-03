@@ -3,6 +3,8 @@ from lab.cloud import CloudObject
 
 class CloudImage(CloudObject):
     STATUS_ACTIVE = 'active'
+    STATUS_IMAGE_CREATING = 'status=ImageCreating'
+    STATUS_IMAGE_CREATED = 'status=ImageCreated'
 
     IMAGES = {'sqe-iperf': 'http://172.29.173.233/cloud-images/os-sqe-localadmin-ubuntu.qcow2',
               'sqe-csr': 'http://172.29.173.233/cloud-images/csr1000v-universalk9.03.16.00.S.155-3.S-ext.qcow2',

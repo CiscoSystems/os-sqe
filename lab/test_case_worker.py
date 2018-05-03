@@ -12,23 +12,6 @@ class TestCaseWorker(WithLogMixIn):
     STATUS_FAILED = 'status=FAILED message='
     STATUS_PASSED = 'status=PASSED message='
 
-    STATUS_IMAGE_CREATING = 'status=ImageCreating'
-    STATUS_IMAGE_CREATED = 'status=ImageCreated'
-
-    STATUS_FLAVOR_CREATING = 'status=FlavorCreating'
-    STATUS_FLAVOR_CREATED = 'status=FlavorCreated'
-
-    STATUS_KEYPAIR_CREATING = 'status=KeyPairCreating'
-    STATUS_KEYPAIR_CREATED = 'status=KeyPairCreated'
-
-    STATUS_SERVER_CREATING = 'status=ServerCreating'
-    STATUS_SERVER_CREATED = 'status=ServerCreated'
-    STATUS_SERVER_SNAPSHOTING = 'status=ServerSnapshoting'
-    STATUS_SERVER_SNAPSHOTED = 'status=ServerSnapshoted'
-
-    STATUS_OS_CLEANING = 'status=OpenstackCleaning'
-    STATUS_OS_CLEANED = 'status=OpenstackCleaned'
-
     ARG_MANDATORY_DELAY = 'delay'
     ARG_MANDATORY_RUN = 'run'
     ARG_OPTIONAL_PAUSE_AT_START = 'pause_at_start'

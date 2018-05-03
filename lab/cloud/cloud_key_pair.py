@@ -2,6 +2,9 @@ from lab.cloud import CloudObject
 
 
 class CloudKeyPair(CloudObject):
+    STATUS_KEYPAIR_CREATING = 'status=KeyPairCreating'
+    STATUS_KEYPAIR_CREATED = 'status=KeyPairCreated'
+
     def __init__(self, cloud, dic):
         super(CloudKeyPair, self).__init__(cloud=cloud, dic=dic)
 

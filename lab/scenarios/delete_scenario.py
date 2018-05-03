@@ -13,9 +13,9 @@ class DeleteScenario(TestCaseWorker):
         assert self.delete in ['all', 'sqe']
 
     def setup_worker(self):
-        self.log(self.STATUS_OS_CLEANING)
+        self.log(self.cloud.STATUS_OS_CLEANING)
         self.cloud.os_cleanup(is_all=self.delete == 'all')
-        self.log(self.STATUS_OS_CLEANED)
+        self.log(self.cloud.STATUS_OS_CLEANED)
 
     def loop_worker(self):
         pass

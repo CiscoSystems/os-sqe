@@ -2,6 +2,11 @@ from lab.test_case_worker import TestCaseWorker
 
 
 class ServersFromImageScenario(TestCaseWorker):
+    STATUS_SERVER_CREATING = 'status=ServerCreating'
+    STATUS_SERVER_CREATED = 'status=ServerCreated'
+    STATUS_SERVER_SNAPSHOTING = 'status=ServerSnapshoting'
+    STATUS_SERVER_SNAPSHOTED = 'status=ServerSnapshoted'
+
     ARG_MANDATORY_N_SERVERS = 'n_servers'
     ARG_MANDATORY_IMAGE = 'image'
     ARG_MANDATORY_FLAVOR = 'flavor'
@@ -64,8 +69,6 @@ class ServersFromImageScenario(TestCaseWorker):
     def sec_grp(self, key):
         self.args['sec_grp'] = key
 
-
-
     def setup_worker(self):
         from lab.cloud.cloud_flavor import CloudFlavor
         from lab.cloud.cloud_image import CloudImage
@@ -75,17 +78,17 @@ class ServersFromImageScenario(TestCaseWorker):
         self.log(self.STATUS_SETUP_RUNING)
         self.log('getting cloud status')
 
-        self.log(self.STATUS_KEYPAIR_CREATING)
+        self.log(CloudKeyPair.STATUS_KEYPAIR_CREATING)
         self.keypair = CloudKeyPair.create(cloud=self.cloud)
-        self.log(self.STATUS_KEYPAIR_CREATED)
+        self.log(CloudKeyPair.STATUS_KEYPAIR_CREATED)
 
-        self.log(self.STATUS_IMAGE_CREATING)
+        self.log(CloudImage.STATUS_IMAGE_CREATING)
         self.image = CloudImage.create(cloud=self.cloud, image_name=self.image)
-        self.log(self.STATUS_IMAGE_CREATED)
+        self.log(CloudImage.STATUS_IMAGE_CREATED)
 
-        self.log(self.STATUS_FLAVOR_CREATING)
+        self.log(CloudFlavor.STATUS_FLAVOR_CREATING)
         self.flavor = CloudFlavor.create(cloud=self.cloud, flavor_type=self.flavor)
-        self.log(self.STATUS_FLAVOR_CREATED)
+        self.log(CloudFlavor.STATUS_FLAVOR_CREATED)
 
         self.log(CloudSecurityGroup.STATUS_SECGRP_CREATING)
         self.sec_grp = CloudSecurityGroup.create(cloud=self.cloud)

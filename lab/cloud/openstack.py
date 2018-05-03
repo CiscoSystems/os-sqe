@@ -2,6 +2,9 @@ from lab.with_log import WithLogMixIn
 
 
 class OS(WithLogMixIn):
+    STATUS_OS_CLEANING = 'status=OpenstackCleaning'
+    STATUS_OS_CLEANED = 'status=OpenstackCleaned'
+
     def __repr__(self):
         return u'cloud {}'.format(self.name)
 

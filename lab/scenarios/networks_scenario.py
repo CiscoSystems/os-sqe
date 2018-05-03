@@ -27,7 +27,7 @@ class NetworksScenario(TestCaseWorker):
 
     @nets.setter
     def nets(self, nets):
-        self.args['servers'] = nets
+        self.args['nets'] = nets
 
     def setup_worker(self):
         pass

@@ -2,6 +2,9 @@ from lab.cloud import CloudObject
 
 
 class CloudFlavor(CloudObject):
+    STATUS_FLAVOR_CREATING = 'status=FlavorCreating'
+    STATUS_FLAVOR_CREATED = 'status=FlavorCreated'
+
     TYPE_VTS = 'vts'
     TYPE_LARGE = 'm1.large'
     FLAVOR_TYPES = {'vts': {'cmd': 'openstack flavor create {} --vcpu 2 --ram 4096 --disk 20 --public -f json', 'opt': 'openstack flavor set {} --property hw:mem_page_size=large'},
