@@ -47,7 +47,9 @@ class DeployerExistingCloud(LabWorker):
 
         if openrc_path is None:
             raise RuntimeError('{}: "{}" does not contain any valid cloud'.format(self, self.pod))
-        return OS(name=self.pod.name, mediator=mgm, openrc_path='openrc')
+        cloud = OS(name=self.pod.name, mediator=mgm, openrc_path='openrc')
+        cloud.os_all()
+        return cloud
 
     def execute(self, clouds_and_servers):
         return self.deploy_cloud(clouds_and_servers=clouds_and_servers)

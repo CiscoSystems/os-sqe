@@ -32,9 +32,9 @@ class RunnerHA(WithConfig, WithLogMixIn):
         self.log('\n\n')
         test_case.log('status=start')
         test_case.time = time.time()  # used to calculate duration of test
-        test_case.cloud = self.cloud
         manager = multiprocessing.Manager()
         status_dict = manager.dict()
+        cloud_dict = manager.dict()
 
         workers = test_case.workers
         for worker in workers:
@@ -79,7 +79,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         self.log('Running n_tests={}'.format(len(test_paths)))
         tests = self.create_tests(test_paths=test_paths, is_noclean=is_noclean, is_debug=is_debug)
 
-        possible_drivers = set(reduce(lambda l,x: x.possible_drivers + l, tests, []))
+        possible_drivers = set(reduce(lambda l, x: x.possible_drivers + l, tests, []))
         if len(test_paths) == 1 and test_paths[0] == 'dev01-test-parallel.yaml':  # special test case to test infrastructure itself, does not require cloud
             self.cloud = FakeCloud()
         else:
@@ -107,7 +107,7 @@ class RunnerHA(WithConfig, WithLogMixIn):
         unique_id_seen = []
         test_cases = []
         for test_path in test_paths:
-            test = TestCase(path=test_path, is_noclean=is_noclean, is_debug=is_debug, cloud=self.cloud)
+            test = TestCase(path=test_path, is_noclean=is_noclean, is_debug=is_debug)
             assert test.unique_id not in unique_id_seen
             unique_id_seen.append(test.unique_id)
             test_cases.append(test)

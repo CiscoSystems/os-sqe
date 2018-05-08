@@ -31,7 +31,7 @@ class MercuryMgm(CimcServer):
         import yaml
 
         separator = 'separator'
-        cmds = ['ciscovim install-status', 'cat setup_data.yaml', 'grep -E "image_tag|RELEASE_TAG" defaults.yaml']
+        cmds = ['sudo ciscovim install-status', 'cat setup_data.yaml', 'grep -E "image_tag|RELEASE_TAG" defaults.yaml']
         cmd = ' ; echo {} ; '.format(separator).join(cmds)
 
         mgm = Server(ip=ip, username=WithConfig.SQE_USERNAME, password=None)

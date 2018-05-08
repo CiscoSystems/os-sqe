@@ -30,7 +30,7 @@ class TestCaseResult(WithLogMixIn):
 
 class TestCase(WithConfig, WithLogMixIn):
 
-    def __init__(self, path, is_noclean, is_debug, cloud):
+    def __init__(self, path, is_noclean, is_debug):
         import yaml
         import time
 
@@ -50,7 +50,6 @@ class TestCase(WithConfig, WithLogMixIn):
         self.description = test_dic['Description']
         self.unique_id = test_dic['UniqueID']
         self.possible_drivers = test_dic['PossibleDrivers']
-        self.cloud = cloud
         self.time = time.time()  # time when the object was constructed
 
         self.workers = self.create_test_workers(test_dic.pop('Workers'))  # should be after self.cloud is assigned

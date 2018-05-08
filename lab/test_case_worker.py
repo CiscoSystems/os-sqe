@@ -31,7 +31,7 @@ class TestCaseWorker(WithLogMixIn):
         self.failures = []                                                     # failures (problems in soft under test) will be collected here in self.failed()
         self.errors = []                                                       # errors (problems in this code) will be collected here self.start_worker_parallel()
         self.status_dict = None                                                # will be set just before running multiprocessing.Pool.map() to multiprocessing.Manager().dict()
-        self.cloud = test_case.cloud
+        self.cloud = None
         self.args = {}                                                         # all arguments will be kept in this dict
         self.loop_counter = 0                                                  # counts loops executed
 
@@ -147,7 +147,6 @@ class TestCaseWorker(WithLogMixIn):
         try:
             self.delay_execution()
 
-            self.cloud.os_all()  # warm up to current cloud status
             self.set_status(status=self.STATUS_LOOPING)
 
             while not self.is_ready_to_finish():
