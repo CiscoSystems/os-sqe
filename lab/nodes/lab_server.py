@@ -29,7 +29,7 @@ class LabServer(LabNode):
         separator = 'SEPARATOR'
         cmds = ['grep -c ^core /proc/cpuinfo', 'cat /proc/meminfo', '(lspci | grep Ethernet)', 'ip -o a', 'ip -o l', 'ip -o r', 'cat /etc/hosts']
         cmd = ' && echo {} && '.format(separator).join(cmds)
-        ans = self.exe(cmd=cmd, is_warn_only=True)
+        ans = self.exe(cmd=cmd, is_warn_only=True, is_as_sqe=True)
         if not ans or 'No route to host' in ans:
             return {}
         result = {'ips': {}, 'macs': {}, 'etc_hosts': {}, 'ifaces': {}, 'networks': {}}

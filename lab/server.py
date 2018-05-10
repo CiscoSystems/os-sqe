@@ -83,5 +83,6 @@ class Server(WithConfig, WithLogMixIn):
         gitlab_public = 'wwwin-gitlab-sjc.cisco.com,10.22.31.77 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJZlfIFWs5/EaXGnR9oXp6mCtShpvO2zKGqJxNMvMJmixdkdW4oPjxYEYP+2tXKPorvh3Wweol82V3KOkB6VhLk='
         # private key is needed to commit to local github
         self.exe('echo "{}" > known_hosts ; echo "{}" > ~/aaa; cp ~/aaa authorized_keys; echo "{}" > sqe_private; chmod 600 *'.format(gitlab_public, public_key, private_key), in_dir='.ssh')
+        self.exe('echo "Host *\n  StrictHostKeyChecking no\nUserKnownHostsFile=/dev/null\n" > .ssh/config; chmod 644 .ssh/config')  # ssh to controls and computes without prompts
         self.password = None
         self.log('Created user ' + username)
