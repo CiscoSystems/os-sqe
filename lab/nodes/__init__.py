@@ -64,7 +64,7 @@ class LabNode(WithLogMixIn):
     def r_verify_oob(self):
         import socket
 
-        if self.oob_ip == 'MatchSSH':  # it's a virtual node no OOB
+        if not self.oob_ip:  # it's a virtual node no OOB
             return
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         ok = None

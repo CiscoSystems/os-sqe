@@ -9,7 +9,7 @@ class LabServer(LabNode):
         self._package_manager = None
         self.virtual_servers = set()  # virtual servers running on this hardware server
         self.nics_dic = {'X710': [], 'X510': [], 'VF': [], 'CVIC': [], 'LOM': [], 'LibVirt': []}
-        self.comment = self.proxy.comment.replace(str(self.proxy), str(self)) + ' ssh root@' + self.ip if self.proxy else (' sshpass -p ' + self.password if self.password else '') + ' ssh ' + self.username + '@' + self.ip
+        self.comment = self.proxy.comment.replace(str(self.proxy), str(self)) + ' ssh root@' + str(self.ip) if self.proxy else (' sshpass -p ' + self.password if self.password else '') + ' ssh ' + self.username + '@' + str(self.ip)
         self.srv = None
 
 
