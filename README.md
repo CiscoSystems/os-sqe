@@ -1,21 +1,29 @@
-os-sqe is a repo for deployment and QA automation
+os-sqe: deployment, scaling, performance studies and other QA automation tasks
 =============
 
-To get this repo prepared for operation, the recommended way is:
+The recommended way to use is to run the container:
 
-    cd <REPO_CLONED_LOCATION>
+    docker run --name os-sqe os-sqe:latest <task_name:task_argument1,task_argument2,...>
+
+By default, container runs fab -l
+
+To build docker image, do:
+
+    git clone https://github.com/CiscoSystems/os-sqe.git
+    cd os-sqe
+    docker build -t cloud-docker.cisco.com/os-sqe:2.7 .
+
+To push image to registry:
+
+    docker push cloud-docker.cisco.com/os-sqe/os-sqe:latest
+
+In case you don't hvbe docker, manual way to operate:
+
+    git clone https://github.com/CiscoSystems/os-sqe.git
+    cd os-sqe
     virtualenv .venv
     . .venv/bin/activate
     pip install -r requirements.txt
-
-The main part of the code is decorated as fabric tasks and might be executed by:
-
-    fab task_name:task_argument1,task_argument2
-
-The list of tasks is produced by:
-
-    fab -l
-
 
 Making Changes
 ---------------

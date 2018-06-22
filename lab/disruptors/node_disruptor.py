@@ -36,7 +36,7 @@ class NodeDisruptor(TestCaseWorker):
                 self.args[self.ARG_NODE_TO_DISRUPT] = a[1][num]
                 return
             else:
-                raise RuntimeError('This pod has just {t}0-{t}{l}, no way to run on {n}'.format(l=len(a[1])-1, t=a[0], n=self.node_to_disrupt))
+                raise RuntimeError('This pod has just {t1}0-{t1}{l1}, no way to run on {n1}'.format(l1=len(a[1])-1, t1=a[0], n1=self.node_to_disrupt))
 
     def loop_worker(self):
         import time
@@ -57,8 +57,7 @@ class NodeDisruptor(TestCaseWorker):
             time.sleep(elapsed)
 
         if a.failed:
-            self.fail(message='node {} did not come online in {} secs'.format(node, self.timeout), is_stop_running=True)
+            self.failed(message='node {} did not come online in {} secs'.format(node, self.timeout), is_stop_running=True)
         after = {l.split()[0] for l in a.split('\n')}
         if after != before:
-            self.fail(message='containers which are not restored: {}, status {}'.format(' '.join(before - after), ' '.join(after - before)), is_stop_running=True)
-
+            self.failed(message='containers which are not restored: {}, status {}'.format(' '.join(before - after), ' '.join(after - before)), is_stop_running=True)
