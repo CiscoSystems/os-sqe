@@ -24,7 +24,7 @@ class WithConfig(object):
 
     @staticmethod
     def get_log_file_names():
-        return 'a_sqe.log', 'a_json.log'
+        return '/tmp/a_sqe.log', '/tmp/a_json.log'
 
     @staticmethod
     def ls_configs(directory=''):
@@ -43,7 +43,7 @@ class WithConfig(object):
 
     @staticmethod
     def get_artifact_file_path(short_name):
-        return 'a_' + short_name
+        return '/tmp/a_' + short_name
 
     @staticmethod
     def save_self_config(p):

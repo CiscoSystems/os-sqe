@@ -3,7 +3,7 @@ os-sqe: deployment, scaling, performance studies and other QA automation tasks
 
 The recommended way to use is to run the container:
 
-    docker run --name os-sqe os-sqe:latest <task_name:task_argument1,task_argument2,...>
+    docker run --name os-sqe --rm cloud-docker.cisco.com/os-sqe:2.7 <task_name:task_argument1,task_argument2,...>
 
 By default, container runs fab -l
 
@@ -15,9 +15,9 @@ To build docker image, do:
 
 To push image to registry:
 
-    docker push cloud-docker.cisco.com/os-sqe/os-sqe:latest
+    docker push cloud-docker.cisco.com/os-sqe:2.7
 
-In case you don't hvbe docker, manual way to operate:
+In case you don't have docker, manual way to operate:
 
     git clone https://github.com/CiscoSystems/os-sqe.git
     cd os-sqe
