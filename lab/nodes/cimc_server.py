@@ -13,50 +13,28 @@ class CimcServer(LabServer):
     def logger(self, message):
         self.log('CIMC ' + message)
 
-    def connect(self):
-        import ImcSdk
+    @property
+    def handle(self):
+        from imcsdk.imchandle import ImcHandle
         from urllib2 import URLError
 
         if self._handle is None:
-            if self._dump_xml:
-                self.logger('logging in')
-            self._handle = ImcSdk.ImcHandle()
+            self._handle = ImcHandle(self.oob_ip, self.oob_username, self.oob_password)
             try:
-                self._handle.login(name=self.oob_ip, username=self.oob_username, password=self.oob_password, dump_xml=self._dump_xml)
+                self._handle.login()
             except URLError as ex:
                 raise RuntimeError('{}: {} {}'.format(self, ex, self.oob_ip))
         return self._handle
 
-    def cmd(self, cmd, in_mo=None, class_id=None, params=None):
-        from ImcSdk.ImcCoreMeta import ImcException
-
-        handle = self.connect()
-        if cmd not in dir(handle):
-            raise NotImplemented('{} does not exist'.format(cmd))
-        func = getattr(handle, cmd)
-        for i in range(3):  # try to repeat the command up to 3 times
-            try:
-                return func(in_mo=in_mo, class_id=class_id, params=params, dump_xml=self._dump_xml)
-            except ImcException as ex:
-                if ex.error_code == '552':
-                    self.logger('refreshing connection')
-                    handle.refresh(auto_relogin=True)
-                    continue
-                else:
-                    raise
-            finally:
-                if self._logout_on_each_command:
-                    handle.logout()
-
     def cimc_get_raid_battery_status(self):
-        return self.cimc_get_mo_by_class_id('storageRaidBattery')
+        return self._handle.query_classid(class_id='storageRaidBattery')
 
     def _cimc_bios_lom(self, status):
         self.logger('{} all LOM'.format(status))
-        actual = self.cimc_get_mo_by_class_id(class_id='BiosVfLOMPortOptionROM')
+        actual = self._handle.query_classid(class_id='BiosVfLOMPortOptionROM')
         if actual.Status != status:
             params = {'Dn': 'sys/rack-unit-1/bios/bios-settings/LOMPort-OptionROM', 'VpLOMPortsAllState': status, 'vpLOMPort0State': status, 'vpLOMPort1State': status}
-            self.cmd('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
+            self._handle.set_mo('set_imc_managedobject', in_mo=None, class_id='BiosVfLOMPortOptionROM', params=params)
             self.cimc_power_cycle()
 
     def cimc_enable_loms_in_bios(self):
@@ -66,40 +44,32 @@ class CimcServer(LabServer):
         self._cimc_bios_lom(status='Disable')
 
     def cimc_list_all_nics(self):
-        if not self.oob_ip:
-            return {}
         self.log('{} getting CIMC NICs'.format(self.oob_ip))
-        r1 = self.cimc_get_mo_by_class_id('networkAdapterEthIf')  # physical Intel NICs (or others in PCI-E slots)
-        r2 = self.cimc_get_mo_by_class_id('adaptorExtEthIf')  # physical Cisco VIC in MLOM
+        r1 = self.handle.query_classid(class_id='networkAdapterEthIf')  # physical Intel NICs (or others in PCI-E slots)
+        r2 = self.handle.query_classid(class_id='adaptorExtEthIf')  # physical Cisco VIC in MLOM
 
-        return {x.Dn: x.Mac for x in r1 + r2}
+        return {x.dn: x.mac for x in r1 + r2}
 
     def cimc_list_all_nics_and_vnics(self):
-        r1 = self.cimc_get_mo_by_class_id('networkAdapterEthIf')  # physical Intel NICs (or others in PCI-E slots)
-        r2 = self.cimc_get_mo_by_class_id('adaptorExtEthIf')  # physical Cisco VIC in MLOM
-        r3 = self.cimc_get_mo_by_class_id('adaptorHostEthIf')  # virtual Cisco vNIC in MLOM
+        r1 = self.handle.query_classid(class_id='networkAdapterEthIf')  # physical Intel NICs (or others in PCI-E slots)
+        r2 = self.handle.query_classid(class_id='adaptorExtEthIf')  # physical Cisco VIC in MLOM
+        r3 = self.handle.query_classid(class_id='adaptorHostEthIf')  # virtual Cisco vNIC in MLOM
 
-        return {x.Dn: x.Mac for x in r1 + r2 + r3}
+        return {x.dn: x.mac for x in r1 + r2 + r3}
 
     def cimc_list_pci_nic(self):
-        r = self.cimc_get_mo_by_class_id('networkAdapterUnit')
+        r = self.handle.query_classid('networkAdapterUnit')
         return [{'Dn': x.Dn, 'Model': x.Model} for x in r]
 
     def cimc_list_vnics(self):
-        ans1 = self.cimc_get_mo_by_class_id('adaptorHostEthIf')
-        ans2 = self.cimc_get_mo_by_class_id('adaptorEthGenProfile')
+        ans1 = self.handle.query_classid('adaptorHostEthIf')
+        ans2 = self.handle.query_classid('adaptorEthGenProfile')
         vnics = {x.Name: {'mac': x.Mac, 'uplink': x.UplinkPort, 'pci-slot': x.UsnicCount, 'dn': x.Dn, 'mtu': x.Mtu, 'name': x.Name, 'pxe-boot': x.PxeBoot} for x in ans1}
         vlans_dict = {x.Dn.replace('/general', ''): {'vlan': x.Vlan, 'vlan_mode': x.VlanMode} for x in ans2}
         for vnic in vnics.values():
             vlans = vlans_dict[vnic.get('dn')]
             vnic.update(vlans)
         return vnics
-
-    def cimc_get_mo_by_class_id(self, class_id):
-        return self.cmd('get_imc_managedobject', in_mo=None, class_id=class_id)
-
-    def cimc_set_mo_by_class_id(self, class_id, params):
-        return self.cmd('set_imc_managedobject', in_mo=None, class_id=class_id, params=params)
 
     def cimc_enable_sol(self):
         self.logger('enabling SOL')
@@ -117,16 +87,16 @@ class CimcServer(LabServer):
         if raid not in [self.RAID_0, self.RAID_1, self.RAID_10]:
             raise ValueError('RAID request is not correct. Use one of the {0}. Got: {1}'.format(','.join([self.RAID_0, self.RAID_1, self.RAID_10]), raid))
         
-        virtual_drives_list = self.cimc_get_mo_by_class_id('storageVirtualDrive')
+        virtual_drives_list = self.handle.query_classid(class_id='storageVirtualDrive')
         if virtual_drives_list:
             if clean_vds:
                 self.logger('Cleaning Virtual Drives to create new one.')
                 for vd in virtual_drives_list:
-                    self.cmd('remove_imc_managedobject', in_mo=None, class_id='storageVirtualDrive', params={'Dn': vd.Dn})
+                    self.handle.remove_mo(vd)
             else:
                 self.logger('Virtual Drive already exists.')
                 return
-        disks = self.cimc_get_mo_by_class_id('storageLocalDisk')
+        disks = self.handle.query_classid('storageLocalDisk')
         # get 2 or more disks to form RAID
         disks_by_size = {}
         map(lambda x: disks_by_size.setdefault(x.get_attr('CoercedSize'), []).append(x), disks)
@@ -135,6 +105,7 @@ class CimcServer(LabServer):
             raise Exception('Not enough disks to build RAID {0}. Minimum required are {1}.'.format(raid, disks_needed))
         size = available_disks[0]
         drive_group = ','.join(map(lambda x: x.Id, disks_by_size[size])[:disks_needed])
+
         params = {'raidLevel': raid, 'size': size, 'virtualDriveName': "RAID", 'dn': "sys/rack-unit-1/board/storage-SAS-SLOT-HBA/virtual-drive-create",
                   'driveGroup': '[{0}]'.format(drive_group), 'adminState': 'trigger', 'writePolicy': 'Write Through'}
         self.logger('Creating Virtual Drive RAID {0}. Using storage {0}'.format(raid, drive_group))
@@ -150,13 +121,21 @@ class CimcServer(LabServer):
         dn = 'sys/rack-unit-1/adaptor-MLOM/host-eth-{}'.format(vnic_name)
         if 'eth0' in vnic_name or 'eth1' in vnic_name:  # no way to delete eth0 or eth1, so reset them to default
             self.logger(message='Resetting vNIC ' + vnic_name)
-            params = {'UplinkPort': vnic_name[-1], 'mac': 'AUTO', 'mtu': 1500, 'dn': dn}
-            self.cimc_set_mo_by_class_id(class_id='adaptorHostEthIf', params=params)
-            general_params = {'Dn': dn + '/general', 'Vlan': 'NONE', 'Order': 'ANY'}
-            self.cimc_set_mo_by_class_id(class_id='AdaptorEthGenProfile', params=general_params)
+            ethX = self.handle.query_dn(dn)
+            ethX.mac = 'AUTO'
+            ethX.mtu = 1500
+            ethX.pxe_boot = False
+            ethX.uplink_port = vnic_name[-1]
+            self.handle.set_mo(ethX)
+
+            profile = self.handle.query_dn('sys/rack-unit-1/adaptor-{}/host-eth-{}/general'.format(pci_slot_id, name))
+            profile.vlan = None
+            profile.order = 'ANY'
+            self.handle.set_mo(profile)
         else:
             self.logger(message='Deleting vNIC ' + dn)
-            self.cmd('remove_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params={'Dn': dn})
+            vnic = self.handle.query_dn(dn=dn)
+            self.handle.remove_mo(vnic)
 
     def cimc_set_ssh_timeout(self, timeout=3600):
         self.cmd('set_imc_managedobject', in_mo=None, class_id='commHttps', params={'Dn': 'sys/svc-ext/https-svc', 'sessionTimeout': str(timeout)})
@@ -173,25 +152,35 @@ class CimcServer(LabServer):
                 self.cmd('add_imc_managedobject', in_mo=None, class_id=boot_config['class_id'], params=boot_config['params'])
 
     def cimc_create_vnic(self, pci_slot_id, uplink_port, order, name, mac, vlan, is_pxe_enabled):
+        from imcsdk.mometa.adaptor.AdaptorHostEthIf import AdaptorHostEthIf
+
         self.logger(message='creating vNIC {} on PCI id {} uplink {} mac={} vlan={} pxe: {}'.format(name, pci_slot_id, uplink_port, mac, vlan, is_pxe_enabled))
-        params = {'UplinkPort': uplink_port, 'mac': mac, 'Name': name, 'dn': 'sys/rack-unit-1/adaptor-{pci_slot_id}/host-eth-{nic_name}'.format(pci_slot_id=pci_slot_id, nic_name=name)}
-        if is_pxe_enabled:
-            params['PxeBoot'] = 'enabled'
         if name in ['eth0', 'eth1']:  # eth0 and eth1 are default, only possible to modify there parameters, no way to rename ot delete
-            self.cimc_set_mo_by_class_id(class_id='adaptorHostEthIf', params=params)
+            ethX = self.handle.query_dn('sys/rack-unit-1/adaptor-{}/host-eth-{}'.format(pci_slot_id, name))
+            ethX.mac = mac
+            ethX.mtu = 1500
+            ethX.pxe_boot = is_pxe_enabled
+            self.handle.set_mo(ethX)
         else:
-            self.cmd('add_imc_managedobject', in_mo=None, class_id='adaptorHostEthIf', params=params)
-        general_params = {'Dn': params['dn'] + '/general', 'Vlan': vlan, 'Order': order}
-        self.cmd('set_imc_managedobject', in_mo=None, class_id="AdaptorEthGenProfile", params=general_params)
+            vnic = AdaptorHostEthIf(parent_mo_or_dn='sys/rack-unit-1/adaptor-' + pci_slot_id,
+                                    name=name, mac=mac,
+                                    mtu=1500, pxe_boot=is_pxe_enabled, uplink_port=uplink_port)
+            self.handle.add_mo(vnic)
+        profile = self.handle.query_dn('sys/rack-unit-1/adaptor-{}/host-eth-{}/general'.format(pci_slot_id, name))
+        profile.vlan = vlan
+        profile.order = order
+        self.handle.set_mo(profile)
 
     def cimc_get_power_status(self):
-        return self.cimc_get_mo_by_class_id('computeRackUnit')[0].get_attr('OperPower')
+        return self.handle.query_classid('computeRackUnit')[0].get_attr('OperPower')
 
     def _cimc_power(self, requested_state):
         import time
 
         self.logger('power {0}'.format(requested_state))
-        self.cmd('set_imc_managedobject', in_mo=None, class_id='computeRackUnit', params={'dn': "sys/rack-unit-1", 'adminPower': requested_state})
+        rack = self.handle.query_dn('sys/rack-unit-1')
+        rack.admin_power = requested_state
+        self.handle.set_mo(rack)
         time.sleep(120)  # wait for the server to come up
 
     def cimc_power_down(self):
@@ -275,7 +264,7 @@ class CimcServer(LabServer):
         #    self.create_storage('1', 2, True)
 
     def cimc_get_adaptors(self):
-        r = self.cimc_get_mo_by_class_id('AdaptorUnit')
+        r = self.handle.query_classid('AdaptorUnit')
         return r
 
     def cimc_set_mlom_adaptor(self, pci_slot, n_vnics):
@@ -284,15 +273,15 @@ class CimcServer(LabServer):
         self.cimc_set_mo_by_class_id(class_id='adaptorGenProfile', params={'dn': 'sys/rack-unit-1/adaptor-{0}/general'.format(pci_slot), 'fipMode': 'enabled', 'vntagMode': 'enabled', 'numOfVMFexIfs': n_vnics})
 
     def cimc_get_mgmt_nic(self):
-        r = self.cimc_get_mo_by_class_id('mgmtIf')[0]
-        return {'mac': r.Mac, 'ip': r.ExtIp, 'hostname': r.Hostname, 'dn': r.Dn}
+        return self.handle.query_classid('mgmtIf')[0]
 
     def cimc_set_hostname(self):
         current = self.cimc_get_mgmt_nic()
         new_cimc_hostname = '{}-ru{}-{}'.format(self.pod, self.hardware, self.id)
-        if new_cimc_hostname != current['hostname']:
+        if new_cimc_hostname != current.hostname:
             self.logger(message='setting hostname to {}'.format(new_cimc_hostname))
-            self.cimc_set_mo_by_class_id(class_id='mgmtIf', params={'dn': 'sys/rack-unit-1/mgmt/if-1', 'hostname': new_cimc_hostname})
+            current.hostname = new_cimc_hostname
+            self.handle.set_mo(current)
         else:
             self.logger(message='hostname is already {}'.format(new_cimc_hostname))
 

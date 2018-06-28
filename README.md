@@ -3,9 +3,19 @@ os-sqe: deployment, scaling, performance studies and other QA automation tasks
 
 The recommended way to use is to run the container:
 
-    docker run --name os-sqe --rm cloud-docker.cisco.com/os-sqe:2.7 <task_name:task_argument1,task_argument2,...>
+    docker run -it --name os-sqe-fab --rm -v $PWD:/os-sqe:ro  -v $HOME/artifacts:/tmp cloud-docker.cisco.com/os-sqe:2.7 <your command>
 
-By default, container runs fab -l
+Here:
+    -v $PWD:/os-sqe:ro is to mount your current repo sandbox
+    -v $HOME/artifacts:/tmp is to collect all artifacts created by run in container's /tmp
+
+
+By default, container runs fab -l (entry point is /usr/local/bin/fab and cmd is -l)
+
+
+If you want to run python manually:
+
+        docker run -it --name os-sqe-python --entrypoint python --rm -v $PWD:/os-sqe:ro  -v $HOME/artifacts:/tmp cloud-docker.cisco.com/os-sqe:2.7
 
 To build docker image, do:
 
